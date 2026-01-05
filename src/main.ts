@@ -39,6 +39,8 @@ const btnNewFolder = document.getElementById("btn-new-folder")!;
 const btnRefresh = document.getElementById("btn-refresh")!;
 const btnDownloadProject = document.getElementById("btn-download-project")!;
 const btnClearCache = document.getElementById("btn-clear-cache")!;
+const editorEmptyState = document.getElementById("editor-empty-state")!;
+const emptyStateNewFileBtn = document.getElementById("empty-state-new-file")!;
 
 // Search panel elements
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -50,6 +52,7 @@ const btnRegex = document.getElementById("btn-regex")!;
 const btnCase = document.getElementById("btn-case")!;
 const btnWord = document.getElementById("btn-word")!;
 const btnClearSearch = document.getElementById("btn-clear-search")!;
+const btnReplaceAll = document.getElementById("btn-replace-all")!;
 const btnReplaceAllFiles = document.getElementById("btn-replace-all-files")!;
 
 // Sidebar panels
@@ -382,6 +385,13 @@ function applyTheme(theme: string) {
       setStatus(`${tab.file.name}`);
       setOutput("");
       renderFileTree(tabManager);
+      
+      // Refresh search highlights after tab switch (deferred since function defined later)
+      setTimeout(() => {
+        if (typeof (window as any).__refreshSearchHighlights === 'function') {
+          (window as any).__refreshSearchHighlights();
+        }
+      }, 50);
     },
 
     onTabCreate: async (tab: Tab | null) => {
@@ -400,14 +410,10 @@ function applyTheme(theme: string) {
     onTabClose: (tab: Tab) => {
       disposeModel(tab.file.id);
       
-      // If no tabs left, create a new default file
+      // If no tabs left, show empty state
       if (tabManager.getTabCount() === 0) {
-        tabManager.createNewFile(currentLang, currentVersion).then(newTab => {
-          if (newTab) {
-            const model = getOrCreateModel(newTab);
-            editor.setModel(model);
-          }
-        });
+        updateEmptyState(true);
+        editor.setModel(null);
       }
       renderFileTree(tabManager);
     },
@@ -422,8 +428,29 @@ function applyTheme(theme: string) {
     },
 
     onTabsChange: (tabs: Tab[]) => {
+      updateEmptyState(tabs.length === 0);
       renderFileTree(tabManager);
     },
+  });
+
+  // ===== Empty State Management =====
+  function updateEmptyState(show: boolean) {
+    if (show) {
+      editorEmptyState.classList.add('visible');
+    } else {
+      editorEmptyState.classList.remove('visible');
+    }
+  }
+
+  // Empty state "New File" button handler
+  emptyStateNewFileBtn.addEventListener('click', async () => {
+    const newTab = await tabManager.createNewFile(currentLang, currentVersion);
+    if (newTab) {
+      const model = getOrCreateModel(newTab);
+      editor.setModel(model);
+      setStatus(`Created ${newTab.file.name}`);
+      updateEmptyState(false);
+    }
   });
 
   // ===== File Explorer State =====
@@ -701,6 +728,7 @@ function applyTheme(theme: string) {
     if (newTab) {
       const model = getOrCreateModel(newTab);
       editor.setModel(model);
+      updateEmptyState(false);
       // Start renaming immediately
       renamingItemId = newTab.file.id;
       if (parentId) expandedFolders.add(parentId);
@@ -739,18 +767,36 @@ function applyTheme(theme: string) {
   btnNewFolder.addEventListener('click', () => createNewFolder(null));
   btnRefresh.addEventListener('click', () => renderFileTree(tabManager));
 
-  // Clear Cache - clears all stored files and folders
+  // Clear Cache - clears ALL user data (files, folders, settings, localStorage)
   btnClearCache.addEventListener('click', async () => {
-    const confirmed = confirm('Are you sure you want to clear all cached files and folders? This cannot be undone.');
+    const confirmed = confirm('Are you sure you want to clear ALL cached data? This will reset the app to its initial state and cannot be undone.');
     if (!confirmed) return;
 
     try {
+      // Clear IndexedDB storage
       await storage.clearAll();
+      
+      // Clear localStorage settings
+      localStorage.removeItem('browser-coder-settings');
+      
+      // Clear all Monaco models
+      tabManager.getAllTabs().forEach(tab => {
+        disposeModel(tab.file.id);
+      });
+      
+      // Close all tabs
       tabManager.closeAllTabs();
-      editor.setValue('');
+      
+      // Clear editor
+      editor.setModel(null);
+      
+      // Show empty state
+      updateEmptyState(true);
+      
+      // Clear UI
       renderFileTree(tabManager);
-      setOutput('All cache cleared successfully');
-      setStatus('Cache cleared ✅');
+      setOutput('All cache cleared successfully. App reset to initial state.');
+      setStatus('Ready');
     } catch (e) {
       setOutput(`Error clearing cache: ${e}`);
       setStatus('Error ❌');
@@ -850,6 +896,38 @@ function applyTheme(theme: string) {
 
   let currentSearchResults: SearchResult[] = [];
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let searchDecorations: string[] = [];  // Monaco decoration IDs for highlighting
+
+  // Function to highlight search matches in current editor
+  function highlightSearchMatchesInEditor() {
+    const activeTab = tabManager.getActiveTab();
+    if (!activeTab || !searchInput.value) {
+      searchDecorations = editor.deltaDecorations(searchDecorations, []);
+      return;
+    }
+
+    const fileResult = currentSearchResults.find(r => r.fileId === activeTab.file.id);
+    if (!fileResult || fileResult.matches.length === 0) {
+      searchDecorations = editor.deltaDecorations(searchDecorations, []);
+      return;
+    }
+
+    const newDecorations: monaco.editor.IModelDeltaDecoration[] = fileResult.matches.map(match => ({
+      range: new monaco.Range(match.line, match.column, match.line, match.column + (match.matchEnd - match.matchStart)),
+      options: {
+        className: 'search-highlight-match',
+        overviewRuler: {
+          color: '#ffc800',
+          position: monaco.editor.OverviewRulerLane.Center,
+        },
+      },
+    }));
+  
+  // Register globally for tab switch callback
+  (window as any).__refreshSearchHighlights = highlightSearchMatchesInEditor;
+
+    searchDecorations = editor.deltaDecorations(searchDecorations, newDecorations);
+  }
 
   // Toggle search option buttons
   btnRegex.addEventListener('click', () => {
@@ -875,6 +953,50 @@ function applyTheme(theme: string) {
     replaceInput.value = '';
     currentSearchResults = [];
     renderSearchResults();
+    highlightSearchMatchesInEditor();  // Clear highlights
+  });
+
+  // Replace all in current file (small button next to replace input)
+  btnReplaceAll.addEventListener('click', async () => {
+    const activeTab = tabManager.getActiveTab();
+    if (!activeTab || !searchInput.value) return;
+
+    const file = activeTab.file;
+    let searchPattern: RegExp;
+    try {
+      if (searchOptions.regex) {
+        const flags = searchOptions.caseSensitive ? 'g' : 'gi';
+        searchPattern = new RegExp(searchInput.value, flags);
+      } else {
+        let escapedQuery = searchInput.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (searchOptions.wholeWord) {
+          escapedQuery = `\\b${escapedQuery}\\b`;
+        }
+        const flags = searchOptions.caseSensitive ? 'g' : 'gi';
+        searchPattern = new RegExp(escapedQuery, flags);
+      }
+    } catch (e) {
+      return;
+    }
+
+    const newContent = file.content.replace(searchPattern, replaceInput.value);
+    const matchCount = (file.content.match(searchPattern) || []).length;
+    
+    if (matchCount === 0) {
+      setOutput('No matches to replace in current file');
+      return;
+    }
+
+    await storage.updateFile(file.id, { content: newContent });
+    file.content = newContent;
+    
+    const model = editor.getModel();
+    if (model) {
+      model.setValue(newContent);
+    }
+
+    performSearch();
+    setOutput(`Replaced ${matchCount} occurrence${matchCount !== 1 ? 's' : ''} in ${file.name}`);
   });
 
   // Debounced search on input
@@ -909,6 +1031,7 @@ function applyTheme(theme: string) {
     }
 
     renderSearchResults();
+    highlightSearchMatchesInEditor();
   }
 
   function searchInFile(content: string, query: string, fileId: string, fileName: string, language: string): SearchMatch[] {
@@ -1094,12 +1217,13 @@ function applyTheme(theme: string) {
     const newContent = lines.join('\n');
     await storage.updateFile(fileId, { content: newContent });
     
-    // Update editor if this file is open
+    // Update editor model directly from our fileModels map
     const tab = tabManager.getTab(fileId);
     if (tab) {
       tab.file.content = newContent;
-      const model = monaco.editor.getModel(monaco.Uri.parse(`file:///${fileId}`));
-      if (model && tabManager.getActiveTab()?.file.id === fileId) {
+      const model = fileModels.get(fileId);
+      if (model && !model.isDisposed()) {
+        // Use pushEditOperations to properly update the model
         model.setValue(newContent);
       }
     }
@@ -1325,23 +1449,45 @@ function applyTheme(theme: string) {
       class: '𝐶',
     };
 
-    functionListEl.innerHTML = functions.map(fn => `
-      <div class="run-item" data-function="${fn.name}" data-line="${fn.line}" data-type="${fn.type}">
-        <span class="run-item-icon">${icons[fn.type] || '𝑓'}</span>
-        <span class="run-item-name">${fn.name}(${fn.params ? '...' : ''})</span>
-        <span class="run-item-type">${fn.type}</span>
-        <button class="run-btn" title="Run ${fn.name}">▶</button>
-      </div>
-    `).join('');
+    // Helper to escape HTML
+    const escapeHtml = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    functionListEl.innerHTML = functions.map(fn => {
+      const hasParams = fn.params && fn.params.trim().length > 0;
+      const isClass = fn.type === 'class';
+      const placeholder = isClass 
+        ? 'constructor args (e.g., "value", 42)' 
+        : `args: ${fn.params || 'none'}`;
+      
+      return `
+        <div class="run-item-container">
+          <div class="run-item" data-function="${escapeHtml(fn.name)}" data-line="${fn.line}" data-type="${fn.type}" data-params="${escapeHtml(fn.params)}">
+            <span class="run-item-icon">${icons[fn.type] || '𝑓'}</span>
+            <span class="run-item-name">${escapeHtml(fn.name)}(${hasParams || isClass ? '...' : ''})</span>
+            <span class="run-item-type">${fn.type}</span>
+            <button class="run-btn" title="Run ${escapeHtml(fn.name)}">▶</button>
+          </div>
+          ${hasParams || isClass ? `
+            <div class="run-item-args">
+              <span class="run-item-args-label">Args:</span>
+              <input type="text" class="run-item-args-input" placeholder="${escapeHtml(placeholder)}" data-fn="${escapeHtml(fn.name)}" />
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
 
     // Attach handlers
-    functionListEl.querySelectorAll('.run-item').forEach(el => {
-      const fnName = (el as HTMLElement).dataset.function!;
-      const fnLine = parseInt((el as HTMLElement).dataset.line!);
-      const fnType = (el as HTMLElement).dataset.type!;
+    functionListEl.querySelectorAll('.run-item-container').forEach(container => {
+      const itemEl = container.querySelector('.run-item') as HTMLElement;
+      const argsInput = container.querySelector('.run-item-args-input') as HTMLInputElement | null;
+      
+      const fnName = itemEl.dataset.function!;
+      const fnLine = parseInt(itemEl.dataset.line!);
+      const fnType = itemEl.dataset.type!;
 
       // Click on name to go to line
-      el.addEventListener('click', (e) => {
+      itemEl.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).classList.contains('run-btn')) return;
         editor.revealLineInCenter(fnLine);
         editor.setPosition({ lineNumber: fnLine, column: 1 });
@@ -1349,9 +1495,18 @@ function applyTheme(theme: string) {
       });
 
       // Click run button
-      el.querySelector('.run-btn')?.addEventListener('click', (e) => {
+      itemEl.querySelector('.run-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        runFunction(fnName, fnType);
+        const args = argsInput ? argsInput.value.trim() : '';
+        runFunction(fnName, fnType, args);
+      });
+
+      // Press Enter in args input to run
+      argsInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          runFunction(fnName, fnType, argsInput.value.trim());
+        }
       });
     });
   }
@@ -1478,7 +1633,7 @@ function applyTheme(theme: string) {
     return code;
   }
 
-  async function runFunction(fnName: string, fnType: string) {
+  async function runFunction(fnName: string, fnType: string, args: string = '') {
     const activeTab = tabManager.getActiveTab();
     if (!activeTab) return;
 
@@ -1486,6 +1641,9 @@ function applyTheme(theme: string) {
     const language = activeTab.file.language;
     const version = activeTab.file.version;
 
+    // Format args for display
+    const argsDisplay = args ? `(${args})` : '()';
+    
     // Extract only function/class definitions for JS/TS to prevent top-level execution
     let runCode = '';
 
@@ -1494,9 +1652,9 @@ function applyTheme(theme: string) {
       case 'typescript': {
         const defsOnly = extractDefinitionsOnly(code, language);
         if (fnType === 'class') {
-          runCode = `${defsOnly}\n\n// Run specific class\nconsole.log('--- Running ${fnName} ---');\nconst __instance = new ${fnName}();\nconsole.log('Created instance:', __instance);`;
+          runCode = `${defsOnly}\n\n// Run specific class\nconsole.log('--- Running new ${fnName}${argsDisplay} ---');\nconst __instance = new ${fnName}(${args});\nconsole.log('Created instance:', __instance);`;
         } else {
-          runCode = `${defsOnly}\n\n// Run specific function\nconsole.log('--- Running ${fnName}() ---');\nconst __result = ${fnName}();\nif (__result !== undefined) console.log('Returned:', __result);`;
+          runCode = `${defsOnly}\n\n// Run specific function\nconsole.log('--- Running ${fnName}${argsDisplay} ---');\nconst __result = ${fnName}(${args});\nif (__result !== undefined) console.log('Returned:', __result);`;
         }
         break;
       }
@@ -1505,9 +1663,9 @@ function applyTheme(theme: string) {
         // Extract only function/class definitions, not top-level execution code
         const defsOnly = extractDefinitionsOnly(code, 'python');
         if (fnType === 'class') {
-          runCode = `${defsOnly}\n\n# Run specific class\nprint('--- Running ${fnName} ---')\n__instance = ${fnName}()\nprint('Created instance:', __instance)`;
+          runCode = `${defsOnly}\n\n# Run specific class\nprint('--- Running ${fnName}${argsDisplay} ---')\n__instance = ${fnName}(${args})\nprint('Created instance:', __instance)`;
         } else {
-          runCode = `${defsOnly}\n\n# Run specific function\nprint('--- Running ${fnName}() ---')\n__result = ${fnName}()\nif __result is not None:\n    print('Returned:', __result)`;
+          runCode = `${defsOnly}\n\n# Run specific function\nprint('--- Running ${fnName}${argsDisplay} ---')\n__result = ${fnName}(${args})\nif __result is not None:\n    print('Returned:', __result)`;
         }
         break;
       }
@@ -1519,7 +1677,7 @@ function applyTheme(theme: string) {
         } else {
           runCode = code.replace(
             /public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\n\s*\}/,
-            `public static void main(String[] args) {\n        System.out.println("--- Running ${fnName}() ---");\n        ${fnName}();\n    }`
+            `public static void main(String[] args) {\n        System.out.println("--- Running ${fnName}${argsDisplay} ---");\n        ${fnName}(${args});\n    }`
           );
         }
         break;
@@ -1529,9 +1687,9 @@ function applyTheme(theme: string) {
         const defsOnly = extractDefinitionsOnly(code, 'php');
         
         if (fnType === 'class') {
-          runCode = `${defsOnly}\n\n// Run specific class\necho "--- Running ${fnName} ---\\n";\n$__instance = new ${fnName}();\nvar_dump($__instance);`;
+          runCode = `${defsOnly}\n\n// Run specific class\necho "--- Running new ${fnName}${argsDisplay} ---\\n";\n$__instance = new ${fnName}(${args});\nvar_dump($__instance);`;
         } else {
-          runCode = `${defsOnly}\n\n// Run specific function\necho "--- Running ${fnName}() ---\\n";\n$__result = ${fnName}();\nif ($__result !== null) { var_dump($__result); }`;
+          runCode = `${defsOnly}\n\n// Run specific function\necho "--- Running ${fnName}${argsDisplay} ---\\n";\n$__result = ${fnName}(${args});\nif ($__result !== null) { var_dump($__result); }`;
         }
         break;
       }
@@ -1541,7 +1699,7 @@ function applyTheme(theme: string) {
     }
 
     // Show running state
-    setOutput(`Running ${fnName}()...`);
+    setOutput(`Running ${fnName}${argsDisplay}...`);
     setStatus(`Running ${fnName}...`);
 
     try {
@@ -1562,10 +1720,10 @@ function applyTheme(theme: string) {
       let output = "";
       if (data.stdout) output += data.stdout;
       if (data.stderr) output += (output ? "\n" : "") + data.stderr;
-      if (!output && data.exitCode === 0) output = `${fnName}() completed successfully (no output)`;
+      if (!output && data.exitCode === 0) output = `${fnName}${argsDisplay} completed successfully (no output)`;
       
       setOutput(output);
-      setStatus(`${fnName}() ✅`);
+      setStatus(`${fnName}${argsDisplay} ✅`);
     } catch (e) {
       setOutput(`Network error: ${e}`);
       setStatus("Error ❌");
@@ -1680,6 +1838,13 @@ function applyTheme(theme: string) {
 
     const model = getOrCreateModel(initialTab);
     editor.setModel(model);
+    updateEmptyState(false);
+    setStatus(`${initialTab.file.name}`);
+  } else {
+    // No files - show empty state
+    updateEmptyState(true);
+    editor.setModel(null);
+    setStatus("Ready");
   }
 
   // Listen to editor content changes for auto-save

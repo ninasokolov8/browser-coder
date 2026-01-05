@@ -101,6 +101,21 @@
         border: 1px solid var(--border-color);
       }
       #titlebar .btn-secondary:hover { background: var(--bg-tab-hover); }
+      #titlebar .btn-danger {
+        background: transparent; color: var(--text-primary);
+        border: 1px solid var(--border-color);
+      }
+      #titlebar .btn-danger:hover { 
+        background: #dc3545; 
+        color: white;
+        border-color: #dc3545;
+      }
+      .titlebar-separator {
+        width: 1px;
+        height: 20px;
+        background: var(--border-color);
+        margin: 0 8px;
+      }
 
       /* ===== ACTIVITY BAR ===== */
       #activitybar {
@@ -158,7 +173,8 @@
         border-bottom: 1px solid var(--border-color);
       }
       .sidebar-header span { flex: 1; }
-      .sidebar-actions { display: flex; gap: 2px; }
+      .sidebar-actions { display: flex; gap: 2px; align-items: center; }
+      .sidebar-separator { width: 1px; height: 16px; background: var(--border-color); margin: 0 4px; }
       .sidebar-btn {
         width: 22px; height: 22px;
         display: flex; align-items: center; justify-content: center;
@@ -167,6 +183,7 @@
         border-radius: 3px; font-size: 14px;
       }
       .sidebar-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+      .sidebar-btn.danger:hover { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; }
       .sidebar-content { flex: 1; overflow: auto; padding: 4px 0; }
       .sidebar-panel { display: none; flex-direction: column; height: 100%; }
       .sidebar-panel.active { display: flex; }
@@ -208,45 +225,6 @@
       .tree-empty {
         padding: 8px 16px; font-size: 12px;
         color: var(--text-muted); font-style: italic;
-      }
-
-      /* Explorer Toolbar */
-      .explorer-toolbar {
-        display: flex;
-        gap: 4px;
-        padding: 6px 8px;
-        border-bottom: 1px solid var(--border-color);
-        background: var(--bg-sidebar);
-      }
-      .explorer-toolbar-btn {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 6px 8px;
-        background: var(--bg-tab);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        color: var(--text-primary);
-        font-size: 11px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .explorer-toolbar-btn:hover {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: white;
-      }
-      .explorer-toolbar-btn.danger:hover {
-        background: #c75050;
-        border-color: #c75050;
-      }
-      .explorer-toolbar-btn .toolbar-icon {
-        font-size: 14px;
-      }
-      .explorer-toolbar-btn .toolbar-text {
-        font-weight: 500;
       }
 
       /* ===== SEARCH PANEL ===== */
@@ -339,6 +317,13 @@
         color: var(--text-muted); font-size: 12px;
       }
 
+      /* Monaco editor search highlight */
+      .search-highlight-match {
+        background-color: rgba(255, 200, 0, 0.4) !important;
+        border: 1px solid rgba(255, 200, 0, 0.8);
+        border-radius: 2px;
+      }
+
       /* ===== RUN PANEL ===== */
       .run-section {
         margin-bottom: 8px;
@@ -418,6 +403,48 @@
         margin-left: auto;
         margin-right: 8px;
         font-style: italic;
+      }
+      
+      /* Function arguments input */
+      .run-item-container {
+        margin: 0 4px;
+      }
+      .run-item-args {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px 8px 36px;
+        font-size: 11px;
+      }
+      .run-item-args-label {
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+      .run-item-args-input {
+        flex: 1;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-family: var(--font-mono);
+      }
+      .run-item-args-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .run-item-args-input::placeholder {
+        color: var(--text-muted);
+        opacity: 0.6;
+      }
+      .run-item-params {
+        font-size: 10px;
+        color: var(--text-muted);
+        padding: 0 12px 0 36px;
+        margin-top: -2px;
+        margin-bottom: 4px;
+        font-family: var(--font-mono);
       }
 
       /* Context Menu */
@@ -524,6 +551,62 @@
       #editor { 
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
+      }
+
+      /* Empty State - No file open */
+      #editor-empty-state {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-editor);
+        z-index: 10;
+      }
+      #editor-empty-state.visible {
+        display: flex;
+      }
+      .empty-state-content {
+        text-align: center;
+        padding: 40px;
+      }
+      .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.6;
+      }
+      .empty-state-title {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+      .empty-state-subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+      }
+      .empty-state-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .empty-state-btn:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+      .empty-state-btn .plus-icon {
+        font-size: 18px;
+        font-weight: 300;
       }
 
       /* ===== PANEL (Terminal/Output) ===== */
@@ -683,6 +766,9 @@
         </div>
         <span id="status" style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
         <div class="controls">
+          <button id="btn-download-project" class="btn btn-secondary" title="Download Project">📦 Download</button>
+          <button id="btn-clear-cache" class="btn btn-danger" title="Clear Cache">🗑️ Clear</button>
+          <span class="titlebar-separator"></span>
           <select id="lang" title="Language">
             <option value="javascript">JavaScript</option>
           </select>
@@ -708,16 +794,6 @@
               <button class="sidebar-btn" id="btn-new-folder" title="New Folder">📁</button>
               <button class="sidebar-btn" id="btn-refresh" title="Refresh">🔄</button>
             </div>
-          </div>
-          <div class="explorer-toolbar">
-            <button class="explorer-toolbar-btn" id="btn-download-project" title="Download all files as ZIP">
-              <span class="toolbar-icon">📦</span>
-              <span class="toolbar-text">Download Project</span>
-            </button>
-            <button class="explorer-toolbar-btn danger" id="btn-clear-cache" title="Clear all cached files">
-              <span class="toolbar-icon">🗑️</span>
-              <span class="toolbar-text">Clear Cache</span>
-            </button>
           </div>
           <div class="sidebar-content">
             <div class="file-tree" id="file-tree">
@@ -800,6 +876,16 @@
         </div>
         <div id="editor-container">
           <div id="editor"></div>
+          <div id="editor-empty-state">
+            <div class="empty-state-content">
+              <div class="empty-state-icon">📝</div>
+              <div class="empty-state-title">No file open</div>
+              <div class="empty-state-subtitle">Create a new file to start coding</div>
+              <button id="empty-state-new-file" class="empty-state-btn">
+                <span class="plus-icon">+</span> New File
+              </button>
+            </div>
+          </div>
         </div>
         <div id="panel">
           <div id="panel-resize"></div>

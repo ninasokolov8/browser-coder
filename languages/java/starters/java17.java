@@ -10,13 +10,13 @@ public class Main {
         String json = """
             {
                 "name": "Nina",
-                "age": 25
+                "age": 36
             }
             """;
         System.out.println(json);
         
         // Records
-        var user = new User("Nina", 25);
+        var user = new User("Nina", 36);
         System.out.println("User: " + user.name() + ", " + user.age());
         
         // Pattern matching for instanceof (Java 16+)

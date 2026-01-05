@@ -80,18 +80,31 @@ async function fetchStarter(langId: string, versionId: string, extension: string
   // Create new request
   const request = (async () => {
     try {
-      // Try optimized API endpoint first
+      // Try optimized API endpoint first (returns JSON)
       let resp = await fetch(`/api/starter/${langId}/${versionId}`);
       
-      // Fallback to static file
-      if (!resp.ok) {
-        resp = await fetch(`/languages/${langId}/starters/${versionId}.${extension}`);
+      if (resp.ok) {
+        const contentType = resp.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await resp.json();
+          const code = data.code || `// ${langId}\n// Start coding here...\n`;
+          starterCache.set(cacheKey, { code, timestamp: Date.now() });
+          return code;
+        } else {
+          // Plain text response (fallback)
+          const code = await resp.text();
+          starterCache.set(cacheKey, { code, timestamp: Date.now() });
+          return code;
+        }
       }
       
+      // Fallback to static file (plain text)
+      resp = await fetch(`/languages/${langId}/starters/${versionId}.${extension}`);
+      
       if (resp.ok) {
-        const content = await resp.text();
-        starterCache.set(cacheKey, { code: content, timestamp: Date.now() });
-        return content;
+        const code = await resp.text();
+        starterCache.set(cacheKey, { code, timestamp: Date.now() });
+        return code;
       }
     } catch (e) {
       console.warn(`Failed to fetch starter for ${langId}/${versionId}:`, e);

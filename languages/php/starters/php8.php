@@ -24,7 +24,7 @@ class User {
     }
 }
 
-$user = new User("Nina", 25);
+$user = new User("Nina", 36);
 echo $user->greet() . "\n";
 
 // Named arguments (PHP 8.0+)

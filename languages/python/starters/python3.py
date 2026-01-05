@@ -20,7 +20,7 @@ class User:
     def greet(self) -> str:
         return f"Hello, {self.name}!"
 
-user = User("Nina", 25)
+user = User("Nina", 36)
 print(user.greet())
 
 # Dictionary comprehension

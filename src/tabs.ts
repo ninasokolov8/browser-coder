@@ -34,7 +34,7 @@ export class TabManager {
   // ========== Initialization ==========
 
   /**
-   * Initialize tab manager - load saved files or create default
+   * Initialize tab manager - load saved files or return null for empty state
    */
   async init(defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
     await storage.init();
@@ -57,9 +57,10 @@ export class TabManager {
       
       return activeTab;
     } else {
-      // Create default file
-      const defaultFile = await this.createNewFile(defaultLang, defaultVersion);
-      return defaultFile ? this.getTab(defaultFile.file.id) : null;
+      // No files - return null, let UI show empty state
+      this.render();
+      this.events.onTabsChange?.(this.tabs);
+      return null;
     }
   }
 
