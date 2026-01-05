@@ -1,0 +1,8 @@
+FROM docker:cli
+
+RUN apk add --no-cache curl jq bash
+
+COPY autoscaler.sh /autoscaler.sh
+RUN chmod +x /autoscaler.sh
+
+CMD ["/autoscaler.sh"]

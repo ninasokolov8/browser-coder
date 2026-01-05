@@ -1,0 +1,18 @@
+{
+  "id": "python",
+  "name": "Python",
+  "extension": "py",
+  "monacoLanguage": "python",
+  "versions": [
+    {
+      "id": "python3",
+      "name": "Python 3.x",
+      "default": true
+    }
+  ],
+  "runner": {
+    "command": "python3",
+    "args": ["-u"],
+    "stdin": true
+  }
+}

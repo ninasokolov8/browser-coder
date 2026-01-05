@@ -1,0 +1,17 @@
+{
+  "id": "php",
+  "name": "PHP",
+  "extension": "php",
+  "monacoLanguage": "php",
+  "versions": [
+    {
+      "id": "php8",
+      "name": "PHP 8.x",
+      "default": true
+    }
+  ],
+  "runner": {
+    "command": "php",
+    "tempFile": true
+  }
+}

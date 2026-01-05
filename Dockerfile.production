@@ -1,0 +1,39 @@
+# Production Dockerfile - Auto-scaling ready for 10k+ users
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production runtime
+FROM node:20-alpine
+
+# Install language runtimes
+RUN apk add --no-cache python3 openjdk17-jdk php bash && rm -rf /var/cache/apk/*
+
+# Security: non-root user
+RUN addgroup -g 1001 -S app && adduser -u 1001 -S app -G app
+
+WORKDIR /app
+
+# Production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy built app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server.mjs ./
+COPY --from=builder /app/languages ./languages
+
+RUN chown -R app:app /app
+USER app
+
+ENV NODE_ENV=production PORT=3001
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:3001/health || exit 1
+
+EXPOSE 3001
+CMD ["node", "server.mjs"]

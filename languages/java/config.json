@@ -1,0 +1,24 @@
+{
+  "id": "java",
+  "name": "Java",
+  "extension": "java",
+  "monacoLanguage": "java",
+  "versions": [
+    {
+      "id": "java17",
+      "name": "Java 17 (LTS)",
+      "sourceLevel": "17",
+      "default": true
+    },
+    {
+      "id": "java11",
+      "name": "Java 11 (LTS)",
+      "sourceLevel": "11"
+    }
+  ],
+  "runner": {
+    "command": "java",
+    "compile": true,
+    "tempFile": true
+  }
+}

@@ -1,0 +1,5 @@
+node_modules
+.git
+*.log
+server.log
+.DS_Store

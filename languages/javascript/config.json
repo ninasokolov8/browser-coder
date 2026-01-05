@@ -1,0 +1,34 @@
+{
+  "id": "javascript",
+  "name": "JavaScript",
+  "extension": "js",
+  "monacoLanguage": "javascript",
+  "versions": [
+    {
+      "id": "es2022",
+      "name": "ES2022 (Latest)",
+      "monacoTarget": "ES2022",
+      "default": true
+    },
+    {
+      "id": "es2020",
+      "name": "ES2020",
+      "monacoTarget": "ES2020"
+    },
+    {
+      "id": "es2015",
+      "name": "ES2015 (ES6)",
+      "monacoTarget": "ES2015"
+    },
+    {
+      "id": "es5",
+      "name": "ES5 (Legacy)",
+      "monacoTarget": "ES5"
+    }
+  ],
+  "runner": {
+    "command": "node",
+    "args": ["--input-type=module"],
+    "stdin": true
+  }
+}

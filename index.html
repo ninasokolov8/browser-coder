@@ -1,0 +1,793 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Browser Coder - Web IDE</title>
+    <style>
+      :root {
+        --bg-main: #ffffff;
+        --bg-sidebar: #f3f3f3;
+        --bg-activitybar: #2c2c2c;
+        --bg-editor: #ffffff;
+        --bg-panel: #f3f3f3;
+        --bg-titlebar: #dddddd;
+        --bg-statusbar: #007acc;
+        --bg-tab: #ececec;
+        --bg-tab-active: #ffffff;
+        --bg-tab-hover: #e8e8e8;
+        --border-color: #e0e0e0;
+        --text-primary: #333333;
+        --text-secondary: #6e6e6e;
+        --text-muted: #999999;
+        --accent: #007acc;
+        --icon-color: #424242;
+        --icon-active: #007acc;
+      }
+
+      .dark-theme {
+        --bg-main: #1e1e1e;
+        --bg-sidebar: #252526;
+        --bg-activitybar: #333333;
+        --bg-editor: #1e1e1e;
+        --bg-panel: #1e1e1e;
+        --bg-titlebar: #3c3c3c;
+        --bg-statusbar: #007acc;
+        --bg-tab: #2d2d2d;
+        --bg-tab-active: #1e1e1e;
+        --bg-tab-hover: #383838;
+        --border-color: #3c3c3c;
+        --text-primary: #cccccc;
+        --text-secondary: #969696;
+        --text-muted: #6e6e6e;
+        --accent: #007acc;
+        --icon-color: #858585;
+        --icon-active: #ffffff;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { 
+        height: 100%; margin: 0; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
+        font-size: 13px;
+        background: var(--bg-main);
+        color: var(--text-primary);
+      }
+
+      /* ===== LAYOUT ===== */
+      #app {
+        display: grid;
+        grid-template-columns: 48px 220px 1fr;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+          "activitybar titlebar titlebar"
+          "activitybar sidebar main"
+          "statusbar statusbar statusbar";
+        height: 100%;
+        transition: grid-template-columns 0.15s ease;
+      }
+
+      /* Sidebar collapsed - adjust grid */
+      #app:has(#sidebar.collapsed) {
+        grid-template-columns: 48px 0 1fr;
+      }
+
+      /* ===== TITLE BAR ===== */
+      #titlebar {
+        grid-area: titlebar;
+        height: 35px;
+        background: var(--bg-titlebar);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        gap: 12px;
+      }
+      #titlebar .logo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+      #titlebar .controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+      #titlebar select {
+        height: 24px; font-size: 12px; padding: 0 6px;
+        background: var(--bg-sidebar); color: var(--text-primary);
+        border: 1px solid var(--border-color); border-radius: 3px;
+      }
+      #titlebar .btn {
+        height: 26px; padding: 0 10px; font-size: 12px;
+        background: var(--accent); color: white; border: none;
+        border-radius: 3px; cursor: pointer; font-weight: 500;
+      }
+      #titlebar .btn:hover { opacity: 0.9; }
+      #titlebar .btn-secondary {
+        background: transparent; color: var(--text-primary);
+        border: 1px solid var(--border-color);
+      }
+      #titlebar .btn-secondary:hover { background: var(--bg-tab-hover); }
+
+      /* ===== ACTIVITY BAR ===== */
+      #activitybar {
+        grid-area: activitybar;
+        background: var(--bg-activitybar);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px 0;
+        gap: 4px;
+      }
+      .activity-icon {
+        width: 48px; height: 42px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; color: var(--icon-color);
+        border-left: 2px solid transparent;
+        transition: color 0.15s;
+      }
+      .activity-icon:hover { color: var(--icon-active); }
+      .activity-icon.active { 
+        color: var(--icon-active); 
+        border-left-color: var(--icon-active);
+      }
+      .activity-icon svg { width: 24px; height: 24px; }
+      .activity-spacer { flex: 1; }
+
+      /* ===== SIDEBAR ===== */
+      #sidebar {
+        grid-area: sidebar;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        min-width: 150px;
+        max-width: 500px;
+      }
+      #sidebar.collapsed { display: none; }
+      #sidebar-resize {
+        position: absolute;
+        top: 0; right: -3px; bottom: 0;
+        width: 6px;
+        cursor: ew-resize;
+        z-index: 10;
+      }
+      #sidebar-resize:hover { background: var(--accent); }
+      .sidebar-header {
+        height: 35px; padding: 0 8px 0 12px;
+        display: flex; align-items: center;
+        text-transform: uppercase;
+        font-size: 11px; font-weight: 600;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+      }
+      .sidebar-header span { flex: 1; }
+      .sidebar-actions { display: flex; gap: 2px; }
+      .sidebar-btn {
+        width: 22px; height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: var(--text-secondary); cursor: pointer;
+        border-radius: 3px; font-size: 14px;
+      }
+      .sidebar-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+      .sidebar-content { flex: 1; overflow: auto; padding: 4px 0; }
+      .sidebar-panel { display: none; flex-direction: column; height: 100%; }
+      .sidebar-panel.active { display: flex; }
+
+      /* File Tree */
+      .file-tree { font-size: 13px; user-select: none; }
+      .tree-item {
+        display: flex; align-items: center; gap: 4px;
+        padding: 3px 8px;
+        cursor: pointer;
+        color: var(--text-primary);
+        border-radius: 3px;
+        margin: 0 4px;
+      }
+      .tree-item:hover { background: var(--bg-tab-hover); }
+      .tree-item.active { background: var(--accent); color: white; }
+      .tree-item.drop-target { background: rgba(0, 122, 204, 0.3); }
+      .tree-item-chevron {
+        width: 16px; height: 16px; font-size: 10px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted);
+        transition: transform 0.1s;
+      }
+      .tree-item-chevron.expanded { transform: rotate(90deg); }
+      .tree-item-icon { font-size: 14px; flex-shrink: 0; }
+      .tree-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tree-item-badge {
+        font-size: 10px; padding: 1px 5px;
+        background: var(--accent); color: white;
+        border-radius: 8px;
+      }
+      .tree-item-input {
+        flex: 1; font-size: 12px; padding: 1px 4px;
+        background: var(--bg-editor); color: var(--text-primary);
+        border: 1px solid var(--accent); border-radius: 2px;
+        outline: none;
+      }
+      .tree-children { margin-left: 12px; }
+      .tree-empty {
+        padding: 8px 16px; font-size: 12px;
+        color: var(--text-muted); font-style: italic;
+      }
+
+      /* ===== SEARCH PANEL ===== */
+      .search-panel { display: none; flex-direction: column; height: 100%; }
+      .search-panel.active { display: flex; }
+      .search-inputs {
+        padding: 8px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .search-row {
+        display: flex; align-items: center; gap: 4px;
+        margin-bottom: 6px;
+      }
+      .search-row:last-child { margin-bottom: 0; }
+      .search-input {
+        flex: 1; height: 26px; padding: 0 8px;
+        background: var(--bg-editor); color: var(--text-primary);
+        border: 1px solid var(--border-color); border-radius: 3px;
+        font-size: 12px; outline: none;
+      }
+      .search-input:focus { border-color: var(--accent); }
+      .search-input::placeholder { color: var(--text-muted); }
+      .search-btn {
+        width: 26px; height: 26px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: 1px solid var(--border-color);
+        color: var(--text-secondary); cursor: pointer;
+        border-radius: 3px; font-size: 11px;
+      }
+      .search-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+      .search-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+      .search-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+      .search-btn.primary:hover { opacity: 0.9; }
+      .search-options {
+        display: flex; gap: 8px; padding: 4px 0;
+        font-size: 11px; color: var(--text-secondary);
+      }
+      .search-option {
+        display: flex; align-items: center; gap: 4px; cursor: pointer;
+      }
+      .search-option input { margin: 0; }
+      .search-summary {
+        padding: 6px 8px; font-size: 11px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      .search-results {
+        flex: 1; overflow-y: auto; padding: 4px 0;
+      }
+      .search-file {
+        padding: 4px 8px; font-size: 12px;
+        color: var(--text-secondary);
+        display: flex; align-items: center; gap: 6px;
+        cursor: pointer;
+      }
+      .search-file:hover { background: var(--bg-tab-hover); }
+      .search-file-icon { font-size: 14px; }
+      .search-file-name { flex: 1; font-weight: 500; color: var(--text-primary); }
+      .search-file-count {
+        font-size: 10px; padding: 1px 5px;
+        background: var(--bg-tab); border-radius: 8px;
+      }
+      .search-match {
+        padding: 2px 8px 2px 28px; font-size: 12px;
+        cursor: pointer; display: flex; align-items: center; gap: 4px;
+        font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+      }
+      .search-match:hover { background: var(--bg-tab-hover); }
+      .search-match-line {
+        color: var(--text-muted); min-width: 30px; text-align: right;
+        margin-right: 8px; font-size: 11px;
+      }
+      .search-match-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .search-match-highlight {
+        background: rgba(255, 200, 0, 0.4);
+        border-radius: 2px; padding: 0 2px;
+      }
+      .search-match-actions { display: flex; gap: 2px; opacity: 0; }
+      .search-match:hover .search-match-actions { opacity: 1; }
+      .search-match-btn {
+        width: 18px; height: 18px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: var(--text-muted); cursor: pointer; font-size: 11px;
+      }
+      .search-match-btn:hover { color: var(--text-primary); }
+      .search-no-results {
+        padding: 16px; text-align: center;
+        color: var(--text-muted); font-size: 12px;
+      }
+
+      /* ===== RUN PANEL ===== */
+      .run-section {
+        margin-bottom: 8px;
+      }
+      .run-section-header {
+        padding: 6px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .run-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text-primary);
+        border-radius: 3px;
+        margin: 0 4px;
+      }
+      .run-item:hover {
+        background: var(--bg-tab-hover);
+      }
+      .run-item-icon {
+        width: 16px;
+        text-align: center;
+        color: var(--accent);
+      }
+      .run-item-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .run-item-shortcut {
+        font-size: 10px;
+        color: var(--text-muted);
+        background: var(--bg-tab);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      .run-item-type {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+      .run-item.running {
+        background: rgba(0, 122, 204, 0.2);
+      }
+      .run-item .run-btn {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        opacity: 0;
+        transition: opacity 0.1s;
+      }
+      .run-item:hover .run-btn {
+        opacity: 1;
+      }
+      .run-item .run-btn:hover {
+        background: #005a9e;
+      }
+      .run-item-type {
+        font-size: 10px;
+        color: #6a9955;
+        margin-left: auto;
+        margin-right: 8px;
+        font-style: italic;
+      }
+
+      /* Context Menu */
+      .context-menu {
+        position: fixed; z-index: 1000;
+        background: var(--bg-sidebar);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        min-width: 160px;
+        padding: 4px 0;
+      }
+      .context-menu-item {
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex; align-items: center; gap: 8px;
+        color: var(--text-primary);
+      }
+      .context-menu-item:hover { background: var(--accent); color: white; }
+      .context-menu-item.danger:hover { background: #c42b1c; }
+      .context-menu-separator {
+        height: 1px; margin: 4px 0;
+        background: var(--border-color);
+      }
+
+      /* ===== MAIN EDITOR AREA ===== */
+      #main {
+        grid-area: main;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--bg-editor);
+      }
+
+      /* Tab Bar */
+      #tabs {
+        height: 35px; 
+        display: flex; 
+        align-items: flex-end;
+        background: var(--bg-tab);
+        border-bottom: 1px solid var(--border-color);
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+      #tabs::-webkit-scrollbar { height: 3px; }
+      #tabs::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+
+      .tab {
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 10px;
+        background: var(--bg-tab);
+        border-right: 1px solid var(--border-color);
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        min-width: 100px;
+        max-width: 180px;
+      }
+      .tab:hover { background: var(--bg-tab-hover); }
+      .tab-active {
+        background: var(--bg-tab-active);
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--bg-tab-active);
+        margin-bottom: -1px;
+      }
+      .tab-icon { font-size: 14px; flex-shrink: 0; }
+      .tab-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+      .tab-dirty { color: #e8ab6a; font-size: 16px; line-height: 1; margin-left: -2px; }
+      .tab-close {
+        width: 18px; height: 18px;
+        display: flex; align-items: center; justify-content: center;
+        border: none; background: transparent;
+        border-radius: 3px; cursor: pointer;
+        font-size: 14px; color: var(--text-muted);
+        opacity: 0;
+        flex-shrink: 0;
+      }
+      .tab:hover .tab-close { opacity: 1; }
+      .tab-close:hover { background: rgba(255,80,80,0.2); color: #f44; }
+
+      .tab-add {
+        width: 32px; height: 35px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        cursor: pointer; font-size: 16px;
+        color: var(--text-muted);
+      }
+      .tab-add:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+
+      .tab-rename-input {
+        width: 100px; font-size: 12px; padding: 2px 4px;
+        border: 1px solid var(--accent); border-radius: 2px; outline: none;
+        background: var(--bg-editor); color: var(--text-primary);
+      }
+
+      /* Editor Container */
+      #editor-container {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+      #editor { 
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+      }
+
+      /* ===== PANEL (Terminal/Output) ===== */
+      #panel {
+        position: relative;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        height: 200px;
+        min-height: 100px;
+        max-height: 60vh;
+      }
+      #panel.collapsed { height: 35px; min-height: 35px; }
+      #panel.collapsed #panel-content { display: none; }
+      #panel.collapsed #panel-resize { display: none; }
+
+      #panel-header {
+        height: 35px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-tab);
+        flex-shrink: 0;
+      }
+      .panel-tabs {
+        display: flex;
+        height: 100%;
+      }
+      .panel-tab {
+        padding: 0 16px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .panel-tab:hover { color: var(--text-primary); }
+      .panel-tab.active { 
+        color: var(--text-primary); 
+        border-bottom-color: var(--accent);
+      }
+      .panel-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        padding-right: 8px;
+        gap: 4px;
+      }
+      .panel-btn {
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: var(--text-muted); cursor: pointer;
+        border-radius: 3px; font-size: 14px;
+      }
+      .panel-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+
+      #panel-content {
+        flex: 1;
+        overflow: auto;
+        padding: 8px 12px;
+        font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: var(--text-primary);
+      }
+      #panel-content .error { color: #f48771; }
+      #panel-content .success { color: #89d185; }
+      #panel-content .info { color: #75beff; }
+
+      /* Panel resize handle */
+      #panel-resize {
+        height: 6px;
+        cursor: ns-resize;
+        background: transparent;
+        position: absolute;
+        top: -3px;
+        left: 0;
+        right: 0;
+        z-index: 10;
+      }
+      #panel-resize:hover { background: var(--accent); }
+
+      /* ===== STATUS BAR ===== */
+      #statusbar {
+        grid-area: statusbar;
+        height: 22px;
+        background: var(--bg-statusbar);
+        color: white;
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        padding: 0 8px;
+      }
+      .status-item {
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        height: 100%;
+      }
+      .status-item:hover { background: rgba(255,255,255,0.12); }
+      .status-spacer { flex: 1; }
+      .status-right { display: flex; }
+
+      /* ===== RESPONSIVE ===== */
+      @media (max-width: 900px) {
+        #app {
+          grid-template-columns: 48px 1fr;
+          grid-template-areas:
+            "activitybar titlebar"
+            "activitybar main"
+            "statusbar statusbar";
+        }
+        #sidebar { display: none; }
+      }
+
+      /* ===== UTILITIES ===== */
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body class="dark-theme">
+    <div id="app">
+      <!-- Activity Bar -->
+      <div id="activitybar">
+        <div class="activity-icon active" data-panel="explorer" title="Explorer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V9C21 7.89543 20.1046 7 19 7H12L10 5H5C3.89543 5 3 5.89543 3 7Z"/>
+          </svg>
+        </div>
+        <div class="activity-icon" data-panel="search" title="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="6"/>
+            <path d="M21 21L16 16"/>
+          </svg>
+        </div>
+        <div class="activity-icon" data-panel="run" title="Run and Debug">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 3L19 12L5 21V3Z"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title Bar -->
+      <div id="titlebar">
+        <div class="logo">
+          <span>📟</span>
+          <span>Browser Coder</span>
+        </div>
+        <span id="status" style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
+        <div class="controls">
+          <select id="lang" title="Language">
+            <option value="javascript">JavaScript</option>
+          </select>
+          <select id="version" title="Version"></select>
+          <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ Run</button>
+          <button id="download" class="btn btn-secondary" title="Download file">↓</button>
+          <select id="theme" title="Theme">
+            <option value="vs-dark">Dark</option>
+            <option value="vs">Light</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div id="sidebar">
+        <div id="sidebar-resize"></div>
+        <!-- Explorer Panel -->
+        <div id="explorer-panel" class="sidebar-panel active">
+          <div class="sidebar-header">
+            <span>Explorer</span>
+            <div class="sidebar-actions">
+              <button class="sidebar-btn" id="btn-new-file" title="New File">📄</button>
+              <button class="sidebar-btn" id="btn-new-folder" title="New Folder">📁</button>
+              <button class="sidebar-btn" id="btn-download-project" title="Download Project">⬇</button>
+              <button class="sidebar-btn" id="btn-clear-cache" title="Clear Cache">🗑</button>
+              <button class="sidebar-btn" id="btn-refresh" title="Refresh">🔄</button>
+            </div>
+          </div>
+          <div class="sidebar-content">
+            <div class="file-tree" id="file-tree">
+              <!-- Files rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Panel -->
+        <div id="search-panel" class="sidebar-panel">
+          <div class="sidebar-header">
+            <span>Search</span>
+            <div class="sidebar-actions">
+              <button class="sidebar-btn" id="btn-clear-search" title="Clear">✕</button>
+            </div>
+          </div>
+          <div class="search-panel active">
+            <div class="search-inputs">
+              <div class="search-row">
+                <input type="text" id="search-input" class="search-input" placeholder="Search">
+                <button class="search-btn" id="btn-regex" title="Use Regular Expression">.*</button>
+                <button class="search-btn" id="btn-case" title="Match Case">Aa</button>
+                <button class="search-btn" id="btn-word" title="Match Whole Word">ab</button>
+              </div>
+              <div class="search-row">
+                <input type="text" id="replace-input" class="search-input" placeholder="Replace">
+                <button class="search-btn" id="btn-replace-all" title="Replace All">⟳</button>
+              </div>
+            </div>
+            <div id="search-summary" class="search-summary hidden">
+              <span id="search-count">0 results in 0 files</span>
+              <button class="search-btn primary" id="btn-replace-all-files" title="Replace All">Replace All</button>
+            </div>
+            <div id="search-results" class="search-results">
+              <div class="search-no-results">Type to search across all files</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Run Panel -->
+        <div id="run-panel" class="sidebar-panel">
+          <div class="sidebar-header">
+            <span>Run and Debug</span>
+            <div class="sidebar-actions">
+              <button class="sidebar-btn" id="btn-refresh-functions" title="Refresh">🔄</button>
+            </div>
+          </div>
+          <div class="sidebar-content">
+            <div class="run-section">
+              <div class="run-section-header">▶ Run All</div>
+              <div class="run-item run-all" id="run-all-code">
+                <span class="run-item-icon">▶</span>
+                <span class="run-item-name">Run Entire File</span>
+                <span class="run-item-shortcut">Ctrl+Enter</span>
+              </div>
+            </div>
+            <div class="run-section">
+              <div class="run-section-header">𝑓 Functions</div>
+              <div id="function-list">
+                <div class="tree-empty">No functions detected</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context Menu (hidden by default) -->
+      <div id="context-menu" class="context-menu hidden">
+        <div class="context-menu-item" data-action="new-file">📄 New File</div>
+        <div class="context-menu-item" data-action="new-folder">📁 New Folder</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="rename">✏️ Rename</div>
+        <div class="context-menu-item danger" data-action="delete">🗑️ Delete</div>
+      </div>
+
+      <!-- Main Editor Area -->
+      <div id="main">
+        <div id="tabs">
+          <!-- Tabs rendered by TabManager -->
+        </div>
+        <div id="editor-container">
+          <div id="editor"></div>
+        </div>
+        <div id="panel">
+          <div id="panel-resize"></div>
+          <div id="panel-header">
+            <div class="panel-tabs">
+              <div class="panel-tab active" data-tab="output">Output</div>
+            </div>
+            <div class="panel-actions">
+              <button id="clearOutput" class="panel-btn" title="Clear">🗑</button>
+              <button id="togglePanel" class="panel-btn" title="Toggle Panel">⌃</button>
+            </div>
+          </div>
+          <div id="panel-content">(Run code to see output here)</div>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div id="statusbar">
+        <div class="status-item" id="status-branch">
+          <span>⎇</span>
+          <span>main</span>
+        </div>
+        <div class="status-item" id="status-errors">
+          <span>⚠</span>
+          <span>0</span>
+        </div>
+        <div class="status-spacer"></div>
+        <div class="status-right">
+          <div class="status-item" id="status-lang">JavaScript</div>
+          <div class="status-item" id="status-encoding">UTF-8</div>
+          <div class="status-item" id="status-line">Ln 1, Col 1</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

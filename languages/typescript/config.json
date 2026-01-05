@@ -1,0 +1,38 @@
+{
+  "id": "typescript",
+  "name": "TypeScript",
+  "extension": "ts",
+  "monacoLanguage": "typescript",
+  "versions": [
+    {
+      "id": "ts5-strict",
+      "name": "TypeScript 5 (Strict)",
+      "monacoTarget": "ES2022",
+      "strict": true,
+      "default": true
+    },
+    {
+      "id": "ts5",
+      "name": "TypeScript 5",
+      "monacoTarget": "ES2022",
+      "strict": false
+    },
+    {
+      "id": "ts-es2020",
+      "name": "TypeScript (ES2020)",
+      "monacoTarget": "ES2020",
+      "strict": true
+    },
+    {
+      "id": "ts-es2015",
+      "name": "TypeScript (ES2015)",
+      "monacoTarget": "ES2015",
+      "strict": true
+    }
+  ],
+  "runner": {
+    "command": "npx",
+    "args": ["tsx"],
+    "tempFile": true
+  }
+}
