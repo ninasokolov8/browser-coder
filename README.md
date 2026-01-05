@@ -1,103 +1,400 @@
-# Browser Coder 🚀
+<p align="center">
+  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/javascript/javascript.png" width="60" alt="JS"/>
+  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/typescript/typescript.png" width="60" alt="TS"/>
+  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/python/python.png" width="60" alt="Python"/>
+  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/java/java.png" width="60" alt="Java"/>
+  <img src="https://raw.githubusercontent.com/github/explore/ccc16358ac4530c6a69b1b80c7223cd2744dea83/topics/php/php.png" width="60" alt="PHP"/>
+</p>
 
-A **production-ready, auto-scaling Web IDE** that supports 10,000+ concurrent users. Execute code in Python, JavaScript, TypeScript, Java, and PHP directly in your browser.
+<h1 align="center">🚀 Browser Coder</h1>
 
-![Browser Coder](https://img.shields.io/badge/Browser-Coder-blue?style=for-the-badge)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)
-![Auto-Scale](https://img.shields.io/badge/Auto-Scale-green?style=for-the-badge)
+<p align="center">
+  <strong>A Production-Ready, Auto-Scaling Web IDE</strong><br>
+  <em>Code in JavaScript, TypeScript, Python, Java & PHP — directly in your browser</em>
+</p>
 
-## ⚡ One-Command Deployment
+<p align="center">
+  <img src="https://img.shields.io/badge/Capacity-10,000+_users-brightgreen?style=for-the-badge" alt="Capacity"/>
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker" alt="Docker"/>
+  <img src="https://img.shields.io/badge/Auto--Scale-1--8_replicas-orange?style=for-the-badge" alt="Auto-Scale"/>
+  <img src="https://img.shields.io/badge/Monaco-Editor-9c27b0?style=for-the-badge" alt="Monaco"/>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-interface-guide">Interface</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-api-reference">API</a> •
+  <a href="#-deployment">Deployment</a>
+</p>
+
+---
+
+## ⚡ Quick Start
 
 ```bash
+# One command to rule them all
 docker compose up -d
 ```
 
-**That's it!** The system will:
-- ✅ Build and start all services
-- ✅ Enable automatic scaling (1-8 API instances based on load)
-- ✅ Configure nginx load balancer
-- ✅ Set up health checks and auto-recovery
+**That's it!** Access at **http://localhost**
 
-Access at: **http://localhost**
+<details>
+<summary>📋 <strong>What happens behind the scenes?</strong></summary>
+
+<br>
+
+1. ✅ Builds optimized production images
+2. ✅ Starts nginx load balancer on port 80
+3. ✅ Launches auto-scaling API (1-8 instances)
+4. ✅ Enables health monitoring & auto-recovery
+5. ✅ Configures rate limiting & caching
+
+</details>
+
+---
+
+## 🎯 Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🖥️ VS Code-Like Interface
+- Monaco Editor with IntelliSense
+- Multi-file tabs with persistence
+- File explorer with folder support
+- Dark/Light theme switching
+- Resizable panels
+
+</td>
+<td width="50%">
+
+### 🔍 Search & Replace
+- Search across all files
+- Regex & case-sensitive options
+- Replace single or all matches
+- Real-time results preview
+- Navigate to any match
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### ▶️ Smart Execution
+- Run entire file or specific functions
+- Auto-detect functions/classes
+- Per-function run buttons
+- Execution output panel
+- 10-second timeout protection
+
+</td>
+<td width="50%">
+
+### 💾 Persistent Storage
+- IndexedDB-based file storage
+- Auto-save on typing (1s debounce)
+- Survives browser refresh
+- Export project as ZIP
+- Clear cache option
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🚀 Production Ready
+- Auto-scaling (1-8 replicas)
+- Circuit breaker protection
+- LRU cache with TTL
+- Request deduplication
+- Rate limiting (30/sec/IP)
+
+</td>
+<td width="50%">
+
+### 🌐 Multi-Language
+- JavaScript (ES5 → ES2022)
+- TypeScript (TS5, strict mode)
+- Python 3
+- Java 11 & 17
+- PHP 8
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🖼️ Interface Guide
+
+### Main Layout
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  🖥️ TITLE BAR  │  Language ▾ │ Version ▾ │ ▶ Run │ ↓ │ Theme ▾   │
+├──┬─────────────┬───────────────────────────────────────────────────┤
+│  │  SIDEBAR    │  📄 Tab 1  │ 📄 Tab 2  │ + │                     │
+│A │             ├───────────────────────────────────────────────────┤
+│C │ 📦 Download │                                                   │
+│T │ 🗑️ Clear    │                                                   │
+│I │─────────────│                    EDITOR                         │
+│V │ 📁 src/     │              (Monaco Editor)                      │
+│I │   📄 main   │                                                   │
+│T │   📄 utils  │                                                   │
+│Y │ 📄 index    │                                                   │
+│  │             │                                                   │
+├──┴─────────────┼───────────────────────────────────────────────────┤
+│                │ OUTPUT  ⌃  ✕                                      │
+│                │ > Hello, World!                                   │
+│                │ [exit code: 0]                                    │
+├────────────────┴───────────────────────────────────────────────────┤
+│ 📍 Ready ✅                              │ JavaScript │ Ln 1, Col 1│
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 📁 Activity Bar (Left Edge)
+
+| Icon | Panel | Function |
+|:----:|-------|----------|
+| 📁 | **Explorer** | File tree, create/delete/rename files & folders |
+| 🔍 | **Search** | Search & replace across all files |
+| ▶️ | **Run** | List of detected functions, run individually |
+| ⚙️ | **Settings** | (Future: workspace settings) |
+
+---
+
+### 🗂️ Explorer Panel
+
+<table>
+<tr>
+<td>
+
+**Toolbar Buttons:**
+
+| Button | Action |
+|--------|--------|
+| 📦 **Download Project** | Export all files as ZIP |
+| 🗑️ **Clear Cache** | Delete all stored files |
+| 📄 | Create new file |
+| 📁 | Create new folder |
+| 🔄 | Refresh file tree |
+
+</td>
+<td>
+
+**File Actions (Right-click):**
+
+| Action | Description |
+|--------|-------------|
+| 📄 New File | Create in selected folder |
+| 📁 New Folder | Create subfolder |
+| ✏️ Rename | Double-click also works |
+| 🗑️ Delete | With confirmation |
+
+</td>
+</tr>
+</table>
+
+---
+
+### 🔍 Search Panel
+
+<details>
+<summary><strong>Click to expand search panel diagram</strong></summary>
+
+```
+┌─────────────────────────────────┐
+│ [Search input...        ] [.*][Aa][ab] │  ← Regex, Case, Whole Word
+│ [Replace input...       ] [⟳]         │  ← Replace All button
+├─────────────────────────────────┤
+│ 5 results in 2 files  [Replace All]   │
+├─────────────────────────────────┤
+│ 🟨 main.js (3)                  │
+│   12: const hello = ...         │
+│   45: function hello() {        │
+│   78: export { hello };         │
+│ 🐍 utils.py (2)                 │
+│   5: def hello():               │
+│   23: hello()                   │
+└─────────────────────────────────┘
+```
+
+</details>
+
+**Search Features:**
+- 🔤 **Plain text search** — Simple string matching
+- 🔠 **Case sensitive** — Match exact casing
+- 📝 **Whole word** — Match complete words only
+- 🎯 **Regex** — Full regular expression support
+
+---
+
+### ▶️ Run Panel
+
+<details>
+<summary><strong>Click to expand run panel diagram</strong></summary>
+
+```
+┌─────────────────────────────────┐
+│ ▶ RUN ALL                       │
+│   ▶ Run Entire File  Ctrl+Enter │
+├─────────────────────────────────┤
+│ 𝑓 FUNCTIONS                     │
+│   𝑓 greet(name)             ▶  │  ← Click ▶ to run just this function
+│   𝑓 calculate(a, b)         ▶  │
+│   𝐶 Calculator              ▶  │  ← Classes are detected too
+│   → fetchData(url)          ▶  │  ← Arrow functions
+└─────────────────────────────────┘
+```
+
+</details>
+
+**Run Features:**
+- ▶️ **Run Entire File** — Execute the full code
+- 🎯 **Run Function** — Execute only a specific function
+- 🔍 **Auto-detect** — Functions, classes & arrow functions
+- ⏱️ **Timeout** — 10-second execution limit
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+<table>
+<tr><th>Shortcut</th><th>Action</th><th>Shortcut</th><th>Action</th></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run code</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save file</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>New file</td><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Close tab</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Toggle sidebar</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Open search</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Open explorer</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>Command palette</td></tr>
+</table>
+
+---
 
 ## 🏗️ Architecture
 
 ```
-                    ┌─────────────────────────────────────────┐
-                    │              NGINX                       │
-                    │       (Load Balancer + CDN)             │
-                    │         Port 80                          │
-                    └─────────────┬───────────────────────────┘
-                                  │
-              ┌───────────────────┼───────────────────┐
-              │                   │                   │
-              ▼                   ▼                   ▼
-     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-     │   API #1    │     │   API #2    │     │   API #N    │
-     │  (Smart     │     │  (Smart     │     │  (Smart     │
-     │   Server)   │     │   Server)   │     │   Server)   │
-     └─────────────┘     └─────────────┘     └─────────────┘
-              │                   │                   │
-              └───────────────────┼───────────────────┘
-                                  │
-                    ┌─────────────▼───────────────┐
-                    │        AUTOSCALER           │
-                    │   (Monitors & Scales)       │
-                    └─────────────────────────────┘
+                        ┌────────────────────────────────────────────┐
+                        │              NGINX                          │
+       Users ──────────▶│    Load Balancer + Static CDN              │
+                        │         Port 80                             │
+                        └──────────────────┬─────────────────────────┘
+                                           │
+               ┌───────────────────────────┼───────────────────────────┐
+               │                           │                           │
+               ▼                           ▼                           ▼
+      ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+      │     API #1      │         │     API #2      │         │     API #N      │
+      │  ┌───────────┐  │         │  ┌───────────┐  │         │  ┌───────────┐  │
+      │  │ LRU Cache │  │         │  │ LRU Cache │  │         │  │ LRU Cache │  │
+      │  └───────────┘  │         │  └───────────┘  │         │  └───────────┘  │
+      │  ┌───────────┐  │         │  ┌───────────┐  │         │  ┌───────────┐  │
+      │  │ Circuit   │  │         │  │ Circuit   │  │         │  │ Circuit   │  │
+      │  │ Breaker   │  │         │  │ Breaker   │  │         │  │ Breaker   │  │
+      │  └───────────┘  │         │  └───────────┘  │         │  └───────────┘  │
+      │  ┌───────────┐  │         │  ┌───────────┐  │         │  ┌───────────┐  │
+      │  │ Process   │  │         │  │ Process   │  │         │  │ Process   │  │
+      │  │ Pool      │  │         │  │ Pool      │  │         │  │ Pool      │  │
+      │  └───────────┘  │         │  └───────────┘  │         │  └───────────┘  │
+      └─────────────────┘         └─────────────────┘         └─────────────────┘
+               │                           │                           │
+               └───────────────────────────┼───────────────────────────┘
+                                           │
+                        ┌──────────────────▼─────────────────────────┐
+                        │           AUTOSCALER                       │
+                        │  Monitors CPU, Memory, Queue               │
+                        │  Scales 1-8 replicas dynamically           │
+                        └────────────────────────────────────────────┘
 ```
 
-### Services
+---
 
-| Service | Purpose | Scaling |
-|---------|---------|---------|
-| **nginx** | Load balancer, static files, caching | Single instance |
-| **api** | Code execution, smart caching | Auto-scale 1-8 replicas |
-| **autoscaler** | Monitors load, scales API up/down | Single instance |
+### Smart Server Components
 
-## 🔧 Configuration
+<details>
+<summary><strong>🗄️ LRU Cache with TTL</strong></summary>
 
-### Environment Variables
+- **Capacity:** 100 entries per API instance
+- **TTL:** 30 minutes
+- **Key:** Hash of code + language + version
+- **Benefit:** Identical executions return instantly
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_SCALE` | 8 | Maximum API replicas under heavy load |
-| `MIN_REPLICAS` | 1 | Minimum API replicas (idle state) |
-| `INITIAL_REPLICAS` | 2 | Starting number of API replicas |
-| `RUN_TIMEOUT_MS` | 10000 | Code execution timeout (ms) |
-| `RATE_LIMIT_MAX` | 200 | Max requests per minute per IP |
-
-### Customizing Scale Limits
-
-```bash
-# Allow up to 16 API instances
-MAX_SCALE=16 docker compose up -d
-
-# Start with 4 replicas
-INITIAL_REPLICAS=4 docker compose up -d
-
-# Both together
-MAX_SCALE=16 INITIAL_REPLICAS=4 MIN_REPLICAS=2 docker compose up -d
+```javascript
+// Cache hit example
+{
+  "stdout": "Hello, World!",
+  "cached": true,        // ← Cache hit!
+  "durationMs": 0        // ← Instant response
+}
 ```
 
-## 📊 Auto-Scaling Behavior
+</details>
 
-The autoscaler monitors CPU usage and request queue:
+<details>
+<summary><strong>⚡ Circuit Breaker</strong></summary>
 
-| Condition | Action |
-|-----------|--------|
-| CPU > 70% OR Queue > 50 | **Scale UP** (add 1 replica) |
-| CPU < 30% AND Queue < 5 | **Scale DOWN** (remove 1 replica) |
+- **Threshold:** Opens after 5 consecutive failures
+- **Cooldown:** 30 seconds before retry
+- **State:** CLOSED → OPEN → HALF-OPEN → CLOSED
+- **Benefit:** Prevents cascade failures
 
-**Cooldown:** 30 seconds between scaling actions to prevent thrashing.
+```
+CLOSED (normal)  → 5 failures → OPEN (failing fast)
+                                     ↓ 30s
+                              HALF-OPEN (testing)
+                                     ↓ success
+                              CLOSED (recovered)
+```
 
-### Monitoring
+</details>
 
-View autoscaler activity:
+<details>
+<summary><strong>🔄 Request Deduplication</strong></summary>
+
+- **Scope:** Concurrent identical requests
+- **Behavior:** Only first request executes; others wait & share result
+- **Benefit:** Reduces server load under duplicate traffic
+
+```
+Request A: code="print(1)" → Execute → Result
+Request B: code="print(1)" → Wait    → Same Result
+Request C: code="print(1)" → Wait    → Same Result
+```
+
+</details>
+
+<details>
+<summary><strong>👷 Process Pool</strong></summary>
+
+- **Pool size:** 3 warm processes per language
+- **Reuse:** Processes are recycled, not recreated
+- **Startup:** Pre-warmed on first request
+- **Benefit:** Eliminates cold-start latency
+
+</details>
+
+---
+
+### Auto-Scaling Logic
+
+| Metric | Scale UP | Scale DOWN |
+|--------|----------|------------|
+| **CPU Usage** | > 70% | < 30% |
+| **Queue Size** | > 50 requests | < 5 requests |
+| **Cooldown** | 30 seconds | 30 seconds |
+| **Range** | 1 → 8 replicas | 8 → 1 replicas |
+
+<details>
+<summary><strong>📊 View scaling logs</strong></summary>
+
 ```bash
 docker logs -f browser_coder-autoscaler-1
 ```
 
-Example output:
+**Example output:**
 ```
 [2026-01-05 21:24:39] 🚀 Auto-Scaler started
 [2026-01-05 21:24:39] 📊 Config: MIN=1, MAX=8, CPU↑=70%, CPU↓=30%
@@ -108,73 +405,141 @@ Example output:
 [2026-01-05 21:25:12] ✅ Started new API container
 ```
 
-## 🚀 Production Deployment
+</details>
 
-### Cloud Deployment (AWS/GCP/Azure)
+---
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd browser-coder
-   ```
+## 💾 Data Storage
 
-2. **Start production:**
-   ```bash
-   docker compose up -d
-   ```
+### File Persistence (IndexedDB)
 
-3. **Verify:**
-   ```bash
-   curl http://localhost/health
-   # {"status":"healthy",...}
-   ```
+<details>
+<summary><strong>📂 Database Schema</strong></summary>
 
-### Resource Requirements
-
-| Load | Recommended Server | API Replicas |
-|------|-------------------|--------------|
-| Up to 1,000 users | 2 vCPU, 4GB RAM | 1-2 |
-| Up to 5,000 users | 4 vCPU, 8GB RAM | 2-4 |
-| Up to 10,000 users | 8 vCPU, 16GB RAM | 4-8 |
-| 10,000+ users | 16 vCPU, 32GB RAM | 8-16 |
-
-### High Availability Setup
-
-For production with zero downtime:
-
-```bash
-# Scale to handle 10k+ concurrent users
-MAX_SCALE=16 INITIAL_REPLICAS=4 docker compose up -d
+```javascript
+// Database Structure
+{
+  name: 'BrowserCoderDB',
+  version: 2,
+  stores: {
+    files: {
+      keyPath: 'id',
+      indexes: ['name', 'path', 'parentId', 'language', 'order']
+    },
+    folders: {
+      keyPath: 'id', 
+      indexes: ['name', 'path', 'parentId', 'order']
+    },
+    workspace: {
+      keyPath: 'key'  // Stores: activeFileId, theme
+    }
+  }
+}
 ```
+
+</details>
+
+<details>
+<summary><strong>📄 File Object Structure</strong></summary>
+
+```javascript
+{
+  id: 'file_1704480000000_abc123',
+  name: 'main.js',
+  path: '/src/main.js',
+  parentId: 'folder_1704479000000_xyz789',
+  language: 'javascript',
+  version: 'es2022',
+  content: '// Your code here...',
+  isUserModified: true,
+  createdAt: 1704480000000,
+  updatedAt: 1704481000000,
+  order: 0
+}
+```
+
+</details>
+
+**Storage Features:**
+- 📁 **Hierarchical folders** — Unlimited nesting depth
+- 💾 **Auto-save** — Saves 1 second after last keystroke
+- 🔄 **Sync** — Survives browser refresh, tab close
+- 📦 **Export** — Download entire project as ZIP
+- 🗑️ **Clear** — One-click cache reset
+
+---
 
 ## 🔌 API Reference
 
-### Health Check
+<details>
+<summary><strong>GET /health</strong> — Health check endpoint</summary>
+
 ```bash
-GET /health
-# Response: {"status":"healthy","active":0,"load":"0.0%",...}
+curl http://localhost/health
 ```
 
-### List Languages
-```bash
-GET /api/languages
-# Response: [{"id":"javascript","name":"JavaScript","versions":[...]}]
-```
-
-### Execute Code
-```bash
-POST /api/run
-Content-Type: application/json
-
+**Response:**
+```json
 {
-  "code": "print('Hello, World!')",
-  "language": "python",
-  "version": "python3"  # optional
+  "status": "healthy",
+  "active": 2,
+  "load": "45.2%",
+  "uptime": 3600,
+  "cache": {
+    "size": 42,
+    "hits": 156,
+    "misses": 23
+  }
 }
+```
 
-# Response:
+</details>
+
+<details>
+<summary><strong>GET /api/languages</strong> — List supported languages</summary>
+
+```bash
+curl http://localhost/api/languages
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "javascript",
+    "name": "JavaScript",
+    "extension": "js",
+    "monacoLanguage": "javascript",
+    "icon": "🟨",
+    "versions": [
+      { "id": "es5", "name": "ES5", "default": false },
+      { "id": "es2015", "name": "ES2015 (ES6)", "default": false },
+      { "id": "es2020", "name": "ES2020", "default": false },
+      { "id": "es2022", "name": "ES2022", "default": true }
+    ]
+  }
+]
+```
+
+</details>
+
+<details>
+<summary><strong>POST /api/run</strong> — Execute code</summary>
+
+```bash
+curl -X POST http://localhost/api/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, World!\")",
+    "language": "python",
+    "version": "python3"
+  }'
+```
+
+**Success Response:**
+```json
 {
-  "stdout": "Hello, World!",
+  "stdout": "Hello, World!\n",
   "stderr": "",
   "exitCode": 0,
   "durationMs": 45,
@@ -182,92 +547,181 @@ Content-Type: application/json
 }
 ```
 
-## 📁 Project Structure
+**Error Response (429 - Rate Limited):**
+```json
+{
+  "error": "Rate limit exceeded",
+  "retryAfter": 5
+}
+```
 
+</details>
+
+<details>
+<summary><strong>GET /api/starter/:lang/:version</strong> — Get starter code</summary>
+
+```bash
+curl http://localhost/api/starter/python/python3
 ```
-browser-coder/
-├── docker-compose.yml      # One-command deployment
-├── Dockerfile.production   # Optimized production image
-├── Dockerfile.autoscaler   # Auto-scaling service
-├── autoscaler.sh           # Scaling logic
-├── server.mjs              # Smart API server
-├── nginx/
-│   └── nginx.conf          # Load balancer config
-├── src/                    # Frontend (Monaco Editor)
-├── languages/              # Language configurations
-└── dist/                   # Built frontend (auto-generated)
+
+**Response:**
+```python
+# Python 3.x
+# Starter template for Python development
+
+def greet(name: str) -> str:
+    """Return a greeting message."""
+    return f"Hello, {name}!"
+
+def main():
+    print(greet("World"))
+    
+    # Try list comprehension
+    squares = [x**2 for x in range(10)]
+    print(f"Squares: {squares}")
+
+if __name__ == "__main__":
+    main()
 ```
+
+</details>
+
+---
+
+## 🚀 Deployment
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_SCALE` | `8` | Maximum API replicas |
+| `MIN_REPLICAS` | `1` | Minimum API replicas |
+| `INITIAL_REPLICAS` | `2` | Starting replicas |
+| `RUN_TIMEOUT_MS` | `10000` | Execution timeout (ms) |
+| `RATE_LIMIT_MAX` | `200` | Requests/min per IP |
+
+### Scaling Examples
+
+```bash
+# High traffic setup (16 max replicas)
+MAX_SCALE=16 INITIAL_REPLICAS=4 docker compose up -d
+
+# Low resource mode (2 max replicas)
+MAX_SCALE=2 MIN_REPLICAS=1 INITIAL_REPLICAS=1 docker compose up -d
+
+# Check scaling logs
+docker logs -f browser_coder-autoscaler-1
+```
+
+### Resource Recommendations
+
+| Concurrent Users | Server Specs | Replicas |
+|------------------|--------------|----------|
+| Up to 1,000 | 2 vCPU, 4GB RAM | 1-2 |
+| Up to 5,000 | 4 vCPU, 8GB RAM | 2-4 |
+| Up to 10,000 | 8 vCPU, 16GB RAM | 4-8 |
+| 10,000+ | 16 vCPU, 32GB RAM | 8-16 |
+
+---
+
+## 🐳 Docker Commands
+
+```bash
+# Start everything
+docker compose up -d
+
+# View logs (all services)
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f api
+docker compose logs -f autoscaler
+
+# Check running containers
+docker compose ps
+
+# Stop everything
+docker compose down
+
+# Full rebuild
+docker compose down -v
+docker compose build --no-cache
+docker compose up -d
+
+# Scale manually (for testing)
+docker compose up -d --scale api=4
+```
+
+---
 
 ## 🛠️ Development
 
-### Local Development (with hot reload)
+### Local Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Start dev mode with Vite
+# Start Vite dev server (hot reload)
 npm run dev
-```
 
-### Build Production Locally
-
-```bash
+# Build for production
 npm run build
 ```
 
-## 🐳 Docker Commands
+### Project Structure
 
-```bash
-# Start all services
-docker compose up -d
-
-# View logs
-docker compose logs -f
-
-# Check status
-docker compose ps
-
-# Stop all services
-docker compose down
-
-# Rebuild after code changes
-docker compose build --no-cache
-docker compose up -d
-
-# Clean everything
-docker compose down -v --rmi all
 ```
-
-## ⚡ Performance Features
-
-### Built-in Optimizations
-
-1. **LRU Cache with TTL** - Identical code executions are cached for 30 minutes
-2. **Request Deduplication** - Concurrent identical requests share results
-3. **Circuit Breaker** - Protects against cascade failures
-4. **Connection Pooling** - Nginx maintains keepalive connections
-5. **Gzip Compression** - All responses are compressed
-6. **Static Asset Caching** - 1-year cache for JS/CSS
-
-### Rate Limiting
-
-- **30 requests/second** per IP to `/api/*`
-- **Burst allowance:** 50 requests
-- **Response:** HTTP 429 with `retryAfter` header
-
-## 🔒 Security
-
-- Non-root container execution
-- Input sanitization
-- Execution timeouts (10 seconds default)
-- Resource limits per container
-- Rate limiting and connection limits
-
-## 📜 License
-
-MIT License - feel free to use in personal and commercial projects.
+browser-coder/
+├── 📄 docker-compose.yml     # One-command deployment
+├── 📄 Dockerfile.production  # Optimized multi-stage build
+├── 📄 Dockerfile.autoscaler  # Auto-scaling service
+├── 📄 autoscaler.sh          # Scaling logic (bash)
+├── 📄 server.mjs             # Smart API server (Node.js)
+├── 📄 index.html             # SPA entry point
+├── 📁 nginx/
+│   └── nginx.conf            # Load balancer + CDN config
+├── 📁 src/
+│   ├── main.ts               # Frontend application
+│   ├── storage.ts            # IndexedDB manager
+│   ├── tabs.ts               # Tab management
+│   └── languages/
+│       ├── index.ts          # Language exports
+│       ├── loader.ts         # Dynamic loader
+│       └── types.ts          # TypeScript types
+└── 📁 languages/             # Language configurations
+    ├── javascript/
+    ├── typescript/
+    ├── python/
+    ├── java/
+    └── php/
+```
 
 ---
 
-**Built with ❤️ for developers who want to code anywhere.**
+## 🔒 Security
+
+- ✅ Non-root container execution
+- ✅ Input sanitization
+- ✅ 10-second execution timeout
+- ✅ Rate limiting (30 req/sec/IP)
+- ✅ Resource limits per container
+- ✅ No persistent server-side storage
+
+---
+
+## 📜 License
+
+MIT License — Use freely in personal and commercial projects.
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ for developers who want to code anywhere.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ninasokolov8/browser-coder">⭐ Star on GitHub</a> •
+  <a href="https://github.com/ninasokolov8/browser-coder/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/ninasokolov8/browser-coder/issues">✨ Request Feature</a>
+</p>

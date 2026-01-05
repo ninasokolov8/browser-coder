@@ -210,6 +210,45 @@
         color: var(--text-muted); font-style: italic;
       }
 
+      /* Explorer Toolbar */
+      .explorer-toolbar {
+        display: flex;
+        gap: 4px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-sidebar);
+      }
+      .explorer-toolbar-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 8px;
+        background: var(--bg-tab);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .explorer-toolbar-btn:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      .explorer-toolbar-btn.danger:hover {
+        background: #c75050;
+        border-color: #c75050;
+      }
+      .explorer-toolbar-btn .toolbar-icon {
+        font-size: 14px;
+      }
+      .explorer-toolbar-btn .toolbar-text {
+        font-weight: 500;
+      }
+
       /* ===== SEARCH PANEL ===== */
       .search-panel { display: none; flex-direction: column; height: 100%; }
       .search-panel.active { display: flex; }
@@ -667,10 +706,18 @@
             <div class="sidebar-actions">
               <button class="sidebar-btn" id="btn-new-file" title="New File">📄</button>
               <button class="sidebar-btn" id="btn-new-folder" title="New Folder">📁</button>
-              <button class="sidebar-btn" id="btn-download-project" title="Download Project">⬇</button>
-              <button class="sidebar-btn" id="btn-clear-cache" title="Clear Cache">🗑</button>
               <button class="sidebar-btn" id="btn-refresh" title="Refresh">🔄</button>
             </div>
+          </div>
+          <div class="explorer-toolbar">
+            <button class="explorer-toolbar-btn" id="btn-download-project" title="Download all files as ZIP">
+              <span class="toolbar-icon">📦</span>
+              <span class="toolbar-text">Download Project</span>
+            </button>
+            <button class="explorer-toolbar-btn danger" id="btn-clear-cache" title="Clear all cached files">
+              <span class="toolbar-icon">🗑️</span>
+              <span class="toolbar-text">Clear Cache</span>
+            </button>
           </div>
           <div class="sidebar-content">
             <div class="file-tree" id="file-tree">
