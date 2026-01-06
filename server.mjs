@@ -1347,51 +1347,16 @@ app.get("/api/reports", async (req, res) => {
   }
 });
 
-// Check if tests can be run (24 hour cooldown)
+// Check if tests can be run (cooldown disabled for now)
 app.get("/api/reports/can-run", (req, res) => {
-  try {
-    const reportsDir = path.join(__dirname, "tests", "reports");
-    if (!fs.existsSync(reportsDir)) {
-      return res.json({ canRun: true, lastRun: null, hoursAgo: null });
-    }
-    
-    const files = fs.readdirSync(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json') && !f.includes('latest'));
-    
-    if (jsonFiles.length === 0) {
-      return res.json({ canRun: true, lastRun: null, hoursAgo: null });
-    }
-    
-    // Find the most recent report by parsing filenames
-    let latestTime = 0;
-    for (const file of jsonFiles) {
-      const match = file.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z/);
-      if (match) {
-        const [, date, hours, minutes, seconds, ms] = match;
-        const timestamp = new Date(`${date}T${hours}:${minutes}:${seconds}.${ms}Z`).getTime();
-        if (timestamp > latestTime) latestTime = timestamp;
-      }
-    }
-    
-    const hoursAgo = (Date.now() - latestTime) / (1000 * 60 * 60);
-    const canRun = hoursAgo >= 24;
-    
-    res.json({ 
-      canRun, 
-      lastRun: new Date(latestTime).toISOString(),
-      hoursAgo: Math.round(hoursAgo * 10) / 10,
-      hoursRemaining: canRun ? 0 : Math.ceil(24 - hoursAgo)
-    });
-  } catch (err) {
-    log('error', 'can_run_check_error', { error: err.message });
-    res.status(500).json({ error: 'Failed to check test status' });
-  }
+  // Cooldown disabled - always allow running tests
+  res.json({ canRun: true, lastRun: null, hoursAgo: null });
 });
 
 // Track running test status
 let testRunStatus = { running: false, startTime: null, progress: null };
 
-// Run security tests (only if 24 hours have passed)
+// Run security tests (cooldown disabled for now)
 app.post("/api/reports/run-tests", async (req, res) => {
   try {
     // Check if already running
@@ -1402,30 +1367,7 @@ app.post("/api/reports/run-tests", async (req, res) => {
       });
     }
     
-    // Check 24 hour cooldown
-    const reportsDir = path.join(__dirname, "tests", "reports");
-    if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json') && !f.includes('latest'));
-      
-      let latestTime = 0;
-      for (const file of jsonFiles) {
-        const match = file.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z/);
-        if (match) {
-          const [, date, hours, minutes, seconds, ms] = match;
-          const timestamp = new Date(`${date}T${hours}:${minutes}:${seconds}.${ms}Z`).getTime();
-          if (timestamp > latestTime) latestTime = timestamp;
-        }
-      }
-      
-      const hoursAgo = (Date.now() - latestTime) / (1000 * 60 * 60);
-      if (hoursAgo < 24) {
-        return res.status(429).json({ 
-          error: 'Tests can only run once every 24 hours',
-          hoursRemaining: Math.ceil(24 - hoursAgo)
-        });
-      }
-    }
+    // Cooldown check disabled for now
     
     // Mark as running
     testRunStatus = { running: true, startTime: new Date().toISOString(), progress: 'starting' };
