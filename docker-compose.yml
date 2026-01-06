@@ -124,12 +124,14 @@ services:
   security-tests:
     image: node:20-alpine
     working_dir: /app
+    user: "0:0"  # Run as root to ensure write permissions to mounted volume
     volumes:
       - ./security:/app/security:rw
       - ./package.json:/app/package.json:ro
     environment:
       - NODE_ENV=production
-    command: ["node", "security/run.mjs", "--server=http://api:3001"]
+    command: >
+      sh -c "mkdir -p /app/security/reports && chmod 777 /app/security/reports && node security/run.mjs --server=http://api:3001"
     depends_on:
       api:
         condition: service_healthy
