@@ -568,6 +568,97 @@ function generateHTMLReport(data) {
     }
     .timestamp { color: #64748b; font-size: 0.875rem; margin-top: 1rem; position: relative; }
     
+    /* Intro Section */
+    .intro-section {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .intro-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7, #6366f1);
+      background-size: 300% 100%;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .intro-card {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .intro-icon {
+      font-size: 3rem;
+      flex-shrink: 0;
+    }
+    .intro-content h2 {
+      color: #e2e8f0;
+      font-size: 1.5rem;
+      margin: 0 0 1rem 0;
+    }
+    .intro-content p {
+      color: #94a3b8;
+      font-size: 1rem;
+      line-height: 1.8;
+      margin: 0 0 0.75rem 0;
+    }
+    .intro-content p:last-child { margin-bottom: 0; }
+    .intro-content strong { color: #e2e8f0; }
+    .intro-content em { color: #f87171; font-style: normal; }
+    .intro-highlight {
+      background: rgba(99, 102, 241, 0.15);
+      border-left: 3px solid #6366f1;
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      margin-top: 1rem !important;
+    }
+    .intro-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 768px) { .intro-grid { grid-template-columns: 1fr; } }
+    .intro-mini-card {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .intro-mini-icon { font-size: 1.5rem; }
+    .intro-mini-text {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .intro-mini-text strong { color: #a5b4fc; display: block; margin-bottom: 0.25rem; }
+    .intro-cta {
+      background: linear-gradient(135deg, rgba(74, 222, 128, 0.1), rgba(52, 211, 153, 0.05));
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      text-align: center;
+    }
+    .intro-cta p {
+      color: #6ee7b7;
+      font-size: 1rem;
+      margin: 0;
+    }
+    .intro-cta strong { color: #4ade80; }
+    
     /* Stats Dashboard */
     .dashboard { 
       display: grid; 
@@ -1225,6 +1316,55 @@ function generateHTMLReport(data) {
       <p class="tagline">"Know thy enemy and know yourself; in a hundred battles, you will never be defeated." - Sun Tzu</p>
       <p class="timestamp">Generated: ${data.timestamp} | Server: ${data.server}</p>
     </header>
+    
+    <div class="intro-section">
+      <div class="intro-card">
+        <div class="intro-icon">🤔</div>
+        <div class="intro-content">
+          <h2>Wait... Why Does This Report Exist?</h2>
+          <p>
+            Great question! Our platform lets you <strong>write and run real code</strong> directly in your browser - 
+            JavaScript, Python, PHP, Java, TypeScript - just like a real development environment (IDE).
+          </p>
+          <p>
+            But here's the thing: if someone can run code on our servers, what stops them from running 
+            <em>malicious</em> code? Like reading secret files, deleting databases, or attacking other users?
+          </p>
+          <p class="intro-highlight">
+            <strong>That's exactly what these tests check!</strong> We throw every hacking trick in the book at our security 
+            filters to make sure they catch the bad stuff while letting the good code through.
+          </p>
+        </div>
+      </div>
+      
+      <div class="intro-grid">
+        <div class="intro-mini-card">
+          <span class="intro-mini-icon">🛡️</span>
+          <div class="intro-mini-text">
+            <strong>For You:</strong> Your code runs in a safe sandbox. One user's code can't affect another.
+          </div>
+        </div>
+        <div class="intro-mini-card">
+          <span class="intro-mini-icon">🔐</span>
+          <div class="intro-mini-text">
+            <strong>For Us:</strong> Even if someone tries something sneaky, the server stays protected.
+          </div>
+        </div>
+        <div class="intro-mini-card">
+          <span class="intro-mini-icon">🎓</span>
+          <div class="intro-mini-text">
+            <strong>For Learning:</strong> See how hackers think - and why security matters!
+          </div>
+        </div>
+      </div>
+      
+      <div class="intro-cta">
+        <p>
+          <strong>👇 Scroll down to explore:</strong> Test results, attack techniques, 
+          mind-blowing security facts, and how these same "dangerous" skills can be used to build amazing things!
+        </p>
+      </div>
+    </div>
     
     <div class="dashboard">
       <div class="stat-card total">
