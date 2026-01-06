@@ -510,6 +510,7 @@ const CONFIG = {
   // Execution limits (auto-adjusted based on memory)
   execution: {
     timeoutMs: parseInt(process.env.RUN_TIMEOUT_MS || "10000", 10),
+    javaTimeoutMs: parseInt(process.env.JAVA_TIMEOUT_MS || "30000", 10), // Java needs more time for compilation
     maxConcurrent: Math.min(500, Math.floor(TOTAL_MEMORY_MB / 50)),
     maxQueueSize: Math.min(10000, Math.floor(TOTAL_MEMORY_MB / 10)),
     maxOutputChars: 100000,
@@ -924,15 +925,16 @@ class SmartExecutor {
     const classMatch = code.match(/public\s+class\s+(\w+)/);
     const className = classMatch ? classMatch[1] : 'Main';
     const tempFile = path.join(this.tempDir, `${className}.java`);
+    const javaTimeout = CONFIG.execution.javaTimeoutMs;
     
     try {
       fs.writeFileSync(tempFile, code);
       
-      // Compile with restricted options (no security manager during compilation)
+      // Compile with restricted options (longer timeout for Java)
       const compileResult = await this.runProcess('javac', [
         '-J-Xmx128m',  // Limit memory
         tempFile
-      ], CONFIG.execution.timeoutMs, { skipJavaSecurityManager: true });
+      ], javaTimeout, { skipJavaSecurityManager: true });
       if (compileResult.exitCode !== 0) {
         return { ...compileResult, phase: 'compile' };
       }
@@ -945,7 +947,7 @@ class SmartExecutor {
         '-Djava.security.manager=allow',         // Enable security manager
         '-cp', this.tempDir,
         className
-      ]);
+      ], javaTimeout);
     } finally {
       try {
         fs.unlinkSync(tempFile);

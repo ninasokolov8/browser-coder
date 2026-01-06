@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+# Limit Node memory during build to prevent OOM on small servers
+RUN NODE_OPTIONS="--max-old-space-size=512" npm run build
 
 # Production runtime
 FROM node:20-alpine
