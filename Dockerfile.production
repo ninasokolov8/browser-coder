@@ -40,7 +40,8 @@ COPY --from=builder /app/tests ./tests
 RUN chown -R app:app /app && \
     chmod -R 755 /app && \
     chmod 644 /app/server.mjs && \
-    chmod -R 444 /app/languages && \
+    find /app/languages -type d -exec chmod 755 {} \; && \
+    find /app/languages -type f -exec chmod 444 {} \; && \
     chmod 755 /app/tests/reports
 
 # SECURITY: Remove unnecessary packages and shells after setup
