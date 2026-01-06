@@ -649,6 +649,91 @@
     .ansi-magenta { color: #bc8cff; }
     .ansi-dim { opacity: 0.6; }
     .ansi-bold { font-weight: 700; }
+
+    /* RTL Support */
+    [dir="rtl"] {
+      direction: rtl;
+      text-align: right;
+    }
+
+    [dir="rtl"] .header-content {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .logo {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .logo-subtitle {
+      direction: ltr;
+      text-align: right;
+    }
+
+    [dir="rtl"] .back-btn {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .back-btn span:first-child {
+      transform: rotate(180deg);
+    }
+
+    [dir="rtl"] .header-controls {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .lang-toggle {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .stat-item {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .report-card::before {
+      background: linear-gradient(270deg, var(--accent), #6366f1);
+    }
+
+    [dir="rtl"] .report-header {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .report-stats {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .report-stat {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .report-actions {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .section-header h3 {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .test-status-content {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .run-tests-btn {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .terminal-header {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .terminal-title {
+      margin-left: 0;
+      margin-right: 0.75rem;
+    }
+
+    [dir="rtl"] .terminal-body {
+      direction: ltr;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -738,8 +823,8 @@
   </main>
 
   <footer class="footer">
-    <p>🔒 Browser Coder Security Suite | <a href="/">Return to Editor</a></p>
-    <p class="terminal-line" style="margin-top: 0.5rem;">$ echo "Stay curious. Stay secure."</p>
+    <p>🔒 Browser Coder Security Suite | <a href="/" data-i18n="footerReturn">Return to Editor</a></p>
+    <p class="terminal-line" style="margin-top: 0.5rem;">$ echo "<span data-i18n="footerQuote">Stay curious. Stay secure.</span>"</p>
   </footer>
 
   <script>
@@ -766,6 +851,13 @@
         testsFailed: 'Tests failed to run',
         cooldownMsg: 'Next test available in',
         hours: 'hours',
+        footerReturn: 'Return to Editor',
+        footerQuote: 'Stay curious. Stay secure.',
+        testRunning: 'Running security tests...',
+        terminalTitle: 'security-tests.mjs — bash',
+        dateWeekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        dateMonths: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        errorLoading: 'Failed to load reports. Make sure the server is running.',
       },
       he: {
         back: 'חזרה לעורך',
@@ -788,13 +880,22 @@
         testsFailed: 'הבדיקות נכשלו',
         cooldownMsg: 'הבדיקה הבאה זמינה בעוד',
         hours: 'שעות',
+        footerReturn: 'חזרה לעורך',
+        footerQuote: 'היה סקרן. היה מאובטח.',
+        testRunning: 'מריץ בדיקות אבטחה...',
+        terminalTitle: 'security-tests.mjs — bash',
+        dateWeekdays: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],
+        dateMonths: ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יוני', 'יולי', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'],
+        errorLoading: 'נכשל לטעון דוחות. ודא שהשרת פועל.',
       }
     };
 
-    let currentLang = 'en';
+    let currentLang = localStorage.getItem('hacklab-lang') || 'en';
 
     function setLanguage(lang) {
       currentLang = lang;
+      localStorage.setItem('hacklab-lang', lang);
+      
       document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.lang === lang);
       });
@@ -806,6 +907,10 @@
       });
       document.documentElement.lang = lang;
       document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+      
+      // Reload dynamic content with new language
+      loadReports();
+      checkCanRunTests();
     }
 
     // Language toggle
@@ -834,7 +939,8 @@
     // Format date for display
     function formatDate(dateStr) {
       const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
+      const locale = currentLang === 'he' ? 'he-IL' : 'en-US';
+      return date.toLocaleDateString(locale, { 
         weekday: 'short', 
         year: 'numeric', 
         month: 'short', 
@@ -1237,6 +1343,16 @@
     }
 
     // Initialize
+    // Apply saved language on page load
+    if (currentLang !== 'en') {
+      setLanguage(currentLang);
+    } else {
+      // Set initial button state
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+      });
+    }
+    
     loadReports();
     checkCanRunTests();
     checkOngoingTest();
