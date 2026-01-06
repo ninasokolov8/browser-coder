@@ -1,0 +1,19 @@
+# Dockerfile for running tests against the Browser Coder API
+FROM node:20-alpine
+
+WORKDIR /tests
+
+# Install dependencies for testing
+RUN apk add --no-cache curl bash jq
+
+# Copy test files
+COPY tests/package.json ./
+RUN npm install
+
+COPY tests/ ./
+
+# Make scripts executable
+RUN chmod +x run-tests.sh 2>/dev/null || true
+
+# Default command runs all tests
+CMD ["node", "security/security-tests.mjs", "--server=http://api:3001"]

@@ -25,6 +25,7 @@
   <a href="#-features">Features</a> •
   <a href="#-interface-guide">Interface</a> •
   <a href="#-architecture">Architecture</a> •
+  <a href="#-security">Security</a> •
   <a href="#-api-reference">API</a> •
   <a href="#-deployment">Deployment</a>
 </p>
@@ -399,6 +400,139 @@ docker logs -f browser_coder-autoscaler-1
 ```
 
 </details>
+
+---
+
+## 🔒 Security
+
+Browser Coder implements **defense-in-depth** security to prevent malicious code from accessing the server, filesystem, network, or executing system commands.
+
+### Security Layers
+
+| Layer | Protection |
+|-------|------------|
+| **1. Code Validation** | Pattern-based blocking of dangerous functions before execution |
+| **2. Runtime Sandboxing** | Language-specific security flags and restrictions |
+| **3. Process Isolation** | Sanitized environment variables, restricted PATH |
+| **4. Container Security** | Docker security options, capability dropping, read-only mounts |
+| **5. Resource Limits** | Memory caps, execution timeouts, output truncation |
+
+---
+
+### 🛡️ Blocked Patterns by Language
+
+<details>
+<summary><strong>JavaScript / TypeScript</strong></summary>
+
+| Category | Blocked |
+|----------|---------|
+| **Process Execution** | `child_process`, `spawn`, `exec`, `execSync`, `fork` |
+| **File System** | `fs`, `fs/promises`, `node:fs` |
+| **Network** | `net`, `http`, `https`, `dgram`, `fetch`, `WebSocket` |
+| **Process Access** | `process.exit`, `process.env`, `process.cwd` |
+| **Code Injection** | `eval()`, `Function()`, dynamic `require()`/`import()` |
+| **System** | `os`, `cluster`, `vm`, `worker_threads` |
+
+**Runtime Restrictions:**
+```bash
+node --experimental-permission --allow-fs-read=/sandbox --max-old-space-size=128
+```
+
+</details>
+
+<details>
+<summary><strong>Python</strong></summary>
+
+| Category | Blocked |
+|----------|---------|
+| **Command Execution** | `os.system`, `os.popen`, `subprocess`, `commands` |
+| **Dangerous Imports** | `os`, `sys`, `subprocess`, `socket`, `http`, `urllib`, `requests`, `shutil`, `pty`, `ctypes` |
+| **File Operations** | `open()` in write mode, `os.remove`, `os.mkdir`, `os.rmdir`, `os.walk` |
+| **Code Injection** | `exec()`, `eval()`, `compile()`, `__import__()`, `importlib` |
+| **Introspection** | `__builtins__`, `__class__`, `__subclasses__`, `__globals__`, `getattr`, `setattr` |
+| **Serialization** | `pickle`, `cPickle`, `marshal` |
+
+**Runtime Restrictions:**
+```bash
+python3 -u -I -S -c "code"  # Isolated mode, no site packages
+```
+
+</details>
+
+<details>
+<summary><strong>PHP</strong></summary>
+
+| Category | Blocked |
+|----------|---------|
+| **Command Execution** | `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, backticks |
+| **File Operations** | `fopen`, `fwrite`, `file_put_contents`, `file_get_contents`, `include`, `require`, `unlink`, `mkdir` |
+| **Code Injection** | `eval`, `assert`, `create_function`, `call_user_func` |
+| **Network** | `fsockopen`, `curl_*`, `socket_*`, `stream_socket_*` |
+| **System** | `phpinfo`, `putenv`, `getenv`, `ini_set`, `dl` |
+| **Superglobals** | `$_SERVER`, `$_ENV`, `$_GET`, `$_POST`, `$GLOBALS` |
+
+**Runtime Restrictions:**
+```bash
+php -d open_basedir=/sandbox -d disable_functions=exec,shell_exec,system,...
+```
+
+</details>
+
+<details>
+<summary><strong>Java</strong></summary>
+
+| Category | Blocked |
+|----------|---------|
+| **Command Execution** | `Runtime.exec()`, `ProcessBuilder` |
+| **File I/O** | `File`, `FileReader`, `FileWriter`, `FileInputStream`, `Files.*` |
+| **Network** | `Socket`, `ServerSocket`, `URL`, `HttpURLConnection`, `HttpClient` |
+| **Reflection** | `getDeclaredMethod`, `setAccessible`, `Class.forName`, `invoke` |
+| **ClassLoader** | `ClassLoader`, `URLClassLoader`, `defineClass`, `loadClass` |
+| **System** | `System.exit`, `System.getProperty`, `System.getenv`, `System.load` |
+| **Scripting** | `ScriptEngine`, `ScriptEngineManager` |
+| **Serialization** | `ObjectInputStream`, `readObject` |
+
+**Runtime Restrictions:**
+```bash
+java -Xmx128m -Xms32m -XX:MaxMetaspaceSize=64m -Djava.security.manager=allow
+```
+
+</details>
+
+---
+
+### 🐳 Container Security
+
+```yaml
+# Docker security settings applied to API containers
+security_opt:
+  - no-new-privileges:true    # Prevent privilege escalation
+tmpfs:
+  - /tmp:size=100M           # In-memory temp, size limited
+  - /app/sandbox:size=50M    # Isolated execution directory
+cap_drop:
+  - ALL                       # Drop all Linux capabilities
+cap_add:
+  - SETUID                    # Only add what's needed
+  - SETGID
+```
+
+### 🌐 Network Isolation
+
+- API containers run on an **internal-only network**
+- No direct internet access from code execution
+- Only nginx can reach API containers
+- Rate limiting: 200 requests/minute per IP
+
+### ⏱️ Resource Limits
+
+| Resource | Limit |
+|----------|-------|
+| **Execution Timeout** | 10 seconds |
+| **Memory (per container)** | 1 GB |
+| **Memory (per execution)** | 128 MB |
+| **Output Size** | 100 KB |
+| **Code Size** | 100 KB |
 
 ---
 

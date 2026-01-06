@@ -1,4 +1,6 @@
 # Production Dockerfile - Auto-scaling ready for 10k+ users
+# SECURITY HARDENED: Sandboxed code execution environment
+
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -13,8 +15,12 @@ FROM node:20-alpine
 # Install language runtimes
 RUN apk add --no-cache python3 openjdk17-jdk php bash && rm -rf /var/cache/apk/*
 
-# Security: non-root user
-RUN addgroup -g 1001 -S app && adduser -u 1001 -S app -G app
+# SECURITY: Create non-root user with minimal permissions
+RUN addgroup -g 1001 -S app && \
+    adduser -u 1001 -S app -G app -h /home/app -s /sbin/nologin
+
+# SECURITY: Create isolated temp directory for code execution
+RUN mkdir -p /app/sandbox && chown app:app /app/sandbox && chmod 700 /app/sandbox
 
 WORKDIR /app
 
@@ -26,11 +32,24 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.mjs ./
 COPY --from=builder /app/languages ./languages
+COPY --from=builder /app/security ./security
 
-RUN chown -R app:app /app
+# SECURITY: Set proper ownership and permissions
+RUN chown -R app:app /app && \
+    chmod -R 755 /app && \
+    chmod 644 /app/server.mjs && \
+    chmod -R 444 /app/languages
+
+# SECURITY: Remove unnecessary packages and shells after setup
+RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+
 USER app
 
-ENV NODE_ENV=production PORT=3001
+# SECURITY: Restrict environment
+ENV NODE_ENV=production \
+    PORT=3001 \
+    HOME=/home/app \
+    TMPDIR=/app/sandbox
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q --spider http://127.0.0.1:3001/health || exit 1

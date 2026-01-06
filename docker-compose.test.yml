@@ -1,0 +1,141 @@
+# Docker Compose for Running Test Suite
+# 
+# Usage:
+#   docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+#
+# This will:
+#   1. Start the API service
+#   2. Run all tests against it
+#   3. Generate reports in ./tests/reports/
+#   4. Exit with test result code
+
+services:
+  # ============================================
+  # API Service (System Under Test)
+  # ============================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "3001"
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - RATE_LIMIT_MAX=1000  # Higher limit for testing
+      - RUN_TIMEOUT_MS=10000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - test-network
+
+  # ============================================
+  # Security Tests
+  # ============================================
+  test-security:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.tests
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:3001
+      - TEST_SUITE=security
+    volumes:
+      - ./tests/reports:/tests/reports
+    command: ["node", "security/security-tests.mjs", "--server=http://api:3001"]
+    networks:
+      - test-network
+
+  # ============================================
+  # Language Compiler Tests
+  # ============================================
+  test-languages:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.tests
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:3001
+      - TEST_SUITE=languages
+    volumes:
+      - ./tests/reports:/tests/reports
+    command: ["node", "languages/language-tests.mjs", "--server=http://api:3001"]
+    networks:
+      - test-network
+    profiles:
+      - languages
+
+  # ============================================
+  # Stress Tests
+  # ============================================
+  test-stress:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.tests
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:3001
+      - TEST_SUITE=stress
+    volumes:
+      - ./tests/reports:/tests/reports
+    command: ["node", "stress/stress-tests.mjs", "--server=http://api:3001"]
+    networks:
+      - test-network
+    profiles:
+      - stress
+
+  # ============================================
+  # Feature/Functionality Tests
+  # ============================================
+  test-features:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.tests
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:3001
+      - TEST_SUITE=features
+    volumes:
+      - ./tests/reports:/tests/reports
+    command: ["node", "features/feature-tests.mjs", "--server=http://api:3001"]
+    networks:
+      - test-network
+    profiles:
+      - features
+
+  # ============================================
+  # All Tests Runner
+  # ============================================
+  test-all:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.tests
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:3001
+      - TEST_SUITE=all
+    volumes:
+      - ./tests/reports:/tests/reports
+    command: ["node", "run-all-tests.mjs", "--server=http://api:3001"]
+    networks:
+      - test-network
+    profiles:
+      - all
+
+networks:
+  test-network:
+    driver: bridge

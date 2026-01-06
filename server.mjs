@@ -12,6 +12,7 @@
  * - Graceful degradation under extreme load
  * - Health monitoring and self-healing
  * - Zero-config cloud deployment ready
+ * - SECURITY: Code sandboxing and dangerous function blocking
  */
 
 import express from "express";
@@ -24,6 +25,465 @@ import os from "node:os";
 import crypto from "node:crypto";
 import compression from "compression";
 import cluster from "node:cluster";
+
+// ============================================
+// SECURITY: CODE SANITIZATION & VALIDATION
+// ============================================
+const SECURITY = {
+  // Dangerous patterns for each language
+  patterns: {
+    javascript: [
+      // Process/child execution
+      /\bchild_process\b/i,
+      /\brequire\s*\(\s*['"`]child_process['"`]\s*\)/i,
+      /\bimport\s*.*from\s*['"`]child_process['"`]/i,
+      /\bspawn\s*\(/i,
+      /\bexec\s*\(/i,
+      /\bexecSync\s*\(/i,
+      /\bexecFile\s*\(/i,
+      /\bfork\s*\(/i,
+      // File system access
+      /\brequire\s*\(\s*['"`]fs['"`]\s*\)/i,
+      /\bimport\s*.*from\s*['"`]fs['"`]/i,
+      /\bimport\s*.*from\s*['"`]fs\/promises['"`]/i,
+      /\bimport\s*.*from\s*['"`]node:fs['"`]/i,
+      // Network access
+      /\brequire\s*\(\s*['"`]net['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]http['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]https['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]dgram['"`]\s*\)/i,
+      /\bimport\s*.*from\s*['"`]net['"`]/i,
+      /\bimport\s*.*from\s*['"`]http['"`]/i,
+      /\bimport\s*.*from\s*['"`]https['"`]/i,
+      /\bimport\s*.*from\s*['"`]node:net['"`]/i,
+      /\bimport\s*.*from\s*['"`]node:http['"`]/i,
+      // Process manipulation
+      /\bprocess\.exit\s*\(/i,
+      /\bprocess\.kill\s*\(/i,
+      /\bprocess\.env\b/i,
+      /\bprocess\.cwd\s*\(/i,
+      /\bprocess\.chdir\s*\(/i,
+      /\bprocess\.mainModule\b/i,
+      // Dangerous globals
+      /\brequire\s*\(\s*['"`]os['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]path['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]cluster['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]vm['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]worker_threads['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]crypto['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]stream['"`]\s*\)/i,
+      /\brequire\s*\(\s*['"`]zlib['"`]\s*\)/i,
+      /\bimport\s*.*from\s*['"`]os['"`]/i,
+      /\bimport\s*.*from\s*['"`]node:os['"`]/i,
+      /\bimport\s*.*from\s*['"`]crypto['"`]/i,
+      /\bimport\s*.*from\s*['"`]stream['"`]/i,
+      /\bimport\s*.*from\s*['"`]zlib['"`]/i,
+      // Dynamic require/import (could bypass checks)
+      /\brequire\s*\(\s*[^'"`]/i,
+      /\bimport\s*\(\s*[^'"`]/i,
+      // Eval and code injection
+      /\bFunction\s*\(/i,
+      /\beval\s*\(/i,
+      // Buffer manipulation for binary exploits
+      /\bBuffer\.alloc(?:Unsafe)?\s*\(/i,
+      /\bBuffer\.from\s*\([^)]*,\s*['"]hex['"]\)/i,
+      // Fetch/network
+      /\bfetch\s*\(/i,
+      /\bXMLHttpRequest\b/i,
+      /\bWebSocket\b/i,
+      // Encoding bypass attempts
+      /String\.fromCharCode\s*\(/i,
+      /\batob\s*\(/i,
+      // Prototype pollution
+      /\b__proto__\b/i,
+      /Object\.setPrototypeOf\s*\(/i,
+      /\.constructor\.prototype\b/i,
+      /Object\.prototype\b/i,  // Any Object.prototype access
+      /Object\.defineProperty\s*\(\s*Object\.prototype/i, // defineProperty on prototype
+      // Global object access
+      /\bglobalThis\b/i,
+      /\bglobal\b/i,
+      /\bthis\.constructor\.constructor\b/i,
+      // Reflect/Proxy APIs
+      /\bReflect\./i,
+      /\bnew\s+Proxy\s*\(/i,
+      // Timer abuse with strings (potential eval)
+      /setTimeout\s*\(\s*['"`]/i,
+      /setInterval\s*\(/i,  // Block ALL setInterval - DoS risk
+      // Async exploit attempts
+      /\bqueueMicrotask\s*\(/i,
+      /\bsetImmediate\s*\(/i,
+    ],
+    
+    typescript: [], // Will inherit JavaScript patterns
+    
+    python: [
+      // Command execution
+      /\bos\.system\s*\(/i,
+      /\bos\.popen\s*\(/i,
+      /\bos\.spawn\w*\s*\(/i,
+      /\bos\.exec\w*\s*\(/i,
+      /\bsubprocess\b/i,
+      /\bpopen\s*\(/i,
+      /\bcommands\./i,
+      // Dangerous imports
+      /\bimport\s+os\b/i,
+      /\bfrom\s+os\s+import\b/i,
+      /\bimport\s+subprocess\b/i,
+      /\bfrom\s+subprocess\s+import\b/i,
+      /\bimport\s+sys\b/i,
+      /\bfrom\s+sys\s+import\b/i,
+      /\bimport\s+socket\b/i,
+      /\bfrom\s+socket\s+import\b/i,
+      /\bimport\s+http\b/i,
+      /\bimport\s+urllib\b/i,
+      /\bfrom\s+urllib\b/i,  // Also catch "from urllib.request import"
+      /\bimport\s+requests\b/i,
+      /\bimport\s+shutil\b/i,
+      /\bfrom\s+shutil\s+import\b/i,
+      /\bimport\s+pty\b/i,
+      /\bimport\s+ctypes\b/i,
+      /\bimport\s+multiprocessing\b/i,
+      /\bimport\s+threading\b/i,
+      /\bimport\s+io\b/i,
+      /\bfrom\s+io\s+import\b/i,
+      /\bimport\s+pathlib\b/i,
+      /\bfrom\s+pathlib\s+import\b/i,
+      // Additional dangerous network modules
+      /\bimport\s+ftplib\b/i,
+      /\bfrom\s+ftplib\s+import\b/i,
+      /\bimport\s+smtplib\b/i,
+      /\bfrom\s+smtplib\s+import\b/i,
+      /\bimport\s+telnetlib\b/i,
+      /\bfrom\s+telnetlib\s+import\b/i,
+      /\bimport\s+poplib\b/i,
+      /\bimport\s+imaplib\b/i,
+      /\bimport\s+nntplib\b/i,
+      // File input module (can read files)
+      /\bimport\s+fileinput\b/i,
+      /\bfrom\s+fileinput\s+import\b/i,
+      /\bfileinput\.input\s*\(/i,
+      // Password/credential access
+      /\bimport\s+getpass\b/i,
+      /\bfrom\s+getpass\s+import\b/i,
+      /\bgetpass\.\w+\s*\(/i,
+      // File operations - BLOCK ALL FILE ACCESS (read and write)
+      /\bopen\s*\(/i, // Block ALL open() calls
+      /\bfile\s*\(/i, // Python 2 file()
+      /\bcodecs\.open\s*\(/i,
+      /\bio\.open\s*\(/i,
+      /\bPath\s*\(/i, // pathlib.Path
+      /\bos\.remove\s*\(/i,
+      /\bos\.unlink\s*\(/i,
+      /\bos\.rmdir\s*\(/i,
+      /\bos\.mkdir\s*\(/i,
+      /\bos\.makedirs\s*\(/i,
+      /\bos\.rename\s*\(/i,
+      /\bos\.chmod\s*\(/i,
+      /\bos\.chown\s*\(/i,
+      /\bos\.path\b/i,
+      /\bos\.listdir\s*\(/i,
+      /\bos\.walk\s*\(/i,
+      /\bos\.getcwd\s*\(/i,
+      /\bos\.chdir\s*\(/i,
+      /\bos\.environ\b/i,
+      /\bos\.getenv\s*\(/i,
+      // Code execution
+      /\bexec\s*\(/i,
+      /\beval\s*\(/i,
+      /\bcompile\s*\(/i,
+      /\b__import__\s*\(/i,
+      /\bimportlib\b/i,
+      // Builtins manipulation
+      /\b__builtins__\b/i,
+      /\b__class__\b/i,
+      /\b__subclasses__\b/i,
+      /\b__globals__\b/i,
+      /\b__code__\b/i,
+      /\bgetattr\s*\(/i,
+      /\bsetattr\s*\(/i,
+      /\bdelattr\s*\(/i,
+      /\bglobals\s*\(\)/i,
+      /\blocals\s*\(\)/i,
+      /\bvars\s*\(\)/i,
+      /\bdir\s*\(/i,
+      // Pickle (arbitrary code execution)
+      /\bimport\s+pickle\b/i,
+      /\bimport\s+cPickle\b/i,
+      /\bimport\s+marshal\b/i,
+      // Signal handling
+      /\bimport\s+signal\b/i,
+      // Encoding bypass
+      /\bchr\s*\(/i,
+      /\bbytes\s*\(\s*\[/i,
+      /\bbase64\b/i,
+      /\bbytes\.fromhex\s*\(/i,
+      // Frame/code manipulation
+      /\bsys\._getframe\s*\(/i,
+      /\b__code__\s*=/i,
+      /\bimport\s+types\b/i,
+      /\btypes\.FunctionType\b/i,
+      // More dangerous modules
+      /\bimport\s+inspect\b/i,
+      /\bimport\s+gc\b/i,
+      /\bimport\s+dis\b/i,
+      /\bimport\s+ast\b/i,
+      /\bimport\s+builtins\b/i,
+      /\bimport\s+code\b/i,
+      /\bimport\s+platform\b/i,
+      /\bimport\s+tempfile\b/i,
+      /\bimport\s+glob\b/i,
+      /\bimport\s+fnmatch\b/i,
+      /\bimport\s+asyncio\b/i,
+    ],
+    
+    php: [
+      // Command execution
+      /\bexec\s*\(/i,
+      /\bshell_exec\s*\(/i,
+      /\bsystem\s*\(/i,
+      /\bpassthru\s*\(/i,
+      /\bpopen\s*\(/i,
+      /\bproc_open\s*\(/i,
+      /\bproc_close\s*\(/i,
+      /\bproc_get_status\s*\(/i,
+      /\bproc_terminate\s*\(/i,
+      /\bpcntl_\w+\s*\(/i,
+      /\bbacktick\b/i,
+      /`[^`]+`/,  // Backtick execution
+      /\bexpect_popen\s*\(/i,  // expect extension popen
+      // File operations
+      /\bfopen\s*\(/i,
+      /\bfwrite\s*\(/i,
+      /\bfputs\s*\(/i,
+      /\bfile_put_contents\s*\(/i,
+      /\bfile_get_contents\s*\(/i,
+      /\bfile\s*\(/i,
+      /\breadfile\s*\(/i,
+      /\bfread\s*\(/i,
+      /\binclude\s*[^;]+/i,
+      /\binclude_once\s*[^;]+/i,
+      /\brequire\s*[^;]+/i,
+      /\brequire_once\s*[^;]+/i,
+      /\bunlink\s*\(/i,
+      /\brmdir\s*\(/i,
+      /\bmkdir\s*\(/i,
+      /\brename\s*\(/i,
+      /\bcopy\s*\(/i,
+      /\bchmod\s*\(/i,
+      /\bchown\s*\(/i,
+      /\bchgrp\s*\(/i,
+      /\bscandir\s*\(/i,
+      /\bglob\s*\(/i,
+      /\bopendir\s*\(/i,
+      /\breaddir\s*\(/i,
+      /\bshow_source\s*\(/i,  // Alias for highlight_file
+      /\bhighlight_file\s*\(/i,  // Can expose source code
+      /\bmove_uploaded_file\s*\(/i,  // File upload handling
+      /\bsymlink\s*\(/i,  // Create symbolic links
+      /\blink\s*\(/i,  // Create hard links
+      // Network operations
+      /\bftp_\w+\s*\(/i,  // FTP functions
+      /\bfsockopen\s*\(/i,
+      /\bpfsockopen\s*\(/i,
+      /\bcurl_\w+\s*\(/i,
+      /\bsocket_\w+\s*\(/i,
+      /\bstream_socket_\w+\s*\(/i,
+      // Code execution
+      /\beval\s*\(/i,
+      /\bassert\s*\(/i,
+      /\bcreate_function\s*\(/i,
+      /\bcall_user_func\s*\(/i,
+      /\bcall_user_func_array\s*\(/i,
+      /\bpreg_replace\s*\([^)]*\/[^)]*e[^)]*\)/i, // preg_replace with /e modifier
+      // Dangerous functions
+      /\bputenv\s*\(/i,
+      /\bgetenv\s*\(/i,
+      /\bini_set\s*\(/i,
+      /\bini_get\s*\(/i,
+      /\bdl\s*\(/i,
+      /\bset_include_path\s*\(/i,
+      /\bphpinfo\s*\(/i,
+      /\bget_defined_functions\s*\(/i,
+      /\bget_defined_vars\s*\(/i,
+      /\bextract\s*\(/i,
+      /\bparse_str\s*\(/i,
+      // Apache-specific functions
+      /\bapache_\w+\s*\(/i,  // All apache_* functions including getenv/setenv
+      // PHP superglobals (can leak server info) - use explicit $ without \b
+      /\$_SERVER/i,
+      /\$_ENV/i,
+      /\$_GET/i,
+      /\$_POST/i,
+      /\$_REQUEST/i,
+      /\$_FILES/i,
+      /\$GLOBALS/i,
+      // Encoding bypass attempts
+      /\bchr\s*\(/i,
+      /\bbase64_decode\s*\(/i,
+      /\bhex2bin\s*\(/i,
+      /\bpack\s*\(/i,
+      /\bstr_rot13\s*\(/i,  // ROT13 encoding (obfuscation)
+      /\bconvert_uudecode\s*\(/i,  // UU decoding (obfuscation)
+      /\bconvert_uuencode\s*\(/i,  // UU encoding (obfuscation)
+      // Variable variable bypass
+      /\$\$/i,  // $$var
+      // Callback exploitation
+      /\barray_map\s*\(/i,
+      /\barray_filter\s*\(/i,
+      /\barray_walk\s*\(/i,  // array_walk with callback
+      /\barray_walk_recursive\s*\(/i,
+      /\barray_reduce\s*\(/i,
+      /\busort\s*\(/i,
+      /\buasort\s*\(/i,
+      /\buksort\s*\(/i,
+      /\bpreg_replace_callback\s*\(/i,
+      // Reflection
+      /\bReflectionFunction\b/i,
+      /\bReflectionClass\b/i,
+      /\bReflectionMethod\b/i,
+      // Serialization
+      /\bunserialize\s*\(/i,
+      // Dangerous constructs
+      /\bregister_shutdown_function\s*\(/i,
+      /\bregister_tick_function\s*\(/i,
+      /\bob_start\s*\([^)]+\)/i,  // ob_start with callback
+      /\bset_error_handler\s*\(/i,
+      /\bset_exception_handler\s*\(/i,
+    ],
+    
+    java: [
+      // Runtime execution
+      /Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec\s*\(/i,
+      /Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*halt\s*\(/i,  // Forceful JVM termination
+      /Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*load\s*\(/i,  // Load native library by path
+      /Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*loadLibrary\s*\(/i,  // Load native library
+      /ProcessBuilder\b/i,
+      /\bnew\s+ProcessBuilder\s*\(/i,
+      // File operations
+      /\bnew\s+File\s*\(/i,
+      /\bnew\s+FileReader\s*\(/i,
+      /\bnew\s+FileWriter\s*\(/i,
+      /\bnew\s+FileInputStream\s*\(/i,
+      /\bnew\s+FileOutputStream\s*\(/i,
+      /\bnew\s+BufferedReader\s*\(/i,
+      /\bnew\s+BufferedWriter\s*\(/i,
+      /\bnew\s+RandomAccessFile\s*\(/i,
+      /Files\s*\.\s*(read|write|delete|copy|move|create)/i,
+      /\bnew\s+Scanner\s*\(\s*new\s+File/i,
+      /\bPaths\s*\.\s*get\s*\(/i,
+      // Network
+      /\bnew\s+Socket\s*\(/i,
+      /\bnew\s+ServerSocket\s*\(/i,
+      /\bnew\s+URL\s*\(/i,
+      /\bnew\s+HttpURLConnection\b/i,
+      /\bURLConnection\b/i,
+      /\bHttpClient\b/i,
+      /\bDatagramSocket\b/i,
+      // Reflection (can bypass security)
+      /\.getDeclaredMethod\s*\(/i,
+      /\.getDeclaredField\s*\(/i,
+      /\.setAccessible\s*\(/i,
+      /Class\s*\.\s*forName\s*\(/i,
+      /\.getMethod\s*\(/i,
+      /\.invoke\s*\(/i,
+      // ClassLoader manipulation
+      /ClassLoader\b/i,
+      /URLClassLoader\b/i,
+      /\.defineClass\s*\(/i,
+      /\.loadClass\s*\(/i,
+      // System access
+      /System\s*\.\s*exit\s*\(/i,
+      /System\s*\.\s*getProperty\s*\(/i,
+      /System\s*\.\s*setProperty\s*\(/i,
+      /System\s*\.\s*getenv\s*\(/i,
+      /System\s*\.\s*load\s*\(/i,
+      /System\s*\.\s*loadLibrary\s*\(/i,
+      /System\s*\.\s*setSecurityManager\s*\(/i,
+      /SecurityManager\b/i,
+      // Scripting engine (can execute arbitrary code)
+      /ScriptEngine\b/i,
+      /ScriptEngineManager\b/i,
+      // Serialization (potential RCE)
+      /ObjectInputStream\b/i,
+      /readObject\s*\(/i,
+      // Deserialization libraries (RCE vulnerabilities)
+      /\bXStream\b/i,  // XStream deserialization
+      /\bYaml\s*\.\s*load\s*\(/i,  // SnakeYAML unsafe load
+      /\bnew\s+Yaml\s*\(/i,  // SnakeYAML
+      /\bObjectMapper\s*\(\s*\)\s*\.\s*enableDefaultTyping/i,  // Jackson polymorphic
+      // Native code
+      /\bnative\s+\w+\s*\(/i,
+      /JNI\b/i,
+      // Threads (DoS potential)
+      /\bnew\s+Thread\s*\(/i,
+      /Thread\s*\.\s*sleep\s*\(\s*\d{5,}/i, // Long sleep
+      /ExecutorService\b/i,
+      /ThreadPoolExecutor\b/i,
+      // MethodHandle API
+      /MethodHandles\s*\.\s*lookup\s*\(/i,
+      /MethodHandle\b/i,
+      /VarHandle\b/i,
+      // Unsafe class
+      /\bUnsafe\b/i,
+      /sun\.misc\.Unsafe/i,
+      // JNDI (Log4Shell style attacks)
+      /InitialContext\b/i,
+      /\bctx\s*\.\s*lookup\s*\(/i,
+      /\bjndi:/i,
+      /\bldap:/i,
+      /\brmi:/i,
+      // XML attacks (XXE, XSLT)
+      /DocumentBuilderFactory\b/i,
+      /SAXParserFactory\b/i,
+      /TransformerFactory\b/i,
+      /XMLInputFactory\b/i,
+      // Instrumentation
+      /\bInstrumentation\b/i,
+      /\bpremain\s*\(/i,
+      /\bagentmain\s*\(/i,
+      // Compiler API
+      /JavaCompiler\b/i,
+      /ToolProvider\s*\.\s*getSystemJavaCompiler\s*\(/i,
+    ],
+  },
+  
+  // Messages for blocked patterns
+  messages: {
+    javascript: 'Blocked: System access, file operations, network, and shell commands are disabled for security',
+    typescript: 'Blocked: System access, file operations, network, and shell commands are disabled for security',
+    python: 'Blocked: System access (os, subprocess, socket), file write operations, and dangerous built-ins are disabled for security',
+    php: 'Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security',
+    java: 'Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security',
+  },
+};
+
+// TypeScript inherits JavaScript patterns
+SECURITY.patterns.typescript = [...SECURITY.patterns.javascript];
+
+/**
+ * Validates code for dangerous patterns
+ * @returns {{ safe: boolean, reason?: string, matched?: string }}
+ */
+function validateCodeSecurity(language, code) {
+  const patterns = SECURITY.patterns[language];
+  if (!patterns) {
+    return { safe: true };
+  }
+  
+  for (const pattern of patterns) {
+    const match = code.match(pattern);
+    if (match) {
+      return {
+        safe: false,
+        reason: SECURITY.messages[language],
+        matched: match[0],
+      };
+    }
+  }
+  
+  return { safe: true };
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -412,22 +872,48 @@ class SmartExecutor {
   }
   
   async executeJS(code, isTypeScript = false) {
-    // For TypeScript, we run as JS (browser handles the type checking)
-    return this.runProcess('node', ['--input-type=module', '-e', code]);
+    // SECURITY: Run Node.js with restricted permissions
+    // --experimental-permission restricts file system, child process, and workers
+    return this.runProcess('node', [
+      '--experimental-permission',               // Enable permission model
+      '--allow-fs-read=' + this.tempDir,        // Only allow reading temp dir
+      '--max-old-space-size=128',               // Limit memory
+      '--input-type=module',
+      '-e',
+      code
+    ]);
   }
   
   async executePython(code) {
-    return this.runProcess('python3', ['-u', '-c', code]);
+    // SECURITY: Run Python with restricted options
+    return this.runProcess('python3', [
+      '-u',                 // Unbuffered output
+      '-I',                 // Isolated mode: ignore PYTHON* env vars, don't add current directory
+      '-S',                 // Don't import site module (reduces available imports)
+      '-c',
+      code
+    ]);
   }
   
   async executePHP(code) {
     // PHP needs to be in a file or passed carefully
     const phpCode = code.startsWith('<?php') ? code : `<?php\n${code}`;
     const tempFile = path.join(this.tempDir, `php_${Date.now()}_${Math.random().toString(36).slice(2)}.php`);
+    const securityConfig = path.join(__dirname, 'security', 'php.ini');
     
     try {
       fs.writeFileSync(tempFile, phpCode);
-      return await this.runProcess('php', [tempFile]);
+      // SECURITY: Run PHP with restrictive configuration
+      const args = [
+        '-d', 'open_basedir=' + this.tempDir,       // Restrict file access
+        '-d', 'memory_limit=64M',                   // Limit memory
+        '-d', 'max_execution_time=10',              // Limit execution time
+        '-d', 'disable_functions=exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec,pcntl_fork,curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,mail,dl,putenv,getenv,phpinfo,eval,assert,create_function,file_get_contents,file_put_contents,fopen,fwrite,readfile,unlink,rmdir,mkdir,chmod,chown',
+        '-d', 'allow_url_fopen=Off',
+        '-d', 'allow_url_include=Off',
+        tempFile
+      ];
+      return await this.runProcess('php', args);
     } finally {
       try { fs.unlinkSync(tempFile); } catch {}
     }
@@ -442,14 +928,24 @@ class SmartExecutor {
     try {
       fs.writeFileSync(tempFile, code);
       
-      // Compile
-      const compileResult = await this.runProcess('javac', [tempFile]);
+      // Compile with restricted options (no security manager during compilation)
+      const compileResult = await this.runProcess('javac', [
+        '-J-Xmx128m',  // Limit memory
+        tempFile
+      ], CONFIG.execution.timeoutMs, { skipJavaSecurityManager: true });
       if (compileResult.exitCode !== 0) {
         return { ...compileResult, phase: 'compile' };
       }
       
-      // Run
-      return await this.runProcess('java', ['-cp', this.tempDir, className]);
+      // SECURITY: Run with security manager and restricted permissions
+      return await this.runProcess('java', [
+        '-Xmx128m',                              // Limit heap memory
+        '-Xms32m',                               // Initial heap
+        '-XX:MaxMetaspaceSize=64m',              // Limit metaspace
+        '-Djava.security.manager=allow',         // Enable security manager
+        '-cp', this.tempDir,
+        className
+      ]);
     } finally {
       try {
         fs.unlinkSync(tempFile);
@@ -458,17 +954,45 @@ class SmartExecutor {
     }
   }
   
-  runProcess(command, args, timeoutMs = CONFIG.execution.timeoutMs) {
+  runProcess(command, args, timeoutMs = CONFIG.execution.timeoutMs, options = {}) {
     return new Promise((resolve) => {
       const startTime = Date.now();
       let stdout = '';
       let stderr = '';
       let killed = false;
       
+      // SECURITY: Create a minimal, sanitized environment
+      const sanitizedEnv = {
+        PATH: '/usr/local/bin:/usr/bin:/bin',  // Minimal PATH
+        HOME: this.tempDir,
+        TMPDIR: this.tempDir,
+        TEMP: this.tempDir,
+        TMP: this.tempDir,
+        LANG: 'en_US.UTF-8',
+        LC_ALL: 'en_US.UTF-8',
+        PYTHONUNBUFFERED: '1',
+        PYTHONDONTWRITEBYTECODE: '1',
+        // Node.js security
+        NODE_OPTIONS: '--max-old-space-size=128',
+      };
+      
+      // Only add Java security manager for runtime, not compilation
+      if (!options.skipJavaSecurityManager) {
+        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Djava.security.manager=default -Xmx128m';
+      } else {
+        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Xmx128m';  // Just memory limit for compiler
+      }
+      
       const proc = spawn(command, args, {
         cwd: this.tempDir,
         timeout: timeoutMs,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        env: sanitizedEnv,
+        // SECURITY: Don't inherit parent's stdio, file descriptors
+        stdio: ['pipe', 'pipe', 'pipe'],
+        // SECURITY: Detach from parent's process group
+        detached: false,
+        // SECURITY: Don't allow shell execution
+        shell: false,
       });
       
       const timeout = setTimeout(() => {
@@ -729,6 +1253,21 @@ app.post("/api/run", async (req, res) => {
   
   if (code.length > 100000) {
     return res.status(400).json({ error: "Code too large (max 100KB)" });
+  }
+  
+  // SECURITY: Validate code for dangerous patterns
+  const securityCheck = validateCodeSecurity(language, code);
+  if (!securityCheck.safe) {
+    log('warn', 'security_block', { 
+      language, 
+      reason: securityCheck.reason,
+      matched: securityCheck.matched,
+      ip: req.ip 
+    });
+    return res.status(403).json({ 
+      error: securityCheck.reason,
+      blocked: true,
+    });
   }
   
   try {

@@ -7,7 +7,12 @@
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
     "start": "NODE_ENV=production node server.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "cd tests && bash run-tests.sh all",
+    "test:security": "cd tests && bash run-tests.sh security",
+    "test:languages": "cd tests && bash run-tests.sh languages",
+    "test:stress": "cd tests && bash run-tests.sh stress",
+    "test:features": "cd tests && bash run-tests.sh features"
   },
   "dependencies": {
     "compression": "^1.7.4",

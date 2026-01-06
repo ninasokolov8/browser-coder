@@ -1,0 +1,15 @@
+{
+  "name": "browser-coder-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive test suite for Browser Coder",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:all",
+    "test:all": "node run-all-tests.mjs",
+    "test:security": "node security/security-tests.mjs",
+    "test:languages": "node languages/language-tests.mjs",
+    "test:stress": "node stress/stress-tests.mjs",
+    "test:features": "node features/feature-tests.mjs"
+  },
+  "devDependencies": {}
+}

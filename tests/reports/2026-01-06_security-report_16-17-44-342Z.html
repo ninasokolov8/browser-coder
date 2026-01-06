@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Test Report - Browser Coder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; padding: 2rem; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 2rem; margin-bottom: 1rem; color: #f8fafc; }
+    h2 { font-size: 1.5rem; margin: 2rem 0 1rem; color: #60a5fa; border-bottom: 2px solid #1e3a5f; padding-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; margin: 1rem 0 0.5rem; color: #94a3b8; }
+    .header { text-align: center; margin-bottom: 2rem; padding: 2rem; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); border-radius: 1rem; border: 1px solid #334155; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 2rem 0; }
+    .stat { background: #1e293b; padding: 1.5rem; border-radius: 0.75rem; text-align: center; border: 1px solid #334155; }
+    .stat-value { font-size: 2rem; font-weight: bold; }
+    .stat-label { color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem; }
+    .pass .stat-value { color: #22c55e; }
+    .fail .stat-value { color: #ef4444; }
+    .total .stat-value { color: #60a5fa; }
+    .rate .stat-value { color: #22c55e; }
+    .language-section { margin: 2rem 0; background: #1e293b; border-radius: 0.75rem; padding: 1.5rem; border: 1px solid #334155; }
+    .category { margin: 1rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.9rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #334155; }
+    th { background: #0f172a; color: #94a3b8; font-weight: 600; }
+    tr.pass { background: rgba(34, 197, 94, 0.1); }
+    tr.fail { background: rgba(239, 68, 68, 0.1); }
+    tr.pass .status { color: #22c55e; }
+    tr.fail .status { color: #ef4444; }
+    .reason { font-size: 0.8rem; color: #94a3b8; max-width: 300px; }
+    .timestamp { color: #64748b; font-size: 0.875rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-pass { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .badge-fail { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .vulnerabilities { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 0.75rem; padding: 1.5rem; margin: 2rem 0; }
+    .vulnerabilities h2 { color: #ef4444; border-color: #ef4444; }
+    .vuln-item { padding: 0.75rem; margin: 0.5rem 0; background: rgba(0,0,0,0.2); border-radius: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔒 Security Test Report</h1>
+      <p class="timestamp">Generated: 2026-01-06T16:17:44.342Z</p>
+      <p class="timestamp">Server: http://api:3001</p>
+    </div>
+    
+    <div class="summary">
+      <div class="stat total">
+        <div class="stat-value">201</div>
+        <div class="stat-label">Total Tests</div>
+      </div>
+      <div class="stat pass">
+        <div class="stat-value">201</div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div class="stat fail">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <div class="stat rate">
+        <div class="stat-value">100.00%</div>
+        <div class="stat-label">Pass Rate</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">3.6s</div>
+        <div class="stat-label">Duration</div>
+      </div>
+    </div>
+    
+    
+    <div style="text-align: center; padding: 2rem; background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 0.75rem; margin: 2rem 0;">
+      <h2 style="color: #22c55e; border: none;">✅ All Security Tests Passed!</h2>
+      <p style="color: #94a3b8;">No vulnerabilities detected. The system is secure against tested attack vectors.</p>
+    </div>
+    
+    
+    <div class="language-section">
+      <h2>JAVASCRIPT</h2><div class="category">
+        <h3>COMMAND EXECUTION (8/8)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: child_process require</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>49ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: child_process import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>10ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: spawn command</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>9ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: execSync command</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>8ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: execFile command</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>7ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fork process</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>7ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Dynamic require bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>8ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: String concatenation bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>13ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FILE SYSTEM (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fs module import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>16ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fs/promises import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>9ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fs writeFile</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>10ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fs require</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>14ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: node:fs import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>5ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>NETWORK (6/6)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: http module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>5ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: https module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>8ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: net module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>6ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: dgram (UDP)</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>6ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: fetch API</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>8ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: WebSocket</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>7ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SYSTEM ACCESS (8/8)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: process.env access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>5ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: process.exit</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: process.kill</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: process.cwd</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: os module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: cluster module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: worker_threads</td>
+          <td>Blocked</td>
+          <td class="reason">Blocked at runtime level</td>
+          <td>92ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: vm module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>CODE INJECTION (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: eval execution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Function constructor</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Dynamic import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>MEMORY ACCESS (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Buffer.allocUnsafe</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>ENCODING BYPASS (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: String.fromCharCode bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: atob base64 bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Buffer.from decode bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Unicode escape bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Hex escape bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>PROTOTYPE POLLUTION (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: __proto__ pollution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Object.setPrototypeOf pollution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: constructor.prototype pollution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>GLOBAL ACCESS (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: globalThis access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: global access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: this.constructor escape</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>REFLECT PROXY (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Reflect.get bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Proxy trap</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>TIMER ABUSE (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: setTimeout eval</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: setInterval abuse</td>
+          <td>Blocked</td>
+          <td class="reason">Execution failed (security restriction)</td>
+          <td>73ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: setImmediate abuse</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>ASYNC EXPLOITS (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Promise.resolve exec</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: queueMicrotask</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>DANGEROUS MODULES (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: crypto module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: stream module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: zlib module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SAFE CODE (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Safe console.log</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>59ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Safe math</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>57ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Safe array operations</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>60ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>JS: Safe async/await</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>72ms</td>
+        </tr></tbody></table></div></div><div class="language-section">
+      <h2>TYPESCRIPT</h2><div class="category">
+        <h3>COMMAND EXECUTION (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>TS: child_process import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>5ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FILE SYSTEM (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>TS: fs import</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SAFE CODE (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>TS: Safe code execution</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>56ms</td>
+        </tr></tbody></table></div></div><div class="language-section">
+      <h2>PYTHON</h2><div class="category">
+        <h3>COMMAND EXECUTION (6/6)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.system</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.popen</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: subprocess.run</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: subprocess.Popen</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: subprocess.call</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.spawn</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FILE SYSTEM (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: open() read sensitive file</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: open() write file</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.listdir</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.walk</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: shutil operations</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>NETWORK (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: socket connection</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: urllib request</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: http.client</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: requests library</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SYSTEM ACCESS (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: sys module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.environ</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: os.getenv</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: ctypes (native code)</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: pty (pseudo-terminal)</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>CODE INJECTION (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: exec() execution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: eval() execution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: compile() + exec()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: __import__ function</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: importlib.import_module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>5ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>INTROSPECTION (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: __builtins__ access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: __class__ chain exploit</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: __globals__ access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: getattr bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>DESERIALIZATION (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: pickle load</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: marshal load</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>ENCODING BYPASS (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: chr() bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: bytes decode bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: base64 encoded exec</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: hex decode bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FRAME MANIPULATION (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: frame object access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: code object manipulation</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: types module FunctionType</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>BUILTINS MANIPULATION (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: globals() access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: locals() manipulation</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: vars() access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: dir() enumeration</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>ASYNC EXPLOITS (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: asyncio subprocess</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>DANGEROUS MODULES (10/10)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: inspect module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: gc module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: dis module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: ast module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: builtins module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: code module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: platform module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: tempfile module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: glob module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: fnmatch module</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SAFE CODE (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: Safe print</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>21ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: Safe math</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>17ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: Safe list comprehension</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>15ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PY: Safe string operations</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>14ms</td>
+        </tr></tbody></table></div></div><div class="language-section">
+      <h2>PHP</h2><div class="category">
+        <h3>COMMAND EXECUTION (8/8)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: exec()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: shell_exec()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: system()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: passthru()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: popen()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: proc_open()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: backticks</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: pcntl_exec</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FILE SYSTEM (9/9)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: file_get_contents()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: file_put_contents()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: fopen/fread</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: file()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: readfile()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: include</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: require</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: scandir()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: glob()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>NETWORK (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: fsockopen()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: curl_exec()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: socket_create()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: stream_socket_client()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>CODE INJECTION (5/5)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: eval()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: assert()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: create_function()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: call_user_func()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: preg_replace /e</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SYSTEM ACCESS (7/7)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: phpinfo()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: getenv()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: putenv()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: $_SERVER access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: $_ENV access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: $GLOBALS access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: ini_set()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>ENCODING BYPASS (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: chr() bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: base64_decode bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: hex2bin bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: pack() bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>VARIABLE BYPASS (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Variable variable execution</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>1ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Dynamic function name</td>
+          <td>Blocked</td>
+          <td class="reason">Execution failed (security restriction)</td>
+          <td>11ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>CALLBACK EXPLOITATION (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: array_map callback</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: array_filter callback</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: usort callback</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: preg_replace_callback</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>REFLECTION (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: ReflectionFunction</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: ReflectionClass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SERIALIZATION (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: unserialize()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>DANGEROUS CONSTRUCTS (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: register_shutdown_function</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: register_tick_function</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: ob_start callback</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: set_error_handler</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SAFE CODE (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Safe echo</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>12ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Safe math</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>10ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Safe array</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>10ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>PHP: Safe string</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>10ms</td>
+        </tr></tbody></table></div></div><div class="language-section">
+      <h2>JAVA</h2><div class="category">
+        <h3>COMMAND EXECUTION (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Runtime.exec()</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: ProcessBuilder</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>FILE SYSTEM (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: FileReader</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Files.readAllLines</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>4ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: FileWriter</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: File operations</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>NETWORK (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Socket connection</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: URL openStream</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: HttpURLConnection</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>REFLECTION (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Reflection exec</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Class.forName</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>7ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: setAccessible bypass</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>7ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SYSTEM ACCESS (4/4)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: System.exit</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: System.getProperty</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: System.getenv</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: System.load</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>CLASSLOADER (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: URLClassLoader</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SCRIPTING (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: ScriptEngine</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SERIALIZATION (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: ObjectInputStream</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>METHODHANDLE (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: MethodHandles.lookup</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: VarHandle</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>UNSAFE ACCESS (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Unsafe access</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>JNDI (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: JNDI lookup</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>XML ATTACK (2/2)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: XXE attack</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: XSLT injection</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>NATIVE CODE (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: JNI native load</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>2ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>INSTRUMENTATION (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Instrumentation</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>COMPILER API (1/1)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: JavaCompiler</td>
+          <td>Blocked</td>
+          <td class="reason">Correctly blocked by security filter</td>
+          <td>3ms</td>
+        </tr></tbody></table></div><div class="category">
+        <h3>SAFE CODE (3/3)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Test Name</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Safe print</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>680ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Safe math</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>662ms</td>
+        </tr><tr class="pass">
+          <td class="status">✓</td>
+          <td>Java: Safe ArrayList</td>
+          <td>Execute</td>
+          <td class="reason">Executed successfully</td>
+          <td>840ms</td>
+        </tr></tbody></table></div></div>
+  </div>
+</body>
+</html>
