@@ -52,18 +52,20 @@ export async function executeCode(language, code) {
     const data = await response.json();
     
     // Check if blocked by security filter
+    // Note: Check error field, not stderr (Java outputs "security.manager" to stderr which is normal)
     const errorLower = (data.error || '').toLowerCase();
-    const stderrLower = (data.stderr || '').toLowerCase();
-    const combinedOutput = errorLower + stderrLower;
     
     const blockedPatterns = [
-      'security', 'blocked', 'forbidden', 'not allowed', 'restricted',
+      'blocked:', 'forbidden', 'not allowed', 'restricted',
       'dangerous', 'prohibited', 'access denied', 'rate limit',
       'malicious', 'unsafe', 'blacklist', 'denied'
     ];
     
-    const isBlocked = blockedPatterns.some(p => combinedOutput.includes(p)) ||
-      (data.error && !data.stdout && !data.stderr?.includes('error:'));
+    // Only check the error field for security blocks, not stderr
+    // This prevents false positives from Java's "security.manager" message
+    const isBlocked = blockedPatterns.some(p => errorLower.includes(p)) ||
+      (data.blocked === true) ||
+      (data.error && data.error.toLowerCase().includes('blocked'));
     
     return {
       blocked: isBlocked,
