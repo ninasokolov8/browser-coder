@@ -1,16 +1,10 @@
-# Browser Coder - Production Ready Docker Compose
+# Browser Coder - Production Docker Compose for DigitalOcean
 # 
-# ONE COMMAND DEPLOYMENT:
-#   docker compose up -d
+# This file uses pre-built images from GitHub Container Registry
+# for faster deployments on the production server.
 #
-# This automatically:
-# - Builds and runs the application
-# - Starts nginx load balancer  
-# - Enables auto-scaling (1-8 API instances based on load)
-# - Handles 10,000+ concurrent users
-# - SECURITY: Sandboxed code execution
-#
-# Access: http://localhost
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
 
 services:
   # ============================================
@@ -20,8 +14,10 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./security/reports:/usr/share/nginx/reports:ro
     depends_on:
       api:
         condition: service_healthy
@@ -40,9 +36,10 @@ services:
       retries: 3
 
   # ============================================
-  # API - Smart Auto-Scaling Server (SANDBOXED)
+  # API - Uses pre-built image from GHCR
   # ============================================
   api:
+    image: ghcr.io/ninasokolov8/browser-coder:latest
     build:
       context: .
       dockerfile: Dockerfile.production
@@ -59,18 +56,9 @@ services:
     # SECURITY: Container-level sandboxing
     security_opt:
       - no-new-privileges:true
-    read_only: false  # Needed for temp files during code execution
+    read_only: true
     tmpfs:
-      - /tmp:size=100M,mode=1777
-      - /app/sandbox:size=50M,mode=0700,uid=1001,gid=1001
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-    # SECURITY: Network isolation - no external network access
-    networks:
-      - internal
+      - /tmp:noexec,nosuid,size=100M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/health"]
       interval: 10s
@@ -78,20 +66,21 @@ services:
       retries: 3
       start_period: 15s
     restart: always
+    networks:
+      - internal
     deploy:
       mode: replicated
-      replicas: ${INITIAL_REPLICAS:-2}
+      replicas: ${REPLICAS:-2}
       resources:
         limits:
-          memory: 1G
+          memory: 512M
           cpus: '1.0'
         reservations:
           memory: 256M
           cpus: '0.25'
-        # SECURITY: Limit PIDs to prevent fork bombs
-      
+
   # ============================================
-  # AUTOSCALER - Monitors load & scales API
+  # Autoscaler (Optional - for high traffic)
   # ============================================
   autoscaler:
     build:
@@ -100,12 +89,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - SERVICE_NAME=browser-coder-api
+      - SERVICE_NAME=browser_coder-api
       - MIN_REPLICAS=${MIN_REPLICAS:-1}
       - MAX_REPLICAS=${MAX_SCALE:-8}
       - SCALE_UP_CPU_THRESHOLD=70
       - SCALE_DOWN_CPU_THRESHOLD=30
-      - SCALE_UP_QUEUE_THRESHOLD=50
       - CHECK_INTERVAL_SECONDS=10
       - COOLDOWN_SECONDS=30
     depends_on:
@@ -117,29 +105,8 @@ services:
       resources:
         limits:
           memory: 64M
-
-  # ============================================
-  # SECURITY TESTS - Runs once on startup
-  # ============================================
-  security-tests:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    volumes:
-      - ./security:/app/security:rw
-    environment:
-      - NODE_ENV=production
-    command: ["node", "security/run.mjs", "--server=http://api:3001"]
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - internal
-    restart: "no"
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+    profiles:
+      - autoscale  # Only runs with: docker compose --profile autoscale up
 
 networks:
   internal:

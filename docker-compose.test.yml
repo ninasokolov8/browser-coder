@@ -6,7 +6,7 @@
 # This will:
 #   1. Start the API service
 #   2. Run all tests against it
-#   3. Generate reports in ./tests/reports/
+#   3. Generate reports in ./security/reports/
 #   4. Exit with test result code
 
 services:
@@ -47,8 +47,8 @@ services:
       - API_URL=http://api:3001
       - TEST_SUITE=security
     volumes:
-      - ./tests/reports:/tests/reports
-    command: ["node", "security/security-tests.mjs", "--server=http://api:3001"]
+      - ./security/reports:/app/security/reports
+    command: ["node", "security/run.mjs", "--server=http://api:3001"]
     networks:
       - test-network
 

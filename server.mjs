@@ -1308,7 +1308,7 @@ app.get("/api/stats", (req, res) => {
 // Reports API - list all security reports
 app.get("/api/reports", async (req, res) => {
   try {
-    const reportsDir = path.join(__dirname, "tests", "reports");
+    const reportsDir = path.join(__dirname, "security", "reports");
     if (!fs.existsSync(reportsDir)) {
       return res.json([]);
     }
@@ -1385,9 +1385,9 @@ app.post("/api/reports/run-tests", async (req, res) => {
       startTime: testRunStatus.startTime
     });
     
-    // Run tests in background using the test script directly
+    // Run tests in background using the security module
     const { spawn: nodeSpawn } = await import('node:child_process');
-    const testProcess = nodeSpawn('node', ['tests/security/security-tests.mjs', '--server=http://localhost:3001'], {
+    const testProcess = nodeSpawn('node', ['security/run.mjs', '--server=http://localhost:3001'], {
       cwd: __dirname,
       env: { ...process.env, API_URL: 'http://localhost:3001' },
       stdio: ['ignore', 'pipe', 'pipe']
@@ -1443,8 +1443,8 @@ app.get("/api/reports/output", (req, res) => {
   });
 });
 
-// Serve reports directory
-const reportsPath = path.join(__dirname, "tests", "reports");
+// Serve security reports directory
+const reportsPath = path.join(__dirname, "security", "reports");
 if (fs.existsSync(reportsPath)) {
   app.use("/reports", express.static(reportsPath));
 }
