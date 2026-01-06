@@ -778,6 +778,86 @@ function generateHTMLReport(data) {
     .mindblown-box .fact-emoji { font-size: 1.5rem; margin-right: 0.75rem; }
     .mindblown-box .fact-content { color: #e2e8f0; font-size: 0.95rem; }
     
+    /* Cheat Sheet */
+    .cheatsheet-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 78, 59, 0.2));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .cheatsheet-box h3 {
+      color: #34d399;
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+    }
+    .cheat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+    .cheat-item {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid rgba(51, 65, 85, 0.5);
+    }
+    .cheat-bad {
+      color: #f87171;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(248, 113, 113, 0.1);
+      border-radius: 0.25rem;
+    }
+    .cheat-good {
+      color: #34d399;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(52, 211, 153, 0.1);
+      border-radius: 0.25rem;
+    }
+    .cheat-why {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      font-style: italic;
+      border-top: 1px solid rgba(51, 65, 85, 0.5);
+      padding-top: 0.4rem;
+      margin-top: 0.4rem;
+    }
+    .cheat-pro-tips {
+      margin-top: 1rem;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+    .cheat-pro-tips h4 {
+      color: #a5b4fc;
+      margin: 0 0 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    .cheat-pro-tips ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      color: #e2e8f0;
+    }
+    .cheat-pro-tips li {
+      margin-bottom: 0.25rem;
+      font-size: 0.85rem;
+    }
+    .cheat-pro-tips li:last-child { margin-bottom: 0; }
+    .cheat-pro-tips code {
+      background: rgba(99, 102, 241, 0.2);
+      padding: 0.1rem 0.35rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      color: #c7d2fe;
+    }
+    
     /* Category Accordion */
     .categories-accordion { margin-top: 1rem; }
     .category-section {
@@ -1422,6 +1502,51 @@ function getLanguageTips(language) {
           </span>
         </div>
       </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ JavaScript Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ eval(userInput)</div>
+            <div class="cheat-good">✅ JSON.parse(userInput)</div>
+            <div class="cheat-why">Parse data safely without code execution</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ innerHTML = userInput</div>
+            <div class="cheat-good">✅ textContent = userInput</div>
+            <div class="cheat-why">Prevents XSS attacks in DOM manipulation</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ new Function(userCode)</div>
+            <div class="cheat-good">✅ Use a sandboxed iframe or Web Worker</div>
+            <div class="cheat-why">Isolate dynamic code execution</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ document.cookie accessible</div>
+            <div class="cheat-good">✅ Set HttpOnly and Secure flags</div>
+            <div class="cheat-why">Protect cookies from JS theft</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ window.location = userUrl</div>
+            <div class="cheat-good">✅ Validate URL with new URL() + allowlist</div>
+            <div class="cheat-why">Prevent open redirect attacks</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Object.assign(target, userObj)</div>
+            <div class="cheat-good">✅ Pick specific properties only</div>
+            <div class="cheat-why">Block prototype pollution via __proto__</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 Pro Security Tips</h4>
+          <ul>
+            <li><code>Object.freeze()</code> makes objects immutable - great for config!</li>
+            <li><code>'use strict'</code> catches silent errors and prevents bad patterns</li>
+            <li>Use <code>crypto.randomUUID()</code> not <code>Math.random()</code> for tokens</li>
+            <li>CSP headers are your best friend against XSS</li>
+            <li><code>Intl.Segmenter</code> handles Unicode safely - no regex for user text!</li>
+          </ul>
+        </div>
+      </div>
     `,
     typescript: `
       <div class="tips-box">
@@ -1464,6 +1589,51 @@ function getLanguageTips(language) {
             <strong>Type Branding:</strong> You can create "branded" types that are impossible to mix up.
             <code>type USD = number & { __brand: 'USD' }</code> - Now you can't accidentally add USD to EUR!
           </span>
+        </div>
+      </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ TypeScript Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ any type everywhere</div>
+            <div class="cheat-good">✅ unknown + type guards</div>
+            <div class="cheat-why">Forces explicit validation of external data</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ as Type (type assertion)</div>
+            <div class="cheat-good">✅ Type predicates: is Type</div>
+            <div class="cheat-why">Runtime validation, not just compile-time lies</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ object as Record&lt;string, any&gt;</div>
+            <div class="cheat-good">✅ Zod/io-ts for runtime validation</div>
+            <div class="cheat-why">Schema validation at API boundaries</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ String enums for user input</div>
+            <div class="cheat-good">✅ const assertions + Set.has()</div>
+            <div class="cheat-why">Type-safe input validation</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Return Promise&lt;any&gt;</div>
+            <div class="cheat-good">✅ Return Promise&lt;Result&lt;T, Error&gt;&gt;</div>
+            <div class="cheat-why">Force error handling at compile time</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Mutable shared state</div>
+            <div class="cheat-good">✅ Readonly&lt;T&gt; and readonly arrays</div>
+            <div class="cheat-why">Immutability prevents side effects</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 TypeScript Security Patterns</h4>
+          <ul>
+            <li><code>satisfies</code> operator validates without widening types</li>
+            <li>Template literal types can validate string formats at compile time</li>
+            <li><code>NoInfer&lt;T&gt;</code> prevents type inference attacks in generics</li>
+            <li>Use <code>strictNullChecks</code> - it catches SO many bugs</li>
+            <li>Branded types for IDs: <code>type UserId = string & { readonly __brand: unique symbol }</code></li>
+          </ul>
         </div>
       </div>
     `,
@@ -1518,6 +1688,52 @@ function getLanguageTips(language) {
           </span>
         </div>
       </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ Python Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ eval(user_input)</div>
+            <div class="cheat-good">✅ ast.literal_eval(user_input)</div>
+            <div class="cheat-why">Only parses literals, no code execution</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ pickle.loads(untrusted_data)</div>
+            <div class="cheat-good">✅ json.loads() or msgpack</div>
+            <div class="cheat-why">Pickle can execute arbitrary code!</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ os.system(f"cmd {user}")</div>
+            <div class="cheat-good">✅ subprocess.run([cmd, user], shell=False)</div>
+            <div class="cheat-why">Array args prevent shell injection</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ yaml.load(data)</div>
+            <div class="cheat-good">✅ yaml.safe_load(data)</div>
+            <div class="cheat-why">YAML can execute Python objects!</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ open(user_path).read()</div>
+            <div class="cheat-good">✅ Validate path with pathlib.resolve()</div>
+            <div class="cheat-why">Prevent path traversal ../../../etc/passwd</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ SQL f-strings: f"WHERE id={id}"</div>
+            <div class="cheat-good">✅ Parameterized: cursor.execute(sql, (id,))</div>
+            <div class="cheat-why">Prevents SQL injection attacks</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 Python Security Secrets</h4>
+          <ul>
+            <li><code>secrets</code> module for crypto-safe random tokens, not <code>random</code></li>
+            <li><code>hashlib.scrypt()</code> for password hashing with salt</li>
+            <li><code>defusedxml</code> library prevents XXE attacks in XML parsing</li>
+            <li>Use <code>bandit</code> to scan your code for security issues</li>
+            <li><code>__slots__</code> prevents dynamic attribute injection attacks</li>
+            <li>Virtual environments isolate dependencies - use them!</li>
+          </ul>
+        </div>
+      </div>
     `,
     php: `
       <div class="tips-box">
@@ -1567,6 +1783,52 @@ function getLanguageTips(language) {
             <strong>Traits + Anonymous Classes:</strong> PHP can do things that feel impossible!
             Create classes on the fly, compose behaviors with traits, build framework-level magic.
           </span>
+        </div>
+      </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ PHP Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ md5($password)</div>
+            <div class="cheat-good">✅ password_hash($password, PASSWORD_DEFAULT)</div>
+            <div class="cheat-why">Bcrypt with salt, auto-upgrades algorithm</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ mysql_query("SELECT * WHERE id=$id")</div>
+            <div class="cheat-good">✅ PDO prepared statements</div>
+            <div class="cheat-why">mysql_* is deprecated AND vulnerable</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ echo $userInput</div>
+            <div class="cheat-good">✅ echo htmlspecialchars($input, ENT_QUOTES)</div>
+            <div class="cheat-why">Prevents XSS in HTML context</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ include($_GET['page'].'.php')</div>
+            <div class="cheat-good">✅ Allowlist: in_array($page, $allowed)</div>
+            <div class="cheat-why">LFI/RFI is a top PHP vulnerability</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ unserialize($userInput)</div>
+            <div class="cheat-good">✅ json_decode($userInput)</div>
+            <div class="cheat-why">PHP Object Injection is devastating</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ header("Location: $url")</div>
+            <div class="cheat-good">✅ Validate with filter_var($url, FILTER_VALIDATE_URL)</div>
+            <div class="cheat-why">Open redirect prevention</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 PHP Security Arsenal</h4>
+          <ul>
+            <li><code>disable_functions</code> in php.ini: exec, system, shell_exec, passthru</li>
+            <li><code>open_basedir</code> restricts file access to specific directories</li>
+            <li><code>random_bytes()</code> for crypto-safe random data</li>
+            <li>Use <code>sodium_*</code> functions for modern encryption</li>
+            <li>Set <code>session.cookie_httponly = 1</code> to protect sessions</li>
+            <li>Composer <code>audit</code> command checks for vulnerable dependencies</li>
+          </ul>
         </div>
       </div>
     `,
@@ -1619,6 +1881,52 @@ function getLanguageTips(language) {
             <strong>Project Loom:</strong> Virtual threads are coming! Handle millions of concurrent tasks 
             with code as simple as sequential programming. Java's async revolution.
           </span>
+        </div>
+      </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ Java Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ new ObjectInputStream(untrusted)</div>
+            <div class="cheat-good">✅ JSON/Protobuf, or ObjectInputFilter</div>
+            <div class="cheat-why">Deserialization is Java's #1 vulnerability</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Runtime.exec(userInput)</div>
+            <div class="cheat-good">✅ ProcessBuilder with argument arrays</div>
+            <div class="cheat-why">Prevents shell injection attacks</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ SQL: "SELECT * WHERE id=" + id</div>
+            <div class="cheat-good">✅ PreparedStatement with parameters</div>
+            <div class="cheat-why">SQL injection still happens in 2025</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ new File(userPath)</div>
+            <div class="cheat-good">✅ Paths.get(base).resolve(user).normalize()</div>
+            <div class="cheat-why">Path traversal prevention</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ DocumentBuilder.parse(untrusted)</div>
+            <div class="cheat-good">✅ Disable external entities (XXE)</div>
+            <div class="cheat-why">XXE can read files, make requests</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Class.forName(userInput)</div>
+            <div class="cheat-good">✅ Allowlist of permitted classes</div>
+            <div class="cheat-why">Reflection can bypass security</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 Java Security Arsenal</h4>
+          <ul>
+            <li>Use <code>SecurityManager</code> (deprecated but still works) or custom ClassLoader</li>
+            <li><code>java.security.SecureRandom</code> for crypto, not <code>java.util.Random</code></li>
+            <li>OWASP Dependency Check scans for vulnerable libraries</li>
+            <li><code>sealed</code> classes (Java 17+) prevent unauthorized inheritance</li>
+            <li><code>record</code> classes are immutable by default - use them!</li>
+            <li>JEP 411: Security Manager deprecation - use containers instead</li>
+          </ul>
         </div>
       </div>
     `,
