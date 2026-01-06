@@ -920,8 +920,17 @@
 
     // Parse report filename to extract info
     function parseReportFilename(filename) {
-      // Format: 2026-01-06_security-report_17-50-55-146Z.html
-      const match = filename.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z(.*)?\.html/);
+      // Format 1: 2026-01-06_security-report_17-50-55-146Z.html (old)
+      // Format 2: 2026-01-06_security-report_2026-01-06_21-53-48-280Z.html (new)
+      
+      // Try new format first (with extra date in middle)
+      let match = filename.match(/(\d{4}-\d{2}-\d{2})_security-report_\d{4}-\d{2}-\d{2}_(\d{2})-(\d{2})-(\d{2})-(\d+)Z(.*)?\.html/);
+      
+      // Fall back to old format
+      if (!match) {
+        match = filename.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z(.*)?\.html/);
+      }
+      
       if (!match) return null;
       
       const [, date, hours, minutes, seconds, ms, suffix] = match;
