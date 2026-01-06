@@ -48,6 +48,8 @@ services:
       dockerfile: Dockerfile.production
     expose:
       - "3001"
+    volumes:
+      - ./tests/reports:/app/tests/reports:ro
     environment:
       - NODE_ENV=production
       - PORT=3001

@@ -349,10 +349,23 @@ async function generateReport() {
     htmlReport
   );
   
+  // Generate Hebrew version
+  const hebrewHtmlFileName = `${datePrefix}_security-report_${timeStamp}_he.html`;
+  const hebrewHtmlReport = generateHebrewHTMLReport(jsonReport);
+  await fs.writeFile(
+    path.join(CONFIG.reportDir, hebrewHtmlFileName),
+    hebrewHtmlReport
+  );
+  await fs.writeFile(
+    path.join(CONFIG.reportDir, 'security-report-latest-he.html'),
+    hebrewHtmlReport
+  );
+  
   // Update the log messages
   results.reportFiles = {
     json: jsonFileName,
     html: htmlFileName,
+    htmlHebrew: hebrewHtmlFileName,
   };
 }
 

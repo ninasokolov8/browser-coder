@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔓 Hack Lab - Security Reports Hub</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --border-color: #334155;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Terminal-style background animation */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at top left, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      font-size: 2rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #10b981, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .lang-toggle {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .lang-btn {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .lang-btn:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Intro Section */
+    .intro {
+      text-align: center;
+      padding: 2rem 0 3rem;
+    }
+
+    .intro h2 {
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-primary);
+    }
+
+    .intro p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    /* Reports Grid */
+    .reports-section {
+      margin-top: 1rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-header h3 {
+      font-size: 1.25rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 500px) {
+      .reports-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Report Card */
+    .report-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .report-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #6366f1);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .report-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);
+    }
+
+    .report-card:hover::before {
+      opacity: 1;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .report-date {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .report-time {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .report-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+
+    .badge-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .report-stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .report-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .report-stat .value {
+      font-weight: 600;
+    }
+
+    .report-stat.passed .value { color: var(--success); }
+    .report-stat.failed .value { color: var(--danger); }
+
+    .report-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 0.6rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .action-btn-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+    }
+
+    .action-btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .action-btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .action-btn-secondary:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    .action-btn-hebrew {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      border: none;
+    }
+
+    .action-btn-hebrew:hover {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    }
+
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      margin-top: 3rem;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Terminal decoration */
+    .terminal-line {
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      color: var(--accent);
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon">🔓</span>
+        <div>
+          <h1>Hack Lab</h1>
+          <div class="logo-subtitle terminal-line">$ cat security_reports/*.html</div>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="lang-toggle">
+          <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+          <button class="lang-btn" data-lang="he">🇮🇱 עברית</button>
+        </div>
+        <a href="/" class="back-btn">
+          <span>←</span>
+          <span data-i18n="back">Back to Editor</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <h2 data-i18n="title">🛡️ Security Test Reports</h2>
+      <p data-i18n="subtitle">
+        Explore our security test results. Learn how hackers exploit vulnerabilities, 
+        discover mind-blowing security facts, and see how we keep your code safe.
+      </p>
+    </section>
+
+    <div class="stats-bar" id="stats-bar">
+      <!-- Stats populated by JS -->
+    </div>
+
+    <section class="reports-section">
+      <div class="section-header">
+        <h3>
+          <span>📋</span>
+          <span data-i18n="reportsTitle">Available Reports</span>
+        </h3>
+      </div>
+      
+      <div id="reports-container" class="reports-grid">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <p data-i18n="loading">Loading reports...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>🔒 Browser Coder Security Suite | <a href="/">Return to Editor</a></p>
+    <p class="terminal-line" style="margin-top: 0.5rem;">$ echo "Stay curious. Stay secure."</p>
+  </footer>
+
+  <script>
+    // Internationalization
+    const i18n = {
+      en: {
+        back: 'Back to Editor',
+        title: '🛡️ Security Test Reports',
+        subtitle: 'Explore our security test results. Learn how hackers exploit vulnerabilities, discover mind-blowing security facts, and see how we keep your code safe.',
+        reportsTitle: 'Available Reports',
+        loading: 'Loading reports...',
+        noReports: 'No reports found. Run the security tests to generate reports.',
+        viewEnglish: '🇬🇧 English',
+        viewHebrew: '🇮🇱 עברית',
+        downloadJson: '📥 JSON',
+        totalReports: 'Total Reports',
+        latestRate: 'Latest Pass Rate',
+        totalTests: 'Total Tests Run',
+        passed: 'Passed',
+        failed: 'Failed',
+      },
+      he: {
+        back: 'חזרה לעורך',
+        title: '🛡️ דוחות בדיקות אבטחה',
+        subtitle: 'חקור את תוצאות בדיקות האבטחה שלנו. למד איך האקרים מנצלים פרצות, גלה עובדות מדהימות על אבטחה, וראה איך אנחנו שומרים על הקוד שלך בטוח.',
+        reportsTitle: 'דוחות זמינים',
+        loading: 'טוען דוחות...',
+        noReports: 'לא נמצאו דוחות. הרץ את בדיקות האבטחה כדי ליצור דוחות.',
+        viewEnglish: '🇬🇧 English',
+        viewHebrew: '🇮🇱 עברית',
+        downloadJson: '📥 JSON',
+        totalReports: 'סה״כ דוחות',
+        latestRate: 'אחוז הצלחה אחרון',
+        totalTests: 'סה״כ בדיקות',
+        passed: 'עברו',
+        failed: 'נכשלו',
+      }
+    };
+
+    let currentLang = 'en';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (i18n[lang][key]) {
+          el.textContent = i18n[lang][key];
+        }
+      });
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+    }
+
+    // Language toggle
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+    });
+
+    // Parse report filename to extract info
+    function parseReportFilename(filename) {
+      // Format: 2026-01-06_security-report_17-50-55-146Z.html
+      const match = filename.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z(.*)?\.html/);
+      if (!match) return null;
+      
+      const [, date, hours, minutes, seconds, ms, suffix] = match;
+      const isHebrew = suffix === '_he';
+      
+      return {
+        date,
+        time: `${hours}:${minutes}:${seconds}`,
+        timestamp: `${date}T${hours}:${minutes}:${seconds}.${ms}Z`,
+        isHebrew,
+        jsonFile: filename.replace('.html', '.json').replace('_he', ''),
+      };
+    }
+
+    // Format date for display
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+
+    // Load and display reports
+    async function loadReports() {
+      const container = document.getElementById('reports-container');
+      
+      try {
+        // Fetch the reports list from the server API
+        const response = await fetch('/api/reports');
+        
+        if (!response.ok) {
+          throw new Error('Failed to load reports');
+        }
+        
+        const reports = await response.json();
+        
+        if (!reports || reports.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+              <div class="empty-state-icon">📭</div>
+              <p data-i18n="noReports">${i18n[currentLang].noReports}</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Group reports (pair English and Hebrew)
+        const reportGroups = {};
+        reports.forEach(r => {
+          if (r.type === 'html') {
+            const info = parseReportFilename(r.name);
+            if (info) {
+              const key = `${info.date}_${info.time}`;
+              if (!reportGroups[key]) {
+                reportGroups[key] = { 
+                  date: info.date, 
+                  time: info.time, 
+                  timestamp: info.timestamp,
+                  english: null, 
+                  hebrew: null, 
+                  json: null,
+                  summary: r.summary 
+                };
+              }
+              if (info.isHebrew) {
+                reportGroups[key].hebrew = r.name;
+              } else {
+                reportGroups[key].english = r.name;
+                if (r.summary) reportGroups[key].summary = r.summary;
+              }
+            }
+          } else if (r.type === 'json' && !r.name.includes('latest')) {
+            const info = parseReportFilename(r.name.replace('.json', '.html'));
+            if (info) {
+              const key = `${info.date}_${info.time}`;
+              if (!reportGroups[key]) {
+                reportGroups[key] = { date: info.date, time: info.time, timestamp: info.timestamp };
+              }
+              reportGroups[key].json = r.name;
+            }
+          }
+        });
+
+        // Sort by date (newest first)
+        const sortedGroups = Object.values(reportGroups)
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Update stats
+        const statsBar = document.getElementById('stats-bar');
+        const latestSummary = sortedGroups[0]?.summary;
+        statsBar.innerHTML = `
+          <div class="stat-item">
+            <span class="stat-value">${sortedGroups.length}</span>
+            <span class="stat-label" data-i18n="totalReports">${i18n[currentLang].totalReports}</span>
+          </div>
+          ${latestSummary ? `
+          <div class="stat-item">
+            <span class="stat-value">${latestSummary.passRate}</span>
+            <span class="stat-label" data-i18n="latestRate">${i18n[currentLang].latestRate}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">${latestSummary.total}</span>
+            <span class="stat-label" data-i18n="totalTests">${i18n[currentLang].totalTests}</span>
+          </div>
+          ` : ''}
+        `;
+
+        // Render report cards
+        container.innerHTML = sortedGroups.map(group => {
+          const summary = group.summary || {};
+          const passRate = parseFloat(summary.passRate) || 0;
+          const badgeClass = passRate === 100 ? 'badge-success' : passRate >= 90 ? 'badge-warning' : 'badge-danger';
+          
+          return `
+            <div class="report-card">
+              <div class="report-header">
+                <div>
+                  <div class="report-date">📅 ${formatDate(group.date)}</div>
+                  <div class="report-time">🕐 ${group.time} UTC</div>
+                </div>
+                ${summary.passRate ? `
+                <span class="report-badge ${badgeClass}">${summary.passRate}</span>
+                ` : ''}
+              </div>
+              
+              ${summary.passed !== undefined ? `
+              <div class="report-stats">
+                <div class="report-stat passed">
+                  <span>✓</span>
+                  <span class="value">${summary.passed}</span>
+                  <span data-i18n="passed">${i18n[currentLang].passed}</span>
+                </div>
+                <div class="report-stat failed">
+                  <span>✗</span>
+                  <span class="value">${summary.failed}</span>
+                  <span data-i18n="failed">${i18n[currentLang].failed}</span>
+                </div>
+              </div>
+              ` : ''}
+              
+              <div class="report-actions">
+                ${group.english ? `
+                <a href="${group.english}" target="_blank" class="action-btn action-btn-primary">
+                  🇬🇧 English
+                </a>
+                ` : ''}
+                ${group.hebrew ? `
+                <a href="${group.hebrew}" target="_blank" class="action-btn action-btn-hebrew">
+                  🇮🇱 עברית
+                </a>
+                ` : ''}
+                ${group.json ? `
+                <a href="${group.json}" download class="action-btn action-btn-secondary">
+                  📥 JSON
+                </a>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error loading reports:', error);
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">⚠️</div>
+            <p>Failed to load reports. Make sure the server is running.</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize
+    loadReports();
+  </script>
+</body>
+</html>

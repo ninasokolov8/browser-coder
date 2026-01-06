@@ -1299,6 +1299,60 @@ app.get("/api/stats", (req, res) => {
   res.json(executor.getStats());
 });
 
+// Reports API - list all security reports
+app.get("/api/reports", async (req, res) => {
+  try {
+    const reportsDir = path.join(__dirname, "tests", "reports");
+    if (!fs.existsSync(reportsDir)) {
+      return res.json([]);
+    }
+    
+    const files = fs.readdirSync(reportsDir);
+    const reports = [];
+    
+    for (const file of files) {
+      if (file === 'index.html') continue; // Skip the hub page
+      
+      const isHtml = file.endsWith('.html');
+      const isJson = file.endsWith('.json');
+      
+      if (isHtml || isJson) {
+        const report = {
+          name: file,
+          type: isHtml ? 'html' : 'json',
+          path: `/reports/${file}`,
+        };
+        
+        // For JSON files, try to extract summary
+        if (isJson && !file.includes('latest')) {
+          try {
+            const content = fs.readFileSync(path.join(reportsDir, file), 'utf8');
+            const data = JSON.parse(content);
+            if (data.summary) {
+              report.summary = data.summary;
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        reports.push(report);
+      }
+    }
+    
+    res.json(reports);
+  } catch (err) {
+    log('error', 'reports_api_error', { error: err.message });
+    res.status(500).json({ error: 'Failed to load reports' });
+  }
+});
+
+// Serve reports directory
+const reportsPath = path.join(__dirname, "tests", "reports");
+if (fs.existsSync(reportsPath)) {
+  app.use("/reports", express.static(reportsPath));
+}
+
 // Serve static files in production
 if (!CONFIG.isDev) {
   const distPath = path.join(__dirname, "dist");
