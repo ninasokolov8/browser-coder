@@ -1449,7 +1449,7 @@ function getLanguageTips(language) {
             Python's <code>__getattr__</code>, <code>__setattr__</code> can build amazing abstractions!
             Create lazy-loading objects, automatic API wrappers, or debugging proxies.
             <strong>Example:</strong> Django ORM uses these to make database queries feel like Python objects.
-          </span>
+          </div>
         </div>
       </div>
       <div class="mindblown-box">
