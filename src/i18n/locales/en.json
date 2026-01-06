@@ -1,0 +1,58 @@
+{
+  "app.title": "Browser Coder - Web IDE",
+  "app.logo": "Browser Coder",
+  
+  "titlebar.run": "Run",
+  "titlebar.download": "Download",
+  "titlebar.clear": "Clear",
+  "titlebar.hackLab": "Hack Lab",
+  
+  "sidebar.explorer": "Explorer",
+  "sidebar.search": "Search",
+  "sidebar.runDebug": "Run and Debug",
+  "sidebar.newFile": "New File",
+  "sidebar.newFolder": "New Folder",
+  "sidebar.refresh": "Refresh",
+  "sidebar.clear": "Clear",
+  "sidebar.downloadProject": "Download Project",
+  "sidebar.clearCache": "Clear Cache",
+  
+  "search.placeholder": "Search",
+  "search.replace": "Replace",
+  "search.regex": "Use Regular Expression",
+  "search.matchCase": "Match Case",
+  "search.matchWord": "Match Whole Word",
+  "search.replaceAll": "Replace All",
+  "search.results": "{{count}} results in {{files}} files",
+  "search.noResults": "Type to search across all files",
+  
+  "run.runAll": "Run All",
+  "run.runFile": "Run Entire File",
+  "run.functions": "Functions",
+  "run.noFunctions": "No functions detected",
+  
+  "context.newFile": "New File",
+  "context.newFolder": "New Folder",
+  "context.rename": "Rename",
+  "context.delete": "Delete",
+  
+  "editor.noFile": "No file open",
+  "editor.createFile": "Create a new file to start coding",
+  "editor.newFile": "New File",
+  
+  "panel.output": "Output",
+  "panel.clear": "Clear",
+  "panel.toggle": "Toggle Panel",
+  "panel.placeholder": "(Run code to see output here)",
+  
+  "status.line": "Ln {{line}}, Col {{col}}",
+  "status.encoding": "UTF-8",
+  "status.branch": "main",
+  "status.errors": "{{count}}",
+  
+  "dialog.confirmDelete": "Are you sure you want to delete '{{name}}'?",
+  "dialog.unsavedChanges": "You have unsaved changes. Do you want to save before closing?",
+  
+  "language.select": "Language",
+  "theme.select": "Theme"
+}

@@ -1,0 +1,58 @@
+{
+  "app.title": "Browser Coder - סביבת פיתוח",
+  "app.logo": "Browser Coder",
+  
+  "titlebar.run": "הפעל",
+  "titlebar.download": "הורד",
+  "titlebar.clear": "נקה",
+  "titlebar.hackLab": "מעבדת האק",
+  
+  "sidebar.explorer": "סייר",
+  "sidebar.search": "חיפוש",
+  "sidebar.runDebug": "הפעלה וניפוי שגיאות",
+  "sidebar.newFile": "קובץ חדש",
+  "sidebar.newFolder": "תיקייה חדשה",
+  "sidebar.refresh": "רענן",
+  "sidebar.clear": "נקה",
+  "sidebar.downloadProject": "הורד פרויקט",
+  "sidebar.clearCache": "נקה מטמון",
+  
+  "search.placeholder": "חיפוש",
+  "search.replace": "החלף",
+  "search.regex": "השתמש בביטוי רגולרי",
+  "search.matchCase": "התאם רישיות",
+  "search.matchWord": "התאם מילה שלמה",
+  "search.replaceAll": "החלף הכל",
+  "search.results": "{{count}} תוצאות ב-{{files}} קבצים",
+  "search.noResults": "הקלד כדי לחפש בכל הקבצים",
+  
+  "run.runAll": "הפעל הכל",
+  "run.runFile": "הפעל את כל הקובץ",
+  "run.functions": "פונקציות",
+  "run.noFunctions": "לא זוהו פונקציות",
+  
+  "context.newFile": "קובץ חדש",
+  "context.newFolder": "תיקייה חדשה",
+  "context.rename": "שנה שם",
+  "context.delete": "מחק",
+  
+  "editor.noFile": "לא נפתח קובץ",
+  "editor.createFile": "צור קובץ חדש כדי להתחיל לכתוב קוד",
+  "editor.newFile": "קובץ חדש",
+  
+  "panel.output": "פלט",
+  "panel.clear": "נקה",
+  "panel.toggle": "הצג/הסתר פאנל",
+  "panel.placeholder": "(הפעל קוד כדי לראות פלט כאן)",
+  
+  "status.line": "שורה {{line}}, עמודה {{col}}",
+  "status.encoding": "UTF-8",
+  "status.branch": "main",
+  "status.errors": "{{count}}",
+  
+  "dialog.confirmDelete": "האם אתה בטוח שברצונך למחוק את '{{name}}'?",
+  "dialog.unsavedChanges": "יש לך שינויים שלא נשמרו. האם לשמור לפני סגירה?",
+  
+  "language.select": "שפה",
+  "theme.select": "ערכת נושא"
+}

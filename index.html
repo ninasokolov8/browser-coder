@@ -749,6 +749,84 @@
 
       /* ===== UTILITIES ===== */
       .hidden { display: none !important; }
+
+      /* ===== RTL SUPPORT ===== */
+      .rtl {
+        direction: rtl;
+        text-align: right;
+      }
+      .rtl #app {
+        grid-template-columns: 1fr 220px 48px;
+        grid-template-areas:
+          "titlebar titlebar activitybar"
+          "main sidebar activitybar"
+          "statusbar statusbar statusbar";
+      }
+      .rtl #app:has(#sidebar.collapsed) {
+        grid-template-columns: 1fr 0 48px;
+      }
+      .rtl #activitybar {
+        border-left: 1px solid var(--border-color);
+        border-right: none;
+      }
+      .rtl .activity-icon {
+        border-left: none;
+        border-right: 2px solid transparent;
+      }
+      .rtl .activity-icon.active {
+        border-right-color: var(--icon-active);
+      }
+      .rtl #sidebar {
+        border-right: none;
+        border-left: 1px solid var(--border-color);
+      }
+      .rtl #sidebar-resize {
+        right: auto;
+        left: -3px;
+      }
+      .rtl .tree-children {
+        margin-left: 0;
+        margin-right: 12px;
+      }
+      .rtl .tree-item-chevron.expanded {
+        transform: rotate(-90deg);
+      }
+      .rtl #titlebar .controls {
+        margin-left: 0;
+        margin-right: auto;
+      }
+      .rtl .panel-actions {
+        margin-left: 0;
+        margin-right: auto;
+      }
+      .rtl .status-right {
+        flex-direction: row-reverse;
+      }
+      .rtl .search-match {
+        padding: 2px 28px 2px 8px;
+      }
+      .rtl .search-match-line {
+        text-align: left;
+        margin-right: 0;
+        margin-left: 8px;
+      }
+      /* Language selector */
+      #lang-selector {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+      }
+      #ui-lang {
+        height: 24px;
+        padding: 0 6px;
+        background: var(--bg-sidebar);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 3px;
+        font-size: 12px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body class="dark-theme">
@@ -777,25 +855,32 @@
       <div id="titlebar">
         <div class="logo">
           <span>📟</span>
-          <span>Browser Coder</span>
+          <span data-i18n="app.logo">Browser Coder</span>
         </div>
         <span id="status" style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
         <div class="controls">
-          <button id="btn-hack-lab" class="btn btn-hack" title="Security Reports & Hacking Education" onclick="window.open('/reports/', '_blank')">🔓 Hack Lab</button>
+          <button id="btn-hack-lab" class="btn btn-hack" data-i18n-title="titlebar.hackLab" onclick="window.open('/reports/', '_blank')">🔓 <span data-i18n="titlebar.hackLab">Hack Lab</span></button>
           <span class="titlebar-separator"></span>
-          <button id="btn-download-project" class="btn btn-secondary" title="Download Project">📦 Download</button>
-          <button id="btn-clear-cache" class="btn btn-danger" title="Clear Cache">🗑️ Clear</button>
+          <button id="btn-download-project" class="btn btn-secondary" data-i18n-title="sidebar.downloadProject">📦 <span data-i18n="titlebar.download">Download</span></button>
+          <button id="btn-clear-cache" class="btn btn-danger" data-i18n-title="sidebar.clearCache">🗑️ <span data-i18n="titlebar.clear">Clear</span></button>
           <span class="titlebar-separator"></span>
           <select id="lang" title="Language">
             <option value="javascript">JavaScript</option>
           </select>
           <select id="version" title="Version"></select>
-          <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ Run</button>
+          <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
           <button id="download" class="btn btn-secondary" title="Download file">↓</button>
           <select id="theme" title="Theme">
             <option value="vs-dark">Dark</option>
             <option value="vs">Light</option>
           </select>
+          <span class="titlebar-separator"></span>
+          <div id="lang-selector">
+            <select id="ui-lang" title="Language">
+              <option value="en">EN</option>
+              <option value="he">עב</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -805,11 +890,11 @@
         <!-- Explorer Panel -->
         <div id="explorer-panel" class="sidebar-panel active">
           <div class="sidebar-header">
-            <span>Explorer</span>
+            <span data-i18n="sidebar.explorer">Explorer</span>
             <div class="sidebar-actions">
-              <button class="sidebar-btn" id="btn-new-file" title="New File">📄</button>
-              <button class="sidebar-btn" id="btn-new-folder" title="New Folder">📁</button>
-              <button class="sidebar-btn" id="btn-refresh" title="Refresh">🔄</button>
+              <button class="sidebar-btn" id="btn-new-file" data-i18n-title="sidebar.newFile">📄</button>
+              <button class="sidebar-btn" id="btn-new-folder" data-i18n-title="sidebar.newFolder">📁</button>
+              <button class="sidebar-btn" id="btn-refresh" data-i18n-title="sidebar.refresh">🔄</button>
             </div>
           </div>
           <div class="sidebar-content">
@@ -822,22 +907,22 @@
         <!-- Search Panel -->
         <div id="search-panel" class="sidebar-panel">
           <div class="sidebar-header">
-            <span>Search</span>
+            <span data-i18n="sidebar.search">Search</span>
             <div class="sidebar-actions">
-              <button class="sidebar-btn" id="btn-clear-search" title="Clear">✕</button>
+              <button class="sidebar-btn" id="btn-clear-search" data-i18n-title="sidebar.clear">✕</button>
             </div>
           </div>
           <div class="search-panel active">
             <div class="search-inputs">
               <div class="search-row">
-                <input type="text" id="search-input" class="search-input" placeholder="Search">
-                <button class="search-btn" id="btn-regex" title="Use Regular Expression">.*</button>
-                <button class="search-btn" id="btn-case" title="Match Case">Aa</button>
-                <button class="search-btn" id="btn-word" title="Match Whole Word">ab</button>
+                <input type="text" id="search-input" class="search-input" data-i18n-placeholder="search.placeholder" placeholder="Search">
+                <button class="search-btn" id="btn-regex" data-i18n-title="search.regex">.*</button>
+                <button class="search-btn" id="btn-case" data-i18n-title="search.matchCase">Aa</button>
+                <button class="search-btn" id="btn-word" data-i18n-title="search.matchWord">ab</button>
               </div>
               <div class="search-row">
-                <input type="text" id="replace-input" class="search-input" placeholder="Replace">
-                <button class="search-btn" id="btn-replace-all" title="Replace All">⟳</button>
+                <input type="text" id="replace-input" class="search-input" data-i18n-placeholder="search.replace" placeholder="Replace">
+                <button class="search-btn" id="btn-replace-all" data-i18n-title="search.replaceAll">⟳</button>
               </div>
             </div>
             <div id="search-summary" class="search-summary hidden">
@@ -845,7 +930,7 @@
               <button class="search-btn primary" id="btn-replace-all-files" title="Replace All">Replace All</button>
             </div>
             <div id="search-results" class="search-results">
-              <div class="search-no-results">Type to search across all files</div>
+              <div class="search-no-results" data-i18n="search.noResults">Type to search across all files</div>
             </div>
           </div>
         </div>
@@ -853,24 +938,24 @@
         <!-- Run Panel -->
         <div id="run-panel" class="sidebar-panel">
           <div class="sidebar-header">
-            <span>Run and Debug</span>
+            <span data-i18n="sidebar.runDebug">Run and Debug</span>
             <div class="sidebar-actions">
-              <button class="sidebar-btn" id="btn-refresh-functions" title="Refresh">🔄</button>
+              <button class="sidebar-btn" id="btn-refresh-functions" data-i18n-title="sidebar.refresh">🔄</button>
             </div>
           </div>
           <div class="sidebar-content">
             <div class="run-section">
-              <div class="run-section-header">▶ Run All</div>
+              <div class="run-section-header">▶ <span data-i18n="run.runAll">Run All</span></div>
               <div class="run-item run-all" id="run-all-code">
                 <span class="run-item-icon">▶</span>
-                <span class="run-item-name">Run Entire File</span>
+                <span class="run-item-name" data-i18n="run.runFile">Run Entire File</span>
                 <span class="run-item-shortcut">Ctrl+Enter</span>
               </div>
             </div>
             <div class="run-section">
-              <div class="run-section-header">𝑓 Functions</div>
+              <div class="run-section-header">𝑓 <span data-i18n="run.functions">Functions</span></div>
               <div id="function-list">
-                <div class="tree-empty">No functions detected</div>
+                <div class="tree-empty" data-i18n="run.noFunctions">No functions detected</div>
               </div>
             </div>
           </div>
@@ -879,11 +964,11 @@
 
       <!-- Context Menu (hidden by default) -->
       <div id="context-menu" class="context-menu hidden">
-        <div class="context-menu-item" data-action="new-file">📄 New File</div>
-        <div class="context-menu-item" data-action="new-folder">📁 New Folder</div>
+        <div class="context-menu-item" data-action="new-file">📄 <span data-i18n="context.newFile">New File</span></div>
+        <div class="context-menu-item" data-action="new-folder">📁 <span data-i18n="context.newFolder">New Folder</span></div>
         <div class="context-menu-separator"></div>
-        <div class="context-menu-item" data-action="rename">✏️ Rename</div>
-        <div class="context-menu-item danger" data-action="delete">🗑️ Delete</div>
+        <div class="context-menu-item" data-action="rename">✏️ <span data-i18n="context.rename">Rename</span></div>
+        <div class="context-menu-item danger" data-action="delete">🗑️ <span data-i18n="context.delete">Delete</span></div>
       </div>
 
       <!-- Main Editor Area -->
@@ -896,10 +981,10 @@
           <div id="editor-empty-state">
             <div class="empty-state-content">
               <div class="empty-state-icon">📝</div>
-              <div class="empty-state-title">No file open</div>
-              <div class="empty-state-subtitle">Create a new file to start coding</div>
+              <div class="empty-state-title" data-i18n="editor.noFile">No file open</div>
+              <div class="empty-state-subtitle" data-i18n="editor.createFile">Create a new file to start coding</div>
               <button id="empty-state-new-file" class="empty-state-btn">
-                <span class="plus-icon">+</span> New File
+                <span class="plus-icon">+</span> <span data-i18n="editor.newFile">New File</span>
               </button>
             </div>
           </div>
@@ -908,14 +993,14 @@
           <div id="panel-resize"></div>
           <div id="panel-header">
             <div class="panel-tabs">
-              <div class="panel-tab active" data-tab="output">Output</div>
+              <div class="panel-tab active" data-tab="output" data-i18n="panel.output">Output</div>
             </div>
             <div class="panel-actions">
-              <button id="clearOutput" class="panel-btn" title="Clear">🗑</button>
-              <button id="togglePanel" class="panel-btn" title="Toggle Panel">⌃</button>
+              <button id="clearOutput" class="panel-btn" data-i18n-title="panel.clear">🗑</button>
+              <button id="togglePanel" class="panel-btn" data-i18n-title="panel.toggle">⌃</button>
             </div>
           </div>
-          <div id="panel-content">(Run code to see output here)</div>
+          <div id="panel-content" data-i18n="panel.placeholder">(Run code to see output here)</div>
         </div>
       </div>
 

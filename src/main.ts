@@ -5,6 +5,7 @@ import JSZip from "jszip";
 import { getAllLanguages, getLanguage, getStarterAsync, preloadDefaultStarters, preloadStarters } from "./languages";
 import type { LoadedLanguage, VersionConfig } from "./languages";
 import { TabManager, Tab } from "./tabs";
+import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLanguages, isRTL } from "./i18n";
 
 // Configure Monaco workers for syntax highlighting and IntelliSense
 self.MonacoEnvironment = {
@@ -41,6 +42,7 @@ const btnDownloadProject = document.getElementById("btn-download-project")!;
 const btnClearCache = document.getElementById("btn-clear-cache")!;
 const editorEmptyState = document.getElementById("editor-empty-state")!;
 const emptyStateNewFileBtn = document.getElementById("empty-state-new-file")!;
+const uiLangSel = document.getElementById("ui-lang") as HTMLSelectElement;
 
 // Search panel elements
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -134,6 +136,18 @@ function downloadFile(filename: string, content: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Update grid layout for RTL/LTR
+function updateGridForRTL() {
+  const appEl = document.getElementById("app")!;
+  const sidebarWidth = sidebarEl.offsetWidth || 220;
+  
+  if (isRTL()) {
+    appEl.style.gridTemplateColumns = `1fr ${sidebarWidth}px 48px`;
+  } else {
+    appEl.style.gridTemplateColumns = `48px ${sidebarWidth}px 1fr`;
+  }
 }
 
 // Monaco target mapping
@@ -242,6 +256,19 @@ function applyTheme(theme: string) {
 // Main application
 (async function main() {
   setStatus("Loading languages…");
+
+  // Initialize i18n (UI languages: English, Hebrew, etc.)
+  await initI18n();
+  
+  // Set UI language selector to current language
+  uiLangSel.value = getUILang();
+  
+  // Handle UI language change
+  uiLangSel.addEventListener('change', async () => {
+    await setLanguage(uiLangSel.value);
+    // Update grid template for RTL
+    updateGridForRTL();
+  });
 
   // Preload only default starters for fast initial load
   await preloadDefaultStarters();
@@ -2124,11 +2151,14 @@ function applyTheme(theme: string) {
 
   // Status bar - cursor position
   editor.onDidChangeCursorPosition((e) => {
-    statusLineEl.textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+    statusLineEl.textContent = t('status.line', { line: e.position.lineNumber, col: e.position.column });
   });
 
   // Update status bar language
   statusLangEl.textContent = currentLang.name;
+  
+  // Apply initial RTL if needed
+  updateGridForRTL();
 
   // Initial file tree render
   renderFileTree(tabManager);
