@@ -1446,11 +1446,13 @@ app.get("/api/reports/output", (req, res) => {
   });
 });
 
-// Serve security reports directory
+// Serve security reports directory (always enable - volume mount creates it)
 const reportsPath = path.join(__dirname, "security", "reports");
-if (fs.existsSync(reportsPath)) {
-  app.use("/reports", express.static(reportsPath));
+// Ensure directory exists
+if (!fs.existsSync(reportsPath)) {
+  fs.mkdirSync(reportsPath, { recursive: true });
 }
+app.use("/reports", express.static(reportsPath, { index: 'index.html' }));
 
 // Serve static files in production
 if (!CONFIG.isDev) {
