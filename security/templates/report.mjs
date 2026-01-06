@@ -178,7 +178,7 @@ export function generateReport(data, lang = 'en') {
     : 'You\'ve learned about dangerous security techniques - now here\'s how to use that same knowledge to build amazing things!';
   const factsTitle = lang === 'he' ? 'עובדות מדהימות' : 'Mind-Blowing Facts';
   const cheatSheetTitle = lang === 'he' ? 'גליון עזר אבטחה' : 'Security Cheat Sheet';
-  const defenseTitle = lang === 'he' ? 'טיפי הגנה' : 'Defense Tips';
+  const proTipsTitle = lang === 'he' ? 'טיפים מקצועיים' : 'Pro Security Tips';
   
   let useForGoodHTML = `
     <div class="educational-intro">
@@ -194,7 +194,7 @@ export function generateReport(data, lang = 'en') {
     <div class="edu-sections">
   `;
   
-  // Add tips for each language
+  // Add tips for each language with full cheat sheets
   for (const language of languages) {
     const langTips = t.languageTips[language];
     if (!langTips) continue;
@@ -204,6 +204,7 @@ export function generateReport(data, lang = 'en') {
         <h3 class="edu-lang-title">${getLanguageIcon(language)} ${language.toUpperCase()} - ${langTips.title}</h3>
         
         <div class="tips-box">
+          <h4>💡 ${lang === 'he' ? 'השתמש בכוחות לטובה' : 'Use These Powers For Good'}</h4>
           ${langTips.tips.map(tip => `
             <div class="tip">
               <div class="tip-title">${tip.title}</div>
@@ -212,7 +213,7 @@ export function generateReport(data, lang = 'en') {
           `).join('')}
         </div>
         
-        ${langTips.facts ? `
+        ${langTips.facts && langTips.facts.length > 0 ? `
           <div class="mindblown-box">
             <h4>🤯 ${factsTitle}</h4>
             ${langTips.facts.map(fact => `
@@ -223,14 +224,91 @@ export function generateReport(data, lang = 'en') {
             `).join('')}
           </div>
         ` : ''}
+        
+        ${langTips.cheatSheet && langTips.cheatSheet.length > 0 ? `
+          <div class="cheatsheet-box">
+            <h4>🛡️ ${language.toUpperCase()} ${cheatSheetTitle}</h4>
+            <div class="cheat-grid">
+              ${langTips.cheatSheet.map(item => `
+                <div class="cheat-item">
+                  <div class="cheat-bad">❌ ${item.bad}</div>
+                  <div class="cheat-good">✅ ${item.good}</div>
+                  <div class="cheat-why">${item.why}</div>
+                </div>
+              `).join('')}
+            </div>
+            ${langTips.proTips && langTips.proTips.length > 0 ? `
+              <div class="cheat-pro-tips">
+                <h5>🔥 ${proTipsTitle}</h5>
+                <ul>
+                  ${langTips.proTips.map(tip => `<li>${tip}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
       </div>
     `;
   }
   
-  // Add security cheat sheet
+  // Add category tips section
+  const categoryTipsTitle = lang === 'he' ? 'הבן את סוגי ההתקפות' : 'Understand Attack Types';
+  if (t.categoryTips) {
+    useForGoodHTML += `
+      <div class="category-tips-section">
+        <h3>📚 ${categoryTipsTitle}</h3>
+    `;
+    
+    for (const category of categories) {
+      const catTips = t.categoryTips[category];
+      if (!catTips) continue;
+      
+      useForGoodHTML += `
+        <div class="category-tip-card">
+          <div class="explain-box">
+            <h4>🎯 ${catTips.title}</h4>
+            <div class="explain-simple">
+              <p><strong>${lang === 'he' ? 'במילים פשוטות:' : 'In Simple Words:'}</strong> ${catTips.simple}</p>
+              <div class="explain-example">
+                <strong>${lang === 'he' ? 'דוגמה מהעולם האמיתי:' : 'Real-World Example:'}</strong> ${catTips.example}
+              </div>
+            </div>
+          </div>
+          
+          ${catTips.tips && catTips.tips.length > 0 ? `
+            <div class="tips-box">
+              <h5>💡 ${getCategoryIcon(category)} ${formatCategory(category, lang)} - ${lang === 'he' ? 'שימושים לטובה' : 'Use For Good'}</h5>
+              ${catTips.tips.map(tip => `
+                <div class="tip">
+                  <div class="tip-title">${tip.title}</div>
+                  <div class="tip-content">${tip.content}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          
+          ${catTips.facts && catTips.facts.length > 0 ? `
+            <div class="mindblown-box">
+              <h5>🤯 ${factsTitle}</h5>
+              ${catTips.facts.map(fact => `
+                <div class="fact">
+                  <span class="fact-emoji">${fact.emoji}</span>
+                  <span class="fact-content"><strong>${fact.title}:</strong> ${fact.content}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    useForGoodHTML += `</div>`;
+  }
+  
+  // Add general security cheat sheet
   useForGoodHTML += `
     <div class="cheatsheet-section">
-      <h3>📋 ${cheatSheetTitle}</h3>
+      <h3>📋 ${lang === 'he' ? 'עקרונות אבטחה כלליים' : 'General Security Principles'}</h3>
       <div class="cheatsheet-grid">
         <div class="cheat-card">
           <h4>🚫 ${lang === 'he' ? 'לעולם אל' : 'Never'}</h4>
@@ -253,7 +331,7 @@ export function generateReport(data, lang = 'en') {
           </ul>
         </div>
         <div class="cheat-card">
-          <h4>🛡️ ${defenseTitle}</h4>
+          <h4>🛡️ ${lang === 'he' ? 'עקרונות הגנה' : 'Defense Principles'}</h4>
           <ul>
             <li>${lang === 'he' ? 'הגנה בעומק - שכבות מרובות' : 'Defense in depth - multiple layers'}</li>
             <li>${lang === 'he' ? 'עיקרון ההרשאה המינימלית' : 'Principle of least privilege'}</li>

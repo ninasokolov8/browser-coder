@@ -339,6 +339,66 @@ export function getStyles(statusColor) {
     [dir="rtl"] .cheat-card li { padding-left: 0; padding-right: 1.5rem; }
     [dir="rtl"] .cheat-card li::before { left: auto; right: 0.5rem; }
     
+    /* Category Tips Section */
+    .category-tips-section {
+      margin-top: 2rem;
+    }
+    .category-tips-section > h3 {
+      color: #c4b5fd;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .category-tip-card {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      margin-bottom: 1.5rem;
+    }
+    
+    /* Explain Box */
+    .explain-box {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05));
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .explain-box h4 { color: #fbbf24; font-size: 1.25rem; margin-bottom: 1rem; }
+    .explain-simple p { color: #94a3b8; font-size: 1rem; line-height: 1.7; margin-bottom: 0.75rem; }
+    .explain-simple strong { color: #e2e8f0; }
+    .explain-example {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .explain-example strong { color: #fbbf24; display: block; margin-bottom: 0.5rem; }
+    
+    /* Nested headers in edu sections */
+    .edu-lang-section .tips-box h4,
+    .edu-lang-section .cheatsheet-box h4 { 
+      color: #4ade80; 
+      font-size: 1.1rem; 
+      margin-bottom: 1rem; 
+    }
+    .category-tip-card .tips-box h5,
+    .category-tip-card .mindblown-box h5 {
+      color: #c084fc;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .cheat-pro-tips h5 {
+      color: #fbbf24;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    
     /* Footer */
     .footer { text-align: center; padding: 2rem; margin-top: 2rem; border-top: 1px solid rgba(99, 102, 241, 0.2); color: #64748b; }
     .footer a { color: #6366f1; text-decoration: none; }
