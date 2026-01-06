@@ -939,12 +939,11 @@ class SmartExecutor {
         return { ...compileResult, phase: 'compile' };
       }
       
-      // SECURITY: Run with security manager and restricted permissions
+      // SECURITY: Run with memory limits (pattern validation handles security)
       return await this.runProcess('java', [
         '-Xmx128m',                              // Limit heap memory
         '-Xms32m',                               // Initial heap
         '-XX:MaxMetaspaceSize=64m',              // Limit metaspace
-        '-Djava.security.manager=allow',         // Enable security manager
         '-cp', this.tempDir,
         className
       ], javaTimeout);
@@ -980,7 +979,9 @@ class SmartExecutor {
       
       // Only add Java security manager for runtime, not compilation
       if (!options.skipJavaSecurityManager) {
-        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Djava.security.manager=default -Xmx128m';
+        // Note: We rely on pattern-based validation instead of Java SecurityManager
+        // because the default SecurityManager blocks even System.out.println()
+        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Xmx128m';
       } else {
         sanitizedEnv.JAVA_TOOL_OPTIONS = '-Xmx128m';  // Just memory limit for compiler
       }

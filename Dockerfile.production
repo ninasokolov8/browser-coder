@@ -42,7 +42,8 @@ RUN chown -R app:app /app && \
     chmod 644 /app/server.mjs && \
     find /app/languages -type d -exec chmod 755 {} \; && \
     find /app/languages -type f -exec chmod 444 {} \; && \
-    chmod 755 /app/tests/reports
+    chmod 755 /app/tests/reports && \
+    chmod 755 /app/security/reports
 
 # SECURITY: Remove unnecessary packages and shells after setup
 RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
