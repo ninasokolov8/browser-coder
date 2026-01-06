@@ -970,6 +970,26 @@ function generateHTMLReport(data) {
     
     /* Educational Tab */
     .edu-content { padding: 1.5rem; }
+    .edu-lang-section { display: none; }
+    .edu-lang-section.active { display: block; animation: fadeIn 0.3s ease; }
+    .edu-lang-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+      border-radius: 1rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .edu-lang-icon { font-size: 3rem; }
+    .edu-lang-header h2 { 
+      font-size: 1.75rem; 
+      color: #f8fafc;
+      background: linear-gradient(135deg, #f8fafc 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
     .edu-section {
       background: rgba(30, 41, 59, 0.6);
       border-radius: 1rem;
@@ -1170,7 +1190,17 @@ function generateHTMLReport(data) {
       
       <!-- Educational Tab -->
       <div class="tab-content" id="educational">
-        ${generateEducationalContent()}
+        <div class="sub-nav">
+          ${languages.map((lang, i) => `
+            <button class="sub-nav-btn ${i === 0 ? 'active' : ''}" data-target="${lang}">
+              ${getLanguageIcon(lang)} ${lang.toUpperCase()}
+            </button>
+          `).join('')}
+          <button class="sub-nav-btn" data-target="overview">
+            📖 Overview
+          </button>
+        </div>
+        ${generateEducationalContent(languages)}
       </div>
     </div>
     
@@ -1204,20 +1234,32 @@ function generateHTMLReport(data) {
         btn.classList.add('active');
         
         const target = btn.dataset.target;
-        const isLangTab = parent.id === 'by-language';
-        const sections = parent.querySelectorAll(isLangTab ? '.lang-section' : '.cat-section');
-        sections.forEach(s => {
-          s.classList.remove('active');
-          if (s.dataset[isLangTab ? 'language' : 'category'] === target) {
-            s.classList.add('active');
-          }
-        });
+        const tabId = parent.id;
+        
+        // Handle different tab types
+        if (tabId === 'by-language') {
+          parent.querySelectorAll('.lang-section').forEach(s => {
+            s.classList.remove('active');
+            if (s.dataset.language === target) s.classList.add('active');
+          });
+        } else if (tabId === 'by-category') {
+          parent.querySelectorAll('.cat-section').forEach(s => {
+            s.classList.remove('active');
+            if (s.dataset.category === target) s.classList.add('active');
+          });
+        } else if (tabId === 'educational') {
+          parent.querySelectorAll('.edu-lang-section').forEach(s => {
+            s.classList.remove('active');
+            if (s.dataset.eduLang === target) s.classList.add('active');
+          });
+        }
       });
     });
     
     // Initialize first sections
     document.querySelector('.lang-section')?.classList.add('active');
     document.querySelector('.cat-section')?.classList.add('active');
+    document.querySelector('.edu-lang-section')?.classList.add('active');
     
     // Auto-expand failed tests
     document.querySelectorAll('.test-card.fail .explanation').forEach(el => el.open = true);
@@ -1680,9 +1722,28 @@ function getCategoryTips(category) {
   return tips[category] || '';
 }
 
-function generateEducationalContent() {
-  return `
-    <div class="edu-content">
+function generateEducationalContent(languages) {
+  // Generate language-specific sections
+  let langSectionsHTML = '';
+  let isFirst = true;
+  
+  for (const lang of languages) {
+    const activeClass = isFirst ? ' active' : '';
+    isFirst = false;
+    
+    langSectionsHTML += `
+    <div class="edu-lang-section${activeClass}" data-edu-lang="${lang}">
+      <div class="edu-lang-header">
+        <span class="edu-lang-icon">${getLanguageIcon(lang)}</span>
+        <h2>${lang.toUpperCase()} - Use For Good</h2>
+      </div>
+      ${getLanguageTips(lang)}
+    </div>`;
+  }
+  
+  // Overview section (general content)
+  const overviewHTML = `
+    <div class="edu-lang-section" data-edu-lang="overview">
       <div class="edu-section">
         <h2>🎯 Why Learn About Security Vulnerabilities?</h2>
         <p style="color: #94a3b8; font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
@@ -1851,6 +1912,12 @@ function generateEducationalContent() {
           </div>
         </div>
       </div>
+    </div>`;
+
+  return `
+    <div class="edu-content">
+      ${langSectionsHTML}
+      ${overviewHTML}
     </div>
   `;
 }
