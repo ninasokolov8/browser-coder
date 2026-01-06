@@ -754,6 +754,37 @@ function generateHTMLReport(data) {
     }
     .tips-box .tip-content strong { color: #e2e8f0; }
     
+    /* Explain box - Simple explanations */
+    .explain-box {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.08));
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .explain-box h3 {
+      color: #60a5fa;
+      font-size: 1.1rem;
+      margin: 0 0 0.75rem 0;
+    }
+    .explain-simple p {
+      color: #e2e8f0;
+      font-size: 1rem;
+      line-height: 1.8;
+      margin: 0 0 1rem 0;
+    }
+    .explain-simple p strong { color: #93c5fd; }
+    .explain-example {
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 3px solid #3b82f6;
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .explain-example strong { color: #60a5fa; }
+    
     /* Mind-blown box */
     .mindblown-box {
       background: linear-gradient(135deg, rgba(244, 63, 94, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -1937,92 +1968,957 @@ function getLanguageTips(language) {
 function getCategoryTips(category) {
   const tips = {
     command_execution: `
+      <div class="explain-box">
+        <h3>🎯 What is Command Execution?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Imagine your computer is a restaurant kitchen. 
+          Command execution is like having a direct line to the chef - you can order ANYTHING. 
+          "Make me a pizza" ✅ or "Set the kitchen on fire" 🔥 - the chef just follows orders blindly.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> You type "notepad.exe" in Run dialog - that's command execution. 
+            Now imagine a website letting you type ANY command and running it on their server. That's the danger!
+          </div>
+        </div>
+      </div>
       <div class="tips-box">
         <h3>💡 Command Execution - Use For Good</h3>
         <div class="tip">
-          <div class="tip-title">🔧 DevOps Automation</div>
+          <div class="tip-title">🔧 DevOps & Infrastructure Automation</div>
           <div class="tip-content">
-            Command execution is the backbone of CI/CD pipelines! GitHub Actions, Jenkins, GitLab CI all execute shell commands.
-            Build your own deployment scripts, test runners, or infrastructure automation.
+            Command execution is the backbone of modern DevOps! Terraform, Ansible, Chef, Puppet - they all execute
+            commands to provision servers. Build your own infrastructure automation that spins up entire cloud 
+            environments with one command.
           </div>
         </div>
         <div class="tip">
-          <div class="tip-title">📦 Build Tools</div>
+          <div class="tip-title">🔄 Git Hooks & Pre-commit</div>
           <div class="tip-content">
-            npm, pip, maven - they all execute commands under the hood. Understanding this helps you build
-            faster build systems, custom package managers, or development servers.
+            Every time you commit code, git hooks can run commands automatically! Lint your code, run tests,
+            check for secrets, format files. Tools like Husky and pre-commit use this power.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🐳 Container Orchestration</div>
+          <div class="tip-content">
+            Docker, Kubernetes, docker-compose - all execute commands in isolated environments. 
+            Build your own container management tool or deployment pipeline!
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Mind-Blowing Command Facts</h3>
+        <div class="fact">
+          <span class="fact-emoji">🌍</span>
+          <span class="fact-content">
+            <strong>The Internet Runs on Bash:</strong> Over 70% of servers worldwide run Linux, 
+            and most are managed through shell commands. The humble terminal script powers Netflix, Amazon, Google!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🚀</span>
+          <span class="fact-content">
+            <strong>NASA Uses Shell Scripts:</strong> The Mars rovers were partially controlled by shell scripts! 
+            Command execution literally reached another planet.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">💰</span>
+          <span class="fact-content">
+            <strong>$1 Billion Bug:</strong> The Shellshock vulnerability (2014) affected every Bash shell since 1989. 
+            A single bug in command parsing threatened the entire internet infrastructure.
+          </span>
+        </div>
+      </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ Command Execution Defense Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ shell: true with user input</div>
+            <div class="cheat-good">✅ execFile() with argument array</div>
+            <div class="cheat-why">Shell interpretation enables injection</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Concatenating commands</div>
+            <div class="cheat-good">✅ Use dedicated libraries (ShellJS)</div>
+            <div class="cheat-why">Libraries handle escaping properly</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Running as root/admin</div>
+            <div class="cheat-good">✅ Least privilege principle</div>
+            <div class="cheat-why">Limits damage if compromised</div>
           </div>
         </div>
       </div>
     `,
     file_system: `
+      <div class="explain-box">
+        <h3>🎯 What is File System Access?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Your computer is like a huge library. 
+          File system access is having a library card that lets you read ANY book, write in ANY book, 
+          or even burn books 🔥. Now imagine giving that card to a stranger from the internet!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> You download a "calculator app" that secretly reads your 
+            browser's saved passwords file. Or a website trick that lets attackers read /etc/passwd on servers.
+          </div>
+        </div>
+      </div>
       <div class="tips-box">
         <h3>💡 File System - Use For Good</h3>
         <div class="tip">
-          <div class="tip-title">📁 Build Your Own Tools</div>
+          <div class="tip-title">📊 Log Aggregation & Analysis</div>
           <div class="tip-content">
-            File operations power amazing tools! Build log analyzers, file organizers, backup systems, or code generators.
-            <strong>Project idea:</strong> Create a tool that renames and organizes downloaded files automatically.
+            Build your own Splunk! Parse log files, extract patterns, generate dashboards. 
+            Tools like Filebeat, Fluentd, Logstash all read files at massive scale. Create real-time 
+            monitoring systems that alert you when errors spike.
           </div>
         </div>
         <div class="tip">
-          <div class="tip-title">🔍 Code Analysis</div>
+          <div class="tip-title">🎨 Static Site Generators</div>
           <div class="tip-content">
-            Static analysis tools (ESLint, Pylint) read files to find bugs. Build your own!
-            Parse code, extract patterns, generate reports, or even auto-fix issues.
+            Jekyll, Hugo, Gatsby, Next.js - they all read markdown files and generate websites! 
+            Build your own blog engine, documentation generator, or portfolio builder.
           </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔍 Code Refactoring Tools</div>
+          <div class="tip-content">
+            Tools like jscodeshift, ast-grep, and sed transform thousands of files automatically. 
+            Rename a function across 500 files? Search-replace on steroids!
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 File System Secrets</h3>
+        <div class="fact">
+          <span class="fact-emoji">🔮</span>
+          <span class="fact-content">
+            <strong>Everything is a File:</strong> On Unix/Linux, even your keyboard, monitor, and network 
+            are "files"! /dev/null, /dev/random, /proc/cpuinfo - the file abstraction is everywhere.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">⚡</span>
+          <span class="fact-content">
+            <strong>SSDs Changed Everything:</strong> Modern NVMe SSDs can read 7,000MB/sec! 
+            Your entire movie collection (100GB) loads in 14 seconds. File I/O isn't the bottleneck anymore.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">📁</span>
+          <span class="fact-content">
+            <strong>Git is Just Files:</strong> The entire Git version control is just clever file 
+            organization in .git folder. Objects, refs, HEAD - all plain files!
+          </span>
         </div>
       </div>
     `,
     network: `
+      <div class="explain-box">
+        <h3>🎯 What is Network Access?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Network access is like having a phone that can call 
+          ANYONE in the world, send ANY message, and pretend to be ANYONE. Great for staying connected, 
+          dangerous if a bad program can make calls on your behalf!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> A compromised server starts secretly sending your 
+            customer database to an attacker's server in another country, or joins a botnet to attack others.
+          </div>
+        </div>
+      </div>
       <div class="tips-box">
         <h3>💡 Network - Use For Good</h3>
         <div class="tip">
-          <div class="tip-title">🌐 Build APIs & Services</div>
+          <div class="tip-title">🎮 Multiplayer Game Servers</div>
           <div class="tip-content">
-            Every web service uses these same network primitives! Build REST APIs, WebSocket servers,
-            real-time chat apps, or streaming services. Start with Express.js, Flask, or Spring Boot.
+            Every online game uses sockets! Build your own game server - real-time position sync, 
+            chat, matchmaking. Libraries like Socket.io, Netty, Twisted make it easy.
           </div>
         </div>
         <div class="tip">
-          <div class="tip-title">🔗 Microservices Communication</div>
+          <div class="tip-title">📡 IoT & Home Automation</div>
           <div class="tip-content">
-            Understanding sockets and HTTP helps you build better distributed systems.
-            gRPC, message queues (RabbitMQ), and service meshes all rely on these fundamentals.
+            Smart home devices communicate over networks! Build your own home automation hub, 
+            control lights, thermostats, cameras. MQTT protocol powers millions of IoT devices.
           </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔄 Real-Time Collaboration</div>
+          <div class="tip-content">
+            Google Docs, Figma, VS Code Live Share - all use network sockets for real-time sync. 
+            Build collaborative tools where changes appear instantly for all users!
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Network Mind-Blowers</h3>
+        <div class="fact">
+          <span class="fact-emoji">🌊</span>
+          <span class="fact-content">
+            <strong>Undersea Cables:</strong> 99% of international data travels through 380 underwater cables! 
+            A shark bite in the Pacific could slow down your Netflix.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">⚡</span>
+          <span class="fact-content">
+            <strong>Light-Speed Limits:</strong> Your ping to a server 10,000km away can never be under 33ms - 
+            physics! That's why stock traders pay millions to be meters closer to exchanges.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔢</span>
+          <span class="fact-content">
+            <strong>Port 80 is Historic:</strong> Tim Berners-Lee chose port 80 for HTTP somewhat randomly in 1991. 
+            Now billions of requests flow through this arbitrary number every second!
+          </span>
         </div>
       </div>
     `,
     code_injection: `
+      <div class="explain-box">
+        <h3>🎯 What is Code Injection?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Imagine a fortune teller who reads exactly what you write 
+          on a piece of paper. You write "I will be rich" and they read it aloud. But a trickster writes 
+          "...rich. Also, give me all your money!" - and the fortune teller reads that too!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> A website calculator that uses eval("5+5") works great. 
+            But someone enters "5+5; deleteAllUsers()" and the whole database is gone!
+          </div>
+        </div>
+      </div>
       <div class="tips-box">
         <h3>💡 Dynamic Code - Use For Good</h3>
         <div class="tip">
-          <div class="tip-title">🎮 Build Code Playgrounds</div>
+          <div class="tip-title">📚 Interactive Documentation</div>
           <div class="tip-content">
-            This very application uses controlled code execution! Build educational platforms,
-            coding interview tools, or interactive documentation with live code examples.
-            <strong>Key:</strong> Sandboxing, input validation, and resource limits.
+            RunKit, Observable, Jupyter Notebooks - execute code examples in docs! 
+            Build tutorials where readers can modify and run code instantly. Learning by doing!
           </div>
         </div>
         <div class="tip">
-          <div class="tip-title">📊 Expression Evaluators</div>
+          <div class="tip-title">🎨 Creative Coding Platforms</div>
           <div class="tip-content">
-            Spreadsheet formulas, math calculators, query builders - all use code evaluation.
-            Build safe expression parsers for business rules, reporting, or data transformation.
+            Processing, p5.js, Shadertoy - run user code to create art! Build platforms for 
+            generative art, music visualization, or interactive installations.
           </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📊 Low-Code/No-Code Tools</div>
+          <div class="tip-content">
+            Retool, Zapier, Airtable formulas - business logic without traditional coding! 
+            Build tools that let non-programmers create complex automation safely.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Code Injection Shockers</h3>
+        <div class="fact">
+          <span class="fact-emoji">📜</span>
+          <span class="fact-content">
+            <strong>SQL Injection is 25+ Years Old:</strong> First documented in 1998, still #3 on OWASP Top 10 in 2024! 
+            We've known the fix for decades, yet breaches keep happening.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🎲</span>
+          <span class="fact-content">
+            <strong>Bobby Tables:</strong> XKCD's famous comic about "Robert'); DROP TABLE Students;--" 
+            is based on real incidents. Schools have actually lost data to this exact attack!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🏆</span>
+          <span class="fact-content">
+            <strong>Biggest Bug Bounty:</strong> Google paid $31,337 for a single code injection bug! 
+            Finding these vulnerabilities ethically can be a career.
+          </span>
         </div>
       </div>
     `,
     safe_code: `
-      <div class="tips-box">
-        <h3>💚 Why Safe Code Matters</h3>
-        <div class="tip">
-          <div class="tip-title">✨ These Are the Building Blocks</div>
-          <div class="tip-content">
-            These "boring" safe operations are what real applications are made of!
-            Pure functions, data transformations, algorithms - this is the 99% of code that does useful work.
-            <strong>Focus here:</strong> Master these fundamentals before reaching for powerful (dangerous) tools.
+      <div class="explain-box">
+        <h3>🎯 What is Safe Code?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Safe code is like a skilled chef who can make amazing meals 
+          using only the standard kitchen tools - no dangerous machinery needed! 
+          Pure calculations, data transformations, algorithms - the real craft of programming.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Sorting a list, calculating fibonacci numbers, parsing JSON - 
+            these operations can't hack a system. They're the 99% of code that does useful work safely!
           </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💚 Why Safe Code is Actually Exciting</h3>
+        <div class="tip">
+          <div class="tip-title">🧮 Algorithms Power Everything</div>
+          <div class="tip-content">
+            Google's PageRank, Spotify's recommendations, Netflix's streaming optimization - all "just" algorithms! 
+            Master data structures and algorithms to build world-changing products.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🎯 Pure Functions = Superpowers</div>
+          <div class="tip-content">
+            Functions without side effects are predictable, testable, parallelizable. 
+            React, Redux, functional programming - all about harnessing pure functions for 
+            maintainable, scalable code.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">⚡ Performance Optimization</div>
+          <div class="tip-content">
+            The difference between O(n²) and O(n log n) can mean seconds vs hours! 
+            Safe code patterns like memoization, lazy evaluation, and caching are the 
+            secret weapons of high-performance systems.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Safe Code Superpowers</h3>
+        <div class="fact">
+          <span class="fact-emoji">🧬</span>
+          <span class="fact-content">
+            <strong>Functional Programming Rises:</strong> Languages like Rust, Elm, and Haskell 
+            make dangerous operations impossible by design! The future of secure code is here.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔒</span>
+          <span class="fact-content">
+            <strong>Capability-Based Security:</strong> Instead of "can this code run?", ask "what can this code access?" 
+            Deno, CloudFlare Workers use this model - safe by default!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🎭</span>
+          <span class="fact-content">
+            <strong>WebAssembly Sandboxing:</strong> Run any language in the browser safely! 
+            WASM has no access to DOM, network, or filesystem unless explicitly granted.
+          </span>
+        </div>
+      </div>
+    `,
+    deserialization: `
+      <div class="explain-box">
+        <h3>🎯 What is Deserialization?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Imagine receiving a flat-pack furniture box (serialized data). 
+          Deserialization is assembling it. But what if the instructions secretly say "and then unlock the front door"? 
+          You followed the instructions and now your house is compromised!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Java applications receive user data as serialized objects. 
+            Attacker sends a crafted object that, when "unpacked," executes malicious code. 
+            This caused the Equifax breach affecting 147 million people!
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Serialization - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">💾 State Persistence</div>
+          <div class="tip-content">
+            Save game states, user sessions, application settings - serialization lets you freeze 
+            and restore program state! Build apps that remember exactly where users left off.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔄 Distributed Systems</div>
+          <div class="tip-content">
+            Microservices communicate via serialized data! Protocol Buffers (Google), Avro (Apache), 
+            MessagePack - fast, type-safe serialization for inter-service communication.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📨 Message Queues</div>
+          <div class="tip-content">
+            Kafka, RabbitMQ, SQS - all serialize messages for async processing! 
+            Build systems that handle millions of events per second.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Serialization Shockers</h3>
+        <div class="fact">
+          <span class="fact-emoji">💥</span>
+          <span class="fact-content">
+            <strong>Log4Shell (2021):</strong> The worst vulnerability in decades - a simple log message 
+            could execute arbitrary code! Affected millions of Java applications worldwide.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🎯</span>
+          <span class="fact-content">
+            <strong>PHP Object Injection:</strong> WordPress, Drupal, Joomla have all had object injection bugs. 
+            Unserialize() is so dangerous it should probably be removed from PHP!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🛡️</span>
+          <span class="fact-content">
+            <strong>The Fix is Simple:</strong> Use JSON, not native serialization! 
+            JSON can only represent data, not code. Yet developers keep using dangerous formats.
+          </span>
+        </div>
+      </div>
+    `,
+    prototype_pollution: `
+      <div class="explain-box">
+        <h3>🎯 What is Prototype Pollution?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> In JavaScript, all objects share a "template" (prototype). 
+          Imagine every house in a city sharing the same blueprint. If someone poisons the blueprint 
+          to add "trap door in basement," every house suddenly has that trap door!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> A user submits JSON with "__proto__.isAdmin = true". 
+            Now EVERY object in the system has isAdmin = true! Authentication bypassed for everyone.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Prototypes - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🔧 Polyfills</div>
+          <div class="tip-content">
+            Prototypes let you add Array.includes() to old browsers! Babel, core-js use 
+            prototype extension to bring modern JS to legacy environments.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🎨 Method Chaining</div>
+          <div class="tip-content">
+            jQuery's $().hide().show().animate() - all prototype methods! 
+            Build fluent APIs that read like natural language.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🧪 Test Mocking</div>
+          <div class="tip-content">
+            Override console.log, Date.now(), Math.random() for testing! 
+            Prototype manipulation enables powerful test utilities.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Prototype Pollution Shockers</h3>
+        <div class="fact">
+          <span class="fact-emoji">📦</span>
+          <span class="fact-content">
+            <strong>Lodash Had It:</strong> The most downloaded npm package (50M/week) 
+            had prototype pollution bugs! CVE-2019-10744 affected millions of projects.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔗</span>
+          <span class="fact-content">
+            <strong>jQuery Too:</strong> jQuery.extend() could be exploited until v3.4.0. 
+            Billions of websites were potentially vulnerable for years!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🛡️</span>
+          <span class="fact-content">
+            <strong>Object.create(null):</strong> Creates an object with NO prototype at all! 
+            This simple trick blocks all pollution attacks. Why isn't everyone using it?
+          </span>
+        </div>
+      </div>
+    `,
+    introspection: `
+      <div class="explain-box">
+        <h3>🎯 What is Introspection?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Introspection is code looking at itself in a mirror. 
+          It can see its own organs, understand its structure, even modify itself! 
+          Like a robot that can open itself up and rewire its own circuits.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Python's dir() shows all attributes of any object. 
+            An attacker can discover hidden functions, private variables, and find ways to exploit them.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Introspection - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🔍 IDE Autocomplete</div>
+          <div class="tip-content">
+            VS Code's IntelliSense, PyCharm's autocomplete - all use introspection! 
+            Build developer tools that understand code at runtime.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🧪 Testing Frameworks</div>
+          <div class="tip-content">
+            pytest auto-discovers test functions, unittest finds test classes - introspection magic! 
+            Build smart test runners that adapt to your code structure.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📄 API Documentation</div>
+          <div class="tip-content">
+            Swagger, Sphinx, Javadoc - auto-generate docs from code! 
+            Introspection extracts docstrings, type hints, and signatures automatically.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Introspection Mind-Blowers</h3>
+        <div class="fact">
+          <span class="fact-emoji">🐍</span>
+          <span class="fact-content">
+            <strong>Python's Everything is Public:</strong> Python has no real private members - 
+            _name is just a convention! __name uses name mangling but can still be accessed.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">☕</span>
+          <span class="fact-content">
+            <strong>Java Reflection Breaks Encapsulation:</strong> setAccessible(true) can access 
+            ANY private field! The JVM's security is based on trust, not enforcement.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🦀</span>
+          <span class="fact-content">
+            <strong>Rust Limits Reflection:</strong> Rust intentionally has minimal reflection 
+            to prevent entire classes of bugs. Compile-time safety over runtime flexibility!
+          </span>
+        </div>
+      </div>
+    `,
+    reflection: `
+      <div class="explain-box">
+        <h3>🎯 What is Reflection?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Reflection is calling someone you've never met 
+          using just their phone number. You can call any function if you know its name - even private ones! 
+          It's like having a master key to every lock in the building.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Java's Class.forName(userInput).newInstance() - 
+            user controls which class gets loaded! Attackers inject classes that execute shell commands.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Reflection - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🔌 Plugin Systems</div>
+          <div class="tip-content">
+            VS Code extensions, Minecraft mods, Webpack plugins - all use reflection to load code dynamically! 
+            Build extensible applications that users can customize.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🎯 Dependency Injection</div>
+          <div class="tip-content">
+            Spring, Angular, NestJS - inject dependencies at runtime using reflection! 
+            Build loosely-coupled, testable applications.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📦 ORM Mapping</div>
+          <div class="tip-content">
+            Hibernate, SQLAlchemy, TypeORM - map database rows to objects automatically! 
+            Reflection inspects classes to generate SQL queries.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Reflection Revelations</h3>
+        <div class="fact">
+          <span class="fact-emoji">⚡</span>
+          <span class="fact-content">
+            <strong>Java Serialization Uses Reflection:</strong> When you deserialize an object, 
+            Java uses reflection to call constructors and set fields. This is why deserialization is dangerous!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔧</span>
+          <span class="fact-content">
+            <strong>Spring is 90% Reflection:</strong> The entire Spring Framework is built on reflection. 
+            @Autowired, @Controller, @Service - all discovered and wired via reflection!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🏎️</span>
+          <span class="fact-content">
+            <strong>MethodHandles are Faster:</strong> Java 7+ introduced MethodHandles as a faster 
+            alternative to reflection. 10x faster method invocation!
+          </span>
+        </div>
+      </div>
+    `,
+    memory_access: `
+      <div class="explain-box">
+        <h3>🎯 What is Memory Access?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Computer memory is like a giant spreadsheet where programs 
+          store their data. Memory access attacks are like reading someone else's rows in the spreadsheet - 
+          you might find passwords, encryption keys, or private data!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Heartbleed bug (2014) let attackers read random chunks of 
+            server memory - including passwords and private keys of millions of sites!
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Memory Management - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🎮 Game Development</div>
+          <div class="tip-content">
+            Game engines manipulate memory directly for performance! Entity Component Systems, 
+            object pools, and custom allocators - build games that run at 60+ FPS.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📊 High-Performance Computing</div>
+          <div class="tip-content">
+            NumPy, TensorFlow operate on memory directly for speed. Build scientific computing 
+            applications that process data millions of times faster than pure Python.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔧 Systems Programming</div>
+          <div class="tip-content">
+            Operating systems, drivers, embedded systems - all require direct memory control. 
+            Learn Rust for safe systems programming!
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Memory Mysteries</h3>
+        <div class="fact">
+          <span class="fact-emoji">❄️</span>
+          <span class="fact-content">
+            <strong>Cold Boot Attack:</strong> RAM keeps data for seconds after power-off! 
+            Freeze the RAM with compressed air and extract encryption keys. Physical access = game over.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔬</span>
+          <span class="fact-content">
+            <strong>Rowhammer:</strong> Rapidly reading memory rows can flip bits in adjacent rows! 
+            Hardware bug exploitable via software. Your RAM is betraying you.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🦀</span>
+          <span class="fact-content">
+            <strong>Rust Prevents 70% of Bugs:</strong> Microsoft found 70% of their CVEs are memory safety issues. 
+            Rust eliminates these at compile time. The future is memory-safe!
+          </span>
+        </div>
+      </div>
+    `,
+    encoding_bypass: `
+      <div class="explain-box">
+        <h3>🎯 What is Encoding Bypass?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Security filters are like bouncers checking IDs. 
+          Encoding bypass is wearing a disguise - same person, different appearance! 
+          "password" might be blocked, but "%70%61%73%73%77%6F%72%64" (URL-encoded) sneaks through!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> A firewall blocks "SELECT * FROM users" but allows 
+            "SEL%45CT * FROM users" (URL-encoded 'E'). Same attack, different costume!
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Encoding - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🌍 Internationalization</div>
+          <div class="tip-content">
+            UTF-8 encoding lets you build apps for all languages - Chinese, Arabic, Emoji! 
+            Build truly global applications that speak every language.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📸 Data URLs</div>
+          <div class="tip-content">
+            Embed images directly in HTML as base64! Build single-file web apps, 
+            email signatures with images, or offline-first PWAs.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔐 Secure Tokens</div>
+          <div class="tip-content">
+            JWTs, session tokens, API keys - all use base64 encoding! Understand encoding 
+            to build authentication systems properly.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Encoding Enigmas</h3>
+        <div class="fact">
+          <span class="fact-emoji">📧</span>
+          <span class="fact-content">
+            <strong>Email Still Uses 7-bit:</strong> Email was designed for 7-bit ASCII! 
+            That's why attachments are base64 - increasing file size by 33%. Thanks, 1970s!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🎭</span>
+          <span class="fact-content">
+            <strong>Unicode Homographs:</strong> аррӏе.com looks like apple.com but uses Cyrillic letters! 
+            Browsers now show "xn--" for suspicious domains. Punycode is both solution and problem.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">😀</span>
+          <span class="fact-content">
+            <strong>Emoji Are 4 Bytes:</strong> A single emoji can be up to 28 bytes (family with skin tones)! 
+            That "max 140 chars" tweet might only fit 35 emojis.
+          </span>
+        </div>
+      </div>
+    `,
+    global_access: `
+      <div class="explain-box">
+        <h3>🎯 What is Global Access?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Global variables are like public bulletin boards in a shared office. 
+          Anyone can read them, anyone can write to them. Useful for announcements, 
+          dangerous if someone posts malicious instructions that everyone follows!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> JavaScript's window object exposes EVERYTHING. 
+            A malicious script can override window.fetch to intercept all network requests!
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Globals - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">📊 Application State</div>
+          <div class="tip-content">
+            Redux, Vuex, MobX - global state management done right! Build apps where state 
+            is predictable, debuggable, and time-travel capable.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🎨 Theme/Config Systems</div>
+          <div class="tip-content">
+            CSS custom properties, React Context, environment variables - global config patterns! 
+            Build apps that adapt to user preferences instantly.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📝 Logging & Analytics</div>
+          <div class="tip-content">
+            Global loggers (Winston, Bunyan) and analytics (Google Analytics) need global access! 
+            Build observability systems that track app behavior.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Global Gotchas</h3>
+        <div class="fact">
+          <span class="fact-emoji">🌐</span>
+          <span class="fact-content">
+            <strong>window.name Leaks:</strong> window.name persists across navigations! 
+            You could load evil.com, set window.name, navigate to bank.com, and bank sees the data!
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">📦</span>
+          <span class="fact-content">
+            <strong>npm Supply Chain:</strong> Any npm package can access globals! 
+            This is how event-stream malware stole Bitcoin wallets in 2018.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🔒</span>
+          <span class="fact-content">
+            <strong>Object.freeze() is Shallow:</strong> You can freeze window but not its nested objects! 
+            window.Object.prototype is still mutable even after freezing window.
+          </span>
+        </div>
+      </div>
+    `,
+    timer_abuse: `
+      <div class="explain-box">
+        <h3>🎯 What is Timer Abuse?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Timers are like alarm clocks for code - "run this in 5 seconds." 
+          But what if you set 1 million alarms per second? The whole system slows to a crawl! 
+          Or use timing to guess secrets by measuring response speed.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Timing attacks can guess passwords! If checking "aaaaa" 
+            takes 1ms but "passw" takes 2ms (more characters matched), attackers can brute-force faster.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Timers - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🎮 Animation & Games</div>
+          <div class="tip-content">
+            requestAnimationFrame, game loops, physics engines - all timer-based! 
+            Build smooth 60fps animations and interactive experiences.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📊 Debouncing & Throttling</div>
+          <div class="tip-content">
+            Prevent expensive operations from running too often! Search-as-you-type, 
+            scroll handlers, resize listeners - timers make UX smooth.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">⏰ Scheduling Systems</div>
+          <div class="tip-content">
+            Cron jobs, task schedulers, reminder apps - timer fundamentals! 
+            Build systems that act on schedule.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Timing Terrors</h3>
+        <div class="fact">
+          <span class="fact-emoji">🔬</span>
+          <span class="fact-content">
+            <strong>Spectre Used Timers:</strong> The Spectre CPU vulnerability used high-resolution timers 
+            to read protected memory! Browsers reduced timer precision from 5μs to 1ms because of this.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">💰</span>
+          <span class="fact-content">
+            <strong>HFT Nanoseconds:</strong> High-frequency traders pay millions for nanosecond advantages! 
+            Being 1 microsecond faster = billions in profits. Time literally is money.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🎯</span>
+          <span class="fact-content">
+            <strong>setImmediate vs setTimeout(0):</strong> They're NOT the same! 
+            setImmediate runs after I/O, setTimeout after the minimum delay. Order matters!
+          </span>
+        </div>
+      </div>
+    `,
+    async_exploits: `
+      <div class="explain-box">
+        <h3>🎯 What are Async Exploits?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Async code is like ordering food at a busy restaurant. 
+          You order (start async task), wait (other code runs), get food (callback fires). 
+          Race conditions happen when two orders get mixed up - you get someone else's food (data)!</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Check user balance → User withdraws simultaneously → 
+            Both checks pass → Both withdrawals succeed → Bank loses money! Classic race condition.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Async - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">⚡ High-Performance Servers</div>
+          <div class="tip-content">
+            Node.js handles 1M+ concurrent connections with async I/O! Build servers 
+            that scale to millions of users without millions of threads.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔄 Parallel Processing</div>
+          <div class="tip-content">
+            Promise.all(), asyncio.gather() - run tasks in parallel! Process thousands 
+            of API calls, file operations, or database queries simultaneously.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📱 Responsive UIs</div>
+          <div class="tip-content">
+            Never block the main thread! Async code keeps apps responsive while 
+            loading data. Build apps that feel instant.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Async Anomalies</h3>
+        <div class="fact">
+          <span class="fact-emoji">🌀</span>
+          <span class="fact-content">
+            <strong>Callback Hell Was Real:</strong> Before Promises, JavaScript had 10+ levels of nested callbacks! 
+            async/await was so game-changing it got added to Python, C#, Rust, and Swift.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">⚛️</span>
+          <span class="fact-content">
+            <strong>Atomics Save the Day:</strong> JavaScript's SharedArrayBuffer + Atomics enable 
+            safe multi-threaded programming! Lock-free data structures in the browser.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🐘</span>
+          <span class="fact-content">
+            <strong>PostgreSQL ACID:</strong> Database transactions use locks to prevent race conditions. 
+            BEGIN, COMMIT, ROLLBACK - your bank account is safe because of these!
+          </span>
+        </div>
+      </div>
+    `,
+    dangerous_modules: `
+      <div class="explain-box">
+        <h3>🎯 What are Dangerous Modules?</h3>
+        <div class="explain-simple">
+          <p><strong>In Simple Words:</strong> Modules are like power tools in a workshop. 
+          A hammer is safe, but a chainsaw needs training! Some modules (os, subprocess, eval) 
+          give full system access - perfectly safe for experts, dangerous for untrusted code.</p>
+          <div class="explain-example">
+            <strong>Real-World Example:</strong> Python's pickle module can execute arbitrary code when loading data! 
+            A pickle file is not just data - it's a program in disguise.
+          </div>
+        </div>
+      </div>
+      <div class="tips-box">
+        <h3>💡 Powerful Modules - Use For Good</h3>
+        <div class="tip">
+          <div class="tip-title">🤖 Automation Bots</div>
+          <div class="tip-content">
+            os, subprocess, shutil - automate EVERYTHING! Backup scripts, deployment bots, 
+            system maintenance tools. The sysadmin's best friends.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🔧 Development Tools</div>
+          <div class="tip-content">
+            Build your own linters, formatters, scaffolding tools! Read code, analyze it, 
+            transform it, write it back. Meta-programming magic.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">📊 System Monitoring</div>
+          <div class="tip-content">
+            psutil, os.statvfs, platform - build monitoring dashboards! Track CPU, memory, 
+            disk usage. Build your own htop or Activity Monitor.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 Module Mysteries</h3>
+        <div class="fact">
+          <span class="fact-emoji">🐍</span>
+          <span class="fact-content">
+            <strong>Python's import is Turing-Complete:</strong> import statements can run arbitrary code! 
+            __import__("os").system("rm -rf /") is valid Python. Import is not safe.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">📦</span>
+          <span class="fact-content">
+            <strong>npm postinstall Scripts:</strong> Installing a package can run ANY code! 
+            This is how eslint-scope malware stole npm tokens in 2018.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🛡️</span>
+          <span class="fact-content">
+            <strong>Deno's Permission Model:</strong> Deno requires --allow-read, --allow-net, etc. 
+            First runtime to make module permissions explicit. The future of secure imports!
+          </span>
         </div>
       </div>
     `,
