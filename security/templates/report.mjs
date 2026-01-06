@@ -171,6 +171,102 @@ export function generateReport(data, lang = 'en') {
     </div>`;
   }
 
+  // Generate "Use For Good" educational content
+  const educationalTitle = lang === 'he' ? 'השתמש בכוחות לטובה' : 'Use These Powers For Good';
+  const educationalIntro = lang === 'he' 
+    ? 'למדת על טכניקות אבטחה מסוכנות - עכשיו הנה איך להשתמש באותו ידע לבניית דברים מדהימים!' 
+    : 'You\'ve learned about dangerous security techniques - now here\'s how to use that same knowledge to build amazing things!';
+  const factsTitle = lang === 'he' ? 'עובדות מדהימות' : 'Mind-Blowing Facts';
+  const cheatSheetTitle = lang === 'he' ? 'גליון עזר אבטחה' : 'Security Cheat Sheet';
+  const defenseTitle = lang === 'he' ? 'טיפי הגנה' : 'Defense Tips';
+  
+  let useForGoodHTML = `
+    <div class="educational-intro">
+      <div class="educational-hero">
+        <span class="edu-icon">🧠</span>
+        <div class="edu-content">
+          <h2>${educationalTitle}</h2>
+          <p>${educationalIntro}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="edu-sections">
+  `;
+  
+  // Add tips for each language
+  for (const language of languages) {
+    const langTips = t.languageTips[language];
+    if (!langTips) continue;
+    
+    useForGoodHTML += `
+      <div class="edu-lang-section">
+        <h3 class="edu-lang-title">${getLanguageIcon(language)} ${language.toUpperCase()} - ${langTips.title}</h3>
+        
+        <div class="tips-box">
+          ${langTips.tips.map(tip => `
+            <div class="tip">
+              <div class="tip-title">${tip.title}</div>
+              <div class="tip-content">${tip.content}</div>
+            </div>
+          `).join('')}
+        </div>
+        
+        ${langTips.facts ? `
+          <div class="mindblown-box">
+            <h4>🤯 ${factsTitle}</h4>
+            ${langTips.facts.map(fact => `
+              <div class="fact">
+                <span class="fact-emoji">${fact.emoji}</span>
+                <span class="fact-content"><strong>${fact.title}:</strong> ${fact.content}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  // Add security cheat sheet
+  useForGoodHTML += `
+    <div class="cheatsheet-section">
+      <h3>📋 ${cheatSheetTitle}</h3>
+      <div class="cheatsheet-grid">
+        <div class="cheat-card">
+          <h4>🚫 ${lang === 'he' ? 'לעולם אל' : 'Never'}</h4>
+          <ul>
+            <li>${lang === 'he' ? 'אל תסמוך על קלט משתמש' : 'Trust user input blindly'}</li>
+            <li>${lang === 'he' ? 'אל תאחסן סיסמאות בטקסט גלוי' : 'Store passwords in plain text'}</li>
+            <li>${lang === 'he' ? 'אל תשתמש ב-eval() על קלט משתמש' : 'Use eval() on user input'}</li>
+            <li>${lang === 'he' ? 'אל תחשוף הודעות שגיאה מפורטות' : 'Expose detailed error messages'}</li>
+            <li>${lang === 'he' ? 'אל תשתמש במפתחות הארדקוד' : 'Hardcode API keys or secrets'}</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>✅ ${lang === 'he' ? 'תמיד' : 'Always'}</h4>
+          <ul>
+            <li>${lang === 'he' ? 'נקה וולידציה לכל קלט' : 'Sanitize and validate all input'}</li>
+            <li>${lang === 'he' ? 'השתמש בשאילתות פרמטריות' : 'Use parameterized queries'}</li>
+            <li>${lang === 'he' ? 'הפעל CSP (Content Security Policy)' : 'Implement Content Security Policy'}</li>
+            <li>${lang === 'he' ? 'הצפין נתונים רגישים' : 'Encrypt sensitive data'}</li>
+            <li>${lang === 'he' ? 'עדכן תלויות באופן קבוע' : 'Keep dependencies updated'}</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>🛡️ ${defenseTitle}</h4>
+          <ul>
+            <li>${lang === 'he' ? 'הגנה בעומק - שכבות מרובות' : 'Defense in depth - multiple layers'}</li>
+            <li>${lang === 'he' ? 'עיקרון ההרשאה המינימלית' : 'Principle of least privilege'}</li>
+            <li>${lang === 'he' ? 'רישום ובקרה' : 'Logging and monitoring'}</li>
+            <li>${lang === 'he' ? 'בדיקות אבטחה אוטומטיות' : 'Automated security testing'}</li>
+            <li>${lang === 'he' ? 'סקירות קוד קבועות' : 'Regular code reviews'}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  `;
+
   return `<!DOCTYPE html>
 <html lang="${t.lang}" dir="${t.dir}">
 <head>
@@ -259,6 +355,7 @@ export function generateReport(data, lang = 'en') {
       <div class="main-tabs">
         <button class="main-tab active" onclick="showMainTab('byLanguage')">📚 ${t.tabByLanguage}</button>
         <button class="main-tab" onclick="showMainTab('byCategory')">🏷️ ${t.tabByCategory}</button>
+        <button class="main-tab" onclick="showMainTab('useForGood')">🧠 ${lang === 'he' ? 'השתמש לטובה' : 'Use For Good'}</button>
       </div>
       
       <!-- By Language View -->
@@ -283,6 +380,11 @@ export function generateReport(data, lang = 'en') {
           `).join('')}
         </div>
         ${byCategoryHTML}
+      </div>
+      
+      <!-- Use For Good View -->
+      <div id="useForGood-view" class="tab-content" style="display: none;">
+        ${useForGoodHTML}
       </div>
     </div>
     

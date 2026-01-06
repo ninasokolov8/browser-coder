@@ -270,6 +270,75 @@ export function getStyles(statusColor) {
     [dir="rtl"] .cheat-pro-tips li::before { left: auto; right: 0; content: '←'; }
     .cheat-pro-tips code { background: rgba(99, 102, 241, 0.2); padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-size: 0.85em; color: #a5b4fc; }
     
+    /* Educational "Use For Good" Section */
+    .educational-intro { margin-bottom: 2rem; }
+    .educational-hero {
+      display: flex;
+      gap: 1.5rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.1));
+      border-radius: 1rem;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      align-items: center;
+    }
+    [dir="rtl"] .educational-hero { flex-direction: row-reverse; }
+    .edu-icon { font-size: 4rem; }
+    .edu-content h2 { color: #c4b5fd; font-size: 1.75rem; margin-bottom: 0.75rem; }
+    .edu-content p { color: #94a3b8; font-size: 1.1rem; line-height: 1.7; }
+    .edu-sections { display: flex; flex-direction: column; gap: 1.5rem; }
+    .edu-lang-section {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    .edu-lang-title {
+      color: #e2e8f0;
+      font-size: 1.25rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .edu-lang-section .mindblown-box h4 { color: #c084fc; font-size: 1.1rem; margin-bottom: 0.75rem; }
+    
+    /* Cheatsheet Section (Use For Good tab) */
+    .cheatsheet-section {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .cheatsheet-section h3 { color: #60a5fa; font-size: 1.5rem; margin-bottom: 1.25rem; }
+    .cheatsheet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .cheat-card {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    .cheat-card h4 { color: #e2e8f0; font-size: 1.1rem; margin-bottom: 1rem; }
+    .cheat-card ul { list-style: none; }
+    .cheat-card li {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      padding-left: 1.5rem;
+      position: relative;
+      line-height: 1.5;
+    }
+    .cheat-card li::before {
+      content: '•';
+      position: absolute;
+      left: 0.5rem;
+      color: #6366f1;
+    }
+    [dir="rtl"] .cheat-card li { padding-left: 0; padding-right: 1.5rem; }
+    [dir="rtl"] .cheat-card li::before { left: auto; right: 0.5rem; }
+    
     /* Footer */
     .footer { text-align: center; padding: 2rem; margin-top: 2rem; border-top: 1px solid rgba(99, 102, 241, 0.2); color: #64748b; }
     .footer a { color: #6366f1; text-decoration: none; }
