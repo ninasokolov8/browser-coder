@@ -33,3 +33,11 @@ tests/reports/*security-report*
 !tests/reports/security-report-latest.json
 !tests/reports/security-report-latest-he.html
 !tests/reports/index.html
+
+# Security module reports (keep only latest + gitkeep)
+security/reports/*
+!security/reports/.gitkeep
+!security/reports/security-report-latest.html
+!security/reports/security-report-latest.json
+!security/reports/security-report-latest-he.html
+!security/reports/index.html

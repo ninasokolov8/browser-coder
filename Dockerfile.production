@@ -36,14 +36,17 @@ COPY --from=builder /app/languages ./languages
 COPY --from=builder /app/security ./security
 COPY --from=builder /app/tests ./tests
 
+# Ensure reports directories exist and are writable
+RUN mkdir -p /app/security/reports /app/tests/reports
+
 # SECURITY: Set proper ownership and permissions
 RUN chown -R app:app /app && \
     chmod -R 755 /app && \
     chmod 644 /app/server.mjs && \
     find /app/languages -type d -exec chmod 755 {} \; && \
     find /app/languages -type f -exec chmod 444 {} \; && \
-    chmod 755 /app/tests/reports && \
-    chmod 755 /app/security/reports
+    chmod 777 /app/tests/reports && \
+    chmod 777 /app/security/reports
 
 # SECURITY: Remove unnecessary packages and shells after setup
 RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
