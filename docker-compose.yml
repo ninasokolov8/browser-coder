@@ -122,11 +122,11 @@ services:
   # SECURITY TESTS - Runs once on startup
   # ============================================
   security-tests:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
+    image: node:20-alpine
+    working_dir: /app
     volumes:
       - ./security:/app/security:rw
+      - ./package.json:/app/package.json:ro
     environment:
       - NODE_ENV=production
     command: ["node", "security/run.mjs", "--server=http://api:3001"]
