@@ -1899,14 +1899,11 @@ function applyTheme(theme: string) {
 
     const activeTab = tabManager.getActiveTab();
     if (activeTab) {
-      // Smart content update: only replace if user hasn't modified
-      let newContent: string | undefined = undefined;
-      if (!tabManager.isTabUserModified(activeTab.file.id)) {
-        // Tab has default content - replace with new language's starter
-        newContent = await getStarterAsync(currentLang.id, currentVersion.id);
-      }
+      // When changing LANGUAGES, always load the new language's starter code
+      // (unlike version changes where we preserve user modifications)
+      const newContent = await getStarterAsync(currentLang.id, currentVersion.id);
 
-      // Update tab language (and content if unmodified)
+      // Update tab language and content
       await tabManager.updateTabLanguage(activeTab.file.id, currentLang, currentVersion, newContent);
       
       // Recreate model with new language
@@ -1915,13 +1912,7 @@ function applyTheme(theme: string) {
       if (updatedTab) {
         const model = getOrCreateModel(updatedTab);
         editor.setModel(model);
-        
-        // Show helpful status
-        if (newContent !== undefined) {
-          setStatus(`Switched to ${currentLang.name} - loaded starter template`);
-        } else {
-          setStatus(`Switched to ${currentLang.name} - your code preserved`);
-        }
+        setStatus(`Switched to ${currentLang.name} - loaded starter template`);
       }
     }
 
@@ -1939,25 +1930,17 @@ function applyTheme(theme: string) {
 
     const activeTab = tabManager.getActiveTab();
     if (activeTab) {
-      // Smart content update: only replace if user hasn't modified
-      let newContent: string | undefined = undefined;
-      if (!tabManager.isTabUserModified(activeTab.file.id)) {
-        // Tab has default content - replace with new version's starter
-        newContent = await getStarterAsync(currentLang.id, currentVersion.id);
-      }
+      // When changing versions, always load the new version's starter code
+      const newContent = await getStarterAsync(currentLang.id, currentVersion.id);
 
       await tabManager.updateTabLanguage(activeTab.file.id, currentLang, currentVersion, newContent);
 
-      // Update model content if changed
-      if (newContent !== undefined) {
-        const model = editor.getModel();
-        if (model) {
-          model.setValue(newContent);
-        }
-        setStatus(`${currentLang.name} ${currentVersion.name} - loaded starter template`);
-      } else {
-        setStatus(`${currentLang.name} ${currentVersion.name} - your code preserved`);
+      // Update model content
+      const model = editor.getModel();
+      if (model) {
+        model.setValue(newContent);
       }
+      setStatus(`${currentLang.name} ${currentVersion.name} - loaded starter template`);
     }
   });
 
