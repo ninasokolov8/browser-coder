@@ -15,22 +15,94 @@ export function getStyles(statusColor) {
     }
     .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
     
-    /* RTL Support */
+    /* RTL Support - Hebrew text only, code stays LTR */
     [dir="rtl"] { direction: rtl; text-align: right; }
+    
+    /* Layout adjustments for RTL */
     [dir="rtl"] .intro-card { flex-direction: row-reverse; }
+    [dir="rtl"] .intro-mini-card { flex-direction: row-reverse; }
     [dir="rtl"] .test-header { flex-direction: row-reverse; }
     [dir="rtl"] .test-meta { flex-direction: row-reverse; }
     [dir="rtl"] .test-result { flex-direction: row-reverse; }
-    [dir="rtl"] .stat-card { direction: rtl; }
-    [dir="rtl"] .dashboard { direction: rtl; }
-    [dir="rtl"] .cheat-grid { direction: rtl; }
-    [dir="rtl"] .tips-box, [dir="rtl"] .mindblown-box { direction: rtl; }
     [dir="rtl"] .lang-header, [dir="rtl"] .cat-header { flex-direction: row-reverse; }
     [dir="rtl"] .lang-title, [dir="rtl"] .cat-title { flex-direction: row-reverse; }
     [dir="rtl"] .category-header { flex-direction: row-reverse; }
-    [dir="rtl"] .intro-mini-card { flex-direction: row-reverse; }
-    [dir="rtl"] pre, [dir="rtl"] code { direction: ltr; text-align: left; }
+    [dir="rtl"] .educational-hero { flex-direction: row-reverse; }
+    [dir="rtl"] .fact { flex-direction: row-reverse; }
     
+    /* CRITICAL: Keep ALL code/programming content LTR */
+    [dir="rtl"] pre,
+    [dir="rtl"] code,
+    [dir="rtl"] .code-details,
+    [dir="rtl"] .code-details pre,
+    [dir="rtl"] .code-details code,
+    [dir="rtl"] .cheat-bad,
+    [dir="rtl"] .cheat-good,
+    [dir="rtl"] .cheat-item,
+    [dir="rtl"] .cheat-grid {
+      direction: ltr;
+      text-align: left;
+      unicode-bidi: isolate;
+    }
+    
+    /* Keep inline code LTR but allow it to flow in RTL text */
+    [dir="rtl"] .tip-content code,
+    [dir="rtl"] .explanation-content code,
+    [dir="rtl"] .fact-content code,
+    [dir="rtl"] p code,
+    [dir="rtl"] li code {
+      direction: ltr;
+      display: inline-block;
+      unicode-bidi: embed;
+    }
+    
+    /* Pro tips with code should be LTR */
+    [dir="rtl"] .cheat-pro-tips li {
+      direction: ltr;
+      text-align: left;
+      padding-left: 1.25rem;
+      padding-right: 0;
+    }
+    [dir="rtl"] .cheat-pro-tips li::before {
+      left: 0;
+      right: auto;
+      content: '→';
+    }
+    
+    /* Keep cheatsheet boxes LTR - they contain code */
+    [dir="rtl"] .cheatsheet-box {
+      direction: ltr;
+      text-align: left;
+    }
+    [dir="rtl"] .cheatsheet-box h3,
+    [dir="rtl"] .cheatsheet-box h4 {
+      direction: rtl;
+      text-align: right;
+    }
+    
+    /* Test cards - code should be LTR, descriptions RTL */
+    [dir="rtl"] .test-card .test-name { direction: rtl; }
+    [dir="rtl"] .test-card code { direction: ltr; unicode-bidi: embed; }
+    
+    /* Borders for RTL cards */
+    [dir="rtl"] .test-card.pass { border-left: none; border-right: 4px solid #4ade80; }
+    [dir="rtl"] .test-card.fail { border-left: none; border-right: 4px solid #f87171; }
+    [dir="rtl"] .intro-highlight { border-left: none; border-right: 3px solid #6366f1; }
+    
+    /* Cheat cards in general section stay RTL (no code) */
+    [dir="rtl"] .cheatsheet-section .cheat-card {
+      direction: rtl;
+      text-align: right;
+    }
+    [dir="rtl"] .cheatsheet-section .cheat-card li {
+      padding-left: 0;
+      padding-right: 1.5rem;
+    }
+    [dir="rtl"] .cheatsheet-section .cheat-card li::before {
+      left: auto;
+      right: 0.5rem;
+    }
+
     /* Hero Header */
     .hero { 
       text-align: center; 
@@ -74,7 +146,6 @@ export function getStyles(statusColor) {
       border-radius: 0.25rem;
       margin-top: 1rem !important;
     }
-    [dir="rtl"] .intro-highlight { border-left: none; border-right: 3px solid #6366f1; }
     .intro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
     @media (max-width: 768px) { .intro-grid { grid-template-columns: 1fr; } }
     .intro-mini-card {
@@ -204,8 +275,6 @@ export function getStyles(statusColor) {
     .test-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
     .test-card.pass { border-left: 4px solid #4ade80; }
     .test-card.fail { border-left: 4px solid #f87171; }
-    [dir="rtl"] .test-card.pass { border-left: none; border-right: 4px solid #4ade80; }
-    [dir="rtl"] .test-card.fail { border-left: none; border-right: 4px solid #f87171; }
     .test-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
     .test-status { font-size: 1.25rem; font-weight: 700; }
     .test-card.pass .test-status { color: #4ade80; }
@@ -261,13 +330,11 @@ export function getStyles(statusColor) {
     .cheat-bad { color: #f87171; font-family: monospace; font-size: 0.8rem; margin-bottom: 0.25rem; }
     .cheat-good { color: #4ade80; font-family: monospace; font-size: 0.8rem; margin-bottom: 0.25rem; }
     .cheat-why { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
-    .cheat-pro-tips { background: rgba(0, 0, 0, 0.2); border-radius: 0.75rem; padding: 1rem; }
-    .cheat-pro-tips h4 { color: #fbbf24; margin-bottom: 0.75rem; }
+    .cheat-pro-tips { background: rgba(0, 0, 0, 0.2); border-radius: 0.75rem; padding: 1rem; margin-top: 1rem; }
+    .cheat-pro-tips h4, .cheat-pro-tips h5 { color: #fbbf24; margin-bottom: 0.75rem; }
     .cheat-pro-tips ul { list-style: none; }
     .cheat-pro-tips li { color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem; padding-left: 1.25rem; position: relative; }
     .cheat-pro-tips li::before { content: '→'; position: absolute; left: 0; color: #60a5fa; }
-    [dir="rtl"] .cheat-pro-tips li { padding-left: 0; padding-right: 1.25rem; }
-    [dir="rtl"] .cheat-pro-tips li::before { left: auto; right: 0; content: '←'; }
     .cheat-pro-tips code { background: rgba(99, 102, 241, 0.2); padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-size: 0.85em; color: #a5b4fc; }
     
     /* Educational "Use For Good" Section */
@@ -281,7 +348,6 @@ export function getStyles(statusColor) {
       border: 1px solid rgba(139, 92, 246, 0.3);
       align-items: center;
     }
-    [dir="rtl"] .educational-hero { flex-direction: row-reverse; }
     .edu-icon { font-size: 4rem; }
     .edu-content h2 { color: #c4b5fd; font-size: 1.75rem; margin-bottom: 0.75rem; }
     .edu-content p { color: #94a3b8; font-size: 1.1rem; line-height: 1.7; }
@@ -336,8 +402,6 @@ export function getStyles(statusColor) {
       left: 0.5rem;
       color: #6366f1;
     }
-    [dir="rtl"] .cheat-card li { padding-left: 0; padding-right: 1.5rem; }
-    [dir="rtl"] .cheat-card li::before { left: auto; right: 0.5rem; }
     
     /* Category Tips Section */
     .category-tips-section {
