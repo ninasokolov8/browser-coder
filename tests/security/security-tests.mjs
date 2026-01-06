@@ -396,6 +396,17 @@ function generateStatistics() {
   return stats;
 }
 
+// Hebrew HTML report - temporarily using English version as stub
+function generateHebrewHTMLReport(data) {
+  return generateHTMLReport(data).replace(
+    '<html lang="en">',
+    '<html lang="he" dir="rtl">'
+  ).replace(
+    '<title>Security Test Report',
+    '<title>דוח בדיקות אבטחה'
+  );
+}
+
 function generateHTMLReport(data) {
   const passRate = parseFloat(data.summary.passRate);
   const statusColor = passRate === 100 ? '#22c55e' : passRate >= 90 ? '#eab308' : '#ef4444';

@@ -33,12 +33,14 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.mjs ./
 COPY --from=builder /app/languages ./languages
 COPY --from=builder /app/security ./security
+COPY --from=builder /app/tests ./tests
 
 # SECURITY: Set proper ownership and permissions
 RUN chown -R app:app /app && \
     chmod -R 755 /app && \
     chmod 644 /app/server.mjs && \
-    chmod -R 444 /app/languages
+    chmod -R 444 /app/languages && \
+    chmod 755 /app/tests/reports
 
 # SECURITY: Remove unnecessary packages and shells after setup
 RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*

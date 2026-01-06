@@ -49,7 +49,7 @@ services:
     expose:
       - "3001"
     volumes:
-      - ./tests/reports:/app/tests/reports:ro
+      - ./tests/reports:/app/tests/reports:rw
     environment:
       - NODE_ENV=production
       - PORT=3001

@@ -1347,6 +1347,141 @@ app.get("/api/reports", async (req, res) => {
   }
 });
 
+// Check if tests can be run (24 hour cooldown)
+app.get("/api/reports/can-run", (req, res) => {
+  try {
+    const reportsDir = path.join(__dirname, "tests", "reports");
+    if (!fs.existsSync(reportsDir)) {
+      return res.json({ canRun: true, lastRun: null, hoursAgo: null });
+    }
+    
+    const files = fs.readdirSync(reportsDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json') && !f.includes('latest'));
+    
+    if (jsonFiles.length === 0) {
+      return res.json({ canRun: true, lastRun: null, hoursAgo: null });
+    }
+    
+    // Find the most recent report by parsing filenames
+    let latestTime = 0;
+    for (const file of jsonFiles) {
+      const match = file.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z/);
+      if (match) {
+        const [, date, hours, minutes, seconds, ms] = match;
+        const timestamp = new Date(`${date}T${hours}:${minutes}:${seconds}.${ms}Z`).getTime();
+        if (timestamp > latestTime) latestTime = timestamp;
+      }
+    }
+    
+    const hoursAgo = (Date.now() - latestTime) / (1000 * 60 * 60);
+    const canRun = hoursAgo >= 24;
+    
+    res.json({ 
+      canRun, 
+      lastRun: new Date(latestTime).toISOString(),
+      hoursAgo: Math.round(hoursAgo * 10) / 10,
+      hoursRemaining: canRun ? 0 : Math.ceil(24 - hoursAgo)
+    });
+  } catch (err) {
+    log('error', 'can_run_check_error', { error: err.message });
+    res.status(500).json({ error: 'Failed to check test status' });
+  }
+});
+
+// Track running test status
+let testRunStatus = { running: false, startTime: null, progress: null };
+
+// Run security tests (only if 24 hours have passed)
+app.post("/api/reports/run-tests", async (req, res) => {
+  try {
+    // Check if already running
+    if (testRunStatus.running) {
+      return res.status(409).json({ 
+        error: 'Tests already running', 
+        startTime: testRunStatus.startTime 
+      });
+    }
+    
+    // Check 24 hour cooldown
+    const reportsDir = path.join(__dirname, "tests", "reports");
+    if (fs.existsSync(reportsDir)) {
+      const files = fs.readdirSync(reportsDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json') && !f.includes('latest'));
+      
+      let latestTime = 0;
+      for (const file of jsonFiles) {
+        const match = file.match(/(\d{4}-\d{2}-\d{2})_security-report_(\d{2})-(\d{2})-(\d{2})-(\d+)Z/);
+        if (match) {
+          const [, date, hours, minutes, seconds, ms] = match;
+          const timestamp = new Date(`${date}T${hours}:${minutes}:${seconds}.${ms}Z`).getTime();
+          if (timestamp > latestTime) latestTime = timestamp;
+        }
+      }
+      
+      const hoursAgo = (Date.now() - latestTime) / (1000 * 60 * 60);
+      if (hoursAgo < 24) {
+        return res.status(429).json({ 
+          error: 'Tests can only run once every 24 hours',
+          hoursRemaining: Math.ceil(24 - hoursAgo)
+        });
+      }
+    }
+    
+    // Mark as running
+    testRunStatus = { running: true, startTime: new Date().toISOString(), progress: 'starting' };
+    
+    // Return immediately, tests run in background
+    res.json({ 
+      status: 'started', 
+      message: 'Security tests started. Check back in ~30 seconds for results.',
+      startTime: testRunStatus.startTime
+    });
+    
+    // Run tests in background using the test script directly
+    const { spawn: nodeSpawn } = await import('node:child_process');
+    const testProcess = nodeSpawn('node', ['tests/security/security-tests.mjs', '--server=http://localhost:3001'], {
+      cwd: __dirname,
+      env: { ...process.env, API_URL: 'http://localhost:3001' },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    testProcess.stdout.on('data', (data) => {
+      output += data.toString();
+      testRunStatus.progress = 'running';
+    });
+    
+    testProcess.stderr.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    testProcess.on('close', (code) => {
+      testRunStatus = { 
+        running: false, 
+        startTime: null, 
+        progress: code === 0 ? 'completed' : 'failed',
+        lastResult: { code, output: output.slice(-500) }
+      };
+      log('info', 'test_run_completed', { exitCode: code });
+    });
+    
+    testProcess.on('error', (err) => {
+      testRunStatus = { running: false, startTime: null, progress: 'error', error: err.message };
+      log('error', 'test_run_error', { error: err.message });
+    });
+    
+  } catch (err) {
+    testRunStatus = { running: false, startTime: null, progress: 'error' };
+    log('error', 'run_tests_error', { error: err.message });
+    res.status(500).json({ error: 'Failed to start tests' });
+  }
+});
+
+// Get test run status
+app.get("/api/reports/status", (req, res) => {
+  res.json(testRunStatus);
+});
+
 // Serve reports directory
 const reportsPath = path.join(__dirname, "tests", "reports");
 if (fs.existsSync(reportsPath)) {
