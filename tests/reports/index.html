@@ -1069,19 +1069,71 @@
       }
     }
 
-    // Convert ANSI codes to HTML
+    // Convert ANSI codes to HTML with proper span handling
     function ansiToHtml(text) {
-      return text
-        .replace(/\x1b\[32m/g, '<span class="ansi-green">')
-        .replace(/\x1b\[31m/g, '<span class="ansi-red">')
-        .replace(/\x1b\[33m/g, '<span class="ansi-yellow">')
-        .replace(/\x1b\[34m/g, '<span class="ansi-blue">')
-        .replace(/\x1b\[36m/g, '<span class="ansi-cyan">')
-        .replace(/\x1b\[35m/g, '<span class="ansi-magenta">')
-        .replace(/\x1b\[1m/g, '<span class="ansi-bold">')
-        .replace(/\x1b\[2m/g, '<span class="ansi-dim">')
-        .replace(/\x1b\[0m/g, '</span>')
-        .replace(/\x1b\[\d+m/g, ''); // Remove any other codes
+      // Map ANSI codes to CSS classes
+      const ansiMap = {
+        '1': 'ansi-bold',
+        '2': 'ansi-dim',
+        '31': 'ansi-red',
+        '32': 'ansi-green',
+        '33': 'ansi-yellow',
+        '34': 'ansi-blue',
+        '35': 'ansi-magenta',
+        '36': 'ansi-cyan',
+        '37': 'ansi-white',
+        '90': 'ansi-dim',
+      };
+      
+      let result = '';
+      let openSpans = 0;
+      let i = 0;
+      
+      while (i < text.length) {
+        // Check for escape sequence
+        if (text[i] === '\x1b' && text[i + 1] === '[') {
+          // Find the end of the escape sequence
+          let j = i + 2;
+          while (j < text.length && text[j] !== 'm') j++;
+          
+          if (j < text.length) {
+            const code = text.slice(i + 2, j);
+            
+            if (code === '0') {
+              // Reset - close all open spans
+              while (openSpans > 0) {
+                result += '</span>';
+                openSpans--;
+              }
+            } else {
+              // Apply style
+              const className = ansiMap[code];
+              if (className) {
+                result += `<span class="${className}">`;
+                openSpans++;
+              }
+            }
+            i = j + 1;
+            continue;
+          }
+        }
+        
+        // Regular character - escape HTML
+        const char = text[i];
+        if (char === '<') result += '&lt;';
+        else if (char === '>') result += '&gt;';
+        else if (char === '&') result += '&amp;';
+        else result += char;
+        i++;
+      }
+      
+      // Close any remaining open spans
+      while (openSpans > 0) {
+        result += '</span>';
+        openSpans--;
+      }
+      
+      return result;
     }
 
     // Poll for test completion with output streaming

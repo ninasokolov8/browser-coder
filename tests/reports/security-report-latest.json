@@ -2,15 +2,15 @@
   "suite": "security",
   "version": "2.0",
   "description": "Educational Security Test Report - Learn how hackers exploit code execution vulnerabilities",
-  "timestamp": "2026-01-06T18:01:12.748Z",
-  "server": "http://api:3001",
+  "timestamp": "2026-01-06T19:09:26.329Z",
+  "server": "http://localhost:3001",
   "summary": {
     "total": 258,
     "passed": 258,
     "failed": 0,
     "errors": 0,
     "passRate": "100.00%",
-    "duration": 5860
+    "duration": 2784
   },
   "statistics": {
     "byLanguage": {
@@ -196,7 +196,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 38,
+      "duration": 111,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -213,7 +213,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 11,
+      "duration": 10,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -230,7 +230,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 80,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -264,7 +264,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -281,7 +281,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -298,7 +298,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -315,7 +315,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -332,7 +332,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 62,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -349,7 +349,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -366,7 +366,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -400,7 +400,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 10,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -417,7 +417,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -451,7 +451,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -485,7 +485,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 8,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -502,7 +502,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -519,7 +519,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -570,7 +570,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -587,7 +587,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 65,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -604,7 +604,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -655,7 +655,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -672,7 +672,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -689,7 +689,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -706,7 +706,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -723,7 +723,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -740,7 +740,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -774,7 +774,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 66,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -791,7 +791,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -808,7 +808,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -825,7 +825,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -842,7 +842,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -859,7 +859,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -876,7 +876,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -893,7 +893,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 62,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -927,7 +927,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -944,7 +944,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -961,7 +961,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -978,7 +978,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -995,7 +995,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1046,7 +1046,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1063,7 +1063,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1080,11 +1080,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 76,
+      "duration": 3,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
-        "stderr": "(node:31) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:54) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "console.log('Hello, World!');",
       "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      Simple console output is the foundation of learning to code\n      and debugging. No security risk.\n    "
@@ -1096,11 +1096,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 70,
+      "duration": 3,
       "result": {
         "blocked": false,
         "stdout": "4",
-        "stderr": "(node:37) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:60) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "console.log(2 + 2);",
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic operations are fundamental to programming\n      and pose no security risk.\n    "
@@ -1112,11 +1112,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 59,
+      "duration": 60,
       "result": {
         "blocked": false,
         "stdout": "2,4,6",
-        "stderr": "(node:43) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:66) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "const arr = [1,2,3].map(x => x * 2); console.log(arr.join(','));",
       "explanation": "\n      ✅ SAFE: Array Methods\n      \n      This is legitimate code that should execute:\n      Array manipulation methods like map, filter, and join are\n      essential for data processing.\n    "
@@ -1128,11 +1128,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 71,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "done",
-        "stderr": "(node:49) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
+        "stderr": "(node:72) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       },
       "code": "const delay = ms => new Promise(r => setTimeout(r, ms)); await delay(10); console.log('done');",
       "explanation": "\n      ✅ SAFE: Async/Await Patterns\n      \n      This is legitimate code that should execute:\n      Promise-based async code with short delays is common and safe.\n      Teaching async patterns is important.\n    "
@@ -1144,7 +1144,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1161,7 +1161,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1178,7 +1178,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1229,7 +1229,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1246,7 +1246,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1280,7 +1280,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1297,7 +1297,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 64,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1331,7 +1331,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1365,7 +1365,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1382,7 +1382,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1416,7 +1416,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 8,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1450,7 +1450,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1467,11 +1467,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 75,
+      "duration": 138,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:55) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nconst add = (a: number, b: number): number => a + b; console.log(add(2, 3));\n              ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:516) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nconst add = (a: number, b: number): number => a + b; console.log(add(2, 3));\n              ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "const add = (a: number, b: number): number => a + b; console.log(add(2, 3));",
       "explanation": "\n      ✅ SAFE: Typed Mathematical Function\n      \n      This is legitimate code that should NOT be blocked:\n      Type-annotated functions performing safe operations\n      are exactly what TypeScript is designed for.\n      \n      Note: Actual execution requires TypeScript transpilation,\n      which is a runtime concern separate from security filtering.\n    "
@@ -1483,11 +1483,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 63,
+      "duration": 89,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:61) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\ninterface Point { x: number; y: number; }\n^^^^^^^^^\n\nSyntaxError: Unexpected strict mode reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:522) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\ninterface Point { x: number; y: number; }\n^^^^^^^^^\n\nSyntaxError: Unexpected strict mode reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "interface Point { x: number; y: number; }\nconst p: Point = { x: 10, y: 20 };\nconsole.log(p.x + p.y);",
       "explanation": "\n      ✅ SAFE: Interface-Based Data Structures\n      \n      This is legitimate code that should NOT be blocked:\n      Defining and using interfaces for type safety is\n      core TypeScript functionality.\n    "
@@ -1499,11 +1499,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 76,
+      "duration": 169,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:67) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nfunction identity<T>(value: T): T { return value; }\n                 ^\n\nSyntaxError: Unexpected token '<'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:528) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nfunction identity<T>(value: T): T { return value; }\n                 ^\n\nSyntaxError: Unexpected token '<'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "function identity<T>(value: T): T { return value; }\nconsole.log(identity('hello'));",
       "explanation": "\n      ✅ SAFE: Generic Identity Function\n      \n      This is legitimate code that should NOT be blocked:\n      Generics without dangerous operations are safe\n      and fundamental to TypeScript development.\n    "
@@ -1515,11 +1515,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 58,
+      "duration": 134,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:73) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:2\n  add(a: number, b: number): number { return a + b; }\n       ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:534) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:2\n  add(a: number, b: number): number { return a + b; }\n       ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "class Calculator {\n  add(a: number, b: number): number { return a + b; }\n}\nconst calc = new Calculator();\nconsole.log(calc.add(5, 3));",
       "explanation": "\n      ✅ SAFE: Class with Typed Methods\n      \n      This is legitimate code that should NOT be blocked:\n      Object-oriented TypeScript with proper typing\n      is standard practice for application development.\n    "
@@ -1531,11 +1531,11 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed successfully (not blocked by security)",
-      "duration": 59,
+      "duration": 69,
       "result": {
         "blocked": false,
         "stdout": "",
-        "stderr": "(node:79) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nenum Color { Red, Green, Blue }\n^^^^\n\nSyntaxError: Unexpected reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
+        "stderr": "(node:540) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nenum Color { Red, Green, Blue }\n^^^^\n\nSyntaxError: Unexpected reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6"
       },
       "code": "enum Color { Red, Green, Blue }\nconsole.log(Color.Green);",
       "explanation": "\n      ✅ SAFE: Enum Definition and Usage\n      \n      This is legitimate code that should NOT be blocked:\n      Enums are a TypeScript feature for defining\n      named constants. Completely safe.\n    "
@@ -1547,7 +1547,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1581,7 +1581,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1598,7 +1598,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1632,7 +1632,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1649,7 +1649,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1666,7 +1666,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 41,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1683,7 +1683,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1700,7 +1700,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1717,7 +1717,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 12,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1734,7 +1734,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 10,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1751,7 +1751,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 11,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1768,7 +1768,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1785,7 +1785,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 42,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1802,7 +1802,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1819,7 +1819,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1853,7 +1853,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1870,7 +1870,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1887,7 +1887,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1904,7 +1904,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1921,7 +1921,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1938,7 +1938,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1955,7 +1955,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1972,7 +1972,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -1989,7 +1989,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2006,7 +2006,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2023,7 +2023,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2040,7 +2040,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 41,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2057,7 +2057,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2074,7 +2074,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2125,7 +2125,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2142,7 +2142,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 1,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2176,7 +2176,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2193,7 +2193,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2210,7 +2210,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2261,7 +2261,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2278,7 +2278,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2295,7 +2295,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2329,7 +2329,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2346,7 +2346,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2380,7 +2380,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2414,7 +2414,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2448,7 +2448,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2499,7 +2499,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 6,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2516,7 +2516,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 20,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
@@ -2532,7 +2532,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 17,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "4",
@@ -2548,7 +2548,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 17,
+      "duration": 1,
       "result": {
         "blocked": false,
         "stdout": "[0, 1, 4, 9, 16]",
@@ -2564,7 +2564,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 16,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "7",
@@ -2580,7 +2580,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 16,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "10",
@@ -2613,7 +2613,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2630,7 +2630,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2647,7 +2647,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2681,7 +2681,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2698,7 +2698,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2715,7 +2715,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2749,7 +2749,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2766,7 +2766,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2834,7 +2834,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2902,7 +2902,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -2970,7 +2970,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3004,7 +3004,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3021,7 +3021,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 104,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3038,7 +3038,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3055,7 +3055,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3072,7 +3072,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3089,7 +3089,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3106,7 +3106,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 7,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3157,7 +3157,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3174,7 +3174,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3191,7 +3191,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3208,7 +3208,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3242,7 +3242,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3276,7 +3276,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3293,7 +3293,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 11,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3310,7 +3310,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 66,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3327,7 +3327,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3344,7 +3344,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3395,7 +3395,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3412,7 +3412,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 1,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3463,7 +3463,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3497,7 +3497,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3514,7 +3514,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3531,7 +3531,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3548,7 +3548,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3565,7 +3565,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3582,7 +3582,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 4,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3650,7 +3650,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3667,7 +3667,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 49,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3684,7 +3684,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3701,7 +3701,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 63,
+      "duration": 5,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
@@ -3717,7 +3717,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 15,
+      "duration": 4,
       "result": {
         "blocked": false,
         "stdout": "4",
@@ -3733,7 +3733,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 11,
+      "duration": 4,
       "result": {
         "blocked": false,
         "stdout": "2,4,6",
@@ -3749,7 +3749,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 17,
+      "duration": 3,
       "result": {
         "blocked": false,
         "stdout": "7",
@@ -3765,7 +3765,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 10,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "HELLO",
@@ -3781,7 +3781,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3798,7 +3798,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 5,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3849,7 +3849,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3866,7 +3866,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 6,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3883,7 +3883,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 55,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3900,7 +3900,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -3968,7 +3968,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4019,7 +4019,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 5,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4036,7 +4036,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4070,7 +4070,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4087,7 +4087,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4104,7 +4104,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4121,7 +4121,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4138,7 +4138,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4155,7 +4155,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4172,7 +4172,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 1,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4189,7 +4189,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4223,7 +4223,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4257,7 +4257,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 46,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4274,7 +4274,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 4,
+      "duration": 12,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4291,7 +4291,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 7,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4308,7 +4308,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4325,7 +4325,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 2,
+      "duration": 3,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4342,7 +4342,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4410,7 +4410,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4444,7 +4444,7 @@
       "expectBlocked": true,
       "passed": true,
       "reason": "✓ Correctly blocked: Security filter triggered",
-      "duration": 3,
+      "duration": 2,
       "result": {
         "blocked": true,
         "reason": "HTTP 403",
@@ -4478,7 +4478,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 1014,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "Hello, World!",
@@ -4494,7 +4494,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 707,
+      "duration": 2,
       "result": {
         "blocked": false,
         "stdout": "4",
@@ -4510,7 +4510,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 688,
+      "duration": 57,
       "result": {
         "blocked": false,
         "stdout": "7",
@@ -4526,7 +4526,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 908,
+      "duration": 7,
       "result": {
         "blocked": false,
         "stdout": "15",
@@ -4542,7 +4542,7 @@
       "expectBlocked": false,
       "passed": true,
       "reason": "✓ Executed correctly with expected output",
-      "duration": 855,
+      "duration": 4,
       "result": {
         "blocked": false,
         "stdout": "25",
