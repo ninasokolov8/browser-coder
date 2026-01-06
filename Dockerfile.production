@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-# Limit Node memory during build to prevent OOM on small servers
-RUN NODE_OPTIONS="--max-old-space-size=512" npm run build
+# Limit Node memory during build to prevent OOM on small servers (1GB is minimum for Vite)
+RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 
 # Production runtime
 FROM node:20-alpine

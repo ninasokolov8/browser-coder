@@ -28,12 +28,18 @@ export default defineConfig({
   // Ensure raw file imports work for starter code
   assetsInclude: ["**/*.py", "**/*.java", "**/*.php"],
   build: {
+    // Memory optimizations for low-RAM servers
+    sourcemap: false,
+    minify: 'esbuild', // faster and uses less memory than terser
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
           "monaco-editor": ["monaco-editor"],
         },
       },
+      // Reduce memory during build
+      maxParallelFileOps: 2,
     },
   },
 });
