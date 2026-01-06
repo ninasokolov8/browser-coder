@@ -1178,9 +1178,15 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-// Rate limiting
+// Rate limiting (bypass for localhost/tests)
 app.use("/api", (req, res, next) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  
+  // Bypass rate limiting for localhost (tests run locally)
+  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost') {
+    return next();
+  }
+  
   const { allowed, remaining } = rateLimiter.check(ip);
   
   res.setHeader("X-RateLimit-Remaining", remaining);
@@ -1353,8 +1359,8 @@ app.get("/api/reports/can-run", (req, res) => {
   res.json({ canRun: true, lastRun: null, hoursAgo: null });
 });
 
-// Track running test status
-let testRunStatus = { running: false, startTime: null, progress: null };
+// Track running test status with full terminal output
+let testRunStatus = { running: false, startTime: null, progress: null, output: '' };
 
 // Run security tests (cooldown disabled for now)
 app.post("/api/reports/run-tests", async (req, res) => {
@@ -1369,8 +1375,8 @@ app.post("/api/reports/run-tests", async (req, res) => {
     
     // Cooldown check disabled for now
     
-    // Mark as running
-    testRunStatus = { running: true, startTime: new Date().toISOString(), progress: 'starting' };
+    // Mark as running with empty output buffer
+    testRunStatus = { running: true, startTime: new Date().toISOString(), progress: 'starting', output: '' };
     
     // Return immediately, tests run in background
     res.json({ 
@@ -1387,22 +1393,23 @@ app.post("/api/reports/run-tests", async (req, res) => {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     
-    let output = '';
     testProcess.stdout.on('data', (data) => {
-      output += data.toString();
+      testRunStatus.output += data.toString();
       testRunStatus.progress = 'running';
     });
     
     testProcess.stderr.on('data', (data) => {
-      output += data.toString();
+      testRunStatus.output += data.toString();
     });
     
     testProcess.on('close', (code) => {
+      const finalOutput = testRunStatus.output;
       testRunStatus = { 
         running: false, 
         startTime: null, 
         progress: code === 0 ? 'completed' : 'failed',
-        lastResult: { code, output: output.slice(-500) }
+        output: finalOutput,
+        lastResult: { code, output: finalOutput.slice(-1000) }
       };
       log('info', 'test_run_completed', { exitCode: code });
     });
@@ -1422,6 +1429,18 @@ app.post("/api/reports/run-tests", async (req, res) => {
 // Get test run status
 app.get("/api/reports/status", (req, res) => {
   res.json(testRunStatus);
+});
+
+// Get terminal output (for live streaming)
+app.get("/api/reports/output", (req, res) => {
+  const offset = parseInt(req.query.offset || '0', 10);
+  const output = testRunStatus.output || '';
+  res.json({
+    running: testRunStatus.running,
+    progress: testRunStatus.progress,
+    output: output.slice(offset),
+    totalLength: output.length
+  });
 });
 
 // Serve reports directory
