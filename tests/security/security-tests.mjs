@@ -442,12 +442,15 @@ function generateHTMLReport(data) {
   
   // Generate By Language content
   let byLanguageHTML = '';
+  let isFirstLang = true;
   for (const [language, categories] of Object.entries(byLanguage)) {
     const langStats = data.statistics.byLanguage[language];
     const langPassRate = ((langStats.passed / langStats.total) * 100).toFixed(0);
+    const langActiveClass = isFirstLang ? ' active' : '';
+    isFirstLang = false;
     
     byLanguageHTML += `
-    <div class="lang-section" data-language="${language}">
+    <div class="lang-section${langActiveClass}" data-language="${language}">
       <div class="lang-header">
         <div class="lang-title">
           <span class="lang-icon">${getLanguageIcon(language)}</span>
@@ -465,7 +468,7 @@ function generateHTMLReport(data) {
         ${Object.entries(categories).map(([category, tests]) => {
           const catPassed = tests.filter(t => t.passed).length;
           return `
-          <details class="category-section" ${category === 'safe_code' ? '' : 'open'}>
+          <details class="category-section">
             <summary class="category-header">
               <span>${getCategoryIcon(category)} ${formatCategoryName(category)}</span>
               <span class="category-stats">${catPassed}/${tests.length}</span>
@@ -479,12 +482,15 @@ function generateHTMLReport(data) {
   
   // Generate By Category content
   let byCategoryHTML = '';
+  let isFirstCategory = true;
   for (const [category, langs] of Object.entries(byCategory)) {
     const catStats = data.statistics.byCategory[category];
     const catPassRate = ((catStats.passed / catStats.total) * 100).toFixed(0);
+    const catActiveClass = isFirstCategory ? ' active' : '';
+    isFirstCategory = false;
     
     byCategoryHTML += `
-    <div class="cat-section" data-category="${category}">
+    <div class="cat-section${catActiveClass}" data-category="${category}">
       <div class="cat-header">
         <div class="cat-title">
           <span class="cat-icon">${getCategoryIcon(category)}</span>
@@ -497,7 +503,7 @@ function generateHTMLReport(data) {
       
       <div class="lang-groups">
         ${Object.entries(langs).map(([lang, tests]) => `
-          <details class="lang-group" open>
+          <details class="lang-group">
             <summary>${getLanguageIcon(lang)} ${lang.toUpperCase()} (${tests.length})</summary>
             <div class="tests-grid">${generateTestCards(tests)}</div>
           </details>
