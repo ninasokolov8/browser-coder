@@ -131,7 +131,7 @@ services:
     environment:
       - NODE_ENV=production
     command: >
-      sh -c "mkdir -p /app/security/reports && chmod 777 /app/security/reports && node security/run.mjs --server=http://api:3001"
+      sh -c "mkdir -p /app/security/reports && chmod -R 777 /app/security/reports && rm -f /app/security/reports/security-report-latest*.json /app/security/reports/security-report-latest*.html && node security/run.mjs --server=http://api:3001"
     depends_on:
       api:
         condition: service_healthy
