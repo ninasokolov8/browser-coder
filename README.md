@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-  <a href="http://167.71.63.99"><strong>🌐 Live Demo</strong></a> •
-  <a href="http://167.71.63.99/reports/"><strong>🛡️ Security Reports</strong></a>
+  <a href="http://167.71.63.99" target="_blank"><strong>🌐 Live Demo</strong></a> •
+  <a href="http://167.71.63.99/reports/2026-01-07_security-report_2026-01-07_08-55-28-705Z.html" target="_blank"><strong>🛡️ Security Report</strong></a>
 </p>
 
 <p align="center">
