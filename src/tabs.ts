@@ -313,7 +313,38 @@ export class TabManager {
   }
 
   /**
-   * Check if a tab has been modified by the user
+   * Check if a tab has been modified by the user.
+   * Compares current content against the starter template - if they match,
+   * the file is considered "unmodified" even if isUserModified flag is set.
+   */
+  async isTabUserModifiedAsync(fileId: string): Promise<boolean> {
+    const tab = this.tabs.find(t => t.file.id === fileId);
+    if (!tab) return false;
+    
+    // If flag says not modified, definitely not modified
+    if (!tab.file.isUserModified) return false;
+    
+    // Flag says modified, but let's check if content matches starter
+    try {
+      const starter = await getStarterAsync(tab.file.language, tab.file.version);
+      const currentContent = tab.file.content.trim();
+      const starterContent = starter.trim();
+      
+      // If content matches starter exactly, it's not really "modified"
+      if (currentContent === starterContent) {
+        // Reset the flag since it's not actually modified
+        tab.file.isUserModified = false;
+        return false;
+      }
+    } catch {
+      // If we can't get starter, fall back to flag
+    }
+    
+    return tab.file.isUserModified;
+  }
+
+  /**
+   * Sync check if a tab has been modified (uses flag only, for backwards compatibility)
    */
   isTabUserModified(fileId: string): boolean {
     const tab = this.tabs.find(t => t.file.id === fileId);
