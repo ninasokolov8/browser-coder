@@ -1011,7 +1011,17 @@
       body.search-replace-disabled #replace-input,
       body.search-replace-disabled #btn-replace-all,
       body.search-replace-disabled #search-summary .search-btn.primary,
-      body.search-replace-disabled #btn-replace-all-files {
+      body.search-replace-disabled #btn-replace-all-files,
+      body.search-replace-disabled .search-match-btn[data-action="replace"],
+      body.search-replace-disabled .search-file-btn[data-action="replace-file"] {
+        display: none !important;
+      }
+
+      /* Embedded mode: language/version are fixed by the host (Step-Up task config). */
+      body.embedded #lang,
+      body.embedded #version,
+      body.embedded label[for="lang"],
+      body.embedded label[for="version"] {
         display: none !important;
       }
 

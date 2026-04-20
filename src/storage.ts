@@ -35,11 +35,25 @@ export interface WorkspaceState {
   theme: string;
 }
 
-const DB_NAME = 'BrowserCoderDB';
+const DEFAULT_DB_NAME = 'BrowserCoderDB';
+let DB_NAME = DEFAULT_DB_NAME;
 const DB_VERSION = 2; // Bump version for new folders store
 const FILES_STORE = 'files';
 const FOLDERS_STORE = 'folders';
 const STATE_STORE = 'workspace';
+
+/**
+ * Override the IndexedDB name (must be called before storage.init()).
+ * Used in embedded mode to isolate each iframe so multiple Step-Up parts
+ * on the same page don't share/overwrite each other's files.
+ */
+export function setDbName(name: string): void {
+  DB_NAME = name;
+}
+
+export function getDbName(): string {
+  return DB_NAME;
+}
 
 class StorageManager {
   private db: IDBDatabase | null = null;

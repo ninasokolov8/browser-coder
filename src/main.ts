@@ -2152,8 +2152,17 @@ function applyTheme(theme: string) {
   setStatus("Loading files…");
   
   if (isEmbedded) {
-    // Embedded mode: start with clean state - no IndexedDB restore.
-    // Files will be provided by Step-Up via postMessage (stepup:init).
+    // Embedded mode: isolate this iframe's IndexedDB so multiple parts on the
+    // same Step-Up page don't share/overwrite each other's files. Each iframe
+    // gets a unique DB that's deleted on unload.
+    const { setDbName, getDbName } = await import('./storage');
+    const isolatedDb = `BrowserCoderDB-embed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    setDbName(isolatedDb);
+    const dbToDelete = getDbName();
+    window.addEventListener('beforeunload', () => {
+      try { indexedDB.deleteDatabase(dbToDelete); } catch (_) { /* best effort */ }
+    });
+    // Start with clean state - files will be provided by Step-Up via postMessage (stepup:init).
     await tabManager.initEmbedded();
     updateEmptyState(true);
     editor.setModel(null);
