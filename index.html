@@ -827,6 +827,139 @@
         font-size: 12px;
         cursor: pointer;
       }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         MODE SYSTEM - For Step-Up Integration (External Embedding)
+         Modes: snippet, project, full
+         Flags: embedded, readonly, nooutput
+      ═══════════════════════════════════════════════════════════════════ */
+
+      /* Base embedded mode - hide chrome the parent app doesn't want.
+         IMPORTANT: titlebar is NOT hidden by default in embedded mode -
+         it contains the Run button which free_code/free workflows need.
+         Individual non-essential controls inside titlebar are hidden below. */
+      body.embedded #activitybar,
+      body.embedded #sidebar,
+      body.embedded #statusbar {
+        display: none !important;
+      }
+      body.embedded #app {
+        grid-template-columns: 1fr !important;
+        grid-template-areas:
+          "titlebar"
+          "main" !important;
+      }
+      /* Hide noisy titlebar controls in embedded mode - keep only run button + language indicator */
+      body.embedded #titlebar .logo,
+      body.embedded #titlebar #btn-hack-lab,
+      body.embedded #titlebar #btn-download-project,
+      body.embedded #titlebar #btn-clear-cache,
+      body.embedded #titlebar #download,
+      body.embedded #titlebar #theme,
+      body.embedded #titlebar #lang-selector,
+      body.embedded #titlebar .titlebar-separator {
+        display: none !important;
+      }
+      body.embedded #titlebar {
+        padding: 4px 8px;
+        min-height: 36px;
+      }
+
+      /* SNIPPET MODE - minimal UI (editor + output only) */
+      body.mode-snippet #sidebar,
+      body.mode-snippet #activitybar,
+      body.mode-snippet #tabs { 
+        display: none !important; 
+      }
+      body.mode-snippet #app {
+        grid-template-columns: 1fr !important;
+        grid-template-areas:
+          "titlebar"
+          "main"
+          "statusbar" !important;
+      }
+      body.mode-snippet.embedded #app {
+        grid-template-areas:
+          "titlebar"
+          "main" !important;
+      }
+      body.mode-snippet #editor-container { 
+        border-radius: 4px; 
+      }
+
+      /* PROJECT MODE - show file tree + tabs */
+      body.mode-project #sidebar { 
+        display: flex !important; 
+        width: 200px; 
+      }
+      body.mode-project #tabs { 
+        display: flex !important; 
+      }
+      body.mode-project #activitybar { 
+        display: none !important; 
+      }
+      body.mode-project #app {
+        grid-template-columns: 200px 1fr !important;
+        grid-template-areas:
+          "sidebar titlebar"
+          "sidebar main"
+          "sidebar statusbar" !important;
+      }
+      body.mode-project.embedded #app {
+        grid-template-areas:
+          "sidebar titlebar"
+          "sidebar main" !important;
+      }
+
+      /* FULL MODE - everything visible */
+      body.mode-full #sidebar { 
+        display: flex !important; 
+      }
+      body.mode-full #activitybar { 
+        display: flex !important; 
+      }
+      body.mode-full #tabs { 
+        display: flex !important; 
+      }
+      body.mode-full #statusbar { 
+        display: flex !important; 
+      }
+
+      /* Readonly mode - visual indicator + cursor hidden + hide run button
+         (parent app drives execution for fill_blanks etc.) */
+      body.readonly #editor-container { 
+        background: rgba(100, 100, 100, 0.03); 
+      }
+      body.readonly .monaco-editor .cursors-layer { 
+        display: none !important; 
+      }
+      body.readonly .monaco-editor .current-line { 
+        background: transparent !important; 
+        border: none !important; 
+      }
+      body.readonly #titlebar #run {
+        display: none !important;
+      }
+
+      /* No output mode - hide output panel AND titlebar entirely
+         (used for code_reading: pure read-only view, no controls) */
+      body.nooutput #panel { 
+        display: none !important; 
+      }
+      body.nooutput #main {
+        grid-template-rows: auto 1fr !important;
+      }
+      body.embedded.nooutput #titlebar {
+        display: none !important;
+      }
+      body.embedded.nooutput #app {
+        grid-template-areas:
+          "main" !important;
+      }
+      body.embedded.nooutput.mode-project #app {
+        grid-template-areas:
+          "sidebar main" !important;
+      }
     </style>
   </head>
   <body class="dark-theme">

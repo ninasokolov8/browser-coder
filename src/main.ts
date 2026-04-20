@@ -7,6 +7,204 @@ import type { LoadedLanguage, VersionConfig } from "./languages";
 import { TabManager, Tab } from "./tabs";
 import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLanguages, isRTL } from "./i18n";
 
+// ═══════════════════════════════════════════════════════════════════
+// STEP-UP INTEGRATION - URL Parameters & PostMessage API
+// ═══════════════════════════════════════════════════════════════════
+
+// URL Parameter Parsing
+const urlParams = new URLSearchParams(window.location.search);
+const isEmbedded = urlParams.get('embed') === '1';
+const ideMode = (urlParams.get('mode') || 'snippet') as 'snippet' | 'project' | 'full';
+const isReadonly = urlParams.get('readonly') === '1';
+const noOutput = urlParams.get('nooutput') === '1';
+const urlLanguage = urlParams.get('lang') || 'javascript';
+const urlVersion = urlParams.get('version') || '';
+const urlUiLang = urlParams.get('uilang') || 'en';
+
+// Allowed origins for postMessage (Step-Up domains)
+// Exact origin matches OR any subdomain of these base domains
+const ALLOWED_ORIGINS: string[] = [
+  'http://localhost:8000',
+  'http://localhost:3000',
+  'http://localhost',
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:3000',
+  'https://stepup.school',
+  'https://step-up.co.il',
+  'https://www.stepup.school',
+  'https://www.step-up.co.il',
+  'https://staging.stepup.school',
+  'http://stepup.local',
+];
+
+// Base domains that allow any subdomain match
+const ALLOWED_BASE_DOMAINS: string[] = [
+  'stepup.school',
+  'step-up.co.il',
+];
+
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  // Exact match
+  if (ALLOWED_ORIGINS.indexOf(origin) !== -1) return true;
+  // Subdomain match (e.g. https://app.stepup.school)
+  try {
+    const hostname = new URL(origin).hostname;
+    for (const base of ALLOWED_BASE_DOMAINS) {
+      if (hostname === base || hostname.endsWith('.' + base)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+// State for parent communication
+let parentOrigin: string | null = null;
+
+// Try to derive initial parent origin from document.referrer so the
+// initial `ide:ready` handshake can be sent BEFORE parent posts to us.
+function deriveInitialParentOrigin(): string | null {
+  try {
+    if (!document.referrer) return null;
+    const ref = new URL(document.referrer);
+    const refOrigin = ref.origin;
+    if (isAllowedOrigin(refOrigin)) return refOrigin;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+// Apply mode classes to body
+function applyModeClasses(): void {
+  // Remove existing mode classes
+  document.body.classList.remove('mode-snippet', 'mode-project', 'mode-full', 'embedded', 'readonly', 'nooutput');
+  
+  // Apply mode
+  document.body.classList.add(`mode-${ideMode}`);
+  
+  // Apply flags
+  if (isEmbedded) document.body.classList.add('embedded');
+  if (isReadonly) document.body.classList.add('readonly');
+  if (noOutput) document.body.classList.add('nooutput');
+  
+  console.log(`[IDE] Mode: ${ideMode}, Embedded: ${isEmbedded}, Readonly: ${isReadonly}, NoOutput: ${noOutput}`);
+}
+
+// Send message to parent window (Step-Up).
+// Falls back to '*' for the initial `ide:ready` handshake when we don't yet
+// know the parent's origin (Step-Up will validate origin on its side).
+function sendToParent(type: string, data: Record<string, unknown> = {}): void {
+  if (window.parent === window) return;
+  const target = parentOrigin || '*';
+  try {
+    window.parent.postMessage({ type, ...data }, target);
+  } catch (e) {
+    console.warn('[IDE] postMessage failed:', e);
+  }
+}
+
+// Notify parent that IDE is ready
+function notifyParentReady(): void {
+  sendToParent('ide:ready', { 
+    mode: ideMode, 
+    language: urlLanguage, 
+    version: urlVersion,
+    readonly: isReadonly,
+    embedded: isEmbedded,
+  });
+}
+
+// Notify parent of code changes (snippet mode)
+function notifyCodeChange(code: string): void {
+  sendToParent('ide:code-change', { 
+    code,
+    language: urlLanguage,
+    version: urlVersion,
+  });
+}
+
+// Notify parent of run results
+function notifyRunResult(result: { stdout: string; stderr: string; exitCode: number; durationMs: number }): void {
+  sendToParent('ide:run-result', result);
+}
+
+// PostMessage handler for incoming messages from Step-Up
+window.addEventListener('message', (event) => {
+  // Security: Validate origin
+  if (!isAllowedOrigin(event.origin)) {
+    console.warn('[IDE] Blocked message from unauthorized origin:', event.origin);
+    return;
+  }
+  
+  // Store parent origin for responses (overrides referrer-derived value)
+  parentOrigin = event.origin;
+  
+  const { type, ...data } = event.data || {};
+  if (!type || typeof type !== 'string') return;
+  
+  console.log('[IDE] Received message:', type, data);
+  
+  switch (type) {
+    case 'stepup:init':
+      // Initialize with code/files/output from Step-Up
+      handleStepUpInit(data as { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> });
+      break;
+    case 'stepup:set-code':
+      // Update editor content (snippet mode)
+      handleSetCode(data as { code: string });
+      break;
+    case 'stepup:get-code':
+      // Return current code (legacy single-file)
+      handleGetCode();
+      break;
+    case 'stepup:set-files':
+      // Replace files (project mode)
+      handleSetFiles(data as { files: Array<{ path: string; content: string; language?: string }> });
+      break;
+    case 'stepup:get-files':
+      // Return all files (project mode)
+      handleGetFiles();
+      break;
+    case 'stepup:run':
+      // Trigger code execution inside the IDE
+      handleRun();
+      break;
+    case 'stepup:set-readonly':
+      // Toggle readonly mode at runtime
+      handleSetReadonly(data as { readonly: boolean });
+      break;
+    case 'stepup:show-output':
+      // CRITICAL for fill_blanks: parent computed output, just display it.
+      // The IDE itself does NOT execute; Step-Up POSTs to /api/run and
+      // streams the result here for the readonly view.
+      handleShowOutput(data as { output?: string; stdout?: string; stderr?: string; exitCode?: number });
+      break;
+    case 'stepup:clear-output':
+      // Clear the output panel
+      handleClearOutput();
+      break;
+    default:
+      console.warn('[IDE] Unknown message type:', type);
+  }
+});
+
+// Handler placeholders - will be connected to editor in main()
+let handleStepUpInit: (data: { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> }) => void = () => {};
+let handleSetCode: (data: { code: string }) => void = () => {};
+let handleGetCode: () => void = () => {};
+let handleSetFiles: (data: { files: Array<{ path: string; content: string; language?: string }> }) => void = () => {};
+let handleGetFiles: () => void = () => {};
+let handleRun: () => void = () => {};
+let handleSetReadonly: (data: { readonly: boolean }) => void = () => {};
+let handleShowOutput: (data: { output?: string; stdout?: string; stderr?: string; exitCode?: number }) => void = () => {};
+let handleClearOutput: () => void = () => {};
+
+// ═══════════════════════════════════════════════════════════════════
+// END STEP-UP INTEGRATION
+// ═══════════════════════════════════════════════════════════════════
+
 // Configure Monaco workers for syntax highlighting and IntelliSense
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -257,8 +455,16 @@ function applyTheme(theme: string) {
 (async function main() {
   setStatus("Loading languages…");
 
+  // Apply mode classes immediately for CSS to take effect
+  applyModeClasses();
+
   // Initialize i18n (UI languages: English, Hebrew, etc.)
   await initI18n();
+  
+  // Override UI language from URL param if provided
+  if (urlUiLang && urlUiLang !== getUILang()) {
+    await setLanguage(urlUiLang);
+  }
   
   // Set UI language selector to current language
   uiLangSel.value = getUILang();
@@ -353,6 +559,8 @@ function applyTheme(theme: string) {
     matchBrackets: "always",
     cursorBlinking: "smooth",
     cursorSmoothCaretAnimation: "on",
+    // Step-Up integration: readonly mode from URL param
+    readOnly: isReadonly,
     smoothScrolling: true,
     contextmenu: true,
     mouseWheelZoom: true,
@@ -2025,9 +2233,29 @@ function applyTheme(theme: string) {
       if (data.stderr) appendOutput(`[stderr]\n${data.stderr}`);
       appendOutput(`\n[exit code: ${data.exitCode}]`);
       setStatus(data.exitCode === 0 ? "Ready ✅" : "Run completed with errors");
+      
+      // Notify parent of run result (Step-Up integration)
+      if (isEmbedded) {
+        notifyRunResult({
+          stdout: data.stdout || '',
+          stderr: data.stderr || '',
+          exitCode: data.exitCode ?? -1,
+          durationMs: data.durationMs || 0
+        });
+      }
     } catch (e: any) {
       appendOutput(`ERROR: ${e?.message || String(e)}`);
       setStatus("Run failed");
+      
+      // Notify parent of error
+      if (isEmbedded) {
+        notifyRunResult({
+          stdout: '',
+          stderr: e?.message || String(e),
+          exitCode: -1,
+          durationMs: 0
+        });
+      }
     } finally {
       runBtn.disabled = false;
     }
@@ -2198,6 +2426,169 @@ function applyTheme(theme: string) {
   }
   if (savedSettings.panelHeight && savedSettings.panelHeight > 100) {
     panelEl.style.height = `${savedSettings.panelHeight}px`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP-UP INTEGRATION: Connect PostMessage Handlers
+  // ═══════════════════════════════════════════════════════════════════
+  
+  // Handle init message from Step-Up.
+  // Supported payload:
+  //   - code:    string (snippet mode starter / readonly content)
+  //   - files:   FileEntry[] (project mode - first file becomes active)
+  //   - output:  string (pre-populated output, e.g. for fill_blanks)
+  //   - autoRun: boolean (trigger run after init - free_code only)
+  handleStepUpInit = (data) => {
+    console.log('[IDE] handleStepUpInit:', data);
+    
+    // Project mode with files takes precedence
+    if (data.files && Array.isArray(data.files) && data.files.length > 0 && ideMode !== 'snippet') {
+      handleSetFiles({ files: data.files });
+    } else if (typeof data.code === 'string') {
+      // Snippet mode - single code blob
+      editor.setValue(data.code);
+    }
+    
+    // Pre-populated output (used by fill_blanks)
+    if (typeof data.output === 'string') {
+      setOutput(data.output);
+    }
+    
+    // Re-broadcast ready so parent knows init was applied
+    notifyParentReady();
+    
+    // Auto-run if requested (free_code "run on load" workflows)
+    if (data.autoRun && !isReadonly) {
+      setTimeout(() => runBtn.click(), 200);
+    }
+  };
+  
+  // Handle set code message (snippet mode)
+  handleSetCode = (data) => {
+    if (typeof data.code === 'string') {
+      editor.setValue(data.code);
+    }
+  };
+  
+  // Handle get code request - responds with `ide:code-response`
+  // (matches the legacy contract used by step-up TaskController fallback)
+  handleGetCode = () => {
+    sendToParent('ide:code-response', { 
+      code: editor.getValue(),
+      language: urlLanguage,
+      version: urlVersion,
+    });
+  };
+  
+  // Handle set files (project mode) - opens first file in editor.
+  // Files are stored as new in-memory tabs.
+  handleSetFiles = (data) => {
+    if (!data.files || !Array.isArray(data.files)) return;
+    // Open the first file in the editor; remaining files become tabs/sidebar entries.
+    // For now we simply load the first file's content into the active model.
+    // Full multi-tab management is exercised when the user clicks files in the tree.
+    const first = data.files[0];
+    if (first && typeof first.content === 'string') {
+      editor.setValue(first.content);
+    }
+    // TODO: when project-mode UI is fully wired, populate tabManager with the rest.
+  };
+  
+  // Handle get files request (project mode)
+  handleGetFiles = () => {
+    // Snippet mode: return the single editor buffer as one file
+    if (ideMode === 'snippet') {
+      sendToParent('ide:files', { 
+        files: [{ path: 'main', content: editor.getValue(), language: urlLanguage }] 
+      });
+      return;
+    }
+    // Project/full mode: collect all tabs
+    const tabs = tabManager.getAllTabs ? tabManager.getAllTabs() : [];
+    const files = tabs.map((t: any) => ({
+      path: t.file?.name || 'main',
+      content: fileModels.get(t.file?.id)?.getValue() ?? t.file?.content ?? '',
+      language: t.file?.language,
+    }));
+    if (files.length === 0) {
+      // Fallback to current editor content
+      files.push({ path: 'main', content: editor.getValue(), language: urlLanguage });
+    }
+    sendToParent('ide:files', { files });
+  };
+  
+  // Handle run request from parent (free_code workflows)
+  handleRun = () => {
+    if (isReadonly) {
+      console.warn('[IDE] Run requested but editor is readonly - ignoring');
+      return;
+    }
+    runBtn.click();
+  };
+  
+  // Handle readonly toggle at runtime
+  handleSetReadonly = (data) => {
+    const ro = !!data.readonly;
+    editor.updateOptions({ 
+      readOnly: ro,
+      domReadOnly: ro,
+      renderLineHighlight: ro ? 'none' : 'line',
+    });
+    document.body.classList.toggle('readonly', ro);
+  };
+  
+  // Handle pre-computed output from parent (CRITICAL for fill_blanks).
+  // Step-Up POSTs filled code to /api/run, then pushes result here for display.
+  handleShowOutput = (data) => {
+    let text = '';
+    if (typeof data.output === 'string') {
+      text = data.output;
+    } else {
+      if (data.stdout) text += data.stdout;
+      if (data.stderr) text += (text ? '\n' : '') + '[stderr]\n' + data.stderr;
+      if (typeof data.exitCode === 'number') text += `\n[exit code: ${data.exitCode}]`;
+    }
+    setOutput(text);
+  };
+  
+  // Handle clear output request
+  handleClearOutput = () => {
+    setOutput('');
+  };
+  
+  // Notify parent of code changes (throttled)
+  let codeChangeTimeout: ReturnType<typeof setTimeout> | null = null;
+  editor.onDidChangeModelContent(() => {
+    // Existing auto-save logic...
+    const activeTab = tabManager.getActiveTab();
+    if (activeTab) {
+      tabManager.markDirty(activeTab.file.id, editor.getValue());
+    }
+    
+    // Notify parent of code change (throttled to avoid flooding)
+    if (isEmbedded && !isReadonly) {
+      if (codeChangeTimeout) clearTimeout(codeChangeTimeout);
+      codeChangeTimeout = setTimeout(() => {
+        notifyCodeChange(editor.getValue());
+      }, 300);
+    }
+  });
+  
+  // Notify parent that IDE is ready (after initialization).
+  // We send TWO ready signals to handle both timing scenarios:
+  //   1. Immediately with '*' (or referrer-derived origin) so parents that
+  //      attach a listener and wait for ready get it ASAP.
+  //   2. After a short delay, in case the first one races the parent's
+  //      listener registration.
+  if (isEmbedded) {
+    // Try referrer-derived origin first
+    const initialOrigin = deriveInitialParentOrigin();
+    if (initialOrigin && !parentOrigin) {
+      parentOrigin = initialOrigin;
+    }
+    notifyParentReady();
+    setTimeout(() => notifyParentReady(), 100);
+    setTimeout(() => notifyParentReady(), 500);
   }
 
   setStatus("Ready ✅ (Ctrl+Enter to run)");

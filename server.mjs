@@ -854,6 +854,145 @@ class SmartExecutor {
     });
   }
   
+  /**
+   * Execute multi-file project (Step-Up integration)
+   * @param {string} language 
+   * @param {string} version 
+   * @param {Array<{name: string, content: string, isMain?: boolean}>} files 
+   */
+  async executeMulti(language, version, files) {
+    // Check capacity
+    if (this.activeExecutions >= CONFIG.execution.maxConcurrent) {
+      throw new Error('Server at capacity - please try again');
+    }
+    
+    // Generate cache key from all files
+    const filesHash = files.map(f => `${f.name}:${f.content}`).join('|||');
+    const cacheKey = SmartCache.hash(language, version, filesHash);
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return { ...cached, cached: true };
+    }
+    
+    return this.deduplicator.dedupe(cacheKey, async () => {
+      this.activeExecutions++;
+      this.totalExecutions++;
+      
+      try {
+        const result = await this.executeMultiFile(language, version, files);
+        
+        // Cache successful results
+        if (result.exitCode === 0) {
+          this.cache.set(cacheKey, result);
+        }
+        
+        return result;
+      } finally {
+        this.activeExecutions--;
+      }
+    });
+  }
+  
+  /**
+   * Execute multi-file code
+   */
+  async executeMultiFile(language, version, files) {
+    const projectDir = path.join(this.tempDir, `project_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    
+    try {
+      // Create project directory
+      fs.mkdirSync(projectDir, { recursive: true });
+      
+      // Write all files
+      for (const file of files) {
+        const filePath = path.join(projectDir, file.name);
+        const fileDir = path.dirname(filePath);
+        if (!fs.existsSync(fileDir)) {
+          fs.mkdirSync(fileDir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, file.content);
+      }
+      
+      // Find main file
+      const mainFile = files.find(f => f.isMain) || files[0];
+      
+      switch (language) {
+        case 'javascript':
+        case 'typescript':
+          return this.executeJSMulti(projectDir, mainFile.name);
+        case 'python':
+          return this.executePythonMulti(projectDir, mainFile.name);
+        case 'php':
+          return this.executePHPMulti(projectDir, mainFile.name);
+        case 'java':
+          return this.executeJavaMulti(projectDir, files);
+        default:
+          throw new Error(`Multi-file not supported for: ${language}`);
+      }
+    } finally {
+      // Cleanup project directory
+      try {
+        fs.rmSync(projectDir, { recursive: true, force: true });
+      } catch {}
+    }
+  }
+  
+  async executeJSMulti(projectDir, mainFile) {
+    return this.runProcess('node', [
+      '--experimental-permission',
+      '--allow-fs-read=' + projectDir,
+      '--max-old-space-size=128',
+      path.join(projectDir, mainFile)
+    ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+  }
+  
+  async executePythonMulti(projectDir, mainFile) {
+    return this.runProcess('python3', [
+      '-u', '-I',
+      path.join(projectDir, mainFile)
+    ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+  }
+  
+  async executePHPMulti(projectDir, mainFile) {
+    return this.runProcess('php', [
+      '-d', 'open_basedir=' + projectDir,
+      '-d', 'memory_limit=64M',
+      '-d', 'max_execution_time=10',
+      '-d', 'disable_functions=exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec',
+      path.join(projectDir, mainFile)
+    ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+  }
+  
+  async executeJavaMulti(projectDir, files) {
+    const javaTimeout = CONFIG.execution.javaTimeoutMs;
+    
+    // Find all Java files
+    const javaFiles = files.filter(f => f.name.endsWith('.java'));
+    const javaPaths = javaFiles.map(f => path.join(projectDir, f.name));
+    
+    // Compile all Java files
+    const compileResult = await this.runProcess('javac', [
+      '-J-Xmx128m',
+      ...javaPaths
+    ], javaTimeout, { skipJavaSecurityManager: true, cwd: projectDir });
+    
+    if (compileResult.exitCode !== 0) {
+      return { ...compileResult, phase: 'compile' };
+    }
+    
+    // Find main class (file with main method or first file)
+    const mainFile = files.find(f => f.isMain) || javaFiles[0];
+    const className = mainFile.name.replace('.java', '');
+    
+    return await this.runProcess('java', [
+      '-Xmx128m',
+      '-Xms32m',
+      '-XX:MaxMetaspaceSize=64m',
+      '-cp', projectDir,
+      className
+    ], javaTimeout, { cwd: projectDir });
+  }
+  
   async executeCode(language, version, code) {
     const startTime = Date.now();
     
@@ -987,7 +1126,7 @@ class SmartExecutor {
       }
       
       const proc = spawn(command, args, {
-        cwd: this.tempDir,
+        cwd: options.cwd || this.tempDir,
         timeout: timeoutMs,
         env: sanitizedEnv,
         // SECURITY: Don't inherit parent's stdio, file descriptors
@@ -1172,11 +1311,68 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS
+// ============================================
+// CORS CONFIGURATION - Step-Up Integration
+// ============================================
+const ALLOWED_ORIGINS = [
+  'http://localhost:8000',
+  'http://localhost:3000',
+  'http://localhost',
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:3000',
+  'https://stepup.school',
+  'https://step-up.co.il',
+  'https://www.stepup.school',
+  'https://www.step-up.co.il',
+  // Development / staging
+  'http://stepup.local',
+  'https://staging.stepup.school',
+];
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  
+  // Direct match
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  
+  // Subdomain match for stepup.school and step-up.co.il
+  const allowedDomains = ['stepup.school', 'step-up.co.il'];
+  for (const domain of allowedDomains) {
+    if (origin.endsWith('.' + domain) || origin.endsWith('://' + domain)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// CORS middleware
 app.use("/api", (req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin;
+  
+  // In development, allow all origins for easier testing
+  if (CONFIG.isDev) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  } else if (origin && isAllowedOrigin(origin)) {
+    // Production: only allow specific origins
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else if (!origin) {
+    // No origin header (same-origin requests, server-to-server, etc.)
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else {
+    // Origin not allowed - log and reject preflight, allow other requests but log warning
+    log('warn', 'cors_rejected', { origin, path: req.path, method: req.method });
+    if (req.method === "OPTIONS") {
+      return res.status(403).json({ error: "Origin not allowed" });
+    }
+    // For non-preflight, still set headers but log
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
@@ -1252,35 +1448,111 @@ function getExtension(language) {
   return extensions[language] || 'txt';
 }
 
-// Run code
+// Run code (supports single file and multi-file execution)
+//
+// Single-file payload:  { language, version, code }
+// Multi-file payload:   { language, version, files: [{ path|name, content, language?, isMain? }], entryPoint? }
+//
+// `entryPoint` (top-level) takes precedence over per-file `isMain`.
 app.post("/api/run", async (req, res) => {
-  const { language, version, code } = req.body;
+  const { language, version, code, files, entryPoint } = req.body;
   
-  if (!language || !code) {
-    return res.status(400).json({ error: "Missing language or code" });
+  if (!language) {
+    return res.status(400).json({ error: "Missing language" });
   }
   
-  if (code.length > 100000) {
-    return res.status(400).json({ error: "Code too large (max 100KB)" });
-  }
+  // Support both single-file (code) and multi-file (files) modes
+  let codeToRun = code;
+  let allFiles = null;
   
-  // SECURITY: Validate code for dangerous patterns
-  const securityCheck = validateCodeSecurity(language, code);
-  if (!securityCheck.safe) {
-    log('warn', 'security_block', { 
-      language, 
-      reason: securityCheck.reason,
-      matched: securityCheck.matched,
-      ip: req.ip 
-    });
-    return res.status(403).json({ 
-      error: securityCheck.reason,
-      blocked: true,
-    });
+  if (files && Array.isArray(files) && files.length > 0) {
+    // Normalize file shape: accept { path } or { name }
+    const normalized = files.map(f => ({
+      name: f.path || f.name,
+      content: typeof f.content === 'string' ? f.content : '',
+      language: f.language,
+      isMain: !!f.isMain,
+    })).filter(f => f.name);
+    
+    if (normalized.length === 0) {
+      return res.status(400).json({ error: "files[] must contain at least one named file" });
+    }
+    
+    // Reject path traversal / absolute paths
+    for (const f of normalized) {
+      if (f.name.includes('..') || f.name.startsWith('/') || f.name.startsWith('\\') || /^[a-zA-Z]:/.test(f.name)) {
+        return res.status(400).json({ error: `Invalid file path: ${f.name}` });
+      }
+    }
+    
+    const totalSize = normalized.reduce((sum, f) => sum + f.content.length, 0);
+    if (totalSize > 100000) {
+      return res.status(400).json({ error: "Total code size too large (max 100KB)" });
+    }
+    
+    // Security check all files
+    for (const file of normalized) {
+      if (!file.content) continue;
+      const securityCheck = validateCodeSecurity(language, file.content);
+      if (!securityCheck.safe) {
+        log('warn', 'security_block', { 
+          language, 
+          file: file.name,
+          reason: securityCheck.reason,
+          matched: securityCheck.matched,
+          ip: req.ip 
+        });
+        return res.status(403).json({ 
+          error: `${file.name}: ${securityCheck.reason}`,
+          blocked: true,
+        });
+      }
+    }
+    
+    // Determine entry point: explicit entryPoint > isMain flag > first file
+    let mainFile = null;
+    if (entryPoint) {
+      mainFile = normalized.find(f => f.name === entryPoint);
+      if (!mainFile) {
+        return res.status(400).json({ error: `entryPoint "${entryPoint}" not found in files` });
+      }
+      mainFile.isMain = true;
+    } else {
+      mainFile = normalized.find(f => f.isMain) || normalized[0];
+      mainFile.isMain = true;
+    }
+    
+    codeToRun = mainFile.content;
+    allFiles = normalized;
+  } else if (code) {
+    // Single-file mode (backward compatible)
+    if (code.length > 100000) {
+      return res.status(400).json({ error: "Code too large (max 100KB)" });
+    }
+    
+    // SECURITY: Validate code for dangerous patterns
+    const securityCheck = validateCodeSecurity(language, code);
+    if (!securityCheck.safe) {
+      log('warn', 'security_block', { 
+        language, 
+        reason: securityCheck.reason,
+        matched: securityCheck.matched,
+        ip: req.ip 
+      });
+      return res.status(403).json({ 
+        error: securityCheck.reason,
+        blocked: true,
+      });
+    }
+  } else {
+    return res.status(400).json({ error: "Missing code or files" });
   }
   
   try {
-    const result = await executor.execute(language, version, code);
+    // Pass allFiles to executor for multi-file support (if supported)
+    const result = allFiles 
+      ? await executor.executeMulti(language, version, allFiles)
+      : await executor.execute(language, version, codeToRun);
     
     res.json({
       stdout: result.stdout,
