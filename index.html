@@ -865,6 +865,26 @@
         min-height: 36px;
       }
 
+      /* Lock all resize/draggable handles in embedded mode - parent app controls sizing */
+      body.embedded #sidebar-resize,
+      body.embedded #panel-resize {
+        display: none !important;
+        pointer-events: none !important;
+      }
+      body.embedded #sidebar {
+        resize: none !important;
+        min-width: 0 !important;
+        max-width: none !important;
+      }
+      /* Force LTR layout in embedded mode - code editor is always LTR */
+      body.embedded {
+        direction: ltr !important;
+      }
+      body.embedded #editor-container,
+      body.embedded #main {
+        direction: ltr !important;
+      }
+
       /* SNIPPET MODE - minimal UI (editor + output only) */
       body.mode-snippet #sidebar,
       body.mode-snippet #activitybar,

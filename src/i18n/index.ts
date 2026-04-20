@@ -49,18 +49,27 @@ async function loadTranslations(lang: string): Promise<Translations> {
 }
 
 /**
- * Initialize i18n with saved or detected language
+ * Initialize i18n with saved or detected language.
+ * In embedded mode (embed=1), always force English/LTR for the code editor.
  */
 export async function initI18n(): Promise<void> {
-  // Check saved preference
-  const saved = localStorage.getItem('language');
-  if (saved && languages.some(l => l.code === saved)) {
-    currentLang = saved;
+  // In embedded mode, always use English - code editors should be LTR
+  const params = new URLSearchParams(window.location.search);
+  const isEmbedded = params.get('embed') === '1';
+  
+  if (isEmbedded) {
+    currentLang = 'en';
   } else {
-    // Auto-detect from browser
-    const browserLang = navigator.language.split('-')[0];
-    if (languages.some(l => l.code === browserLang)) {
-      currentLang = browserLang;
+    // Check saved preference
+    const saved = localStorage.getItem('language');
+    if (saved && languages.some(l => l.code === saved)) {
+      currentLang = saved;
+    } else {
+      // Auto-detect from browser
+      const browserLang = navigator.language.split('-')[0];
+      if (languages.some(l => l.code === browserLang)) {
+        currentLang = browserLang;
+      }
     }
   }
 

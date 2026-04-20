@@ -80,8 +80,13 @@ export class TabManager {
   /**
    * Replace all tabs with the given files. Clears storage and existing tabs first.
    * Used by Step-Up integration when receiving files via postMessage.
+   * Preserves the currently active file by name to avoid tab-jumping on content updates.
    */
   async replaceAllFiles(files: Array<{ path: string; content: string; language?: string }>, defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
+    // Remember active file name to restore after replacement
+    const activeTab = this.getActiveTab();
+    const previousActiveFileName = activeTab?.file.name || null;
+
     // Clear existing state
     await storage.clearAll();
     this.tabs.forEach(t => this.events.onTabClose?.(t));
@@ -103,8 +108,15 @@ export class TabManager {
       this.tabs.push({ file: storedFile, isDirty: false });
     }
 
-    // Activate first tab
-    if (this.tabs.length > 0) {
+    // Restore previously active tab by name, or fall back to first tab
+    if (previousActiveFileName) {
+      const matchingTab = this.tabs.find(t => t.file.name === previousActiveFileName);
+      if (matchingTab) {
+        this.activeTabId = matchingTab.file.id;
+      } else if (this.tabs.length > 0) {
+        this.activeTabId = this.tabs[0].file.id;
+      }
+    } else if (this.tabs.length > 0) {
       this.activeTabId = this.tabs[0].file.id;
     }
 

@@ -341,6 +341,8 @@ function downloadFile(filename: string, content: string) {
 
 // Update grid layout for RTL/LTR
 function updateGridForRTL() {
+  // In embedded mode, grid is fully controlled by mode-specific CSS - never override
+  if (isEmbedded) return;
   const appEl = document.getElementById("app")!;
   const sidebarWidth = sidebarEl.offsetWidth || 220;
   
@@ -2333,18 +2335,20 @@ function applyTheme(theme: string) {
     });
   });
 
-  // Panel resize
+  // Panel resize - disabled in embedded mode (parent app controls sizing)
   let isResizing = false;
   let startY = 0;
   let startHeight = 0;
 
-  panelResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
-    isResizing = true;
-    startY = e.clientY;
-    startHeight = panelEl.offsetHeight;
-    document.body.style.cursor = "ns-resize";
-    document.body.style.userSelect = "none";
-  });
+  if (!isEmbedded) {
+    panelResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
+      isResizing = true;
+      startY = e.clientY;
+      startHeight = panelEl.offsetHeight;
+      document.body.style.cursor = "ns-resize";
+      document.body.style.userSelect = "none";
+    });
+  }
 
   document.addEventListener("mousemove", (e: MouseEvent) => {
     if (!isResizing) return;
@@ -2369,19 +2373,21 @@ function applyTheme(theme: string) {
     }
   });
 
-  // Sidebar resize
+  // Sidebar resize - disabled in embedded mode (parent app controls sizing)
   let isSidebarResizing = false;
   let sidebarStartX = 0;
   let sidebarStartWidth = 0;
 
-  sidebarResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
-    isSidebarResizing = true;
-    sidebarStartX = e.clientX;
-    sidebarStartWidth = sidebarEl.offsetWidth;
-    document.body.style.cursor = "ew-resize";
-    document.body.style.userSelect = "none";
-    e.preventDefault();
-  });
+  if (!isEmbedded) {
+    sidebarResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
+      isSidebarResizing = true;
+      sidebarStartX = e.clientX;
+      sidebarStartWidth = sidebarEl.offsetWidth;
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    });
+  }
 
   document.addEventListener("mousemove", (e: MouseEvent) => {
     if (isSidebarResizing) {
