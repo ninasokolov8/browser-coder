@@ -906,9 +906,15 @@
           "sidebar statusbar" !important;
       }
       body.mode-project.embedded #app {
+        grid-template-columns: 200px 1fr !important;
+        grid-template-rows: auto 1fr !important;
         grid-template-areas:
           "sidebar titlebar"
           "sidebar main" !important;
+      }
+      body.embedded.mode-project #sidebar {
+        display: flex !important;
+        width: 200px;
       }
 
       /* FULL MODE - everything visible */
@@ -923,6 +929,27 @@
       }
       body.mode-full #statusbar { 
         display: flex !important; 
+      }
+      body.mode-full #app {
+        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-rows: auto 1fr auto !important;
+        grid-template-areas:
+          "activitybar titlebar titlebar"
+          "activitybar sidebar main"
+          "statusbar statusbar statusbar" !important;
+      }
+      body.mode-full.embedded #app {
+        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-rows: auto 1fr !important;
+        grid-template-areas:
+          "activitybar titlebar titlebar"
+          "activitybar sidebar main" !important;
+      }
+      body.embedded.mode-full #sidebar {
+        display: flex !important;
+      }
+      body.embedded.mode-full #activitybar {
+        display: flex !important;
       }
 
       /* Readonly mode - visual indicator + cursor hidden + hide run button
@@ -957,8 +984,22 @@
           "main" !important;
       }
       body.embedded.nooutput.mode-project #app {
+        grid-template-columns: 200px 1fr !important;
+        grid-template-rows: 1fr !important;
         grid-template-areas:
           "sidebar main" !important;
+      }
+      body.embedded.nooutput.mode-full #app {
+        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-rows: 1fr !important;
+        grid-template-areas:
+          "activitybar sidebar main" !important;
+      }
+      body.embedded.nooutput.mode-full #sidebar {
+        display: flex !important;
+      }
+      body.embedded.nooutput.mode-full #activitybar {
+        display: flex !important;
       }
     </style>
   </head>
