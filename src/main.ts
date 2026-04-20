@@ -14,12 +14,32 @@ import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLang
 // URL Parameter Parsing
 const urlParams = new URLSearchParams(window.location.search);
 const isEmbedded = urlParams.get('embed') === '1';
-const ideMode = (urlParams.get('mode') || 'snippet') as 'snippet' | 'project' | 'full';
-const isReadonly = urlParams.get('readonly') === '1';
+const rawMode = (urlParams.get('mode') || 'snippet').toLowerCase();
+const ideMode = (rawMode === 'full' || rawMode === 'project') ? 'full' : 'snippet';
 const noOutput = urlParams.get('nooutput') === '1';
 const urlLanguage = urlParams.get('lang') || 'javascript';
 const urlVersion = urlParams.get('version') || '';
 const urlUiLang = urlParams.get('uilang') || 'en';
+
+type IdePanel = 'explorer' | 'search' | 'run';
+
+function normalizePanels(rawPanels: unknown, fallback: IdePanel[]): IdePanel[] {
+  if (!Array.isArray(rawPanels)) return [...fallback];
+  const allowed: IdePanel[] = ['explorer', 'search', 'run'];
+  const unique = new Set<IdePanel>();
+  for (const panel of rawPanels) {
+    if (typeof panel === 'string' && allowed.includes(panel as IdePanel)) {
+      unique.add(panel as IdePanel);
+    }
+  }
+  return unique.size > 0 ? Array.from(unique) : [...fallback];
+}
+
+let currentReadonly = urlParams.get('readonly') === '1';
+let currentLockStructure = currentReadonly;
+let currentAllowRun = !currentReadonly && !noOutput;
+let currentAllowSearchReplace = !currentReadonly;
+let currentVisiblePanels: IdePanel[] = ideMode === 'full' ? ['explorer', 'search', 'run'] : [];
 
 // Allowed origins for postMessage (Step-Up domains)
 // Exact origin matches OR any subdomain of these base domains
@@ -89,10 +109,10 @@ function applyModeClasses(): void {
   
   // Apply flags
   if (isEmbedded) document.body.classList.add('embedded');
-  if (isReadonly) document.body.classList.add('readonly');
+  if (currentReadonly) document.body.classList.add('readonly');
   if (noOutput) document.body.classList.add('nooutput');
   
-  console.log(`[IDE] Mode: ${ideMode}, Embedded: ${isEmbedded}, Readonly: ${isReadonly}, NoOutput: ${noOutput}`);
+  console.log(`[IDE] Mode: ${ideMode}, Embedded: ${isEmbedded}, Readonly: ${currentReadonly}, NoOutput: ${noOutput}`);
 }
 
 // Send message to parent window (Step-Up).
@@ -114,7 +134,7 @@ function notifyParentReady(): void {
     mode: ideMode, 
     language: urlLanguage, 
     version: urlVersion,
-    readonly: isReadonly,
+    readonly: currentReadonly,
     embedded: isEmbedded,
   });
 }
@@ -152,7 +172,7 @@ window.addEventListener('message', (event) => {
   switch (type) {
     case 'stepup:init':
       // Initialize with code/files/output from Step-Up
-      handleStepUpInit(data as { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> });
+      handleStepUpInit(data as { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }>; readonly?: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean });
       break;
     case 'stepup:set-code':
       // Update editor content (snippet mode)
@@ -176,7 +196,7 @@ window.addEventListener('message', (event) => {
       break;
     case 'stepup:set-readonly':
       // Toggle readonly mode at runtime
-      handleSetReadonly(data as { readonly: boolean });
+      handleSetReadonly(data as { readonly: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean });
       break;
     case 'stepup:show-output':
       // CRITICAL for fill_blanks: parent computed output, just display it.
@@ -194,13 +214,13 @@ window.addEventListener('message', (event) => {
 });
 
 // Handler placeholders - will be connected to editor in main()
-let handleStepUpInit: (data: { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> }) => void | Promise<void> = () => {};
+let handleStepUpInit: (data: { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }>; readonly?: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean }) => void | Promise<void> = () => {};
 let handleSetCode: (data: { code: string }) => void = () => {};
 let handleGetCode: () => void = () => {};
 let handleSetFiles: (data: { files: Array<{ path: string; content: string; language?: string }> }) => void = () => {};
 let handleGetFiles: () => void = () => {};
 let handleRun: () => void = () => {};
-let handleSetReadonly: (data: { readonly: boolean }) => void = () => {};
+let handleSetReadonly: (data: { readonly: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean }) => void = () => {};
 let handleShowOutput: (data: { output?: string; stdout?: string; stderr?: string; exitCode?: number }) => void = () => {};
 let handleClearOutput: () => void = () => {};
 
@@ -564,10 +584,10 @@ function applyTheme(theme: string) {
     matchBrackets: "always",
     cursorBlinking: "smooth",
     cursorSmoothCaretAnimation: "on",
-    // Step-Up integration: readonly mode from URL param
-    readOnly: isReadonly,
+    // Step-Up integration: runtime policy state
+    readOnly: currentReadonly,
     smoothScrolling: true,
-    contextmenu: true,
+    contextmenu: !currentLockStructure,
     mouseWheelZoom: true,
     scrollBeyondLastLine: false,
     padding: { top: 10 },
@@ -684,6 +704,7 @@ function applyTheme(theme: string) {
 
   // Empty state "New File" button handler
   emptyStateNewFileBtn.addEventListener('click', async () => {
+    if (currentLockStructure) return;
     const newTab = await tabManager.createNewFile(currentLang, currentVersion);
     if (newTab) {
       const model = getOrCreateModel(newTab);
@@ -860,6 +881,7 @@ function applyTheme(theme: string) {
       // Right-click - context menu
       itemEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        if (currentLockStructure) return;
         selectedItemId = id;
         selectedItemType = type;
         showContextMenu(e.clientX, e.clientY, type);
@@ -907,6 +929,7 @@ function applyTheme(theme: string) {
 
   // ===== Context Menu =====
   function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
+    if (currentLockStructure) return;
     contextMenuEl.style.left = `${x}px`;
     contextMenuEl.style.top = `${y}px`;
     contextMenuEl.classList.remove('hidden');
@@ -964,6 +987,7 @@ function applyTheme(theme: string) {
 
   // ===== File/Folder Operations =====
   async function createNewFileInExplorer(parentId: string | null) {
+    if (currentLockStructure) return;
     const newTab = await tabManager.createNewFile(currentLang, currentVersion, undefined, parentId);
     if (newTab) {
       const model = getOrCreateModel(newTab);
@@ -977,6 +1001,7 @@ function applyTheme(theme: string) {
   }
 
   async function createNewFolder(parentId: string | null) {
+    if (currentLockStructure) return;
     const folder = await storage.createFolder({ name: 'New Folder', parentId });
     if (parentId) expandedFolders.add(parentId);
     expandedFolders.add(folder.id);
@@ -985,6 +1010,7 @@ function applyTheme(theme: string) {
   }
 
   async function deleteItem(id: string, type: 'file' | 'folder') {
+    if (currentLockStructure) return;
     const confirmed = confirm(`Are you sure you want to delete this ${type}?`);
     if (!confirmed) return;
 
@@ -1003,8 +1029,14 @@ function applyTheme(theme: string) {
   }
 
   // ===== Sidebar Toolbar Buttons =====
-  btnNewFile.addEventListener('click', () => createNewFileInExplorer(null));
-  btnNewFolder.addEventListener('click', () => createNewFolder(null));
+  btnNewFile.addEventListener('click', () => {
+    if (currentLockStructure) return;
+    createNewFileInExplorer(null);
+  });
+  btnNewFolder.addEventListener('click', () => {
+    if (currentLockStructure) return;
+    createNewFolder(null);
+  });
   btnRefresh.addEventListener('click', () => renderFileTree(tabManager));
 
   // Clear Cache - clears ALL user data (files, folders, settings, localStorage)
@@ -1101,6 +1133,7 @@ function applyTheme(theme: string) {
 
   // Right-click on empty area of file tree
   fileTreeEl.addEventListener('contextmenu', (e) => {
+    if (currentLockStructure) return;
     if (e.target === fileTreeEl) {
       e.preventDefault();
       selectedItemId = null;
@@ -1198,6 +1231,7 @@ function applyTheme(theme: string) {
 
   // Replace all in current file (small button next to replace input)
   btnReplaceAll.addEventListener('click', async () => {
+    if (!currentAllowSearchReplace) return;
     const activeTab = tabManager.getActiveTab();
     if (!activeTab || !searchInput.value) return;
 
@@ -1474,6 +1508,7 @@ function applyTheme(theme: string) {
 
   // Replace all matches in all files
   btnReplaceAllFiles.addEventListener('click', async () => {
+    if (!currentAllowSearchReplace) return;
     if (!replaceInput.value && replaceInput.value !== '') {
       return;
     }
@@ -1994,7 +2029,57 @@ function applyTheme(theme: string) {
   };
 
   // ===== SIDEBAR PANEL SWITCHING =====
+  function panelIsVisible(panelName: string): boolean {
+    return currentVisiblePanels.includes(panelName as IdePanel);
+  }
+
+  function applyIdePolicy() {
+    document.body.classList.toggle('readonly', currentReadonly);
+    document.body.classList.toggle('structure-locked', currentLockStructure);
+    document.body.classList.toggle('run-disabled', !currentAllowRun);
+    document.body.classList.toggle('search-replace-disabled', !currentAllowSearchReplace);
+    document.body.classList.toggle('hide-explorer-panel', !panelIsVisible('explorer'));
+    document.body.classList.toggle('hide-search-panel', !panelIsVisible('search'));
+    document.body.classList.toggle('hide-run-panel', !panelIsVisible('run'));
+
+    const activeIcon = document.querySelector('.activity-icon.active') as HTMLElement | null;
+    const activePanel = activeIcon?.dataset.panel || '';
+    const firstVisiblePanel = currentVisiblePanels[0] || null;
+
+    btnNewFile.toggleAttribute('disabled', currentLockStructure);
+    btnNewFolder.toggleAttribute('disabled', currentLockStructure);
+    emptyStateNewFileBtn.toggleAttribute('disabled', currentLockStructure);
+
+    if (ideMode === 'full') {
+      if (!firstVisiblePanel) {
+        sidebarEl.classList.add('collapsed');
+      } else if (!panelIsVisible(activePanel)) {
+        sidebarEl.classList.remove('collapsed');
+        switchSidebarPanel(firstVisiblePanel);
+      }
+    }
+  }
+
+  function applyPolicyFromMessage(data: { readonly?: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean }) {
+    if (typeof data.readonly === 'boolean') currentReadonly = data.readonly;
+    if (typeof data.lockStructure === 'boolean') currentLockStructure = data.lockStructure;
+    if (typeof data.allowRun === 'boolean') currentAllowRun = data.allowRun;
+    if (typeof data.allowSearchReplace === 'boolean') currentAllowSearchReplace = data.allowSearchReplace;
+    if (Array.isArray(data.panels)) currentVisiblePanels = normalizePanels(data.panels, currentVisiblePanels);
+
+    editor.updateOptions({ 
+      readOnly: currentReadonly,
+      domReadOnly: currentReadonly,
+      renderLineHighlight: currentReadonly ? 'none' : 'line',
+      contextmenu: !currentLockStructure,
+    });
+
+    applyIdePolicy();
+  }
+
   function switchSidebarPanel(panelName: string) {
+    if (!panelIsVisible(panelName)) return;
+
     // Update activity icons
     activityIcons.forEach(icon => {
       icon.classList.toggle('active', (icon as HTMLElement).dataset.panel === panelName);
@@ -2447,6 +2532,8 @@ function applyTheme(theme: string) {
     panelEl.style.height = `${savedSettings.panelHeight}px`;
   }
 
+  applyIdePolicy();
+
   // ═══════════════════════════════════════════════════════════════════
   // STEP-UP INTEGRATION: Connect PostMessage Handlers
   // ═══════════════════════════════════════════════════════════════════
@@ -2459,6 +2546,7 @@ function applyTheme(theme: string) {
   //   - autoRun: boolean (trigger run after init - free_code only)
   handleStepUpInit = async (data) => {
     console.log('[IDE] handleStepUpInit:', data);
+    applyPolicyFromMessage(data);
     
     // Project mode with files takes precedence
     if (data.files && Array.isArray(data.files) && data.files.length > 0 && ideMode !== 'snippet') {
@@ -2467,16 +2555,26 @@ function applyTheme(theme: string) {
       // Snippet mode - single code blob: create a single tab or set editor directly
       if (isEmbedded) {
         // In embedded snippet mode, create one tab with the code
+        const fileName = `main.${currentLang.extension}`;
         const tab = await tabManager.replaceAllFiles(
-          [{ path: `main.${currentLang.extension}`, content: data.code, language: currentLang.id }],
+          [{ path: fileName, content: data.code, language: currentLang.id }],
           currentLang, currentVersion
         );
         if (tab) {
+          tab.file.content = data.code;
           const model = getOrCreateModel(tab);
+          model.setValue(data.code);
           editor.setModel(model);
           updateEmptyState(false);
           setStatus(tab.file.name);
           renderFileTree(tabManager);
+        } else {
+          const uri = monaco.Uri.parse(`inmemory:///${fileName}`);
+          const model = monaco.editor.getModel(uri) || monaco.editor.createModel(data.code, currentLang.id, uri);
+          model.setValue(data.code);
+          editor.setModel(model);
+          updateEmptyState(false);
+          setStatus(fileName);
         }
       } else {
         editor.setValue(data.code);
@@ -2492,7 +2590,7 @@ function applyTheme(theme: string) {
     notifyParentReady();
     
     // Auto-run if requested (free_code "run on load" workflows)
-    if (data.autoRun && !isReadonly) {
+    if (data.autoRun && currentAllowRun) {
       setTimeout(() => runBtn.click(), 200);
     }
   };
@@ -2567,8 +2665,8 @@ function applyTheme(theme: string) {
   
   // Handle run request from parent (free_code workflows)
   handleRun = () => {
-    if (isReadonly) {
-      console.warn('[IDE] Run requested but editor is readonly - ignoring');
+    if (!currentAllowRun) {
+      console.warn('[IDE] Run requested but current policy forbids execution');
       return;
     }
     runBtn.click();
@@ -2576,13 +2674,7 @@ function applyTheme(theme: string) {
   
   // Handle readonly toggle at runtime
   handleSetReadonly = (data) => {
-    const ro = !!data.readonly;
-    editor.updateOptions({ 
-      readOnly: ro,
-      domReadOnly: ro,
-      renderLineHighlight: ro ? 'none' : 'line',
-    });
-    document.body.classList.toggle('readonly', ro);
+    applyPolicyFromMessage(data);
   };
   
   // Handle pre-computed output from parent (CRITICAL for fill_blanks).
@@ -2614,7 +2706,7 @@ function applyTheme(theme: string) {
     }
     
     // Notify parent of code change (throttled to avoid flooding)
-    if (isEmbedded && !isReadonly) {
+    if (isEmbedded && !currentReadonly) {
       if (codeChangeTimeout) clearTimeout(codeChangeTimeout);
       codeChangeTimeout = setTimeout(() => {
         notifyCodeChange(editor.getValue());

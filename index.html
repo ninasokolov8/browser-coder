@@ -988,7 +988,31 @@
         background: transparent !important; 
         border: none !important; 
       }
-      body.readonly #titlebar #run {
+      body.run-disabled #titlebar #run {
+        display: none !important;
+      }
+
+      body.structure-locked #btn-new-file,
+      body.structure-locked #btn-new-folder,
+      body.structure-locked #empty-state-new-file,
+      body.structure-locked .context-menu-item[data-action="new-file"],
+      body.structure-locked .context-menu-item[data-action="new-folder"],
+      body.structure-locked .context-menu-item[data-action="rename"],
+      body.structure-locked .context-menu-item[data-action="delete"] {
+        display: none !important;
+      }
+
+      body.search-replace-disabled #search-panel .search-inputs .search-row:nth-child(2),
+      body.search-replace-disabled #btn-replace-all-files {
+        display: none !important;
+      }
+
+      body.hide-explorer-panel .activity-icon[data-panel="explorer"],
+      body.hide-explorer-panel #explorer-panel,
+      body.hide-search-panel .activity-icon[data-panel="search"],
+      body.hide-search-panel #search-panel,
+      body.hide-run-panel .activity-icon[data-panel="run"],
+      body.hide-run-panel #run-panel {
         display: none !important;
       }
 
