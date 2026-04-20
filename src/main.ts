@@ -34,6 +34,8 @@ const ALLOWED_ORIGINS: string[] = [
   'https://www.stepup.school',
   'https://www.step-up.co.il',
   'https://staging.stepup.school',
+  'https://stepup.zone',
+  'https://dev.stepup.zone',
   'http://stepup.local',
 ];
 
@@ -41,6 +43,7 @@ const ALLOWED_ORIGINS: string[] = [
 const ALLOWED_BASE_DOMAINS: string[] = [
   'stepup.school',
   'step-up.co.il',
+  'stepup.zone',
 ];
 
 function isAllowedOrigin(origin: string): boolean {
@@ -191,7 +194,7 @@ window.addEventListener('message', (event) => {
 });
 
 // Handler placeholders - will be connected to editor in main()
-let handleStepUpInit: (data: { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> }) => void = () => {};
+let handleStepUpInit: (data: { code?: string; output?: string; autoRun?: boolean; files?: Array<{ path: string; content: string; language?: string }> }) => void | Promise<void> = () => {};
 let handleSetCode: (data: { code: string }) => void = () => {};
 let handleGetCode: () => void = () => {};
 let handleSetFiles: (data: { files: Array<{ path: string; content: string; language?: string }> }) => void = () => {};
@@ -2060,26 +2063,36 @@ function applyTheme(theme: string) {
 
   // Initialize tabs
   setStatus("Loading files…");
-  const initialTab = await tabManager.init(currentLang, currentVersion);
   
-  if (initialTab) {
-    const lang = getLanguage(initialTab.file.language);
-    if (lang) {
-      currentLang = lang;
-      langSel.value = lang.id;
-      currentVersion = populateVersionDropdown(lang, initialTab.file.version);
-      configureMonacoForVersion(lang, currentVersion);
-    }
-
-    const model = getOrCreateModel(initialTab);
-    editor.setModel(model);
-    updateEmptyState(false);
-    setStatus(`${initialTab.file.name}`);
-  } else {
-    // No files - show empty state
+  if (isEmbedded) {
+    // Embedded mode: start with clean state - no IndexedDB restore.
+    // Files will be provided by Step-Up via postMessage (stepup:init).
+    await tabManager.initEmbedded();
     updateEmptyState(true);
     editor.setModel(null);
-    setStatus("Ready");
+    setStatus("Waiting for content…");
+  } else {
+    const initialTab = await tabManager.init(currentLang, currentVersion);
+  
+    if (initialTab) {
+      const lang = getLanguage(initialTab.file.language);
+      if (lang) {
+        currentLang = lang;
+        langSel.value = lang.id;
+        currentVersion = populateVersionDropdown(lang, initialTab.file.version);
+        configureMonacoForVersion(lang, currentVersion);
+      }
+
+      const model = getOrCreateModel(initialTab);
+      editor.setModel(model);
+      updateEmptyState(false);
+      setStatus(`${initialTab.file.name}`);
+    } else {
+      // No files - show empty state
+      updateEmptyState(true);
+      editor.setModel(null);
+      setStatus("Ready");
+    }
   }
 
   // Listen to editor content changes for auto-save
@@ -2438,15 +2451,30 @@ function applyTheme(theme: string) {
   //   - files:   FileEntry[] (project mode - first file becomes active)
   //   - output:  string (pre-populated output, e.g. for fill_blanks)
   //   - autoRun: boolean (trigger run after init - free_code only)
-  handleStepUpInit = (data) => {
+  handleStepUpInit = async (data) => {
     console.log('[IDE] handleStepUpInit:', data);
     
     // Project mode with files takes precedence
     if (data.files && Array.isArray(data.files) && data.files.length > 0 && ideMode !== 'snippet') {
-      handleSetFiles({ files: data.files });
+      await handleSetFilesAsync({ files: data.files });
     } else if (typeof data.code === 'string') {
-      // Snippet mode - single code blob
-      editor.setValue(data.code);
+      // Snippet mode - single code blob: create a single tab or set editor directly
+      if (isEmbedded) {
+        // In embedded snippet mode, create one tab with the code
+        const tab = await tabManager.replaceAllFiles(
+          [{ path: `main.${currentLang.extension}`, content: data.code, language: currentLang.id }],
+          currentLang, currentVersion
+        );
+        if (tab) {
+          const model = getOrCreateModel(tab);
+          editor.setModel(model);
+          updateEmptyState(false);
+          setStatus(tab.file.name);
+          renderFileTree(tabManager);
+        }
+      } else {
+        editor.setValue(data.code);
+      }
     }
     
     // Pre-populated output (used by fill_blanks)
@@ -2462,6 +2490,28 @@ function applyTheme(theme: string) {
       setTimeout(() => runBtn.click(), 200);
     }
   };
+  
+  // Async helper for setting files via TabManager
+  async function handleSetFilesAsync(data: { files: Array<{ path: string; content: string; language?: string }> }) {
+    if (!data.files || !Array.isArray(data.files) || data.files.length === 0) return;
+    
+    // Dispose all existing models
+    for (const [id] of fileModels) {
+      disposeModel(id);
+    }
+    
+    // Replace all tabs with the new files
+    const activeTab = await tabManager.replaceAllFiles(data.files, currentLang, currentVersion);
+    
+    if (activeTab) {
+      const model = getOrCreateModel(activeTab);
+      editor.setModel(model);
+      updateEmptyState(false);
+      setStatus(activeTab.file.name);
+    }
+    
+    renderFileTree(tabManager);
+  }
   
   // Handle set code message (snippet mode)
   handleSetCode = (data) => {
@@ -2480,18 +2530,10 @@ function applyTheme(theme: string) {
     });
   };
   
-  // Handle set files (project mode) - opens first file in editor.
-  // Files are stored as new in-memory tabs.
+  // Handle set files (project mode) - replaces all files via TabManager.
   handleSetFiles = (data) => {
     if (!data.files || !Array.isArray(data.files)) return;
-    // Open the first file in the editor; remaining files become tabs/sidebar entries.
-    // For now we simply load the first file's content into the active model.
-    // Full multi-tab management is exercised when the user clicks files in the tree.
-    const first = data.files[0];
-    if (first && typeof first.content === 'string') {
-      editor.setValue(first.content);
-    }
-    // TODO: when project-mode UI is fully wired, populate tabManager with the rest.
+    handleSetFilesAsync(data);
   };
   
   // Handle get files request (project mode)

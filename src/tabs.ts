@@ -64,6 +64,55 @@ export class TabManager {
     }
   }
 
+  /**
+   * Initialize tab manager in embedded mode - start with clean state (no IndexedDB restore).
+   * This prevents stale/duplicate files from previous sessions polluting the embedded IDE.
+   */
+  async initEmbedded(): Promise<void> {
+    await storage.init();
+    await storage.clearAll();
+    this.tabs = [];
+    this.activeTabId = null;
+    this.render();
+    this.events.onTabsChange?.(this.tabs);
+  }
+
+  /**
+   * Replace all tabs with the given files. Clears storage and existing tabs first.
+   * Used by Step-Up integration when receiving files via postMessage.
+   */
+  async replaceAllFiles(files: Array<{ path: string; content: string; language?: string }>, defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
+    // Clear existing state
+    await storage.clearAll();
+    this.tabs.forEach(t => this.events.onTabClose?.(t));
+    this.tabs = [];
+    this.activeTabId = null;
+
+    // Create new tabs from the provided files
+    for (const f of files) {
+      const name = f.path || `main.${defaultLang.extension}`;
+      const langId = f.language || defaultLang.id;
+      const storedFile = await storage.createFile({
+        name,
+        parentId: null,
+        language: langId,
+        version: defaultVersion.id,
+        content: f.content || '',
+        isUserModified: false,
+      });
+      this.tabs.push({ file: storedFile, isDirty: false });
+    }
+
+    // Activate first tab
+    if (this.tabs.length > 0) {
+      this.activeTabId = this.tabs[0].file.id;
+    }
+
+    this.render();
+    this.events.onTabsChange?.(this.tabs);
+    return this.getActiveTab();
+  }
+
   // ========== Tab Operations ==========
 
   /**
