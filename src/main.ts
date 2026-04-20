@@ -2576,6 +2576,9 @@ function applyTheme(theme: string) {
           updateEmptyState(false);
           setStatus(fileName);
         }
+        // Force layout after CSS grid settles so Monaco sizes correctly in snippet/nooutput modes
+        requestAnimationFrame(() => editor.layout());
+        setTimeout(() => editor.layout(), 100);
       } else {
         editor.setValue(data.code);
       }

@@ -899,6 +899,7 @@
           "statusbar" !important;
       }
       body.mode-snippet.embedded #app {
+        grid-template-rows: auto 1fr !important;
         grid-template-areas:
           "titlebar"
           "main" !important;
@@ -998,7 +999,9 @@
       body.structure-locked .context-menu-item[data-action="new-file"],
       body.structure-locked .context-menu-item[data-action="new-folder"],
       body.structure-locked .context-menu-item[data-action="rename"],
-      body.structure-locked .context-menu-item[data-action="delete"] {
+      body.structure-locked .context-menu-item[data-action="delete"],
+      body.structure-locked #tabs .tab-add,
+      body.structure-locked #tabs .tab-close {
         display: none !important;
       }
 
@@ -1028,6 +1031,8 @@
         display: none !important;
       }
       body.embedded.nooutput #app {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr !important;
         grid-template-areas:
           "main" !important;
       }

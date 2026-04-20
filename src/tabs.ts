@@ -462,7 +462,10 @@ export class TabManager {
     addBtn.className = 'tab-add';
     addBtn.innerHTML = '+';
     addBtn.title = 'New file (Ctrl+N)';
-    addBtn.onclick = () => this.events.onTabCreate?.(null as any); // Signal to create new
+    addBtn.onclick = () => {
+      if (document.body.classList.contains('structure-locked')) return;
+      this.events.onTabCreate?.(null as any); // Signal to create new
+    };
     this.containerEl.appendChild(addBtn);
   }
 
@@ -508,6 +511,7 @@ export class TabManager {
     closeEl.title = 'Close';
     closeEl.onclick = (e) => {
       e.stopPropagation();
+      if (document.body.classList.contains('structure-locked')) return;
       this.closeTab(tab.file.id);
     };
     tabEl.appendChild(closeEl);
@@ -519,6 +523,7 @@ export class TabManager {
     tabEl.onmousedown = (e) => {
       if (e.button === 1) { // Middle click
         e.preventDefault();
+        if (document.body.classList.contains('structure-locked')) return;
         this.closeTab(tab.file.id);
       }
     };
