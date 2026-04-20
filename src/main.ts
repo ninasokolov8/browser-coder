@@ -513,9 +513,12 @@ function applyTheme(theme: string) {
 
   populateLanguageDropdown();
 
-  // Initialize with first language
-  let currentLang = languages[0];
-  let currentVersion = populateVersionDropdown(currentLang);
+  // Initialize with the language requested in the URL (?lang=...) so embedded
+  // snippet mode actually renders / IntelliSenses / validates the right language.
+  // Falls back to the first registered language when the URL value is unknown.
+  let currentLang = getLanguage(urlLanguage) || languages[0];
+  langSel.value = currentLang.id;
+  let currentVersion = populateVersionDropdown(currentLang, urlVersion || undefined);
   configureMonacoForVersion(currentLang, currentVersion);
 
   // Model management for tabs
