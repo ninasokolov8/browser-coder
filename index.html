@@ -960,15 +960,19 @@
       }
       body.mode-full.embedded #app {
         grid-template-columns: 48px 220px 1fr !important;
-        grid-template-rows: auto 1fr !important;
+        grid-template-rows: auto 1fr auto !important;
         grid-template-areas:
-          "activitybar titlebar titlebar"
-          "activitybar sidebar main" !important;
+          "activitybar titlebar    titlebar"
+          "activitybar sidebar     main"
+          "statusbar   statusbar   statusbar" !important;
       }
       body.embedded.mode-full #sidebar {
         display: flex !important;
       }
       body.embedded.mode-full #activitybar {
+        display: flex !important;
+      }
+      body.embedded.mode-full #statusbar {
         display: flex !important;
       }
 
