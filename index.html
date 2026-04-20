@@ -252,14 +252,16 @@
       .search-row {
         display: flex; align-items: center; gap: 4px;
         margin-bottom: 6px;
+        flex-wrap: wrap;
       }
       .search-row:last-child { margin-bottom: 0; }
       .search-input {
-        flex: 1; height: 26px; padding: 0 8px;
+        flex: 1 1 100%; min-width: 0; height: 26px; padding: 0 8px;
         background: var(--bg-editor); color: var(--text-primary);
         border: 1px solid var(--border-color); border-radius: 3px;
         font-size: 12px; outline: none;
       }
+      .search-btn { flex: 0 0 auto; }
       .search-input:focus { border-color: var(--accent); }
       .search-input::placeholder { color: var(--text-muted); }
       .search-btn {
@@ -1006,6 +1008,9 @@
       }
 
       body.search-replace-disabled #search-panel .search-inputs .search-row:nth-child(2),
+      body.search-replace-disabled #replace-input,
+      body.search-replace-disabled #btn-replace-all,
+      body.search-replace-disabled #search-summary .search-btn.primary,
       body.search-replace-disabled #btn-replace-all-files {
         display: none !important;
       }
