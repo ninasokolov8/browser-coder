@@ -45,6 +45,7 @@ let currentVisiblePanels: IdePanel[] = ideMode === 'full' ? ['explorer', 'search
 // Exact origin matches OR any subdomain of these base domains
 const ALLOWED_ORIGINS: string[] = [
   'http://localhost:8000',
+  'http://localhost:8080',
   'http://localhost:3000',
   'http://localhost',
   'http://127.0.0.1:8000',
@@ -112,7 +113,6 @@ function applyModeClasses(): void {
   if (currentReadonly) document.body.classList.add('readonly');
   if (noOutput) document.body.classList.add('nooutput');
   
-  console.log(`[IDE] Mode: ${ideMode}, Embedded: ${isEmbedded}, Readonly: ${currentReadonly}, NoOutput: ${noOutput}`);
 }
 
 // Send message to parent window (Step-Up).
@@ -166,8 +166,6 @@ window.addEventListener('message', (event) => {
   
   const { type, ...data } = event.data || {};
   if (!type || typeof type !== 'string') return;
-  
-  console.log('[IDE] Received message:', type, data);
   
   switch (type) {
     case 'stepup:init':
@@ -2747,4 +2745,8 @@ function applyTheme(theme: string) {
   }
 
   setStatus("Ready ✅ (Ctrl+Enter to run)");
-})();
+}).catch((err) => {
+  console.error('[IDE] Fatal initialization error:', err);
+  // Still try to notify parent so the loading overlay can be handled
+  notifyParentReady();
+});
