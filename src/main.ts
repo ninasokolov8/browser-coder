@@ -50,6 +50,7 @@ const ALLOWED_ORIGINS: string[] = [
   'http://localhost',
   'http://127.0.0.1:8000',
   'http://127.0.0.1:3000',
+  'http://167.71.63.99',
   'https://stepup.school',
   'https://step-up.co.il',
   'https://www.stepup.school',
@@ -161,8 +162,12 @@ window.addEventListener('message', (event) => {
     return;
   }
   
-  // Store parent origin for responses (overrides referrer-derived value)
-  parentOrigin = event.origin;
+  // Store parent origin for responses (overrides referrer-derived value).
+  // Never overwrite with the IDE's own origin — same-origin messages come
+  // from Monaco's fallback worker and are not from the parent frame.
+  if (event.origin !== window.location.origin) {
+    parentOrigin = event.origin;
+  }
   
   const { type, ...data } = event.data || {};
   if (!type || typeof type !== 'string') return;
@@ -2745,7 +2750,7 @@ function applyTheme(theme: string) {
   }
 
   setStatus("Ready ✅ (Ctrl+Enter to run)");
-}).catch((err) => {
+})().catch((err) => {
   console.error('[IDE] Fatal initialization error:', err);
   // Still try to notify parent so the loading overlay can be handled
   notifyParentReady();
