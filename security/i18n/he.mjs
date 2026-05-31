@@ -342,6 +342,56 @@ export const he = {
         'JEP 411: הוצאה משימוש של Security Manager - השתמש בקונטיינרים במקום',
       ],
     },
+    csharp: {
+      title: 'הכוחות הנסתרים של C# / .NET',
+      tips: [
+        {
+          title: '⚡ Source Generators',
+          content: 'Source Generators של Roslyn מנתחים את הקוד שלך בזמן קומפילציה ומוסיפים קוד חדש — אפס עלות בזמן ריצה! System.Text.Json, ASP.NET Core ו-MediatR כולם משתמשים בזה לביצועים מסחררים.',
+        },
+        {
+          title: '🪞 רפלקציה + Attributes',
+          content: 'Attributes ב-C# יחד עם רפלקציה מפעילים את Entity Framework, ASP.NET, xUnit ו-DI. בנה <code>[Cached]</code> או <code>[Retry]</code> משלך בעשרות שורות בלבד.',
+        },
+        {
+          title: '🚀 Span&lt;T&gt; ו-Memory&lt;T&gt;',
+          content: 'אותם כלי זיכרון שתוקפים מנצלים מאפשרים גם לכתוב פארסרים ללא הקצאות. <code>Span&lt;byte&gt;</code> + <code>stackalloc</code> = קוד מהיר וגם בטוח כשבודקים גבולות.',
+        },
+      ],
+      facts: [
+        {
+          emoji: '🌐',
+          title: 'ריצה אחת, כל מערכת הפעלה',
+          content: '.NET רץ באופן מקורי על Windows, Linux, macOS, ARM ואפילו iOS/Android דרך .NET MAUI. אותו קוד C#, כל פלטפורמה.',
+        },
+        {
+          emoji: '🪄',
+          title: 'Native AOT',
+          content: 'קומפלציה של C# לקובץ בינארי בודד שעולה במילישניות בלי JIT — מושלם ל-serverless, CLIs וקונטיינרים זעירים.',
+        },
+        {
+          emoji: '🧬',
+          title: 'F# ושפות נוספות ב-.NET',
+          content: 'ה-CLR מריץ C#, F#, VB.NET, IronPython ועוד — ה-interop פשוט, אז אפשר לשלב F# בקוד C# ללוגיקת דומיין מטיפוס בטוח.',
+        },
+      ],
+      cheatSheet: [
+        { bad: 'BinaryFormatter.Deserialize(stream)', good: 'System.Text.Json או MessagePack', why: 'BinaryFormatter הוכרז רשמית כמסוכן' },
+        { bad: 'Process.Start(userInput)', good: 'ProcessStartInfo עם מערך Arguments, UseShellExecute=false', why: 'מונע הזרקת ארגומנטים ל-shell' },
+        { bad: 'SqlCommand("SELECT * WHERE id=" + id)', good: 'Parameters.AddWithValue("@id", id)', why: 'SQL injection עדיין בכל מקום' },
+        { bad: 'TypeNameHandling.All ב-Json.NET', good: 'TypeNameHandling.None + ממירים מותאמים', why: 'שרשראות RCE עם $type (CVE-2019-18935 ועוד)' },
+        { bad: 'unsafe { byte* p = ... }', good: 'Span<byte> עם בדיקת גבולות', why: 'גלישת מחסנית וכתיבה לזיכרון שרירותי' },
+        { bad: '[DllImport("kernel32.dll")] LoadLibrary', good: 'הישאר בקוד מנוהל; חתום ואמת תלויות נייטיב', why: 'P/Invoke טוען DLLs של תוקפים' },
+      ],
+      proTips: [
+        '<code>System.Security.Cryptography.RandomNumberGenerator</code> לקריפטו, אף פעם לא <code>Random</code>',
+        '<code>nullable reference types</code> תופסים באגי null בזמן קומפילציה',
+        '<code>record</code> ו-<code>readonly struct</code> למודלים בלתי-משתנים כברירת מחדל',
+        'NuGet: הרץ <code>dotnet list package --vulnerable</code> באופן קבוע',
+        'הימנע מ-<code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — מיקרוסופט סימנה אותם כמסוכנים',
+        'הרץ קוד לא מהימן בקונטיינרים / WASM, לא ב-AppDomains (קיים רק ב-.NET Framework)',
+      ],
+    },
   },
 
   // Category tips

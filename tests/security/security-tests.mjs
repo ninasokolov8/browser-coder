@@ -27,6 +27,7 @@ import { typescriptTests } from './attacks/typescript.mjs';
 import { pythonTests } from './attacks/python.mjs';
 import { phpTests } from './attacks/php.mjs';
 import { javaTests } from './attacks/java.mjs';
+import { csharpTests } from './attacks/csharp.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -74,6 +75,7 @@ const SECURITY_TESTS = {
   python: pythonTests,
   php: phpTests,
   java: javaTests,
+  csharp: csharpTests,
 };
 
 // ============================================
@@ -1348,7 +1350,7 @@ function generateHTMLReport(data) {
           <h2>Wait... Why Does This Report Exist?</h2>
           <p>
             Great question! Our platform lets you <strong>write and run real code</strong> directly in your browser - 
-            JavaScript, Python, PHP, Java, TypeScript - just like a real development environment (IDE).
+            JavaScript, Python, PHP, Java, TypeScript, C# - just like a real development environment (IDE).
           </p>
           <p>
             But here's the thing: if someone can run code on our servers, what stops them from running 
@@ -1596,6 +1598,7 @@ function getLanguageIcon(language) {
     python: '🐍',
     php: '🐘',
     java: '☕',
+    csharp: '🟦',
   };
   return icons[language] || '📄';
 }
@@ -2121,6 +2124,102 @@ function getLanguageTips(language) {
             <li><code>sealed</code> classes (Java 17+) prevent unauthorized inheritance</li>
             <li><code>record</code> classes are immutable by default - use them!</li>
             <li>JEP 411: Security Manager deprecation - use containers instead</li>
+          </ul>
+        </div>
+      </div>
+    `,
+    csharp: `
+      <div class="tips-box">
+        <h3>💡 C# / .NET Hidden Powers</h3>
+        <div class="tip">
+          <div class="tip-title">⚡ Source Generators</div>
+          <div class="tip-content">
+            Roslyn source generators inspect your code at compile time and add new code — zero runtime cost!
+            System.Text.Json, ASP.NET Core minimal APIs, and MediatR all use them for blazing performance.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🪞 Reflection + Attributes</div>
+          <div class="tip-content">
+            C# attributes + reflection power Entity Framework, ASP.NET model binding, xUnit, and dependency injection.
+            Build your own <code>[Cached]</code> or <code>[Retry]</code> aspect with a few lines of reflection.
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-title">🚀 Span&lt;T&gt; &amp; Memory&lt;T&gt;</div>
+          <div class="tip-content">
+            The same unsafe memory tools attackers abuse also let you write zero-allocation parsers and serializers.
+            <code>Span&lt;byte&gt;</code> + <code>stackalloc</code> = blazing-fast safe code when bounds are verified.
+          </div>
+        </div>
+      </div>
+      <div class="mindblown-box">
+        <h3>🤯 .NET Secrets</h3>
+        <div class="fact">
+          <span class="fact-emoji">🌐</span>
+          <span class="fact-content">
+            <strong>One Runtime, Every OS:</strong> .NET runs natively on Windows, Linux, macOS, ARM,
+            and even iOS/Android via .NET MAUI. Same C# code, every platform.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🪄</span>
+          <span class="fact-content">
+            <strong>Native AOT:</strong> Compile C# to a single native binary that boots in milliseconds with no JIT —
+            perfect for serverless, CLIs, and tiny containers.
+          </span>
+        </div>
+        <div class="fact">
+          <span class="fact-emoji">🧬</span>
+          <span class="fact-content">
+            <strong>F# &amp; Other .NET Languages:</strong> The CLR runs C#, F#, VB.NET, IronPython, and more —
+            interop is effortless, so you can sprinkle F# into a C# codebase for type-safe domain logic.
+          </span>
+        </div>
+      </div>
+      <div class="cheatsheet-box">
+        <h3>🛡️ C# Security Cheat Sheet</h3>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ BinaryFormatter.Deserialize(stream)</div>
+            <div class="cheat-good">✅ System.Text.Json or MessagePack</div>
+            <div class="cheat-why">BinaryFormatter is officially deprecated as dangerous</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ Process.Start(userInput)</div>
+            <div class="cheat-good">✅ ProcessStartInfo with Arguments array, UseShellExecute=false</div>
+            <div class="cheat-why">Prevents shell argument injection</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ SqlCommand("SELECT * WHERE id=" + id)</div>
+            <div class="cheat-good">✅ Parameters.AddWithValue("@id", id)</div>
+            <div class="cheat-why">SQL injection is still everywhere</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ TypeNameHandling.All in Json.NET</div>
+            <div class="cheat-good">✅ TypeNameHandling.None + custom converters</div>
+            <div class="cheat-why">$type RCE gadget chains (CVE-2019-18935 et al.)</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ unsafe { byte* p = ... }</div>
+            <div class="cheat-good">✅ Span&lt;byte&gt; with checked bounds</div>
+            <div class="cheat-why">Stack smashing &amp; arbitrary memory writes</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-bad">❌ [DllImport("kernel32.dll")] LoadLibrary</div>
+            <div class="cheat-good">✅ Stay in managed code; sign &amp; verify any native deps</div>
+            <div class="cheat-why">P/Invoke side-loads attacker DLLs</div>
+          </div>
+        </div>
+        <div class="cheat-pro-tips">
+          <h4>🔥 .NET Security Arsenal</h4>
+          <ul>
+            <li><code>System.Security.Cryptography.RandomNumberGenerator</code> for crypto, never <code>Random</code></li>
+            <li><code>nullable</code> reference types catch null bugs at compile time</li>
+            <li><code>record</code> and <code>readonly struct</code> for immutable-by-default models</li>
+            <li>NuGet: run <code>dotnet list package --vulnerable</code> regularly</li>
+            <li>Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — Microsoft has marked them dangerous</li>
+            <li>Sandbox untrusted code in containers / WASM, not AppDomains (which are .NET Framework only)</li>
           </ul>
         </div>
       </div>

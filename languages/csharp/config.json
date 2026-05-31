@@ -1,0 +1,25 @@
+{
+  "id": "csharp",
+  "name": "C#",
+  "extension": "cs",
+  "monacoLanguage": "csharp",
+  "icon": "🟦",
+  "versions": [
+    {
+      "id": "csharp12",
+      "name": "C# 12 (.NET 8)",
+      "sourceLevel": "12",
+      "default": true
+    },
+    {
+      "id": "csharp10",
+      "name": "C# 10 (.NET 6)",
+      "sourceLevel": "10"
+    }
+  ],
+  "runner": {
+    "command": "dotnet",
+    "compile": true,
+    "tempFile": true
+  }
+}

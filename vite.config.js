@@ -26,7 +26,7 @@ export default defineConfig({
     },
   },
   // Ensure raw file imports work for starter code
-  assetsInclude: ["**/*.py", "**/*.java", "**/*.php"],
+  assetsInclude: ["**/*.py", "**/*.java", "**/*.php", "**/*.cs"],
   build: {
     // Memory optimizations for low-RAM servers
     sourcemap: false,

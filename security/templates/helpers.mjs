@@ -32,6 +32,7 @@ export function getLanguageIcon(language) {
     python: '🐍',
     php: '🐘',
     java: '☕',
+    csharp: '🟦',
   };
   return icons[language] || '📄';
 }

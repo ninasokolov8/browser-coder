@@ -342,6 +342,56 @@ export const en = {
         'JEP 411: Security Manager deprecation - use containers instead',
       ],
     },
+    csharp: {
+      title: 'C# / .NET Hidden Powers',
+      tips: [
+        {
+          title: '⚡ Source Generators',
+          content: 'Roslyn source generators inspect your code at compile time and add new code — zero runtime cost! System.Text.Json, ASP.NET Core minimal APIs, and MediatR all use them for blazing performance.',
+        },
+        {
+          title: '🪞 Reflection + Attributes',
+          content: 'C# attributes + reflection power Entity Framework, ASP.NET model binding, xUnit, and dependency injection. Build your own <code>[Cached]</code> or <code>[Retry]</code> aspect with a few lines of reflection.',
+        },
+        {
+          title: '🚀 Span&lt;T&gt; & Memory&lt;T&gt;',
+          content: 'The same unsafe memory tools attackers abuse also let you write zero-allocation parsers and serializers. <code>Span&lt;byte&gt;</code> + <code>stackalloc</code> = blazing-fast safe code when bounds are verified.',
+        },
+      ],
+      facts: [
+        {
+          emoji: '🌐',
+          title: 'One Runtime, Every OS',
+          content: '.NET runs natively on Windows, Linux, macOS, ARM, and even iOS/Android via .NET MAUI. Same C# code, every platform.',
+        },
+        {
+          emoji: '🪄',
+          title: 'Native AOT',
+          content: 'Compile C# to a single native binary that boots in milliseconds with no JIT — perfect for serverless, CLIs, and tiny containers.',
+        },
+        {
+          emoji: '🧬',
+          title: 'F# & Other .NET Languages',
+          content: 'The CLR runs C#, F#, VB.NET, IronPython, and more — interop is effortless, so you can sprinkle F# into a C# codebase for type-safe domain logic.',
+        },
+      ],
+      cheatSheet: [
+        { bad: 'BinaryFormatter.Deserialize(stream)', good: 'System.Text.Json or MessagePack', why: 'BinaryFormatter is officially deprecated as dangerous' },
+        { bad: 'Process.Start(userInput)', good: 'ProcessStartInfo with Arguments array, UseShellExecute=false', why: 'Prevents shell argument injection' },
+        { bad: 'SqlCommand("SELECT * WHERE id=" + id)', good: 'Parameters.AddWithValue("@id", id)', why: 'SQL injection is still everywhere' },
+        { bad: 'TypeNameHandling.All in Json.NET', good: 'TypeNameHandling.None + custom converters', why: '$type RCE gadget chains (CVE-2019-18935 et al.)' },
+        { bad: 'unsafe { byte* p = ... }', good: 'Span<byte> with checked bounds', why: 'Stack smashing & arbitrary memory writes' },
+        { bad: '[DllImport("kernel32.dll")] LoadLibrary', good: 'Stay in managed code; sign & verify any native deps', why: 'P/Invoke side-loads attacker DLLs' },
+      ],
+      proTips: [
+        '<code>System.Security.Cryptography.RandomNumberGenerator</code> for crypto, never <code>Random</code>',
+        '<code>nullable</code> reference types catch null bugs at compile time',
+        '<code>record</code> and <code>readonly struct</code> for immutable-by-default models',
+        'NuGet: run <code>dotnet list package --vulnerable</code> regularly',
+        'Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — Microsoft has marked them dangerous',
+        'Sandbox untrusted code in containers / WASM, not AppDomains (which are .NET Framework only)',
+      ],
+    },
   },
 
   // Category tips

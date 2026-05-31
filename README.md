@@ -4,13 +4,14 @@
   <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/python/python.png" width="60" alt="Python"/>
   <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/java/java.png" width="60" alt="Java"/>
   <img src="https://raw.githubusercontent.com/github/explore/ccc16358ac4530c6a69b1b80c7223cd2744dea83/topics/php/php.png" width="60" alt="PHP"/>
+  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/csharp/csharp.png" width="60" alt="C#"/>
 </p>
 
 <h1 align="center">🚀 Browser Coder</h1>
 
 <p align="center">
   <strong>A Production-Ready, Auto-Scaling Web IDE</strong><br>
-  <em>Code in JavaScript, TypeScript, Python, Java & PHP — directly in your browser</em>
+  <em>Code in JavaScript, TypeScript, Python, Java, PHP &amp; C# — directly in your browser</em>
 </p>
 
 <p align="center">

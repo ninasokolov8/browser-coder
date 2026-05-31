@@ -2,7 +2,14 @@
 FROM node:20-alpine
 
 # Install language runtimes for code execution
-RUN apk add --no-cache python3 openjdk17-jdk php bash
+# dotnet8-sdk provides C# (.NET 8) compilation/execution support
+RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk
+
+# .NET environment
+ENV DOTNET_NOLOGO=1 \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    DOTNET_GENERATE_ASPNET_CERTIFICATE=false
 
 # SECURITY: Create non-root user
 RUN addgroup -g 1001 -S app && \

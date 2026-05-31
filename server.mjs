@@ -18,6 +18,7 @@
 import express from "express";
 import http from "http";
 import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
@@ -446,6 +447,166 @@ const SECURITY = {
       /JavaCompiler\b/i,
       /ToolProvider\s*\.\s*getSystemJavaCompiler\s*\(/i,
     ],
+
+    csharp: [
+      // ─── Command / process execution ─────────────────────────────
+      /\bSystem\s*\.\s*Diagnostics\s*\.\s*Process\b/i,
+      /\bDiagnostics\s*\.\s*Process\b/i,
+      /\bnew\s+Process\s*\(/i,
+      /\bProcess\s*\.\s*Start\s*\(/i,
+      /\bProcessStartInfo\b/i,
+      /\bShellExecute\b/i,
+      /\bnew\s+Thread\s*\(/i,
+      /\bThreadPool\s*\.\s*QueueUserWorkItem\b/i,
+      /\bTask\s*\.\s*Run\s*\(/i,
+      /\bTask\s*\.\s*Factory\s*\.\s*StartNew\s*\(/i,
+      // ─── File system ─────────────────────────────────────────────
+      /\bSystem\s*\.\s*IO\b/i,
+      /\busing\s+System\s*\.\s*IO\b/i,
+      /\bFile\s*\.\s*(Read|Write|Open|Create|Delete|Copy|Move|Append|Exists)\w*\s*\(/i,
+      /\bFileStream\b/i,
+      /\bStreamReader\b/i,
+      /\bStreamWriter\b/i,
+      /\bBinaryReader\b/i,
+      /\bBinaryWriter\b/i,
+      /\bTextReader\b/i,
+      /\bTextWriter\b/i,
+      /\bDirectory\s*\.\s*\w+\s*\(/i,
+      /\bDirectoryInfo\b/i,
+      /\bFileInfo\b/i,
+      /\bPath\s*\.\s*GetTempFileName\s*\(/i,
+      /\bPath\s*\.\s*GetFullPath\s*\(/i,
+      /\bDriveInfo\b/i,
+      /\bMemoryMappedFile\b/i,
+      /\bFileSystemWatcher\b/i,
+      /\bIsolatedStorage\w*\b/i,
+      // ─── Network ─────────────────────────────────────────────────
+      /\bSystem\s*\.\s*Net\b/i,
+      /\busing\s+System\s*\.\s*Net\b/i,
+      /\bHttpClient\b/i,
+      /\bHttpWebRequest\b/i,
+      /\bWebClient\b/i,
+      /\bWebRequest\b/i,
+      /\bFtpWebRequest\b/i,
+      /\bSocket\b/i,
+      /\bTcpClient\b/i,
+      /\bTcpListener\b/i,
+      /\bUdpClient\b/i,
+      /\bIPAddress\b/i,
+      /\bIPEndPoint\b/i,
+      /\bDns\s*\.\s*\w+\s*\(/i,
+      /\bSmtpClient\b/i,
+      /\bMailMessage\b/i,
+      /\bWebSocket\b/i,
+      // ─── Reflection ──────────────────────────────────────────────
+      /\bSystem\s*\.\s*Reflection\b/i,
+      /\busing\s+System\s*\.\s*Reflection\b/i,
+      /\bAssembly\s*\.\s*(Load|LoadFrom|LoadFile|GetType|GetExecutingAssembly|GetEntryAssembly|GetCallingAssembly|ReflectionOnlyLoad)\b/i,
+      /\bAssemblyName\b/i,
+      /\bAssemblyBuilder\b/i,
+      /\bAssemblyLoadContext\b/i,
+      /\bAppDomain\b/i,
+      /\bMethodInfo\b/i,
+      /\bFieldInfo\b/i,
+      /\bPropertyInfo\b/i,
+      /\bConstructorInfo\b/i,
+      /\bBindingFlags\b/i,
+      /\bActivator\s*\.\s*(CreateInstance|CreateInstanceFrom)\b/i,
+      /\bType\s*\.\s*GetType\s*\(/i,
+      /\bType\s*\.\s*InvokeMember\s*\(/i,
+      /\.GetMethod\s*\(/i,
+      /\.GetField\s*\(/i,
+      /\.GetProperty\s*\(/i,
+      /\.GetConstructor\s*\(/i,
+      /\.Invoke\s*\(/i,
+      /\bEmit\s*\.\s*\w+\b/i,
+      /\bILGenerator\b/i,
+      /\bDynamicMethod\b/i,
+      // ─── Code generation / scripting ─────────────────────────────
+      /\bCSharpCodeProvider\b/i,
+      /\bCodeDomProvider\b/i,
+      /\bCompilerParameters\b/i,
+      /\bCompileAssemblyFromSource\b/i,
+      /\bCompileAssemblyFromFile\b/i,
+      /\bCSharpScript\b/i,
+      /\bScriptOptions\b/i,
+      /\bMicrosoft\s*\.\s*CodeAnalysis\b/i,
+      /\bRoslyn\b/i,
+      /\bExpressions\s*\.\s*Compile\s*\(/i,
+      /\bDLR\b/i,
+      /\bDynamicObject\b/i,
+      /\bExpandoObject\b/i,
+      /\bdynamic\s+\w+\s*=\s*Activator\b/i,
+      // ─── Serialization (deserialization RCE) ─────────────────────
+      /\bBinaryFormatter\b/i,
+      /\bSoapFormatter\b/i,
+      /\bNetDataContractSerializer\b/i,
+      /\bObjectStateFormatter\b/i,
+      /\bLosFormatter\b/i,
+      /\bDataContractSerializer\b/i,
+      /\bDataContractJsonSerializer\b/i,
+      /\bXmlSerializer\b/i,
+      /\bJavaScriptSerializer\b/i,
+      /\bTypeNameHandling\b/i,    // Json.NET deserialization gadget
+      /\bSerializationBinder\b/i,
+      // ─── Native / unsafe / binary ────────────────────────────────
+      /\bunsafe\b/i,
+      /\bfixed\s*\(/i,
+      /\bstackalloc\b/i,
+      /\bDllImport\b/i,
+      /\bUnmanagedFunctionPointer\b/i,
+      /\bMarshal\s*\.\s*\w+\b/i,
+      /\bGCHandle\b/i,
+      /\bIntPtr\s*\.\s*Zero/i,
+      /\bnew\s+IntPtr\s*\(/i,
+      /\bUIntPtr\b/i,
+      /\bSpan\s*<\s*byte/i,
+      /\bMemory\s*<\s*byte/i,
+      /\bReadOnlySpan\s*<\s*byte/i,
+      /\bMemoryMarshal\b/i,
+      /\bUnsafe\s*\.\s*\w+\b/i,
+      /\bSystem\s*\.\s*Runtime\s*\.\s*InteropServices\b/i,
+      /\busing\s+System\s*\.\s*Runtime\s*\.\s*InteropServices\b/i,
+      /\busing\s+System\s*\.\s*Runtime\s*\.\s*CompilerServices\b/i,
+      /\bNativeLibrary\s*\.\s*(Load|GetExport)\b/i,
+      /\bSafeHandle\b/i,
+      /\bCriticalHandle\b/i,
+      /\bCallingConvention\b/i,
+      /\bGetDelegateForFunctionPointer\b/i,
+      // ─── System / environment access ─────────────────────────────
+      /\bEnvironment\s*\.\s*Exit\s*\(/i,
+      /\bEnvironment\s*\.\s*FailFast\s*\(/i,
+      /\bEnvironment\s*\.\s*GetEnvironmentVariable\w*\s*\(/i,
+      /\bEnvironment\s*\.\s*SetEnvironmentVariable\s*\(/i,
+      /\bEnvironment\s*\.\s*GetCommandLineArgs\s*\(/i,
+      /\bEnvironment\s*\.\s*MachineName\b/i,
+      /\bEnvironment\s*\.\s*UserName\b/i,
+      /\bEnvironment\s*\.\s*UserDomainName\b/i,
+      /\bEnvironment\s*\.\s*OSVersion\b/i,
+      /\bEnvironment\s*\.\s*CurrentDirectory\b/i,
+      /\bEnvironment\s*\.\s*SystemDirectory\b/i,
+      /\bEnvironment\s*\.\s*ProcessId\b/i,
+      /\bEnvironment\s*\.\s*GetFolderPath\s*\(/i,
+      /\bEnvironment\s*\.\s*GetLogicalDrives\s*\(/i,
+      /\bRegistry\s*\.\s*\w+\b/i,
+      /\bRegistryKey\b/i,
+      /\bMicrosoft\s*\.\s*Win32\b/i,
+      /\busing\s+Microsoft\s*\.\s*Win32\b/i,
+      /\bWMI\b/i,
+      /\bManagementObject\b/i,
+      /\bSystem\s*\.\s*Management\b/i,
+      // ─── Encoding / loader bypass ────────────────────────────────
+      /\bConvert\s*\.\s*FromBase64String\s*\(/i,
+      /\bEncoding\s*\.\s*\w+\s*\.\s*GetString\s*\(/i,
+      /\bEncoding\s*\.\s*\w+\s*\.\s*GetBytes\s*\(/i,
+      /\bBitConverter\s*\.\s*ToString\s*\(/i,
+      // ─── Eval-style and command-string entry points ──────────────
+      /\beval\s*\(/i,
+      // ─── Threads / sync abuse ────────────────────────────────────
+      /\bMutex\b/i,
+      /\bSemaphore\b/i,
+      /\bEventWaitHandle\b/i,
+    ],
   },
   
   // Messages for blocked patterns
@@ -455,6 +616,7 @@ const SECURITY = {
     python: 'Blocked: System access (os, subprocess, socket), file write operations, and dangerous built-ins are disabled for security',
     php: 'Blocked: Shell commands (exec, system, shell_exec), file operations, network functions, and dangerous constructs are disabled for security',
     java: 'Blocked: Runtime.exec, ProcessBuilder, file I/O, network sockets, reflection, and system access are disabled for security',
+    csharp: 'Blocked: Process.Start, file I/O, network, reflection, P/Invoke, unsafe/binary code, serialization, and system access are disabled for security',
   },
 };
 
@@ -511,6 +673,7 @@ const CONFIG = {
   execution: {
     timeoutMs: parseInt(process.env.RUN_TIMEOUT_MS || "10000", 10),
     javaTimeoutMs: parseInt(process.env.JAVA_TIMEOUT_MS || "30000", 10), // Java needs more time for compilation
+    csharpTimeoutMs: parseInt(process.env.CSHARP_TIMEOUT_MS || "45000", 10), // .NET needs longer for first build
     maxConcurrent: Math.min(500, Math.floor(TOTAL_MEMORY_MB / 50)),
     maxQueueSize: Math.min(10000, Math.floor(TOTAL_MEMORY_MB / 10)),
     maxOutputChars: 100000,
@@ -813,6 +976,11 @@ class SmartExecutor {
     if (!fs.existsSync(this.tempDir)) {
       fs.mkdirSync(this.tempDir, { recursive: true });
     }
+
+    // Pre-build a C#/.NET project template so each run can `dotnet run --no-restore`
+    // against a warm bin/obj cache instead of paying the full restore cost.
+    this.csharpTemplateDir = path.join(this.tempDir, '_csharp_template');
+    this.initCSharpTemplate();
     
     // Auto-scale monitoring
     setInterval(() => this.autoScale(), CONFIG.scaling.scaleCheckIntervalMs);
@@ -925,6 +1093,8 @@ class SmartExecutor {
         case 'php':
           return this.executePHPMulti(projectDir, mainFile.name);
         case 'java':
+        case 'csharp':
+          return this.executeCSharpMulti(projectDir, files);
           return this.executeJavaMulti(projectDir, files);
         default:
           throw new Error(`Multi-file not supported for: ${language}`);
@@ -1004,6 +1174,8 @@ class SmartExecutor {
         return this.executePython(code);
       case 'php':
         return this.executePHP(code);
+      case 'csharp':
+        return this.executeCSharp(code);
       case 'java':
         return this.executeJava(code);
       default:
@@ -1092,6 +1264,101 @@ class SmartExecutor {
         fs.unlinkSync(path.join(this.tempDir, `${className}.class`));
       } catch {}
     }
+  }
+
+  // ─── C# / .NET ─────────────────────────────────────────────────
+  initCSharpTemplate() {
+    try {
+      if (fs.existsSync(this.csharpTemplateDir)) return;
+      fs.mkdirSync(this.csharpTemplateDir, { recursive: true });
+      // Minimal .NET 8 console csproj. Disables analyzers and implicit usings
+      // to make every dangerous API explicitly require its `using` (still
+      // pattern-blocked, but keeps the surface predictable).
+      const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <RootNamespace>UserProgram</RootNamespace>
+    <AssemblyName>UserProgram</AssemblyName>
+    <UseAppHost>false</UseAppHost>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+</Project>
+`;
+      fs.writeFileSync(path.join(this.csharpTemplateDir, 'UserProgram.csproj'), csproj);
+      fs.writeFileSync(
+        path.join(this.csharpTemplateDir, 'Program.cs'),
+        'System.Console.WriteLine("template");\n'
+      );
+      // Warm restore + build so the per-request cost is just incremental compile.
+      log('info', 'csharp_template_warming', { dir: this.csharpTemplateDir });
+      const r = spawnSync(
+        'dotnet',
+        ['build', '-c', 'Release', '--nologo', '-v', 'q'],
+        { cwd: this.csharpTemplateDir, timeout: 120000, env: { ...process.env, DOTNET_NOLOGO: '1', DOTNET_CLI_TELEMETRY_OPTOUT: '1' } }
+      );
+      if (r.status !== 0) {
+        log('warn', 'csharp_template_build_failed', { stderr: (r.stderr || '').toString().slice(0, 500) });
+      } else {
+        log('info', 'csharp_template_ready');
+      }
+    } catch (err) {
+      log('warn', 'csharp_template_init_error', { error: err.message });
+    }
+  }
+
+  copyCSharpTemplate(targetDir) {
+    if (!fs.existsSync(this.csharpTemplateDir)) {
+      this.initCSharpTemplate();
+    }
+    fs.mkdirSync(targetDir, { recursive: true });
+    // Recursive copy of the warm template (csproj + obj + bin)
+    fs.cpSync(this.csharpTemplateDir, targetDir, { recursive: true, force: true });
+  }
+
+  async executeCSharp(code) {
+    const csTimeout = CONFIG.execution.csharpTimeoutMs;
+    const projectDir = path.join(this.tempDir, `csharp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    try {
+      this.copyCSharpTemplate(projectDir);
+      // Replace Program.cs with user code
+      fs.writeFileSync(path.join(projectDir, 'Program.cs'), code);
+      // Run with --no-restore to skip NuGet (template already restored)
+      return await this.runProcess('dotnet', [
+        'run',
+        '-c', 'Release',
+        '--no-restore',
+        '--nologo',
+        '-v', 'q',
+        '--project', projectDir,
+      ], csTimeout, { cwd: projectDir, csharp: true });
+    } finally {
+      try { fs.rmSync(projectDir, { recursive: true, force: true }); } catch {}
+    }
+  }
+
+  async executeCSharpMulti(projectDir, files) {
+    const csTimeout = CONFIG.execution.csharpTimeoutMs;
+    // Drop in csproj from template so the user's project compiles
+    const tplCsproj = path.join(this.csharpTemplateDir, 'UserProgram.csproj');
+    if (fs.existsSync(tplCsproj)) {
+      fs.copyFileSync(tplCsproj, path.join(projectDir, 'UserProgram.csproj'));
+    } else {
+      this.initCSharpTemplate();
+      if (fs.existsSync(tplCsproj)) {
+        fs.copyFileSync(tplCsproj, path.join(projectDir, 'UserProgram.csproj'));
+      }
+    }
+    return await this.runProcess('dotnet', [
+      'run',
+      '-c', 'Release',
+      '--nologo',
+      '-v', 'q',
+      '--project', projectDir,
+    ], csTimeout, { cwd: projectDir, csharp: true });
   }
   
   runProcess(command, args, timeoutMs = CONFIG.execution.timeoutMs, options = {}) {
@@ -1444,7 +1711,7 @@ app.get("/api/starter/:language/:version", async (req, res) => {
 });
 
 function getExtension(language) {
-  const extensions = { javascript: 'js', typescript: 'ts', python: 'py', java: 'java', php: 'php' };
+  const extensions = { javascript: 'js', typescript: 'ts', python: 'py', java: 'java', php: 'php', csharp: 'cs' };
   return extensions[language] || 'txt';
 }
 

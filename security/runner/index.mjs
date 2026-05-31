@@ -11,6 +11,7 @@ import { typescriptTests } from '../attacks/typescript.mjs';
 import { pythonTests } from '../attacks/python.mjs';
 import { phpTests } from '../attacks/php.mjs';
 import { javaTests } from '../attacks/java.mjs';
+import { csharpTests } from '../attacks/csharp.mjs';
 
 // All security tests by language
 export const SECURITY_TESTS = {
@@ -19,6 +20,7 @@ export const SECURITY_TESTS = {
   python: pythonTests,
   php: phpTests,
   java: javaTests,
+  csharp: csharpTests,
 };
 
 // Test result tracking
@@ -268,6 +270,7 @@ function getLanguageIcon(language) {
     python: '🐍',
     php: '🐘',
     java: '☕',
+    csharp: '🟦',
   };
   return icons[language] || '📄';
 }

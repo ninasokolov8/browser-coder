@@ -14,7 +14,13 @@ RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 FROM node:20-alpine
 
 # Install language runtimes
-RUN apk add --no-cache python3 openjdk17-jdk php bash && rm -rf /var/cache/apk/*
+RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk && rm -rf /var/cache/apk/*
+
+# .NET environment
+ENV DOTNET_NOLOGO=1 \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    DOTNET_GENERATE_ASPNET_CERTIFICATE=false
 
 # SECURITY: Create non-root user with minimal permissions
 RUN addgroup -g 1001 -S app && \

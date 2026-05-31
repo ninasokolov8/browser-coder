@@ -541,6 +541,7 @@ export class TabManager {
       python: '🐍',
       java: '☕',
       php: '🐘',
+      csharp: '🟦',
     };
     return icons[langId] || '📄';
   }

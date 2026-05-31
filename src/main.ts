@@ -1702,9 +1702,44 @@ function applyTheme(theme: string) {
         return parseJavaFunctions(code);
       case 'php':
         return parsePHPFunctions(code);
+      case 'csharp':
+        return parseCSharpFunctions(code);
       default:
         return parseJavaScriptFunctions(code);
     }
+  }
+
+  function parseCSharpFunctions(code: string): ParsedFunction[] {
+    const functions: ParsedFunction[] = [];
+    const lines = code.split('\n');
+    const reserved = new Set(['if', 'for', 'while', 'switch', 'catch', 'foreach', 'using', 'lock', 'fixed', 'unsafe', 'return']);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineNum = i + 1;
+
+      // Method: [modifiers] returnType Name(params)
+      const methodMatch = line.match(/^\s*(?:public|private|protected|internal|static|virtual|override|sealed|async|partial|extern|unsafe|\s)+\s+[\w<>?\[\],\s]+\s+(\w+)\s*\(([^)]*)\)/);
+      if (methodMatch && !reserved.has(methodMatch[1])) {
+        functions.push({ name: methodMatch[1], type: 'method', line: lineNum, params: methodMatch[2] });
+        continue;
+      }
+
+      // Local function: returnType Name(params) {
+      const localFunc = line.match(/^\s+(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\(([^)]*)\)\s*(?:=>|\{)/);
+      if (localFunc && !reserved.has(localFunc[1])) {
+        functions.push({ name: localFunc[1], type: 'function', line: lineNum, params: localFunc[2] });
+        continue;
+      }
+
+      // Class / record / struct / interface
+      const classMatch = line.match(/(?:class|record|struct|interface)\s+(\w+)/);
+      if (classMatch) {
+        functions.push({ name: classMatch[1], type: 'class', line: lineNum, params: '' });
+      }
+    }
+
+    return functions;
   }
 
   function renderFunctionList() {
@@ -1960,6 +1995,21 @@ function applyTheme(theme: string) {
             /public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\n\s*\}/,
             `public static void main(String[] args) {\n        System.out.println("--- Running ${fnName}${argsDisplay} ---");\n        ${fnName}(${args});\n    }`
           );
+        }
+        break;
+
+      case 'csharp':
+        // C#: best-effort replacement of the Main method body, falling back to top-level statements
+        if (fnType === 'class') {
+          runCode = code;
+        } else if (/static\s+(?:async\s+)?(?:void|int|Task|Task<int>)\s+Main\s*\(/.test(code)) {
+          runCode = code.replace(
+            /static\s+(?:async\s+)?(?:void|int|Task|Task<int>)\s+Main\s*\([^)]*\)\s*\{[\s\S]*?\n\s*\}/,
+            `static void Main(string[] args) {\n        System.Console.WriteLine("--- Running ${fnName}${argsDisplay} ---");\n        ${fnName}(${args});\n    }`
+          );
+        } else {
+          // Top-level statements: append a call at the end of the file
+          runCode = `${code}\n\nSystem.Console.WriteLine("--- Running ${fnName}${argsDisplay} ---");\n${fnName}(${args});\n`;
         }
         break;
 
