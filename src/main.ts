@@ -59,6 +59,8 @@ const ALLOWED_ORIGINS: string[] = [
   'https://stepup.zone',
   'https://dev.stepup.zone',
   'http://stepup.local',
+  'https://arcacademy.co',
+  'https://www.arcacademy.co',
 ];
 
 // Base domains that allow any subdomain match
@@ -66,6 +68,7 @@ const ALLOWED_BASE_DOMAINS: string[] = [
   'stepup.school',
   'step-up.co.il',
   'stepup.zone',
+  'arcacademy.co',
 ];
 
 function isAllowedOrigin(origin: string): boolean {
