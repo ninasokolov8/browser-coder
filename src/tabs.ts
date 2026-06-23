@@ -129,9 +129,13 @@ export class TabManager {
 
   /**
    * Create a new file/tab
+   * @param emptyFile If true, creates file with empty content (useful for free_code tasks). Otherwise uses starter code.
    */
-  async createNewFile(lang: LoadedLanguage, version: VersionConfig, name?: string, parentId: string | null = null): Promise<Tab | null> {
-    const starterCode = await getStarterAsync(lang.id, version.id);
+  async createNewFile(lang: LoadedLanguage, version: VersionConfig, name?: string, parentId: string | null = null, emptyFile: boolean = false): Promise<Tab | null> {
+    let fileContent = '';
+    if (!emptyFile) {
+      fileContent = await getStarterAsync(lang.id, version.id);
+    }
     
     // Generate unique name
     const baseName = name || `main.${lang.extension}`;
@@ -142,7 +146,7 @@ export class TabManager {
       parentId,
       language: lang.id,
       version: version.id,
-      content: starterCode,
+      content: fileContent,
       isUserModified: false,
     });
 

@@ -994,7 +994,8 @@ function applyTheme(theme: string) {
   // ===== File/Folder Operations =====
   async function createNewFileInExplorer(parentId: string | null) {
     if (currentLockStructure) return;
-    const newTab = await tabManager.createNewFile(currentLang, currentVersion, undefined, parentId);
+    // Create with empty file by default when user manually creates a file (not loading from storage)
+    const newTab = await tabManager.createNewFile(currentLang, currentVersion, undefined, parentId, true);
     if (newTab) {
       const model = getOrCreateModel(newTab);
       editor.setModel(model);
