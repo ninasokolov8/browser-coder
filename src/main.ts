@@ -1133,10 +1133,12 @@ function applyTheme(theme: string) {
       //  - drop on a FOLDER  -> move into that folder
       //  - drop on a FILE    -> move into that file's parent (VS Code behaviour),
       //                         so dropping on a root-level file lands in root
+      // Works for both internal moves and external OS-file drops.
       itemEl.addEventListener('dragover', (e) => {
-        if (draggingIds.length === 0) return;
+        const external = isExternalFileDrag(e);
+        if (draggingIds.length === 0 && !external) return;
         e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        if (e.dataTransfer) e.dataTransfer.dropEffect = external ? 'copy' : 'move';
         clearDropHighlights();
         if (type === 'folder') {
           itemEl.classList.add('drop-target');
@@ -1155,15 +1157,16 @@ function applyTheme(theme: string) {
         itemEl.classList.remove('drop-target');
       });
       itemEl.addEventListener('drop', async (e) => {
-        if (draggingIds.length === 0) return;
+        const external = isExternalFileDrag(e);
+        if (draggingIds.length === 0 && !external) return;
         e.preventDefault();
         e.stopPropagation();
         clearDropHighlights();
-        if (type === 'folder') {
-          await moveItemsInto(id);
+        const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+        if (external) {
+          await importExternalFiles(e.dataTransfer!.files, targetParentId);
         } else {
-          const parentId = itemEl.dataset.parent || null;
-          await moveItemsInto(parentId);
+          await moveItemsInto(targetParentId);
         }
       });
     });
@@ -1440,14 +1443,16 @@ function applyTheme(theme: string) {
     }
   });
 
-  // Dropping onto empty explorer space moves items to the workspace root.
+  // Dropping onto empty explorer space moves items to the workspace root,
+  // and also accepts external files dragged from the OS/desktop.
   fileTreeEl.addEventListener('dragover', (e) => {
-    if (draggingIds.length === 0) return;
+    const external = isExternalFileDrag(e);
+    if (draggingIds.length === 0 && !external) return;
     // Only treat blank area / the container itself as a root drop target
     const overItem = (e.target as HTMLElement).closest('.tree-item');
     if (!overItem) {
       e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      if (e.dataTransfer) e.dataTransfer.dropEffect = external ? 'copy' : 'move';
       clearDropHighlights();
       fileTreeEl.classList.add('root-drop-target');
     }
@@ -1458,10 +1463,105 @@ function applyTheme(theme: string) {
   fileTreeEl.addEventListener('drop', async (e) => {
     const overItem = (e.target as HTMLElement).closest('.tree-item');
     fileTreeEl.classList.remove('root-drop-target');
-    if (draggingIds.length === 0 || overItem) return; // item drops handled per-folder
+    if (overItem) return; // item drops are handled by the item's own handler
+    const external = isExternalFileDrag(e);
+    if (draggingIds.length === 0 && !external) return;
     e.preventDefault();
-    await moveItemsInto(null);
+    if (external) {
+      await importExternalFiles(e.dataTransfer!.files, null);
+    } else {
+      await moveItemsInto(null);
+    }
   });
+
+  // True when the drag originates from the OS (files from the desktop),
+  // rather than an internal explorer item move.
+  function isExternalFileDrag(e: DragEvent): boolean {
+    const types = e.dataTransfer?.types;
+    return !!types && Array.prototype.indexOf.call(types, 'Files') !== -1;
+  }
+
+  // Make a file name unique within a set of existing sibling names.
+  function uniqueFileName(name: string, existing: string[]): string {
+    const set = new Set(existing);
+    if (!set.has(name)) return name;
+    const dot = name.lastIndexOf('.');
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : '';
+    let i = 1;
+    let candidate = `${base}_${i}${ext}`;
+    while (set.has(candidate)) { i++; candidate = `${base}_${i}${ext}`; }
+    return candidate;
+  }
+
+  // Import files dragged from the desktop into a target folder (or root).
+  // Only supported-language files are accepted; everything else is reported
+  // and skipped. Enforces the same limits Step-Up uses (≤256 KB/file, ≤300 files).
+  async function importExternalFiles(fileList: FileList, targetParentId: string | null) {
+    if (currentLockStructure) return;
+    const MAX_BYTES = 256 * 1024;
+    const MAX_FILES = 300;
+
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    let workspaceCount = (await storage.getAllFiles()).length;
+    const imported: string[] = [];
+    const skipped: string[] = [];
+
+    for (const file of files) {
+      const detected = tabManager.detectLanguageByExtension(file.name);
+      if (!detected) {
+        skipped.push(`${file.name} — unsupported file type`);
+        continue;
+      }
+      if (workspaceCount >= MAX_FILES) {
+        skipped.push(`${file.name} — workspace file limit (${MAX_FILES}) reached`);
+        continue;
+      }
+      if (file.size > MAX_BYTES) {
+        skipped.push(`${file.name} — larger than 256 KB`);
+        continue;
+      }
+
+      let content = '';
+      try {
+        content = await file.text();
+      } catch {
+        skipped.push(`${file.name} — could not be read`);
+        continue;
+      }
+
+      const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      const siblings = await storage.getChildFiles(targetParentId);
+      const finalName = uniqueFileName(safeName, siblings.map(s => s.name));
+      const version = detected.versions.find(v => v.default) || detected.versions[0];
+
+      await storage.createFile({
+        name: finalName,
+        parentId: targetParentId,
+        language: detected.id,
+        version: version.id,
+        content,
+        isUserModified: true,
+      });
+      workspaceCount++;
+      imported.push(finalName);
+    }
+
+    if (imported.length > 0) {
+      if (targetParentId) expandedFolders.add(targetParentId);
+      renderFileTree(tabManager);
+      notifyWorkspaceChanged();
+      setStatus(`Imported ${imported.length} file${imported.length === 1 ? '' : 's'}`);
+    }
+
+    if (skipped.length > 0) {
+      const lines = ['Some files were not imported:', ...skipped.map(s => '  • ' + s)];
+      if (imported.length > 0) lines.unshift(`Imported ${imported.length} file(s).`, '');
+      setOutput(lines.join('\n'));
+    }
+  }
 
   // Clear every drop-target visual state (folders + root zone)
   function clearDropHighlights() {
