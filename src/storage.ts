@@ -442,6 +442,79 @@ class StorageManager {
   }
 
   /**
+   * Move a file into another folder (or to root when newParentId is null).
+   * Updates parentId and recomputes the full path.
+   */
+  async moveFile(id: string, newParentId: string | null): Promise<StoredFile | null> {
+    const existing = await this.getFile(id);
+    if (!existing) return null;
+    if (existing.parentId === newParentId) return existing; // no-op
+
+    let parentPath = '';
+    if (newParentId) {
+      const parent = await this.getFolder(newParentId);
+      if (!parent) return null;
+      parentPath = parent.path;
+    }
+
+    return this.updateFile(id, {
+      parentId: newParentId,
+      path: `${parentPath}/${existing.name}`,
+    });
+  }
+
+  /**
+   * Move a folder (and its whole subtree) into another folder, or to root.
+   * Rejects moving a folder into itself or one of its own descendants.
+   */
+  async moveFolder(id: string, newParentId: string | null): Promise<StoredFolder | null> {
+    const db = await this.ensureReady();
+    const existing = await this.getFolder(id);
+    if (!existing) return null;
+    if (existing.parentId === newParentId) return existing; // no-op
+
+    const allFolders = await this.getAllFolders();
+
+    // Guard: cannot drop a folder into itself or a descendant
+    if (newParentId) {
+      if (newParentId === id) return null;
+      let cursor: StoredFolder | undefined = allFolders.find(f => f.id === newParentId);
+      while (cursor) {
+        if (cursor.id === id) return null;
+        cursor = cursor.parentId ? allFolders.find(f => f.id === cursor!.parentId) : undefined;
+      }
+    }
+
+    let parentPath = '';
+    if (newParentId) {
+      const parent = allFolders.find(f => f.id === newParentId);
+      if (!parent) return null;
+      parentPath = parent.path;
+    }
+
+    const oldPath = existing.path;
+    const newPath = `${parentPath}/${existing.name}`;
+
+    // Re-path all descendants first, then the folder itself
+    await this.updateDescendantPaths(oldPath, newPath);
+
+    const updated: StoredFolder = {
+      ...existing,
+      parentId: newParentId,
+      path: newPath,
+      updatedAt: Date.now(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDERS_STORE, 'readwrite');
+      const store = tx.objectStore(FOLDERS_STORE);
+      const request = store.put(updated);
+      request.onsuccess = () => resolve(updated);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Delete a file
    */
   async deleteFile(id: string): Promise<boolean> {

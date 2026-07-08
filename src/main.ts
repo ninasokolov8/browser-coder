@@ -868,6 +868,12 @@ function applyTheme(theme: string) {
   let selectedItemId: string | null = null;
   let selectedItemType: 'file' | 'folder' | null = null;
   let renamingItemId: string | null = null;
+  // Multi-select (VS Code-style: Ctrl/Cmd toggle, Shift range) + drag-and-drop
+  let selectedIds = new Set<string>();
+  let lastClickedId: string | null = null;
+  let draggingIds: string[] = [];
+  // Flattened order of currently visible tree nodes, for Shift-range selection
+  let visibleNodeOrder: string[] = [];
 
   // Import storage for folder operations
   const { storage } = await import('./storage');
@@ -977,6 +983,10 @@ function applyTheme(theme: string) {
       const isExpanded = node.type === 'folder' && expandedFolders.has(node.id);
       const isDirty = node.tab?.isDirty;
       const isRenaming = renamingItemId === node.id;
+      const isSelected = selectedIds.has(node.id);
+
+      // Track visible order for Shift-range selection
+      visibleNodeOrder.push(node.id);
 
       if (node.type === 'folder') {
         const childrenHtml = isExpanded && node.children
@@ -984,7 +994,8 @@ function applyTheme(theme: string) {
           : '';
         
         return `
-          <div class="tree-item${isActive ? ' active' : ''}" 
+          <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
+               draggable="true"
                data-id="${node.id}" data-type="folder" 
                style="padding-left: ${8 + indent}px">
             <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
@@ -1002,7 +1013,8 @@ function applyTheme(theme: string) {
         const icon = lang?.icon || '📄';
         
         return `
-          <div class="tree-item${isActive ? ' active' : ''}" 
+          <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
+               draggable="true"
                data-id="${node.id}" data-type="file"
                style="padding-left: ${8 + indent + 16}px">
             <span class="tree-item-icon">${icon}</span>
@@ -1017,8 +1029,10 @@ function applyTheme(theme: string) {
     }
 
     if (rootNodes.length === 0) {
+      visibleNodeOrder = [];
       fileTreeEl.innerHTML = '<div class="tree-empty">No files yet. Click + to create one.</div>';
     } else {
+      visibleNodeOrder = [];
       fileTreeEl.innerHTML = rootNodes.map(n => renderNode(n)).join('');
     }
 
@@ -1033,12 +1047,38 @@ function applyTheme(theme: string) {
       const id = itemEl.dataset.id!;
       const type = itemEl.dataset.type as 'file' | 'folder';
 
-      // Single click - select / open file / toggle folder
+      // Single click - select / open file / toggle folder.
+      // Ctrl/Cmd toggles a file in the multi-selection; Shift selects a range.
       itemEl.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).classList.contains('tree-item-input')) return;
-        
+
         selectedItemId = id;
         selectedItemType = type;
+
+        // Ctrl/Cmd-click: toggle this item in the selection set
+        if (e.ctrlKey || e.metaKey) {
+          if (selectedIds.has(id)) selectedIds.delete(id);
+          else selectedIds.add(id);
+          lastClickedId = id;
+          renderFileTree(tm);
+          return;
+        }
+
+        // Shift-click: select the visible range between last click and this one
+        if (e.shiftKey && lastClickedId) {
+          const start = visibleNodeOrder.indexOf(lastClickedId);
+          const end = visibleNodeOrder.indexOf(id);
+          if (start !== -1 && end !== -1) {
+            const [lo, hi] = start < end ? [start, end] : [end, start];
+            selectedIds = new Set(visibleNodeOrder.slice(lo, hi + 1));
+            renderFileTree(tm);
+            return;
+          }
+        }
+
+        // Plain click: single selection + open/toggle
+        selectedIds = new Set([id]);
+        lastClickedId = id;
 
         if (type === 'file') {
           tm.switchToTab(id);
@@ -1059,8 +1099,54 @@ function applyTheme(theme: string) {
         if (currentLockStructure) return;
         selectedItemId = id;
         selectedItemType = type;
+        // Keep an existing multi-selection if the right-clicked item is part of
+        // it; otherwise reset selection to just this item.
+        if (!selectedIds.has(id)) {
+          selectedIds = new Set([id]);
+          renderFileTree(tm);
+        }
         showContextMenu(e.clientX, e.clientY, type);
       });
+
+      // ===== Drag and drop (VS Code-style file management) =====
+      itemEl.addEventListener('dragstart', (e) => {
+        if (currentLockStructure) { e.preventDefault(); return; }
+        // Drag the whole selection when the grabbed item is part of it,
+        // otherwise drag just this item (and make it the selection).
+        if (!selectedIds.has(id)) {
+          selectedIds = new Set([id]);
+          renderFileTree(tm);
+        }
+        draggingIds = Array.from(selectedIds);
+        e.dataTransfer?.setData('text/plain', draggingIds.join(','));
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        itemEl.classList.add('dragging');
+      });
+
+      itemEl.addEventListener('dragend', () => {
+        draggingIds = [];
+        fileTreeEl.querySelectorAll('.drop-target').forEach(x => x.classList.remove('drop-target'));
+        itemEl.classList.remove('dragging');
+      });
+
+      // Only folders are valid drop targets among items
+      if (type === 'folder') {
+        itemEl.addEventListener('dragover', (e) => {
+          if (draggingIds.length === 0) return;
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          itemEl.classList.add('drop-target');
+        });
+        itemEl.addEventListener('dragleave', () => {
+          itemEl.classList.remove('drop-target');
+        });
+        itemEl.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          itemEl.classList.remove('drop-target');
+          await moveItemsInto(id);
+        });
+      }
     });
 
     // Handle rename input
@@ -1334,6 +1420,60 @@ function applyTheme(theme: string) {
       showContextMenu(e.clientX, e.clientY, 'folder');
     }
   });
+
+  // Dropping onto empty explorer space moves items to the workspace root.
+  fileTreeEl.addEventListener('dragover', (e) => {
+    if (draggingIds.length === 0) return;
+    // Only treat blank area / the container itself as a root drop target
+    const overItem = (e.target as HTMLElement).closest('.tree-item');
+    if (!overItem) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      fileTreeEl.classList.add('root-drop-target');
+    }
+  });
+  fileTreeEl.addEventListener('dragleave', (e) => {
+    if (e.target === fileTreeEl) fileTreeEl.classList.remove('root-drop-target');
+  });
+  fileTreeEl.addEventListener('drop', async (e) => {
+    const overItem = (e.target as HTMLElement).closest('.tree-item');
+    fileTreeEl.classList.remove('root-drop-target');
+    if (draggingIds.length === 0 || overItem) return; // item drops handled per-folder
+    e.preventDefault();
+    await moveItemsInto(null);
+  });
+
+  // Move the current drag selection into a target folder (or root when null).
+  // Skips no-op moves and invalid folder-into-descendant moves (storage guards).
+  async function moveItemsInto(targetFolderId: string | null) {
+    if (currentLockStructure) return;
+    const ids = [...draggingIds];
+    draggingIds = [];
+    if (ids.length === 0) return;
+
+    let movedAny = false;
+    for (const id of ids) {
+      // Don't drop a folder onto itself
+      if (id === targetFolderId) continue;
+      const folder = await storage.getFolder(id);
+      if (folder) {
+        const res = await storage.moveFolder(id, targetFolderId);
+        if (res) movedAny = true;
+      } else {
+        const res = await storage.moveFile(id, targetFolderId);
+        if (res) movedAny = true;
+        // Keep any open tab's cached path/name in sync
+        const tab = tabManager.getTab(id);
+        if (tab && res) tab.file = res;
+      }
+    }
+
+    if (movedAny) {
+      if (targetFolderId) expandedFolders.add(targetFolderId);
+      renderFileTree(tabManager);
+      notifyWorkspaceChanged();
+    }
+  }
 
   // ===== SEARCH FUNCTIONALITY =====
   interface SearchMatch {
