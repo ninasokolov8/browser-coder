@@ -847,17 +847,10 @@
       .status-spacer { flex: 1; }
       .status-right { display: flex; }
 
-      /* ===== RESPONSIVE ===== */
-      @media (max-width: 900px) {
-        #app {
-          grid-template-columns: 48px 1fr;
-          grid-template-areas:
-            "activitybar titlebar"
-            "activitybar main"
-            "statusbar statusbar";
-        }
-        #sidebar { display: none; }
-      }
+      /* ===== RESPONSIVE =====
+         Responsive rules live at the END of this stylesheet (after the FULL
+         EMBED overrides) so they win source-order ties against the
+         `!important` embed rules. */
 
       /* ===== UTILITIES ===== */
       .hidden { display: none !important; }
@@ -1174,6 +1167,77 @@
       }
       body.embedded.hacklab-enabled #titlebar .titlebar-separator {
         display: block !important;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         RESPONSIVE TOOLBAR & LAYOUT
+         Placed last so these rules win source-order ties against the FULL
+         EMBED overrides above. Strategy as the viewport narrows:
+           1. Toolbar buttons collapse to icon-only (labels hidden).
+           2. Non-essential controls drop out (theme, download, UI language…).
+           3. Chrome (activity bar + sidebar) slims down to protect the editor.
+         The Run + Language controls always survive. Nothing overflows the bar. */
+
+      /* Never let toolbar content spill out of the bar (the reported bug) */
+      #titlebar { overflow: hidden; min-width: 0; }
+      #titlebar .controls { min-width: 0; }
+      #titlebar #status {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+      }
+      #titlebar select { max-width: 150px; }
+      /* Tabs bar scrolls horizontally instead of stretching the layout */
+      #tabs { overflow-x: auto; }
+
+      /* Tablet / small window: icon-only buttons, hide the status + logo text */
+      @media (max-width: 1024px) {
+        #titlebar { gap: 6px; padding: 0 8px; }
+        #titlebar .controls { gap: 6px; }
+        #titlebar .btn span[data-i18n],
+        #titlebar .logo span[data-i18n] { display: none; }
+        #titlebar #status { display: none; }
+        #titlebar select { max-width: 118px; font-size: 11px; }
+      }
+
+      /* Phone / very narrow: keep only language, version, run (+ hacklab).
+         Embed-specific selectors included so these beat the FULL EMBED rules. */
+      @media (max-width: 720px) {
+        #titlebar #theme,
+        body.embedded.mode-full #titlebar #theme,
+        #titlebar #download,
+        body.embedded.mode-full #titlebar #download,
+        #titlebar #btn-download-project,
+        body.embedded.mode-full #titlebar #btn-download-project,
+        #titlebar #btn-clear-cache,
+        #titlebar #lang-selector,
+        body.embedded.mode-full #titlebar #lang-selector,
+        #titlebar .titlebar-separator,
+        body.embedded.mode-full #titlebar .titlebar-separator {
+          display: none !important;
+        }
+        #titlebar select { max-width: 104px; }
+        #activitybar { width: 40px; }
+        #sidebar { width: auto !important; min-width: 0 !important; }
+        body.mode-full #app,
+        body.mode-full.embedded #app {
+          grid-template-columns: 40px var(--sidebar-width, 170px) 1fr !important;
+        }
+        body.embedded.nooutput.mode-full #app {
+          grid-template-columns: 40px var(--sidebar-width, 170px) 1fr !important;
+        }
+      }
+
+      /* Smallest screens: drop the version selector too (keep language + run),
+         and make the file tree comfortably tappable. */
+      @media (max-width: 480px) {
+        #titlebar #version,
+        body.embedded.mode-full #titlebar #version { display: none !important; }
+        #titlebar select { max-width: 92px; font-size: 11px; }
+        body.mode-full #app,
+        body.mode-full.embedded #app,
+        body.embedded.nooutput.mode-full #app {
+          grid-template-columns: 36px var(--sidebar-width, 140px) 1fr !important;
+        }
+        .tree-item { padding-top: 6px; padding-bottom: 6px; }
       }
     </style>
   </head>
