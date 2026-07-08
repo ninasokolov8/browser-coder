@@ -229,6 +229,9 @@ let handleRun: () => void = () => {};
 let handleSetReadonly: (data: { readonly: boolean; lockStructure?: boolean; allowRun?: boolean; panels?: string[]; allowSearchReplace?: boolean }) => void = () => {};
 let handleShowOutput: (data: { output?: string; stdout?: string; stderr?: string; exitCode?: number }) => void = () => {};
 let handleClearOutput: () => void = () => {};
+// Set once the editor is up: pushes a debounced full `ide:files` snapshot to
+// the parent after structural workspace changes (create/rename/delete).
+let notifyWorkspaceChanged: () => void = () => {};
 
 // ═══════════════════════════════════════════════════════════════════
 // END STEP-UP INTEGRATION
@@ -828,6 +831,7 @@ function applyTheme(theme: string) {
         setStatus(`${tab.file.name}${tab.isDirty ? ' •' : ''}`);
       }
       renderFileTree(tabManager);
+      notifyWorkspaceChanged();
     },
 
     onTabsChange: (tabs: Tab[]) => {
@@ -1053,6 +1057,7 @@ function applyTheme(theme: string) {
               tab.file.name = newName;
             }
           }
+          notifyWorkspaceChanged();
         }
         renamingItemId = null;
         renderFileTree(tm);
@@ -1141,6 +1146,7 @@ function applyTheme(theme: string) {
       renamingItemId = newTab.file.id;
       if (parentId) expandedFolders.add(parentId);
       renderFileTree(tabManager);
+      notifyWorkspaceChanged();
     }
   }
 
@@ -1151,6 +1157,7 @@ function applyTheme(theme: string) {
     expandedFolders.add(folder.id);
     renamingItemId = folder.id;
     renderFileTree(tabManager);
+    notifyWorkspaceChanged();
   }
 
   async function deleteItem(id: string, type: 'file' | 'folder') {
@@ -1170,6 +1177,7 @@ function applyTheme(theme: string) {
       await storage.deleteFile(id);
     }
     renderFileTree(tabManager);
+    notifyWorkspaceChanged();
   }
 
   // ===== Sidebar Toolbar Buttons =====
@@ -2948,10 +2956,49 @@ function applyTheme(theme: string) {
       editor.setModel(model);
       updateEmptyState(false);
       setStatus(activeTab.file.name);
+
+      // Reflect the active file's language in the toolbar + status bar
+      const activeFileLang = getLanguage(activeTab.file.language);
+      if (activeFileLang) {
+        currentLang = activeFileLang;
+        langSel.value = activeFileLang.id;
+        currentVersion = populateVersionDropdown(activeFileLang, activeTab.file.version);
+        configureMonacoForVersion(activeFileLang, currentVersion);
+        statusLangEl.textContent = activeFileLang.name;
+      }
     }
+    
+    // Expand the whole folder hierarchy so the lesson structure is visible at a glance
+    const allFolders = await storage.getAllFolders();
+    expandedFolders = new Set(allFolders.map(f => f.id));
     
     renderFileTree(tabManager);
   }
+  
+  // Build the full workspace snapshot from storage (source of truth),
+  // overlaying live (possibly unsaved) content from open Monaco models.
+  // Paths are relative POSIX paths that preserve the folder hierarchy.
+  async function collectWorkspaceSnapshot(): Promise<Array<{ path: string; content: string; language?: string }>> {
+    const storedFiles = await storage.getAllFiles();
+    return storedFiles.map(f => ({
+      path: f.path.replace(/^\/+/, ''),
+      content: fileModels.get(f.id)?.getValue() ?? f.content ?? '',
+      language: f.language,
+    }));
+  }
+  
+  // Push-based sync: emit the full `ide:files` snapshot (debounced) on any
+  // file create/edit/delete so the parent can persist the workspace.
+  let filesSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
+  function scheduleFilesSnapshot() {
+    if (!isEmbedded || ideMode === 'snippet' || currentReadonly) return;
+    if (filesSnapshotTimeout) clearTimeout(filesSnapshotTimeout);
+    filesSnapshotTimeout = setTimeout(async () => {
+      const files = await collectWorkspaceSnapshot();
+      sendToParent('ide:files', { files });
+    }, 500);
+  }
+  notifyWorkspaceChanged = scheduleFilesSnapshot;
   
   // Handle set code message (snippet mode)
   handleSetCode = (data) => {
@@ -2985,18 +3032,14 @@ function applyTheme(theme: string) {
       });
       return;
     }
-    // Project/full mode: collect all tabs
-    const tabs = tabManager.getAllTabs ? tabManager.getAllTabs() : [];
-    const files = tabs.map((t: any) => ({
-      path: t.file?.name || 'main',
-      content: fileModels.get(t.file?.id)?.getValue() ?? t.file?.content ?? '',
-      language: t.file?.language,
-    }));
-    if (files.length === 0) {
-      // Fallback to current editor content
-      files.push({ path: 'main', content: editor.getValue(), language: urlLanguage });
-    }
-    sendToParent('ide:files', { files });
+    // Project/full mode: full workspace snapshot from storage with real paths
+    collectWorkspaceSnapshot().then(files => {
+      if (files.length === 0) {
+        // Fallback to current editor content
+        files.push({ path: 'main', content: editor.getValue(), language: urlLanguage });
+      }
+      sendToParent('ide:files', { files });
+    });
   };
   
   // Handle run request from parent (free_code workflows)
@@ -3047,6 +3090,8 @@ function applyTheme(theme: string) {
       codeChangeTimeout = setTimeout(() => {
         notifyCodeChange(editor.getValue());
       }, 300);
+      // Full/project mode: also push the whole workspace snapshot
+      scheduleFilesSnapshot();
     }
   });
   

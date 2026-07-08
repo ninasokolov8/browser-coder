@@ -3,7 +3,7 @@
  */
 
 import { storage, StoredFile, WorkspaceState } from './storage';
-import { getLanguage, getStarterAsync, LoadedLanguage, VersionConfig } from './languages';
+import { getAllLanguages, getLanguage, getStarterAsync, LoadedLanguage, VersionConfig } from './languages';
 
 export interface Tab {
   file: StoredFile;
@@ -44,12 +44,12 @@ export class TabManager {
     const state = await storage.getWorkspaceState();
 
     if (files.length > 0) {
-      // Restore existing tabs
-      this.tabs = files.map(file => ({ file, isDirty: false }));
-      
-      // Find active tab
-      let activeTab = this.tabs.find(t => t.file.id === state.activeFileId);
-      if (!activeTab) activeTab = this.tabs[0];
+      // Restore only the last active file as an open tab (VS Code-like).
+      // All other files stay in storage and appear in the explorer tree;
+      // clicking them lazily opens a tab via switchToTab().
+      const activeFile = files.find(f => f.id === state.activeFileId) || files[0];
+      const activeTab: Tab = { file: activeFile, isDirty: false };
+      this.tabs = [activeTab];
       
       this.activeTabId = activeTab.file.id;
       this.render();
@@ -83,9 +83,9 @@ export class TabManager {
    * Preserves the currently active file by name to avoid tab-jumping on content updates.
    */
   async replaceAllFiles(files: Array<{ path: string; content: string; language?: string }>, defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
-    // Remember active file name to restore after replacement
+    // Remember active file path to restore after replacement
     const activeTab = this.getActiveTab();
-    const previousActiveFileName = activeTab?.file.name || null;
+    const previousActivePath = activeTab?.file.path || null;
 
     // Clear existing state
     await storage.clearAll();
@@ -93,36 +93,72 @@ export class TabManager {
     this.tabs = [];
     this.activeTabId = null;
 
-    // Create new tabs from the provided files
+    // Folder hierarchy is implicit in the paths (e.g. "src/utils/math.py").
+    // Create each folder segment once and remember its id by full path.
+    const folderIdsByPath = new Map<string, string>();
+    const createdFiles: StoredFile[] = [];
+
     for (const f of files) {
-      const name = f.path || `main.${defaultLang.extension}`;
-      const langId = f.language || defaultLang.id;
+      const rawPath = (f.path || `main.${defaultLang.extension}`).replace(/^\/+/, '');
+      const segments = rawPath.split('/').filter(s => s.length > 0 && s !== '.' && s !== '..');
+      const fileName = segments.pop() || `main.${defaultLang.extension}`;
+
+      // Ensure the folder chain for this file exists
+      let parentId: string | null = null;
+      let folderPath = '';
+      for (const segment of segments) {
+        folderPath += '/' + segment;
+        let folderId = folderIdsByPath.get(folderPath);
+        if (!folderId) {
+          const folder = await storage.createFolder({ name: segment, parentId });
+          folderId = folder.id;
+          folderIdsByPath.set(folderPath, folderId);
+        }
+        parentId = folderId;
+      }
+
+      // Per-file language: explicit > by file extension > embed default
+      const explicitLang = f.language ? getLanguage(f.language) : undefined;
+      const lang = explicitLang || this.detectLanguageByExtension(fileName) || defaultLang;
+      const version = lang.id === defaultLang.id
+        ? defaultVersion
+        : (lang.versions.find(v => v.default) || lang.versions[0]);
+
       const storedFile = await storage.createFile({
-        name,
-        parentId: null,
-        language: langId,
-        version: defaultVersion.id,
+        name: fileName,
+        parentId,
+        language: lang.id,
+        version: version.id,
         content: f.content || '',
         isUserModified: false,
       });
-      this.tabs.push({ file: storedFile, isDirty: false });
+      createdFiles.push(storedFile);
     }
 
-    // Restore previously active tab by name, or fall back to first tab
-    if (previousActiveFileName) {
-      const matchingTab = this.tabs.find(t => t.file.name === previousActiveFileName);
-      if (matchingTab) {
-        this.activeTabId = matchingTab.file.id;
-      } else if (this.tabs.length > 0) {
-        this.activeTabId = this.tabs[0].file.id;
-      }
-    } else if (this.tabs.length > 0) {
-      this.activeTabId = this.tabs[0].file.id;
+    // Open only ONE tab (the rest stay in the explorer tree and open lazily):
+    // previously active file by path if it still exists, else the first file.
+    const fileToOpen =
+      (previousActivePath && createdFiles.find(f => f.path === previousActivePath)) ||
+      createdFiles[0] || null;
+    if (fileToOpen) {
+      this.tabs.push({ file: fileToOpen, isDirty: false });
+      this.activeTabId = fileToOpen.id;
     }
 
     this.render();
     this.events.onTabsChange?.(this.tabs);
     return this.getActiveTab();
+  }
+
+  /**
+   * Resolve a language by file extension (e.g. "Hello.cs" -> csharp).
+   * Returns undefined when no configured language matches.
+   */
+  private detectLanguageByExtension(fileName: string): LoadedLanguage | undefined {
+    const dotIdx = fileName.lastIndexOf('.');
+    if (dotIdx <= 0) return undefined;
+    const ext = fileName.slice(dotIdx + 1).toLowerCase();
+    return getAllLanguages().find(l => l.extension.toLowerCase() === ext);
   }
 
   // ========== Tab Operations ==========
@@ -191,8 +227,15 @@ export class TabManager {
       await this.saveCurrentTab();
     }
 
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) return null;
+    let tab = this.tabs.find(t => t.file.id === fileId);
+    if (!tab) {
+      // Lazy open: file exists in storage (explorer tree) but has no tab yet
+      const file = await storage.getFile(fileId);
+      if (!file) return null;
+      tab = { file, isDirty: false };
+      this.tabs.push(tab);
+      this.events.onTabsChange?.(this.tabs);
+    }
 
     this.activeTabId = fileId;
     await this.saveWorkspaceState();
@@ -212,14 +255,14 @@ export class TabManager {
 
     const closedTab = this.tabs[tabIndex];
 
-    // If closing unsaved tab, confirm (in real IDE, show dialog)
-    // For now, auto-save
+    // Auto-save before closing so no work is lost
     if (closedTab.isDirty) {
       await this.saveTab(closedTab);
     }
 
-    // Delete from storage
-    await storage.deleteFile(fileId);
+    // Closing a tab does NOT delete the file - it stays in storage and in
+    // the explorer tree (VS Code semantics). Deleting is an explicit
+    // explorer action handled in main.ts.
 
     // Remove from tabs
     this.tabs.splice(tabIndex, 1);
