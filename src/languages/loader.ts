@@ -2,7 +2,7 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { KeywordEntry, LanguageConfig, LoadedLanguage, VersionConfig } from "./types";
+import type { KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedKeywordEntry, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
 
 // Import all config.json files at build time
@@ -14,6 +14,13 @@ const configModules = import.meta.glob<{ default: LanguageConfig }>(
 // Import all keywords.json files at build time (optional per language)
 const keywordModules = import.meta.glob<{ default: Record<string, KeywordEntry> }>(
   "/languages/*/keywords.json",
+  { eager: true }
+);
+
+// Import all keywords_he.json files at build time (optional per language -
+// languages without a Hebrew translation file yet simply have no entries here)
+const keywordHeModules = import.meta.glob<{ default: Record<string, KeywordEntry> }>(
+  "/languages/*/keywords_he.json",
   { eager: true }
 );
 
@@ -46,6 +53,7 @@ function loadLanguages(): Map<string, LoadedLanguage> {
       icon: config.icon || LANGUAGE_ICONS[config.id] || '📄',
       starters: {},
       keywords: {},
+      keywordsHe: {},
     });
   }
 
@@ -55,6 +63,16 @@ function loadLanguages(): Map<string, LoadedLanguage> {
     const lang = languages.get(langId);
     if (lang) {
       lang.keywords = module.default || {};
+    }
+  }
+
+  // Attach optional Hebrew keyword translations (safe no-op for languages
+  // that don't have a keywords_he.json file yet)
+  for (const [path, module] of Object.entries(keywordHeModules)) {
+    const langId = languageIdFromPath(path);
+    const lang = languages.get(langId);
+    if (lang) {
+      lang.keywordsHe = module.default || {};
     }
   }
 
@@ -213,16 +231,38 @@ export function getDefaultVersion(langId: string): string {
 // Tries an exact (case-sensitive) match first, since most keywords are case-sensitive
 // (e.g. Java/C# "public" vs a variable named "Public"), then falls back to a
 // case-insensitive match so things still work if the user right-clicks "Public".
-export function getKeywordExplanation(langId: string, word: string): KeywordEntry | null {
+//
+// `uiLang`: when it's "he", the Hebrew translation of `explanation` is used
+// IF one exists for this exact keyword in keywords_he.json (`rtl: true`).
+// Falls back to the English explanation (`rtl: false`) whenever the UI isn't
+// Hebrew, the language has no keywords_he.json file, or that file doesn't
+// have this particular keyword yet - `type`, the keyword name, and `example`
+// always come from the English file and are never translated.
+export function getKeywordExplanation(langId: string, word: string, uiLang?: string): ResolvedKeywordEntry | null {
   const lang = languages.get(langId);
   if (!lang || !word) return null;
 
   const dict = lang.keywords;
-  if (dict[word]) return dict[word];
-
-  const lowerWord = word.toLowerCase();
-  for (const key of Object.keys(dict)) {
-    if (key.toLowerCase() === lowerWord) return dict[key];
+  let matchedKey: string | null = null;
+  if (dict[word]) {
+    matchedKey = word;
+  } else {
+    const lowerWord = word.toLowerCase();
+    for (const key of Object.keys(dict)) {
+      if (key.toLowerCase() === lowerWord) {
+        matchedKey = key;
+        break;
+      }
+    }
   }
-  return null;
+  if (!matchedKey) return null;
+
+  const entry = dict[matchedKey];
+  if (uiLang === "he") {
+    const heExplanation = lang.keywordsHe?.[matchedKey]?.explanation;
+    if (heExplanation) {
+      return { ...entry, explanation: heExplanation, rtl: true };
+    }
+  }
+  return { ...entry, rtl: false };
 }

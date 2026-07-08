@@ -41,6 +41,8 @@
   "editor.createFile": "צור קובץ חדש כדי להתחיל לכתוב קוד",
   "editor.newFile": "קובץ חדש",
   "editor.explainKeyword": "💡 הסבר מילת מפתח זו",
+  "editor.runSelected": "▶ הרץ את המסומן",
+  "editor.example": "דוגמה:",
   
   "panel.output": "פלט",
   "panel.clear": "נקה",

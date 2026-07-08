@@ -1,1042 +1,1042 @@
 {
   "abstract": {
     "type": "core_keyword",
-    "explanation": "Marks a class as incomplete or a member as requiring implementation in a derived class.",
+    "explanation": "מסמן מחלקה כלא שלמה, או חבר מחלקה ככזה שדורש מימוש במחלקה יורשת.",
     "example": "abstract class Shape { public abstract double Area(); }"
   },
   "as": {
     "type": "core_keyword",
-    "explanation": "Safely converts a value to a compatible reference or nullable type, returning null if the conversion fails.",
+    "explanation": "ממיר ערך בצורה בטוחה לטיפוס ייחוס תואם או לטיפוס nullable, ומחזיר null אם ההמרה נכשלת.",
     "example": "object value = \"hi\";\nstring text = value as string;"
   },
   "base": {
     "type": "core_keyword",
-    "explanation": "Refers to the base class, usually to call a base constructor or overridden member.",
+    "explanation": "מפנה למחלקת הבסיס, בדרך כלל כדי לקרוא לבנאי של מחלקת הבסיס או לחבר שנדרס.",
     "example": "class Dog : Animal { public Dog(string name) : base(name) {} }"
   },
   "break": {
     "type": "control_flow",
-    "explanation": "Exits the nearest loop or switch statement immediately.",
+    "explanation": "יוצא מיד מהלולאה הקרובה ביותר או מפקודת switch.",
     "example": "for (int i = 0; i < 10; i++) { if (i == 3) break; }"
   },
   "case": {
     "type": "control_flow",
-    "explanation": "Defines a matching branch inside a switch statement or switch expression.",
+    "explanation": "מגדיר ענף התאמה בתוך פקודת switch או ביטוי switch.",
     "example": "switch (grade) { case 'A': Console.WriteLine(\"Great\"); break; }"
   },
   "catch": {
     "type": "exception_handling",
-    "explanation": "Handles an exception thrown by a matching try block.",
+    "explanation": "מטפל בחריגה שנזרקה מתוך בלוק try תואם.",
     "example": "try { Risky(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
   },
   "checked": {
     "type": "core_keyword",
-    "explanation": "Enables overflow checking for arithmetic operations and conversions.",
+    "explanation": "מפעיל בדיקת גלישה עבור פעולות אריתמטיות והמרות.",
     "example": "int x = checked(int.MaxValue + 1);"
   },
   "class": {
     "type": "core_keyword",
-    "explanation": "Defines a reference type blueprint for objects with fields, properties, methods, and events.",
+    "explanation": "מגדיר תבנית של טיפוס ייחוס לאובייקטים עם שדות, מאפיינים, מתודות ואירועים.",
     "example": "class User { public string Name { get; set; } = \"Nina\"; }"
   },
   "const": {
     "type": "modifier",
-    "explanation": "Declares a compile-time constant whose value cannot change.",
+    "explanation": "מכריז על קבוע בזמן קומפילציה שהערך שלו אינו יכול להשתנות.",
     "example": "const double Pi = 3.14159;"
   },
   "continue": {
     "type": "control_flow",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "explanation": "מדלג על שאר האיטרציה הנוכחית של הלולאה ועובר לאיטרציה הבאה.",
     "example": "for (int i = 0; i < 5; i++) { if (i == 2) continue; Console.WriteLine(i); }"
   },
   "default": {
     "type": "core_keyword",
-    "explanation": "Gets the default value of a type, or labels the fallback branch in a switch.",
+    "explanation": "מקבל את ערך ברירת המחדל של טיפוס, או מסמן את ענף ברירת המחדל ב-switch.",
     "example": "int n = default;\nswitch (n) { default: Console.WriteLine(\"Other\"); break; }"
   },
   "delegate": {
     "type": "core_keyword",
-    "explanation": "Defines a type-safe reference to a method with a specific signature.",
+    "explanation": "מגדיר הפניה בטוחה מבחינת טיפוסים למתודה עם חתימה מסוימת.",
     "example": "delegate int MathOp(int a, int b);\nMathOp add = (a, b) => a + b;"
   },
   "do": {
     "type": "control_flow",
-    "explanation": "Starts a do-while loop, which runs the body before checking the condition.",
+    "explanation": "מתחיל לולאת do-while, שבה גוף הלולאה רץ לפני בדיקת התנאי.",
     "example": "int n = 0;\ndo { Console.WriteLine(n++); } while (n < 3);"
   },
   "else": {
     "type": "control_flow",
-    "explanation": "Runs code when a previous if or else-if condition is false.",
+    "explanation": "מריץ קוד כאשר תנאי if או else-if קודם הוא false.",
     "example": "if (age >= 18) Console.WriteLine(\"Adult\"); else Console.WriteLine(\"Minor\");"
   },
   "enum": {
     "type": "core_keyword",
-    "explanation": "Defines a named set of constant values.",
+    "explanation": "מגדיר קבוצה בעלת שם של ערכים קבועים.",
     "example": "enum Color { Red, Green, Blue }\nColor c = Color.Green;"
   },
   "event": {
     "type": "core_keyword",
-    "explanation": "Declares a member that other code can subscribe to and unsubscribe from.",
+    "explanation": "מכריז על חבר שמאפשר לקוד אחר להירשם אליו ולהסיר ממנו הרשמה.",
     "example": "public event EventHandler? Clicked;"
   },
   "explicit": {
     "type": "operator_keyword",
-    "explanation": "Declares a conversion operator that requires an explicit cast.",
+    "explanation": "מכריז על אופרטור המרה שדורש המרה מפורשת.",
     "example": "public static explicit operator int(User u) => u.Id;"
   },
   "extern": {
     "type": "modifier",
-    "explanation": "Declares a method implemented outside the C# source, often in native code.",
+    "explanation": "מכריז על מתודה שממומשת מחוץ לקוד המקור של C#, לעיתים קרובות בקוד native.",
     "example": "extern static void NativeCall();"
   },
   "finally": {
     "type": "exception_handling",
-    "explanation": "Runs after try/catch whether or not an exception occurred, commonly for cleanup.",
+    "explanation": "רץ אחרי try/catch בין אם התרחשה חריגה ובין אם לא, בדרך כלל לצורך ניקוי משאבים.",
     "example": "try { Work(); } finally { Console.WriteLine(\"cleanup\"); }"
   },
   "fixed": {
     "type": "unsafe_keyword",
-    "explanation": "Pins a movable variable so the garbage collector cannot relocate it during unsafe pointer work.",
+    "explanation": "מקבע משתנה שניתן להזזה, כדי שאוסף הזיכרון לא יוכל להזיז אותו בזמן עבודה לא בטוחה עם מצביעים.",
     "example": "unsafe { fixed (char* p = text) { } }"
   },
   "for": {
     "type": "control_flow",
-    "explanation": "Repeats a block using an initializer, condition, and iterator.",
+    "explanation": "חוזר על בלוק קוד באמצעות אתחול, תנאי ומעדכן.",
     "example": "for (int i = 0; i < 3; i++) Console.WriteLine(i);"
   },
   "foreach": {
     "type": "control_flow",
-    "explanation": "Iterates through every item in a collection or array.",
+    "explanation": "עובר על כל פריט באוסף או במערך.",
     "example": "foreach (int n in numbers) Console.WriteLine(n);"
   },
   "goto": {
     "type": "control_flow",
-    "explanation": "Jumps to a labeled statement, case label, or default label.",
+    "explanation": "קופץ לפקודה מסומנת, לתווית case או לתווית default.",
     "example": "goto End;\nEnd: Console.WriteLine(\"done\");"
   },
   "if": {
     "type": "control_flow",
-    "explanation": "Runs a block only when a condition is true.",
+    "explanation": "מריץ בלוק רק כאשר תנאי הוא true.",
     "example": "if (score >= 60) Console.WriteLine(\"Pass\");"
   },
   "implicit": {
     "type": "operator_keyword",
-    "explanation": "Declares a conversion operator that can run automatically without a cast.",
+    "explanation": "מכריז על אופרטור המרה שיכול לרוץ אוטומטית ללא cast.",
     "example": "public static implicit operator string(User u) => u.Name;"
   },
   "in": {
     "type": "parameter_modifier",
-    "explanation": "Marks a parameter as passed by readonly reference, or appears in foreach and query syntax.",
+    "explanation": "מסמן פרמטר שמועבר בהפניה לקריאה בלבד, או מופיע בתחביר foreach ובתחביר שאילתות.",
     "example": "void Print(in int value) { Console.WriteLine(value); }\nforeach (var item in items) { }"
   },
   "interface": {
     "type": "core_keyword",
-    "explanation": "Declares a contract of members that implementing types must provide.",
+    "explanation": "מכריז על חוזה של חברים שטיפוסים מממשים חייבים לספק.",
     "example": "interface IShape { double Area(); }"
   },
   "internal": {
     "type": "access_modifier",
-    "explanation": "Makes a type or member accessible only inside the same assembly/project.",
+    "explanation": "מאפשר גישה לטיפוס או לחבר רק מתוך אותו assembly/פרויקט.",
     "example": "internal class Helper { }"
   },
   "is": {
     "type": "core_keyword",
-    "explanation": "Tests whether a value is compatible with a type or pattern.",
+    "explanation": "בודק האם ערך תואם לטיפוס או לתבנית מסוימת.",
     "example": "if (value is string text) Console.WriteLine(text);"
   },
   "lock": {
     "type": "threading_keyword",
-    "explanation": "Acquires a mutual-exclusion lock to protect a critical section from concurrent access.",
+    "explanation": "מקבל נעילת mutual-exclusion כדי להגן על מקטע קריטי מגישה מקבילית.",
     "example": "lock (syncObj) { count++; }"
   },
   "namespace": {
     "type": "core_keyword",
-    "explanation": "Groups related types under a named container and avoids naming collisions.",
+    "explanation": "מקבץ טיפוסים קשורים תחת מכולה בעלת שם ומונע התנגשויות שמות.",
     "example": "namespace MyApp.Models { class User { } }"
   },
   "new": {
     "type": "core_keyword",
-    "explanation": "Creates an instance, hides an inherited member, or constrains generics to types with a public parameterless constructor.",
+    "explanation": "יוצר מופע, מסתיר חבר בירושה, או מגביל גנריים לטיפוסים עם בנאי public ללא פרמטרים.",
     "example": "var user = new User();"
   },
   "operator": {
     "type": "operator_keyword",
-    "explanation": "Declares a custom operator overload for a user-defined type.",
+    "explanation": "מכריז על העמסת אופרטור מותאמת אישית עבור טיפוס שמוגדר על ידי המשתמש.",
     "example": "public static Point operator +(Point a, Point b) => new(a.X + b.X, a.Y + b.Y);"
   },
   "out": {
     "type": "parameter_modifier",
-    "explanation": "Marks a parameter assigned by the called method, or appears in generic variance.",
+    "explanation": "מסמן פרמטר שמקבל ערך מתוך המתודה הנקראת, או מופיע בשונות גנרית.",
     "example": "int.TryParse(\"42\", out int number);"
   },
   "override": {
     "type": "modifier",
-    "explanation": "Replaces a virtual, abstract, or override member inherited from a base class.",
+    "explanation": "מחליף חבר virtual, abstract או override שהתקבל ממחלקת בסיס.",
     "example": "public override string ToString() => Name;"
   },
   "params": {
     "type": "parameter_modifier",
-    "explanation": "Allows a method to accept a variable number of arguments as an array.",
+    "explanation": "מאפשר למתודה לקבל מספר משתנה של ארגומנטים כמערך.",
     "example": "void Log(params string[] messages) { }"
   },
   "private": {
     "type": "access_modifier",
-    "explanation": "Makes a member accessible only inside the containing type.",
+    "explanation": "מאפשר גישה לחבר רק מתוך הטיפוס שמכיל אותו.",
     "example": "class Account { private decimal balance; }"
   },
   "protected": {
     "type": "access_modifier",
-    "explanation": "Makes a member accessible inside the containing type and derived types.",
+    "explanation": "מאפשר גישה לחבר מתוך הטיפוס שמכיל אותו ומתוך טיפוסים יורשים.",
     "example": "class Base { protected int Id; }"
   },
   "public": {
     "type": "access_modifier",
-    "explanation": "Makes a type or member accessible from any code that can reference it.",
+    "explanation": "מאפשר גישה לטיפוס או לחבר מכל קוד שיכול להפנות אליו.",
     "example": "public class User { public string Name { get; set; } = \"\"; }"
   },
   "readonly": {
     "type": "modifier",
-    "explanation": "Prevents reassignment of a field after construction, or marks members/structs as not mutating state.",
+    "explanation": "מונע השמה מחדש של שדה אחרי הבנייה, או מסמן חברים/structs ככאלה שאינם משנים מצב.",
     "example": "readonly int id;\npublic User(int id) { this.id = id; }"
   },
   "ref": {
     "type": "parameter_modifier",
-    "explanation": "Passes a variable by reference so the called method can read and assign the caller's variable.",
+    "explanation": "מעביר משתנה בהפניה כך שהמתודה הנקראת יכולה לקרוא ולשנות את המשתנה של הקורא.",
     "example": "void Increment(ref int x) { x++; }"
   },
   "return": {
     "type": "control_flow",
-    "explanation": "Exits a method and optionally returns a value.",
+    "explanation": "יוצא ממתודה ובאופן אופציונלי מחזיר ערך.",
     "example": "int Square(int x) { return x * x; }"
   },
   "sealed": {
     "type": "modifier",
-    "explanation": "Prevents a class from being inherited, or prevents an override from being overridden again.",
+    "explanation": "מונע ממחלקה לעבור ירושה, או מונע מ-override להידרס שוב.",
     "example": "sealed class FinalConfig { }"
   },
   "sizeof": {
     "type": "unsafe_keyword",
-    "explanation": "Returns the size in bytes of an unmanaged type.",
+    "explanation": "מחזיר את הגודל בבייטים של טיפוס unmanaged.",
     "example": "int bytes = sizeof(int);"
   },
   "stackalloc": {
     "type": "unsafe_keyword",
-    "explanation": "Allocates a block of memory on the stack.",
+    "explanation": "מקצה בלוק זיכרון על ה-stack.",
     "example": "Span<int> buffer = stackalloc int[10];"
   },
   "static": {
     "type": "modifier",
-    "explanation": "Marks a member as belonging to the type itself instead of an instance, or declares a static type/member.",
+    "explanation": "מסמן חבר כשייך לטיפוס עצמו ולא למופע, או מכריז על טיפוס/חבר static.",
     "example": "static int Count;\nstatic void Print() { }"
   },
   "struct": {
     "type": "core_keyword",
-    "explanation": "Defines a value type, usually for small data structures.",
+    "explanation": "מגדיר טיפוס ערך, בדרך כלל עבור מבני נתונים קטנים.",
     "example": "struct Point { public int X; public int Y; }"
   },
   "switch": {
     "type": "control_flow",
-    "explanation": "Selects one branch from multiple possible cases using statements or expressions.",
+    "explanation": "בוחר ענף אחד מתוך כמה אפשרויות באמצעות פקודות או ביטויים.",
     "example": "string label = score switch { >= 90 => \"A\", _ => \"Other\" };"
   },
   "this": {
     "type": "core_keyword",
-    "explanation": "Refers to the current instance of a type.",
+    "explanation": "מפנה למופע הנוכחי של טיפוס.",
     "example": "public User(string name) { this.Name = name; }"
   },
   "throw": {
     "type": "exception_handling",
-    "explanation": "Raises an exception or rethrows the current exception.",
+    "explanation": "זורק חריגה או זורק מחדש את החריגה הנוכחית.",
     "example": "throw new ArgumentException(\"Invalid value\");"
   },
   "try": {
     "type": "exception_handling",
-    "explanation": "Starts a block where exceptions can be caught or cleaned up with finally.",
+    "explanation": "מתחיל בלוק שבו אפשר לתפוס חריגות או לבצע ניקוי באמצעות finally.",
     "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
   },
   "typeof": {
     "type": "core_keyword",
-    "explanation": "Gets the System.Type object that represents a type.",
+    "explanation": "מקבל את אובייקט System.Type שמייצג טיפוס.",
     "example": "Type t = typeof(string);"
   },
   "unchecked": {
     "type": "core_keyword",
-    "explanation": "Disables overflow checking for arithmetic operations and conversions.",
+    "explanation": "מכבה בדיקת גלישה עבור פעולות אריתמטיות והמרות.",
     "example": "int x = unchecked(int.MaxValue + 1);"
   },
   "unsafe": {
     "type": "unsafe_keyword",
-    "explanation": "Allows pointer operations and other unsafe code inside a block, member, or type.",
+    "explanation": "מאפשר פעולות מצביעים וקוד לא בטוח אחר בתוך בלוק, חבר או טיפוס.",
     "example": "unsafe { int* p = &number; }"
   },
   "using": {
     "type": "core_keyword",
-    "explanation": "Imports a namespace/type, creates an alias, or disposes a resource at the end of a scope.",
+    "explanation": "מייבא namespace/טיפוס, יוצר alias, או משחרר משאב בסוף scope.",
     "example": "using System;\nusing var reader = File.OpenText(\"data.txt\");"
   },
   "virtual": {
     "type": "modifier",
-    "explanation": "Allows a member to be overridden in a derived class.",
+    "explanation": "מאפשר לחבר להידרס במחלקה יורשת.",
     "example": "public virtual void Speak() { Console.WriteLine(\"...\"); }"
   },
   "volatile": {
     "type": "modifier",
-    "explanation": "Indicates that a field can be modified by multiple threads and should not be aggressively optimized.",
+    "explanation": "מציין ששדה יכול להשתנות על ידי כמה threads ולכן אין לבצע עליו אופטימיזציות אגרסיביות.",
     "example": "private volatile bool _running;"
   },
   "while": {
     "type": "control_flow",
-    "explanation": "Repeats a block while a condition remains true.",
+    "explanation": "חוזר על בלוק כל עוד תנאי נשאר true.",
     "example": "while (count > 0) { count--; }"
   },
   "bool": {
     "type": "predefined_type",
-    "explanation": "Represents true/false Boolean values. It is also a reserved C# keyword.",
+    "explanation": "מייצג ערכי Boolean של true/false. זו גם מילת מפתח שמורה ב-C#.",
     "example": "bool isReady = true;"
   },
   "byte": {
     "type": "predefined_type",
-    "explanation": "Represents an unsigned 8-bit integer from 0 to 255. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם לא חתום בגודל 8 ביטים, מ-0 עד 255. זו גם מילת מפתח שמורה ב-C#.",
     "example": "byte level = 255;"
   },
   "sbyte": {
     "type": "predefined_type",
-    "explanation": "Represents a signed 8-bit integer from -128 to 127. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם חתום בגודל 8 ביטים, מ-‎-128 עד 127. זו גם מילת מפתח שמורה ב-C#.",
     "example": "sbyte delta = -5;"
   },
   "char": {
     "type": "predefined_type",
-    "explanation": "Represents a single UTF-16 character. It is also a reserved C# keyword.",
+    "explanation": "מייצג תו UTF-16 יחיד. זו גם מילת מפתח שמורה ב-C#.",
     "example": "char letter = 'A';"
   },
   "decimal": {
     "type": "predefined_type",
-    "explanation": "Represents a high-precision decimal number, commonly used for money. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר עשרוני בדיוק גבוה, נפוץ במיוחד עבור כסף. זו גם מילת מפתח שמורה ב-C#.",
     "example": "decimal price = 19.99m;"
   },
   "double": {
     "type": "predefined_type",
-    "explanation": "Represents a double-precision floating-point number. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר נקודה צפה בדיוק כפול. זו גם מילת מפתח שמורה ב-C#.",
     "example": "double distance = 12.5;"
   },
   "float": {
     "type": "predefined_type",
-    "explanation": "Represents a single-precision floating-point number. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר נקודה צפה בדיוק יחיד. זו גם מילת מפתח שמורה ב-C#.",
     "example": "float ratio = 0.5f;"
   },
   "int": {
     "type": "predefined_type",
-    "explanation": "Represents a signed 32-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם חתום בגודל 32 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "int count = 42;"
   },
   "uint": {
     "type": "predefined_type",
-    "explanation": "Represents an unsigned 32-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם לא חתום בגודל 32 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "uint count = 42u;"
   },
   "long": {
     "type": "predefined_type",
-    "explanation": "Represents a signed 64-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם חתום בגודל 64 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "long population = 9000000000L;"
   },
   "ulong": {
     "type": "predefined_type",
-    "explanation": "Represents an unsigned 64-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם לא חתום בגודל 64 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "ulong big = 9000000000UL;"
   },
   "short": {
     "type": "predefined_type",
-    "explanation": "Represents a signed 16-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם חתום בגודל 16 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "short small = 123;"
   },
   "ushort": {
     "type": "predefined_type",
-    "explanation": "Represents an unsigned 16-bit integer. It is also a reserved C# keyword.",
+    "explanation": "מייצג מספר שלם לא חתום בגודל 16 ביטים. זו גם מילת מפתח שמורה ב-C#.",
     "example": "ushort small = 123;"
   },
   "object": {
     "type": "predefined_type",
-    "explanation": "The base type of all C# types. It is also a reserved C# keyword.",
+    "explanation": "טיפוס הבסיס של כל הטיפוסים ב-C#. זו גם מילת מפתח שמורה ב-C#.",
     "example": "object value = \"hello\";"
   },
   "string": {
     "type": "predefined_type",
-    "explanation": "Represents text as a sequence of characters. It is also a reserved C# keyword and aliases System.String.",
+    "explanation": "מייצג טקסט כרצף של תווים. זו גם מילת מפתח שמורה ב-C# והיא alias ל-System.String.",
     "example": "string name = \"Nina\";"
   },
   "void": {
     "type": "predefined_type",
-    "explanation": "Used as a method return type to say the method returns no value. It is also a reserved C# keyword.",
+    "explanation": "משמש כטיפוס החזרה של מתודה כדי לציין שהמתודה לא מחזירה ערך. זו גם מילת מפתח שמורה ב-C#.",
     "example": "void Print() { Console.WriteLine(\"Hello\"); }"
   },
   "true": {
     "type": "literal",
-    "explanation": "Boolean literal representing the value true.",
+    "explanation": "ליטרל Boolean שמייצג את הערך true.",
     "example": "bool ok = true;"
   },
   "false": {
     "type": "literal",
-    "explanation": "Boolean literal representing the value false.",
+    "explanation": "ליטרל Boolean שמייצג את הערך false.",
     "example": "bool ok = false;"
   },
   "null": {
     "type": "literal",
-    "explanation": "Represents the absence of an object reference or nullable value.",
+    "explanation": "מייצג היעדר הפניה לאובייקט או היעדר ערך nullable.",
     "example": "string? name = null;"
   },
   "add": {
     "type": "contextual_keyword",
-    "explanation": "Defines a custom event subscription accessor.",
+    "explanation": "מגדיר accessor מותאם אישית להרשמה לאירוע.",
     "example": "event EventHandler Clicked { add { handlers += value; } remove { handlers -= value; } }"
   },
   "allows": {
     "type": "contextual_keyword",
-    "explanation": "Used in newer generic constraint syntax to permit specific anti-constraints.",
+    "explanation": "משמש בתחביר חדש יותר של אילוצים גנריים כדי לאפשר anti-constraints מסוימים.",
     "example": "class Box<T> where T : allows ref struct { }"
   },
   "alias": {
     "type": "contextual_keyword",
-    "explanation": "Used with extern alias to reference types from assemblies with the same fully qualified names.",
+    "explanation": "משמש עם extern alias כדי להפנות לטיפוסים מ-assemblies שיש להם אותם שמות מלאים.",
     "example": "extern alias LibV1;"
   },
   "and": {
     "type": "contextual_keyword",
-    "explanation": "Combines patterns in pattern matching.",
+    "explanation": "משלב תבניות ב-pattern matching.",
     "example": "if (x is > 0 and < 10) Console.WriteLine(\"single digit\");"
   },
   "ascending": {
     "type": "contextual_keyword",
-    "explanation": "Specifies ascending order in a LINQ query expression.",
+    "explanation": "מציין סדר עולה בביטוי שאילתת LINQ.",
     "example": "var q = from n in nums orderby n ascending select n;"
   },
   "args": {
     "type": "contextual_keyword",
-    "explanation": "Represents command-line arguments in top-level statements.",
+    "explanation": "מייצג ארגומנטים משורת הפקודה ב-top-level statements.",
     "example": "Console.WriteLine(args.Length);"
   },
   "async": {
     "type": "contextual_keyword",
-    "explanation": "Marks a method, lambda, or anonymous method as asynchronous so it can use await.",
+    "explanation": "מסמן מתודה, lambda או מתודה אנונימית כאסינכרונית כדי שתוכל להשתמש ב-await.",
     "example": "async Task<string> LoadAsync() { return await GetTextAsync(); }"
   },
   "await": {
     "type": "contextual_keyword",
-    "explanation": "Suspends an async method until an awaitable operation completes.",
+    "explanation": "משהה מתודה async עד שפעולה awaitable מסתיימת.",
     "example": "string text = await LoadAsync();"
   },
   "by": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the grouping key in a LINQ group clause.",
+    "explanation": "מציין את מפתח הקיבוץ ב-clause מסוג group ב-LINQ.",
     "example": "var q = from p in people group p by p.City;"
   },
   "closed": {
     "type": "contextual_keyword",
-    "explanation": "Contextual keyword listed for newer/preview C# syntax; use only when the selected language version supports it.",
+    "explanation": "מילת מפתח הקשרית שמופיעה בתחביר C# חדש/preview; להשתמש רק כאשר גרסת השפה שנבחרה תומכת בה.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
   "Cdecl": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the Cdecl unmanaged calling convention for function pointers.",
+    "explanation": "מציין את מוסכמת הקריאה unmanaged מסוג Cdecl עבור מצביעי פונקציות.",
     "example": "delegate* unmanaged[Cdecl]<int, int> f;"
   },
   "descending": {
     "type": "contextual_keyword",
-    "explanation": "Specifies descending order in a LINQ query expression.",
+    "explanation": "מציין סדר יורד בביטוי שאילתת LINQ.",
     "example": "var q = from n in nums orderby n descending select n;"
   },
   "dynamic": {
     "type": "contextual_keyword",
-    "explanation": "Defers member binding to runtime instead of compile time.",
+    "explanation": "דוחה את קישור החברים לזמן ריצה במקום לזמן קומפילציה.",
     "example": "dynamic x = \"hello\";\nConsole.WriteLine(x.Length);"
   },
   "equals": {
     "type": "contextual_keyword",
-    "explanation": "Specifies equality comparison in a LINQ join clause.",
+    "explanation": "מציין השוואת שוויון ב-clause מסוג join ב-LINQ.",
     "example": "var q = from a in authors join b in books on a.Id equals b.AuthorId select b;"
   },
   "extension": {
     "type": "contextual_keyword",
-    "explanation": "Contextual keyword used by newer/preview C# extension-member syntax.",
+    "explanation": "מילת מפתח הקשרית שמשמשת בתחביר חדש/preview של חברי extension ב-C#.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
   "Fastcall": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the Fastcall unmanaged calling convention for function pointers.",
+    "explanation": "מציין את מוסכמת הקריאה unmanaged מסוג Fastcall עבור מצביעי פונקציות.",
     "example": "delegate* unmanaged[Fastcall]<int, int> f;"
   },
   "field": {
     "type": "contextual_keyword",
-    "explanation": "Accesses the compiler-generated backing field inside a property accessor in newer C# versions.",
+    "explanation": "ניגש לשדה הגיבוי שהקומפיילר יוצר בתוך accessor של מאפיין בגרסאות חדשות יותר של C#.",
     "example": "public int Age { get; set => field = value >= 0 ? value : throw new ArgumentOutOfRangeException(); }"
   },
   "file": {
     "type": "contextual_keyword",
-    "explanation": "Restricts a top-level type so it is visible only within the current source file.",
+    "explanation": "מגביל טיפוס top-level כך שיהיה גלוי רק בתוך קובץ המקור הנוכחי.",
     "example": "file class ParserHelper { }"
   },
   "from": {
     "type": "contextual_keyword",
-    "explanation": "Starts a LINQ query expression and introduces a range variable.",
+    "explanation": "מתחיל ביטוי שאילתת LINQ ומציג משתנה טווח.",
     "example": "var q = from n in nums where n > 0 select n;"
   },
   "get": {
     "type": "contextual_keyword",
-    "explanation": "Defines a property or indexer getter accessor.",
+    "explanation": "מגדיר accessor מסוג getter עבור מאפיין או indexer.",
     "example": "public string Name { get; set; } = \"\";"
   },
   "global": {
     "type": "contextual_keyword",
-    "explanation": "Qualifies the global namespace or declares a global using directive.",
+    "explanation": "מסייג את ה-namespace הגלובלי או מכריז על directive מסוג global using.",
     "example": "global using System;\nvar text = global::System.String.Empty;"
   },
   "group": {
     "type": "contextual_keyword",
-    "explanation": "Groups LINQ query results by a key.",
+    "explanation": "מקבץ תוצאות שאילתת LINQ לפי מפתח.",
     "example": "var q = from p in people group p by p.City;"
   },
   "init": {
     "type": "contextual_keyword",
-    "explanation": "Defines an init-only property setter that can be assigned during object initialization.",
+    "explanation": "מגדיר setter מסוג init-only שאפשר להקצות לו ערך בזמן אתחול אובייקט.",
     "example": "public string Name { get; init; } = \"\";"
   },
   "into": {
     "type": "contextual_keyword",
-    "explanation": "Introduces a continuation identifier in LINQ query syntax.",
+    "explanation": "מציג מזהה המשך בתחביר שאילתת LINQ.",
     "example": "var q = from n in nums group n by n % 2 into g select g;"
   },
   "join": {
     "type": "contextual_keyword",
-    "explanation": "Joins two data sources in a LINQ query expression.",
+    "explanation": "מחבר שני מקורות נתונים בביטוי שאילתת LINQ.",
     "example": "var q = from a in authors join b in books on a.Id equals b.AuthorId select b;"
   },
   "let": {
     "type": "contextual_keyword",
-    "explanation": "Introduces a temporary range variable inside a LINQ query.",
+    "explanation": "מציג משתנה טווח זמני בתוך שאילתת LINQ.",
     "example": "var q = from s in names let len = s.Length where len > 3 select s;"
   },
   "managed": {
     "type": "contextual_keyword",
-    "explanation": "Specifies a managed function pointer calling convention.",
+    "explanation": "מציין מוסכמת קריאה managed עבור מצביע פונקציה.",
     "example": "delegate* managed<int, int> f;"
   },
   "nameof": {
     "type": "contextual_keyword",
-    "explanation": "Returns the name of a variable, type, or member as a string.",
+    "explanation": "מחזיר כמחרוזת את השם של משתנה, טיפוס או חבר.",
     "example": "string property = nameof(User.Name);"
   },
   "nint": {
     "type": "predefined_type",
-    "explanation": "Represents a signed native-sized integer. It is a contextual keyword and predefined type.",
+    "explanation": "מייצג מספר שלם חתום בגודל native. זו מילת מפתח הקשרית וגם טיפוס מוגדר מראש.",
     "example": "nint handle = 123;"
   },
   "not": {
     "type": "contextual_keyword",
-    "explanation": "Negates a pattern in pattern matching.",
+    "explanation": "שולל תבנית ב-pattern matching.",
     "example": "if (value is not null) Console.WriteLine(value);"
   },
   "notnull": {
     "type": "contextual_keyword",
-    "explanation": "Generic constraint requiring a type argument to be non-nullable.",
+    "explanation": "אילוץ גנרי שמחייב את ארגומנט הטיפוס להיות לא-nullable.",
     "example": "class Repository<T> where T : notnull { }"
   },
   "nuint": {
     "type": "predefined_type",
-    "explanation": "Represents an unsigned native-sized integer. It is a contextual keyword and predefined type.",
+    "explanation": "מייצג מספר שלם לא חתום בגודל native. זו מילת מפתח הקשרית וגם טיפוס מוגדר מראש.",
     "example": "nuint handle = 123;"
   },
   "on": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the left key in a LINQ join clause.",
+    "explanation": "מציין את המפתח השמאלי ב-clause מסוג join ב-LINQ.",
     "example": "var q = from a in authors join b in books on a.Id equals b.AuthorId select b;"
   },
   "or": {
     "type": "contextual_keyword",
-    "explanation": "Combines alternatives in pattern matching.",
+    "explanation": "משלב חלופות ב-pattern matching.",
     "example": "if (status is 200 or 201) Console.WriteLine(\"OK\");"
   },
   "orderby": {
     "type": "contextual_keyword",
-    "explanation": "Sorts query results in LINQ query syntax.",
+    "explanation": "ממיין תוצאות שאילתה בתחביר LINQ.",
     "example": "var q = from n in nums orderby n select n;"
   },
   "partial": {
     "type": "contextual_keyword",
-    "explanation": "Splits a type or member declaration across multiple files or declarations.",
+    "explanation": "מפצל הכרזה על טיפוס או חבר בין כמה קבצים או הכרזות.",
     "example": "partial class User { }\npartial class User { }"
   },
   "record": {
     "type": "contextual_keyword",
-    "explanation": "Declares a reference or value type with value-based equality and concise data syntax.",
+    "explanation": "מכריז על טיפוס ייחוס או טיפוס ערך עם שוויון מבוסס ערכים ותחביר נתונים תמציתי.",
     "example": "record User(string Name, int Age);"
   },
   "remove": {
     "type": "contextual_keyword",
-    "explanation": "Defines a custom event unsubscription accessor.",
+    "explanation": "מגדיר accessor מותאם אישית להסרת הרשמה מאירוע.",
     "example": "event EventHandler Clicked { add { handlers += value; } remove { handlers -= value; } }"
   },
   "required": {
     "type": "contextual_keyword",
-    "explanation": "Requires a property or field to be initialized by an object initializer or constructor.",
+    "explanation": "מחייב אתחול של מאפיין או שדה באמצעות object initializer או בנאי.",
     "example": "class User { public required string Name { get; init; } }"
   },
   "safe": {
     "type": "contextual_keyword",
-    "explanation": "Contextual keyword listed for newer/preview C# syntax; use only when the selected language version supports it.",
+    "explanation": "מילת מפתח הקשרית שמופיעה בתחביר C# חדש/preview; להשתמש רק כאשר גרסת השפה שנבחרה תומכת בה.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
   "scoped": {
     "type": "contextual_keyword",
-    "explanation": "Restricts the lifetime of a ref-safe value so it cannot escape its scope.",
+    "explanation": "מגביל את משך החיים של ערך ref-safe כדי שלא יוכל לברוח מה-scope שלו.",
     "example": "void M(scoped ref int value) { }"
   },
   "select": {
     "type": "contextual_keyword",
-    "explanation": "Projects the result shape in a LINQ query expression.",
+    "explanation": "מגדיר את צורת התוצאה בביטוי שאילתת LINQ.",
     "example": "var q = from n in nums select n * 2;"
   },
   "set": {
     "type": "contextual_keyword",
-    "explanation": "Defines a property or indexer setter accessor.",
+    "explanation": "מגדיר accessor מסוג setter עבור מאפיין או indexer.",
     "example": "public string Name { get; set; } = \"\";"
   },
   "Stdcall": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the Stdcall unmanaged calling convention for function pointers.",
+    "explanation": "מציין את מוסכמת הקריאה unmanaged מסוג Stdcall עבור מצביעי פונקציות.",
     "example": "delegate* unmanaged[Stdcall]<int, int> f;"
   },
   "Thiscall": {
     "type": "contextual_keyword",
-    "explanation": "Specifies the Thiscall unmanaged calling convention for function pointers.",
+    "explanation": "מציין את מוסכמת הקריאה unmanaged מסוג Thiscall עבור מצביעי פונקציות.",
     "example": "delegate* unmanaged[Thiscall]<int, int> f;"
   },
   "unmanaged": {
     "type": "contextual_keyword",
-    "explanation": "Used as a generic constraint for unmanaged types or as a function pointer calling convention context.",
+    "explanation": "משמש כאילוץ גנרי לטיפוסים unmanaged או כהקשר של מוסכמת קריאה עבור מצביע פונקציה.",
     "example": "class Buffer<T> where T : unmanaged { }"
   },
   "value": {
     "type": "contextual_keyword",
-    "explanation": "Represents the assigned value inside a property/indexer setter or event accessor.",
+    "explanation": "מייצג את הערך שמוקצה בתוך setter של מאפיין/indexer או בתוך accessor של אירוע.",
     "example": "private string name = \"\";\npublic string Name { set { name = value; } }"
   },
   "var": {
     "type": "contextual_keyword",
-    "explanation": "Lets the compiler infer the type of a local variable from its initializer.",
+    "explanation": "מאפשר לקומפיילר להסיק את הטיפוס של משתנה מקומי מתוך האתחול שלו.",
     "example": "var count = 0;"
   },
   "when": {
     "type": "contextual_keyword",
-    "explanation": "Adds a condition to a catch clause or switch case/pattern.",
+    "explanation": "מוסיף תנאי ל-clause מסוג catch או ל-case/תבנית ב-switch.",
     "example": "catch (Exception ex) when (ex.Message.Length > 0) { }"
   },
   "where": {
     "type": "contextual_keyword",
-    "explanation": "Adds a generic type constraint or filters results in a LINQ query.",
+    "explanation": "מוסיף אילוץ לטיפוס גנרי או מסנן תוצאות בשאילתת LINQ.",
     "example": "class Box<T> where T : class { }\nvar q = from n in nums where n > 0 select n;"
   },
   "with": {
     "type": "contextual_keyword",
-    "explanation": "Creates a copy of a record or struct with selected properties changed.",
+    "explanation": "יוצר עותק של record או struct עם שינוי במאפיינים שנבחרו.",
     "example": "var updated = user with { Name = \"Dana\" };"
   },
   "yield": {
     "type": "contextual_keyword",
-    "explanation": "Returns items one at a time from an iterator method.",
+    "explanation": "מחזיר פריטים אחד-אחד מתוך מתודת iterator.",
     "example": "IEnumerable<int> Count() { yield return 1; yield return 2; }"
   },
   "System": {
     "type": "namespace",
-    "explanation": "The root .NET namespace containing fundamental types such as Console, Math, DateTime, String, Object, and Exception.",
+    "explanation": "ה-namespace הראשי של .NET שמכיל טיפוסים בסיסיים כגון Console, Math, DateTime, String, Object ו-Exception.",
     "example": "using System;\nConsole.WriteLine(DateTime.Now);"
   },
   "System.Console": {
     "type": "fundamental_class",
-    "explanation": "Provides standard input, output, and error streams for console applications.",
+    "explanation": "מספק זרמי קלט, פלט ושגיאה סטנדרטיים עבור יישומי console.",
     "example": "System.Console.WriteLine(\"Hello\");"
   },
   "Console": {
     "type": "fundamental_class",
-    "explanation": "The commonly used class for reading from and writing to the console, usually imported from System.",
+    "explanation": "המחלקה הנפוצה לקריאה מה-console ולכתיבה אליו, בדרך כלל מיובאת מתוך System.",
     "example": "Console.WriteLine(\"Hello\");\nstring? input = Console.ReadLine();"
   },
   "System.Math": {
     "type": "fundamental_class",
-    "explanation": "Provides mathematical constants and static methods.",
+    "explanation": "מספק קבועים מתמטיים ומתודות סטטיות.",
     "example": "double root = Math.Sqrt(16);"
   },
   "Math": {
     "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Math when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.Math כאשר System מיובא.",
     "example": "double rounded = Math.Round(3.14);"
   },
   "System.String": {
     "type": "fundamental_class",
-    "explanation": "The .NET type behind the C# string keyword.",
+    "explanation": "טיפוס ה-.NET שמאחורי מילת המפתח string ב-C#.",
     "example": "System.String text = \"hello\";"
   },
   "String": {
     "type": "fundamental_class",
-    "explanation": "The .NET class for text; equivalent to the C# string alias when System is imported.",
+    "explanation": "מחלקת ה-.NET לטקסט; שקולה ל-alias של C# בשם string כאשר System מיובא.",
     "example": "String text = \"hello\";"
   },
   "System.Object": {
     "type": "fundamental_class",
-    "explanation": "The .NET base type behind the C# object keyword.",
+    "explanation": "טיפוס הבסיס של .NET שמאחורי מילת המפתח object ב-C#.",
     "example": "System.Object value = 123;"
   },
   "Object": {
     "type": "fundamental_class",
-    "explanation": "The base class for all .NET types; equivalent to the C# object alias when System is imported.",
+    "explanation": "מחלקת הבסיס של כל טיפוסי .NET; שקולה ל-alias של C# בשם object כאשר System מיובא.",
     "example": "Object value = \"text\";"
   },
   "System.Boolean": {
     "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# bool keyword.",
+    "explanation": "טיפוס ה-.NET שמאחורי מילת המפתח bool ב-C#.",
     "example": "System.Boolean ok = true;"
   },
   "System.Int32": {
     "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# int keyword.",
+    "explanation": "טיפוס ה-.NET שמאחורי מילת המפתח int ב-C#.",
     "example": "System.Int32 count = 42;"
   },
   "System.Double": {
     "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# double keyword.",
+    "explanation": "טיפוס ה-.NET שמאחורי מילת המפתח double ב-C#.",
     "example": "System.Double value = 3.14;"
   },
   "System.Decimal": {
     "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# decimal keyword.",
+    "explanation": "טיפוס ה-.NET שמאחורי מילת המפתח decimal ב-C#.",
     "example": "System.Decimal money = 10.5m;"
   },
   "System.DateTime": {
     "type": "fundamental_struct",
-    "explanation": "Represents a date and time value.",
+    "explanation": "מייצג ערך של תאריך ושעה.",
     "example": "DateTime now = DateTime.Now;"
   },
   "DateTime": {
     "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.DateTime when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.DateTime כאשר System מיובא.",
     "example": "DateTime today = DateTime.Today;"
   },
   "System.TimeSpan": {
     "type": "fundamental_struct",
-    "explanation": "Represents a duration or time interval.",
+    "explanation": "מייצג משך זמן או מרווח זמן.",
     "example": "TimeSpan duration = TimeSpan.FromMinutes(30);"
   },
   "TimeSpan": {
     "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.TimeSpan when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.TimeSpan כאשר System מיובא.",
     "example": "TimeSpan wait = TimeSpan.FromSeconds(5);"
   },
   "System.Guid": {
     "type": "fundamental_struct",
-    "explanation": "Represents a globally unique identifier.",
+    "explanation": "מייצג מזהה ייחודי גלובלי.",
     "example": "Guid id = Guid.NewGuid();"
   },
   "Guid": {
     "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.Guid when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.Guid כאשר System מיובא.",
     "example": "Guid id = Guid.NewGuid();"
   },
   "System.Exception": {
     "type": "fundamental_class",
-    "explanation": "The base class for runtime errors that can be thrown and caught.",
+    "explanation": "מחלקת הבסיס לשגיאות זמן ריצה שאפשר לזרוק ולתפוס.",
     "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
   },
   "Exception": {
     "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Exception when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.Exception כאשר System מיובא.",
     "example": "throw new Exception(\"Something went wrong\");"
   },
   "System.ArgumentException": {
     "type": "fundamental_class",
-    "explanation": "Exception used when a method receives an invalid argument.",
+    "explanation": "חריגה שמשמשת כאשר מתודה מקבלת ארגומנט לא תקין.",
     "example": "throw new ArgumentException(\"Invalid name\");"
   },
   "System.InvalidOperationException": {
     "type": "fundamental_class",
-    "explanation": "Exception used when an object is in the wrong state for an operation.",
+    "explanation": "חריגה שמשמשת כאשר אובייקט נמצא במצב לא מתאים לפעולה.",
     "example": "throw new InvalidOperationException(\"Not ready\");"
   },
   "System.IDisposable": {
     "type": "fundamental_interface",
-    "explanation": "Interface for objects that release resources through Dispose().",
+    "explanation": "ממשק לאובייקטים שמשחררים משאבים באמצעות Dispose().",
     "example": "using FileStream stream = File.OpenRead(\"data.txt\");"
   },
   "IDisposable": {
     "type": "fundamental_interface",
-    "explanation": "Common shorthand for System.IDisposable when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.IDisposable כאשר System מיובא.",
     "example": "void Close(IDisposable resource) => resource.Dispose();"
   },
   "System.Array": {
     "type": "fundamental_class",
-    "explanation": "The base class for all arrays in .NET.",
+    "explanation": "מחלקת הבסיס של כל המערכים ב-.NET.",
     "example": "int[] numbers = { 1, 2, 3 };\nArray.Sort(numbers);"
   },
   "Array": {
     "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Array when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.Array כאשר System מיובא.",
     "example": "Array.Sort(numbers);"
   },
   "System.Random": {
     "type": "fundamental_class",
-    "explanation": "Generates pseudo-random numbers.",
+    "explanation": "מייצר מספרים פסאודו-אקראיים.",
     "example": "Random rng = new Random();\nint n = rng.Next(1, 10);"
   },
   "Random": {
     "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Random when System is imported.",
+    "explanation": "קיצור נפוץ ל-System.Random כאשר System מיובא.",
     "example": "Random rng = new Random();"
   },
   "System.Collections": {
     "type": "namespace",
-    "explanation": "Contains non-generic collection types such as ArrayList and Hashtable.",
+    "explanation": "מכיל טיפוסי אוספים לא-גנריים כגון ArrayList ו-Hashtable.",
     "example": "using System.Collections;"
   },
   "System.Collections.Generic": {
     "type": "namespace",
-    "explanation": "Contains strongly typed generic collection interfaces and classes such as List<T> and Dictionary<TKey,TValue>.",
+    "explanation": "מכיל ממשקי ומחלקות אוספים גנריים עם טיפוס חזק, כגון List<T> ו-Dictionary<TKey,TValue>.",
     "example": "using System.Collections.Generic;\nList<int> nums = new();"
   },
   "List": {
     "type": "collection_type",
-    "explanation": "A strongly typed resizable list of items, usually used as List<T>.",
+    "explanation": "רשימה גנרית בעלת טיפוס חזק שניתן לשנות את גודלה, בדרך כלל בשימוש כ-List<T>.",
     "example": "List<string> names = new List<string>();"
   },
   "Dictionary": {
     "type": "collection_type",
-    "explanation": "A key/value collection, usually used as Dictionary<TKey,TValue>.",
+    "explanation": "אוסף של מפתח/ערך, בדרך כלל בשימוש כ-Dictionary<TKey,TValue>.",
     "example": "Dictionary<string, int> ages = new();"
   },
   "HashSet": {
     "type": "collection_type",
-    "explanation": "A collection of unique values, usually used as HashSet<T>.",
+    "explanation": "אוסף של ערכים ייחודיים, בדרך כלל בשימוש כ-HashSet<T>.",
     "example": "HashSet<int> ids = new();"
   },
   "Queue": {
     "type": "collection_type",
-    "explanation": "A first-in, first-out collection, usually used as Queue<T>.",
+    "explanation": "אוסף בשיטת ראשון-נכנס-ראשון-יוצא, בדרך כלל בשימוש כ-Queue<T>.",
     "example": "Queue<string> queue = new();"
   },
   "Stack": {
     "type": "collection_type",
-    "explanation": "A last-in, first-out collection, usually used as Stack<T>.",
+    "explanation": "אוסף בשיטת אחרון-נכנס-ראשון-יוצא, בדרך כלל בשימוש כ-Stack<T>.",
     "example": "Stack<string> stack = new();"
   },
   "IEnumerable": {
     "type": "fundamental_interface",
-    "explanation": "Represents a sequence that can be iterated with foreach, usually as IEnumerable<T>.",
+    "explanation": "מייצג רצף שניתן לעבור עליו באמצעות foreach, בדרך כלל כ-IEnumerable<T>.",
     "example": "IEnumerable<int> nums = new[] { 1, 2, 3 };"
   },
   "ICollection": {
     "type": "fundamental_interface",
-    "explanation": "Represents a collection of items, usually as ICollection<T>.",
+    "explanation": "מייצג אוסף של פריטים, בדרך כלל כ-ICollection<T>.",
     "example": "ICollection<string> names = new List<string>();"
   },
   "IList": {
     "type": "fundamental_interface",
-    "explanation": "Represents an indexable list, usually as IList<T>.",
+    "explanation": "מייצג רשימה שניתן לגשת אליה לפי אינדקס, בדרך כלל כ-IList<T>.",
     "example": "IList<string> names = new List<string>();"
   },
   "System.Linq": {
     "type": "namespace",
-    "explanation": "Contains LINQ extension methods for querying and transforming sequences.",
+    "explanation": "מכיל מתודות הרחבה של LINQ לשאילתות ולהמרת רצפים.",
     "example": "using System.Linq;\nvar evens = nums.Where(n => n % 2 == 0);"
   },
   "LINQ": {
     "type": "feature",
-    "explanation": "Language Integrated Query: C# query syntax plus extension methods for filtering, projecting, grouping, and transforming data.",
+    "explanation": "Language Integrated Query: תחביר שאילתות של C# יחד עם מתודות הרחבה לסינון, הקרנה, קיבוץ והמרת נתונים.",
     "example": "var evens = numbers.Where(n => n % 2 == 0).ToList();"
   },
   "Where": {
     "type": "linq_method",
-    "explanation": "Filters a sequence using a condition.",
+    "explanation": "מסנן רצף באמצעות תנאי.",
     "example": "var adults = people.Where(p => p.Age >= 18);"
   },
   "Select": {
     "type": "linq_method",
-    "explanation": "Projects each item in a sequence into a new form.",
+    "explanation": "מקרין כל פריט ברצף לצורה חדשה.",
     "example": "var names = people.Select(p => p.Name);"
   },
   "OrderBy": {
     "type": "linq_method",
-    "explanation": "Sorts a sequence in ascending order by a key.",
+    "explanation": "ממיין רצף בסדר עולה לפי מפתח.",
     "example": "var sorted = people.OrderBy(p => p.Name);"
   },
   "GroupBy": {
     "type": "linq_method",
-    "explanation": "Groups items in a sequence by a key.",
+    "explanation": "מקבץ פריטים ברצף לפי מפתח.",
     "example": "var groups = people.GroupBy(p => p.City);"
   },
   "ToList": {
     "type": "linq_method",
-    "explanation": "Creates a List<T> from a sequence.",
+    "explanation": "יוצר List<T> מתוך רצף.",
     "example": "var list = numbers.ToList();"
   },
   "FirstOrDefault": {
     "type": "linq_method",
-    "explanation": "Returns the first matching item or the default value if none exists.",
+    "explanation": "מחזיר את הפריט התואם הראשון או את ערך ברירת המחדל אם לא נמצא פריט.",
     "example": "var user = users.FirstOrDefault(u => u.Id == id);"
   },
   "System.IO": {
     "type": "namespace",
-    "explanation": "Contains types for reading and writing files, directories, and streams.",
+    "explanation": "מכיל טיפוסים לקריאה וכתיבה של קבצים, תיקיות וזרמים.",
     "example": "using System.IO;\nstring text = File.ReadAllText(\"data.txt\");"
   },
   "File": {
     "type": "io_class",
-    "explanation": "Provides static methods for creating, reading, writing, and deleting files.",
+    "explanation": "מספק מתודות סטטיות ליצירה, קריאה, כתיבה ומחיקה של קבצים.",
     "example": "string text = File.ReadAllText(\"data.txt\");"
   },
   "Directory": {
     "type": "io_class",
-    "explanation": "Provides static methods for working with directories.",
+    "explanation": "מספק מתודות סטטיות לעבודה עם תיקיות.",
     "example": "Directory.CreateDirectory(\"logs\");"
   },
   "Stream": {
     "type": "io_class",
-    "explanation": "Base type for reading and writing byte streams.",
+    "explanation": "טיפוס בסיס לקריאה וכתיבה של זרמי בייטים.",
     "example": "Stream stream = File.OpenRead(\"data.txt\");"
   },
   "FileStream": {
     "type": "io_class",
-    "explanation": "Represents a stream backed by a file.",
+    "explanation": "מייצג stream שמבוסס על קובץ.",
     "example": "using FileStream fs = File.OpenRead(\"data.txt\");"
   },
   "System.Text": {
     "type": "namespace",
-    "explanation": "Contains types for text processing and encoding.",
+    "explanation": "מכיל טיפוסים לעיבוד טקסט וקידוד.",
     "example": "using System.Text;\nvar sb = new StringBuilder();"
   },
   "StringBuilder": {
     "type": "text_class",
-    "explanation": "Builds strings efficiently through repeated appends or modifications.",
+    "explanation": "בונה מחרוזות ביעילות באמצעות הוספות או שינויים חוזרים.",
     "example": "StringBuilder sb = new StringBuilder();\nsb.Append(\"Hello\");"
   },
   "System.Text.Json": {
     "type": "namespace",
-    "explanation": "Contains APIs for JSON serialization and deserialization.",
+    "explanation": "מכיל API-ים לסריאליזציה ודה-סריאליזציה של JSON.",
     "example": "using System.Text.Json;\nstring json = JsonSerializer.Serialize(user);"
   },
   "JsonSerializer": {
     "type": "serialization_class",
-    "explanation": "Serializes objects to JSON and deserializes JSON into objects.",
+    "explanation": "מבצע סריאליזציה של אובייקטים ל-JSON ודה-סריאליזציה מ-JSON לאובייקטים.",
     "example": "string json = JsonSerializer.Serialize(user);"
   },
   "System.Threading": {
     "type": "namespace",
-    "explanation": "Contains types for threading, synchronization, and cancellation.",
+    "explanation": "מכיל טיפוסים לעבודה עם threads, סנכרון וביטול.",
     "example": "using System.Threading;\nCancellationToken token = CancellationToken.None;"
   },
   "System.Threading.Tasks": {
     "type": "namespace",
-    "explanation": "Contains Task-based asynchronous programming types.",
+    "explanation": "מכיל טיפוסים לתכנות אסינכרוני מבוסס Task.",
     "example": "using System.Threading.Tasks;\nTask task = Task.Delay(1000);"
   },
   "Task": {
     "type": "async_type",
-    "explanation": "Represents an asynchronous operation.",
+    "explanation": "מייצג פעולה אסינכרונית.",
     "example": "Task<string> task = LoadAsync();"
   },
   "Task<T>": {
     "type": "async_type",
-    "explanation": "Represents an asynchronous operation that returns a value.",
+    "explanation": "מייצג פעולה אסינכרונית שמחזירה ערך.",
     "example": "Task<int> task = GetCountAsync();"
   },
   "CancellationToken": {
     "type": "threading_type",
-    "explanation": "Signals cancellation to async or long-running operations.",
+    "explanation": "מסמן ביטול לפעולות אסינכרוניות או ארוכות ריצה.",
     "example": "Task LoadAsync(CancellationToken token) => Task.Delay(1000, token);"
   },
   "System.Net.Http": {
     "type": "namespace",
-    "explanation": "Contains HTTP client APIs for sending requests and receiving responses.",
+    "explanation": "מכיל API-ים של לקוח HTTP לשליחת בקשות וקבלת תגובות.",
     "example": "using System.Net.Http;\nvar client = new HttpClient();"
   },
   "HttpClient": {
     "type": "networking_class",
-    "explanation": "Sends HTTP requests and receives HTTP responses.",
+    "explanation": "שולח בקשות HTTP ומקבל תגובות HTTP.",
     "example": "using var client = new HttpClient();\nstring html = await client.GetStringAsync(url);"
   },
   "System.Reflection": {
     "type": "namespace",
-    "explanation": "Contains APIs for inspecting assemblies, types, and members at runtime.",
+    "explanation": "מכיל API-ים לבדיקת assemblies, טיפוסים וחברים בזמן ריצה.",
     "example": "using System.Reflection;\nType t = typeof(User);"
   },
   "System.Diagnostics": {
     "type": "namespace",
-    "explanation": "Contains types for diagnostics, tracing, processes, and debugging.",
+    "explanation": "מכיל טיפוסים לדיאגנוסטיקה, tracing, תהליכים ודיבוג.",
     "example": "using System.Diagnostics;\nStopwatch sw = Stopwatch.StartNew();"
   },
   "Stopwatch": {
     "type": "diagnostics_class",
-    "explanation": "Measures elapsed time.",
+    "explanation": "מודד זמן שחלף.",
     "example": "Stopwatch sw = Stopwatch.StartNew();"
   },
   "#if": {
     "type": "preprocessor_directive",
-    "explanation": "Conditionally includes code when a symbol expression is true.",
+    "explanation": "כולל קוד באופן מותנה כאשר ביטוי של symbol הוא true.",
     "example": "#if DEBUG\nConsole.WriteLine(\"Debug mode\");\n#endif"
   },
   "#else": {
     "type": "preprocessor_directive",
-    "explanation": "Provides the alternative branch for a preprocessor conditional.",
+    "explanation": "מספק את ענף החלופה עבור תנאי preprocessor.",
     "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#else\nConsole.WriteLine(\"Release\");\n#endif"
   },
   "#elif": {
     "type": "preprocessor_directive",
-    "explanation": "Adds an else-if branch to a preprocessor conditional.",
+    "explanation": "מוסיף ענף else-if לתנאי preprocessor.",
     "example": "#if WINDOWS\nConsole.WriteLine(\"Windows\");\n#elif LINUX\nConsole.WriteLine(\"Linux\");\n#endif"
   },
   "#endif": {
     "type": "preprocessor_directive",
-    "explanation": "Ends a preprocessor conditional block.",
+    "explanation": "מסיים בלוק תנאי של preprocessor.",
     "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#endif"
   },
   "#define": {
     "type": "preprocessor_directive",
-    "explanation": "Defines a conditional compilation symbol for the current file.",
+    "explanation": "מגדיר symbol של קומפילציה מותנית עבור הקובץ הנוכחי.",
     "example": "#define EXPERIMENTAL"
   },
   "#undef": {
     "type": "preprocessor_directive",
-    "explanation": "Undefines a conditional compilation symbol for the current file.",
+    "explanation": "מבטל הגדרה של symbol קומפילציה מותנית עבור הקובץ הנוכחי.",
     "example": "#undef EXPERIMENTAL"
   },
   "#warning": {
     "type": "preprocessor_directive",
-    "explanation": "Emits a compiler warning.",
+    "explanation": "מפיקה אזהרת קומפיילר.",
     "example": "#warning This code needs review"
   },
   "#error": {
     "type": "preprocessor_directive",
-    "explanation": "Emits a compiler error.",
+    "explanation": "מפיקה שגיאת קומפיילר.",
     "example": "#error This build target is not supported"
   },
   "#line": {
     "type": "preprocessor_directive",
-    "explanation": "Changes the compiler's reported line number or file name.",
+    "explanation": "משנה את מספר השורה או שם הקובץ שהקומפיילר מדווח עליהם.",
     "example": "#line 200 \"Generated.cs\""
   },
   "#region": {
     "type": "preprocessor_directive",
-    "explanation": "Starts a collapsible region in editors.",
+    "explanation": "מתחיל אזור מתקפל בעורכי קוד.",
     "example": "#region Helpers\nvoid Help() { }\n#endregion"
   },
   "#endregion": {
     "type": "preprocessor_directive",
-    "explanation": "Ends a collapsible region.",
+    "explanation": "מסיים אזור מתקפל.",
     "example": "#region Helpers\nvoid Help() { }\n#endregion"
   },
   "#pragma": {
     "type": "preprocessor_directive",
-    "explanation": "Gives special instructions to the compiler, commonly to enable or disable warnings.",
+    "explanation": "נותן הוראות מיוחדות לקומפיילר, בדרך כלל כדי להפעיל או לכבות אזהרות.",
     "example": "#pragma warning disable CS0168"
   },
   "#nullable": {
     "type": "preprocessor_directive",
-    "explanation": "Controls nullable reference type warnings and annotations.",
+    "explanation": "שולט באזהרות ובהערות של nullable reference types.",
     "example": "#nullable enable\nstring? name = null;"
   }
 }

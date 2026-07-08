@@ -1,947 +1,947 @@
 {
   "False": {
     "type": "core",
-    "explanation": "Boolean literal representing a false/no condition.",
+    "explanation": "ליטרל בוליאני שמייצג תנאי שקרי/לא.",
     "example": "is_deleted = False"
   },
   "None": {
     "type": "core",
-    "explanation": "Represents no value or the absence of a value — Python's equivalent of null.",
+    "explanation": "מייצג היעדר ערך או מצב שבו אין ערך — המקבילה של Python ל-null.",
     "example": "selected_item = None\nif selected_item is None:\n    print('Nothing selected')"
   },
   "True": {
     "type": "core",
-    "explanation": "Boolean literal representing a true/yes condition.",
+    "explanation": "ליטרל בוליאני שמייצג תנאי אמיתי/כן.",
     "example": "is_active = True"
   },
   "and": {
     "type": "core",
-    "explanation": "Logical operator that is true only when both conditions are true.",
+    "explanation": "אופרטור לוגי שמחזיר אמת רק כאשר שני התנאים אמיתיים.",
     "example": "if age >= 18 and has_id:\n    print('Allowed in')"
   },
   "as": {
     "type": "core",
-    "explanation": "Gives an alias/name to something, commonly used with import, with, and except.",
+    "explanation": "נותן כינוי/שם למשהו, נפוץ בשימוש עם import, with ו-except.",
     "example": "import math as m\n\nwith open('data.txt') as f:\n    text = f.read()"
   },
   "assert": {
     "type": "core",
-    "explanation": "Checks that a condition is true and raises AssertionError if it is false.",
+    "explanation": "בודק שתנאי הוא אמת ומעלה AssertionError אם הוא שקרי.",
     "example": "def divide(a, b):\n    assert b != 0, 'Cannot divide by zero'\n    return a / b"
   },
   "async": {
     "type": "core",
-    "explanation": "Marks a function or context as asynchronous, allowing await inside it.",
+    "explanation": "מסמן פונקציה או הקשר כאסינכרוניים, כך שניתן להשתמש בהם ב-await.",
     "example": "async def fetch_data():\n    data = await get_data()\n    return data"
   },
   "await": {
     "type": "core",
-    "explanation": "Pauses an async function until an awaitable operation finishes, then returns its result.",
+    "explanation": "משהה פונקציה אסינכרונית עד שפעולה שניתן להמתין לה מסתיימת, ואז מחזיר את התוצאה שלה.",
     "example": "async def main():\n    result = await fetch_data()\n    print(result)"
   },
   "break": {
     "type": "core",
-    "explanation": "Immediately exits the nearest enclosing loop.",
+    "explanation": "יוצא מיד מהלולאה הקרובה ביותר שעוטפת את הקוד.",
     "example": "for i in range(10):\n    if i == 3:\n        break\n    print(i)"
   },
   "class": {
     "type": "core",
-    "explanation": "Defines a blueprint for creating objects that share properties and behavior.",
+    "explanation": "מגדיר תבנית ליצירת אובייקטים שחולקים מאפיינים והתנהגות.",
     "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
   },
   "continue": {
     "type": "core",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next iteration.",
+    "explanation": "מדלג על שאר האיטרציה הנוכחית בלולאה וממשיך לאיטרציה הבאה.",
     "example": "for i in range(5):\n    if i % 2 == 0:\n        continue\n    print(i)"
   },
   "def": {
     "type": "core",
-    "explanation": "Defines a reusable function — a named block of code that can take inputs and optionally return a value.",
+    "explanation": "מגדיר פונקציה לשימוש חוזר — בלוק קוד בעל שם שיכול לקבל קלטים ולהחזיר ערך אופציונלי.",
     "example": "def add(a, b):\n    return a + b\n\nprint(add(2, 3))"
   },
   "del": {
     "type": "core",
-    "explanation": "Deletes a variable binding, attribute, or item from a collection.",
+    "explanation": "מוחק קישור למשתנה, מאפיין, או פריט מתוך אוסף.",
     "example": "numbers = [1, 2, 3]\ndel numbers[0]\nprint(numbers)"
   },
   "elif": {
     "type": "core",
-    "explanation": "Short for else-if; checks another condition when the previous if/elif condition was false.",
+    "explanation": "קיצור של else-if; בודק תנאי נוסף כאשר תנאי ה-if או ה-elif הקודם היה שקרי.",
     "example": "if score >= 90:\n    print('A')\nelif score >= 80:\n    print('B')\nelse:\n    print('C')"
   },
   "else": {
     "type": "core",
-    "explanation": "Runs when no preceding if/elif condition matched, or when a loop finishes without break.",
+    "explanation": "רץ כאשר אף תנאי if/elif קודם לא התקיים, או כאשר לולאה הסתיימה בלי break.",
     "example": "if age >= 18:\n    print('Adult')\nelse:\n    print('Minor')"
   },
   "except": {
     "type": "core",
-    "explanation": "Catches and handles an exception raised inside the matching try block.",
+    "explanation": "תופס ומטפל בחריגה שנזרקה בתוך בלוק try תואם.",
     "example": "try:\n    int('abc')\nexcept ValueError as e:\n    print('Invalid:', e)"
   },
   "finally": {
     "type": "core",
-    "explanation": "Runs after try/except whether or not an exception occurred, often used for cleanup.",
+    "explanation": "רץ אחרי try/except בין אם התרחשה חריגה ובין אם לא, לרוב לצורכי ניקוי.",
     "example": "try:\n    do_work()\nfinally:\n    print('Always runs')"
   },
   "for": {
     "type": "core",
-    "explanation": "Loops over the items of an iterable, one item at a time.",
+    "explanation": "עובר על פריטי iterable, פריט אחד בכל פעם.",
     "example": "for i in range(5):\n    print(i)"
   },
   "from": {
     "type": "core",
-    "explanation": "Used with import to bring specific names from a module.",
+    "explanation": "משמש עם import כדי להביא שמות ספציפיים ממודול.",
     "example": "from math import sqrt\nprint(sqrt(16))"
   },
   "global": {
     "type": "core",
-    "explanation": "Declares that assignments inside a function should use a module-level variable.",
+    "explanation": "מצהיר שהשמות שמוקצים בתוך פונקציה צריכים להשתמש במשתנה ברמת המודול.",
     "example": "counter = 0\n\ndef increment():\n    global counter\n    counter += 1"
   },
   "if": {
     "type": "core",
-    "explanation": "Runs a block of code only when a condition is true.",
+    "explanation": "מריץ בלוק קוד רק כאשר תנאי הוא אמת.",
     "example": "if age >= 18:\n    print('Adult')"
   },
   "import": {
     "type": "core",
-    "explanation": "Loads code from a module or package so it can be used in the current file.",
+    "explanation": "טוען קוד ממודול או מחבילה כדי שניתן יהיה להשתמש בו בקובץ הנוכחי.",
     "example": "import math\nprint(math.sqrt(16))"
   },
   "in": {
     "type": "core",
-    "explanation": "Checks membership in a collection, or introduces the iterable in a for loop.",
+    "explanation": "בודק חברות בתוך אוסף, או מציג את ה-iterable בלולאת for.",
     "example": "if 3 in [1, 2, 3]:\n    print('found')"
   },
   "is": {
     "type": "core",
-    "explanation": "Checks whether two variables refer to the exact same object in memory.",
+    "explanation": "בודק האם שני משתנים מצביעים בדיוק לאותו אובייקט בזיכרון.",
     "example": "x = None\nif x is None:\n    print('No value')"
   },
   "lambda": {
     "type": "core",
-    "explanation": "Creates a small anonymous function in a single expression.",
+    "explanation": "יוצר פונקציה אנונימית קטנה בביטוי יחיד.",
     "example": "double = lambda x: x * 2\nprint(double(5))"
   },
   "nonlocal": {
     "type": "core",
-    "explanation": "Declares that assignments inside a nested function should use a variable from the enclosing function scope.",
+    "explanation": "מצהיר שהקצאות בתוך פונקציה מקוננת צריכות להשתמש במשתנה מהתחום החיצוני העוטף.",
     "example": "def outer():\n    count = 0\n    def inner():\n        nonlocal count\n        count += 1\n    inner()\n    return count"
   },
   "not": {
     "type": "core",
-    "explanation": "Logical operator that reverses a boolean value.",
+    "explanation": "אופרטור לוגי שהופך ערך בוליאני.",
     "example": "if not is_ready:\n    print('Not ready')"
   },
   "or": {
     "type": "core",
-    "explanation": "Logical operator that is true when at least one condition is true.",
+    "explanation": "אופרטור לוגי שמחזיר אמת כאשר לפחות תנאי אחד הוא אמת.",
     "example": "if is_weekend or is_holiday:\n    print('No work today')"
   },
   "pass": {
     "type": "core",
-    "explanation": "A no-op placeholder statement used where Python requires a statement but you have nothing to run yet.",
+    "explanation": "פקודת מקום-שומר שלא עושה כלום, לשימוש במקום שבו Python דורשת משפט אבל אין עדיין מה להריץ.",
     "example": "def todo_later():\n    pass"
   },
   "raise": {
     "type": "core",
-    "explanation": "Raises an exception on purpose, stopping normal execution unless it is caught.",
+    "explanation": "מעלה חריגה בכוונה, ועוצר את הביצוע הרגיל אלא אם החריגה נתפסת.",
     "example": "def check(age):\n    if age < 0:\n        raise ValueError('Age cannot be negative')"
   },
   "return": {
     "type": "core",
-    "explanation": "Exits a function and optionally sends a value back to the caller.",
+    "explanation": "יוצא מפונקציה ומחזיר אופציונלית ערך לקורא.",
     "example": "def square(x):\n    return x * x"
   },
   "try": {
     "type": "core",
-    "explanation": "Starts a block of code whose exceptions can be handled with except/finally.",
+    "explanation": "מתחיל בלוק קוד שניתן לטפל בחריגות שלו באמצעות except/finally.",
     "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
   },
   "while": {
     "type": "core",
-    "explanation": "Repeats a block of code while a condition remains true.",
+    "explanation": "חוזר על בלוק קוד כל עוד תנאי נשאר אמת.",
     "example": "n = 3\nwhile n > 0:\n    print(n)\n    n -= 1"
   },
   "with": {
     "type": "core",
-    "explanation": "Runs code inside a context manager that handles setup and cleanup automatically.",
+    "explanation": "מריץ קוד בתוך context manager שמטפל אוטומטית בהכנה ובניקוי.",
     "example": "with open('data.txt') as f:\n    content = f.read()"
   },
   "yield": {
     "type": "core",
-    "explanation": "Produces a value from a generator function and pauses the function until the next value is requested.",
+    "explanation": "מפיק ערך מפונקציית generator ומשהה את הפונקציה עד שמבקשים את הערך הבא.",
     "example": "def count_up(n):\n    for i in range(n):\n        yield i"
   },
   "match": {
     "type": "soft_keyword",
-    "explanation": "Starts a structural pattern matching block. It is only keyword-like in match statement syntax.",
+    "explanation": "מתחיל בלוק של התאמת תבניות מבנית. הוא מתנהג כמילת מפתח רק בתחביר של משפט match.",
     "example": "match command:\n    case 'start':\n        print('Starting')\n    case _:\n        print('Unknown')"
   },
   "case": {
     "type": "soft_keyword",
-    "explanation": "Defines one pattern branch inside a match statement. It is only keyword-like in match syntax.",
+    "explanation": "מגדיר ענף תבנית אחד בתוך משפט match. הוא מתנהג כמילת מפתח רק בתחביר match.",
     "example": "match status:\n    case 200:\n        print('OK')\n    case 404:\n        print('Not found')"
   },
   "_": {
     "type": "soft_keyword",
-    "explanation": "Acts as a wildcard pattern inside match/case. Elsewhere it is usually just a normal name by convention.",
+    "explanation": "משמש כתבנית wildcard בתוך match/case. במקומות אחרים הוא בדרך כלל רק שם רגיל לפי מוסכמה.",
     "example": "match value:\n    case _:\n        print('Anything')"
   },
   "type": {
     "type": "soft_keyword_and_builtin_type",
-    "explanation": "In Python 3.12+, type is a soft keyword in type alias statements. It is also the built-in class/function used to inspect or create types.",
+    "explanation": "ב-Python 3.12 ומעלה, type היא מילת מפתח רכה במשפטי כינוי טיפוס. היא גם המחלקה/פונקציה המובנית שמשמשת לבדיקה או ליצירה של טיפוסים.",
     "example": "type Point = tuple[int, int]\n\nprint(type(123))  # <class 'int'>"
   },
   "Ellipsis": {
     "type": "built_in_constant",
-    "explanation": "Built-in constant represented by ..., often used as a placeholder or in advanced slicing/type-hint contexts.",
+    "explanation": "קבוע מובנה שמיוצג על ידי ..., נפוץ כמקום-שומר או בהקשרים מתקדמים של slicing/type hints.",
     "example": "def todo():\n    ...\n\nx = Ellipsis"
   },
   "NotImplemented": {
     "type": "built_in_constant",
-    "explanation": "Special value returned by numeric/comparison special methods when an operation is not supported.",
+    "explanation": "ערך מיוחד שמוחזר על ידי מתודות מיוחדות של מספרים/השוואות כאשר פעולה אינה נתמכת.",
     "example": "class A:\n    def __eq__(self, other):\n        return NotImplemented"
   },
   "int": {
     "type": "built_in_type",
-    "explanation": "Integer number type for whole numbers of arbitrary size.",
+    "explanation": "טיפוס מספר שלם למספרים שלמים בגודל שרירותי.",
     "example": "age = int('37')"
   },
   "float": {
     "type": "built_in_type",
-    "explanation": "Floating-point number type for decimal values.",
+    "explanation": "טיפוס מספר נקודה צפה לערכים עשרוניים.",
     "example": "price = float('19.99')"
   },
   "complex": {
     "type": "built_in_type",
-    "explanation": "Number type for complex numbers with real and imaginary parts.",
+    "explanation": "טיפוס מספר למספרים מרוכבים עם חלק ממשי וחלק מדומה.",
     "example": "z = complex(2, 3)  # 2+3j"
   },
   "bool": {
     "type": "built_in_type",
-    "explanation": "Boolean type with two values: True and False.",
+    "explanation": "טיפוס בוליאני עם שני ערכים: True ו-False.",
     "example": "is_valid = bool(1)"
   },
   "str": {
     "type": "built_in_type",
-    "explanation": "Text/string type for Unicode characters.",
+    "explanation": "טיפוס טקסט/מחרוזת עבור תווי Unicode.",
     "example": "name = str(123)"
   },
   "bytes": {
     "type": "built_in_type",
-    "explanation": "Immutable sequence of bytes, commonly used for binary data.",
+    "explanation": "רצף bytes בלתי ניתן לשינוי, נפוץ לעבודה עם נתונים בינאריים.",
     "example": "data = bytes([65, 66, 67])"
   },
   "bytearray": {
     "type": "built_in_type",
-    "explanation": "Mutable sequence of bytes.",
+    "explanation": "רצף bytes שניתן לשינוי.",
     "example": "data = bytearray(b'abc')\ndata[0] = 65"
   },
   "memoryview": {
     "type": "built_in_type",
-    "explanation": "A view into binary data without copying it.",
+    "explanation": "מבט לתוך נתונים בינאריים בלי להעתיק אותם.",
     "example": "view = memoryview(b'abc')\nprint(view[0])"
   },
   "list": {
     "type": "built_in_type",
-    "explanation": "Mutable ordered collection of items.",
+    "explanation": "אוסף מסודר של פריטים שניתן לשינוי.",
     "example": "numbers = list(range(3))"
   },
   "tuple": {
     "type": "built_in_type",
-    "explanation": "Immutable ordered collection of items.",
+    "explanation": "אוסף מסודר של פריטים שאינו ניתן לשינוי.",
     "example": "point = (3, 4)"
   },
   "range": {
     "type": "built_in_type",
-    "explanation": "Immutable sequence representing a range of numbers, commonly used in for loops.",
+    "explanation": "רצף בלתי ניתן לשינוי שמייצג טווח מספרים, נפוץ בלולאות for.",
     "example": "for i in range(5):\n    print(i)"
   },
   "dict": {
     "type": "built_in_type",
-    "explanation": "Mutable key-value mapping type.",
+    "explanation": "טיפוס מיפוי key-value שניתן לשינוי.",
     "example": "user = {'name': 'Nina', 'age': 37}"
   },
   "set": {
     "type": "built_in_type",
-    "explanation": "Mutable unordered collection of unique items.",
+    "explanation": "אוסף לא מסודר של פריטים ייחודיים שניתן לשינוי.",
     "example": "unique = set([1, 1, 2, 3])"
   },
   "frozenset": {
     "type": "built_in_type",
-    "explanation": "Immutable unordered collection of unique items.",
+    "explanation": "אוסף לא מסודר של פריטים ייחודיים שאינו ניתן לשינוי.",
     "example": "locked = frozenset([1, 2, 3])"
   },
   "object": {
     "type": "built_in_type",
-    "explanation": "Base class that all Python classes ultimately inherit from.",
+    "explanation": "מחלקת הבסיס שכל מחלקות Python יורשות ממנה בסופו של דבר.",
     "example": "class User(object):\n    pass"
   },
   "slice": {
     "type": "built_in_type",
-    "explanation": "Represents slice notation like start:stop:step.",
+    "explanation": "מייצג תחביר חיתוך כמו start:stop:step.",
     "example": "s = slice(1, 5, 2)\nprint([0, 1, 2, 3, 4, 5][s])"
   },
   "property": {
     "type": "built_in_type",
-    "explanation": "Creates managed attributes using getter, setter, and deleter methods.",
+    "explanation": "יוצר מאפיינים מנוהלים באמצעות מתודות getter, setter ו-deleter.",
     "example": "class User:\n    @property\n    def name(self):\n        return self._name"
   },
   "staticmethod": {
     "type": "built_in_type",
-    "explanation": "Wraps a method so it belongs to the class namespace but does not receive self or cls automatically.",
+    "explanation": "עוטף מתודה כך שהיא שייכת למרחב השמות של המחלקה, אבל אינה מקבלת self או cls אוטומטית.",
     "example": "class Math:\n    @staticmethod\n    def square(x):\n        return x * x"
   },
   "classmethod": {
     "type": "built_in_type",
-    "explanation": "Wraps a method so it receives the class as cls instead of an instance as self.",
+    "explanation": "עוטף מתודה כך שהיא מקבלת את המחלקה כ-cls במקום מופע כ-self.",
     "example": "class User:\n    @classmethod\n    def guest(cls):\n        return cls()"
   },
   "print": {
     "type": "built_in_function",
-    "explanation": "Outputs text or values to the console.",
+    "explanation": "מדפיס טקסט או ערכים למסוף.",
     "example": "print('Hello, world!')"
   },
   "input": {
     "type": "built_in_function",
-    "explanation": "Reads a line of text from the user.",
+    "explanation": "קורא שורת טקסט מהמשתמש.",
     "example": "name = input('Name: ')"
   },
   "len": {
     "type": "built_in_function",
-    "explanation": "Returns the length/count of items in a collection.",
+    "explanation": "מחזיר את האורך/מספר הפריטים באוסף.",
     "example": "print(len([1, 2, 3]))"
   },
   "open": {
     "type": "built_in_function",
-    "explanation": "Opens a file and returns a file object.",
+    "explanation": "פותח קובץ ומחזיר אובייקט קובץ.",
     "example": "with open('data.txt', 'r') as f:\n    text = f.read()"
   },
   "abs": {
     "type": "built_in_function",
-    "explanation": "Returns the absolute value of a number.",
+    "explanation": "מחזיר את הערך המוחלט של מספר.",
     "example": "print(abs(-5))"
   },
   "all": {
     "type": "built_in_function",
-    "explanation": "Returns True if all items in an iterable are truthy.",
+    "explanation": "מחזיר True אם כל הפריטים ב-iterable הם truthy.",
     "example": "print(all([True, 1, 'x']))"
   },
   "any": {
     "type": "built_in_function",
-    "explanation": "Returns True if at least one item in an iterable is truthy.",
+    "explanation": "מחזיר True אם לפחות פריט אחד ב-iterable הוא truthy.",
     "example": "print(any([False, 0, 'yes']))"
   },
   "ascii": {
     "type": "built_in_function",
-    "explanation": "Returns a printable ASCII-only representation of an object.",
+    "explanation": "מחזיר ייצוג ניתן להדפסה שמוגבל ל-ASCII בלבד של אובייקט.",
     "example": "print(ascii('שלום'))"
   },
   "bin": {
     "type": "built_in_function",
-    "explanation": "Converts an integer to a binary string.",
+    "explanation": "ממיר מספר שלם למחרוזת בינארית.",
     "example": "print(bin(10))"
   },
   "callable": {
     "type": "built_in_function",
-    "explanation": "Checks whether an object can be called like a function.",
+    "explanation": "בודק האם ניתן לקרוא לאובייקט כמו לפונקציה.",
     "example": "print(callable(print))"
   },
   "chr": {
     "type": "built_in_function",
-    "explanation": "Returns the Unicode character for an integer code point.",
+    "explanation": "מחזיר את תו ה-Unicode עבור נקודת קוד מספרית.",
     "example": "print(chr(65))"
   },
   "compile": {
     "type": "built_in_function",
-    "explanation": "Compiles source code into a code object.",
+    "explanation": "מקמפל קוד מקור לאובייקט קוד.",
     "example": "code = compile('x = 5', '<string>', 'exec')"
   },
   "dir": {
     "type": "built_in_function",
-    "explanation": "Returns a list of names/attributes available on an object.",
+    "explanation": "מחזיר רשימת שמות/מאפיינים שזמינים על אובייקט.",
     "example": "print(dir([]))"
   },
   "divmod": {
     "type": "built_in_function",
-    "explanation": "Returns quotient and remainder as a tuple.",
+    "explanation": "מחזיר מנה ושארית כ-tuple.",
     "example": "print(divmod(10, 3))"
   },
   "eval": {
     "type": "built_in_function",
-    "explanation": "Evaluates a string as a Python expression. Use carefully with trusted input only.",
+    "explanation": "מעריך מחרוזת כביטוי Python. יש להשתמש בזה בזהירות ורק עם קלט מהימן.",
     "example": "print(eval('2 + 3'))"
   },
   "exec": {
     "type": "built_in_function",
-    "explanation": "Executes a string or code object as Python code. Use carefully with trusted input only.",
+    "explanation": "מריץ מחרוזת או אובייקט קוד כקוד Python. יש להשתמש בזה בזהירות ורק עם קלט מהימן.",
     "example": "exec('x = 10')\nprint(x)"
   },
   "filter": {
     "type": "built_in_function",
-    "explanation": "Builds an iterator containing only items that pass a test function.",
+    "explanation": "בונה iterator שמכיל רק פריטים שעוברים פונקציית בדיקה.",
     "example": "nums = filter(lambda x: x > 0, [-1, 0, 2])"
   },
   "format": {
     "type": "built_in_function",
-    "explanation": "Formats a value using a format specification.",
+    "explanation": "מעצב ערך לפי מפרט עיצוב.",
     "example": "print(format(3.14159, '.2f'))"
   },
   "getattr": {
     "type": "built_in_function",
-    "explanation": "Gets an attribute from an object by name.",
+    "explanation": "מקבל מאפיין מאובייקט לפי שם.",
     "example": "value = getattr(obj, 'name', None)"
   },
   "setattr": {
     "type": "built_in_function",
-    "explanation": "Sets an attribute on an object by name.",
+    "explanation": "מגדיר מאפיין על אובייקט לפי שם.",
     "example": "setattr(obj, 'name', 'Nina')"
   },
   "hasattr": {
     "type": "built_in_function",
-    "explanation": "Checks whether an object has an attribute with a given name.",
+    "explanation": "בודק האם לאובייקט יש מאפיין בשם נתון.",
     "example": "if hasattr(obj, 'name'):\n    print(obj.name)"
   },
   "delattr": {
     "type": "built_in_function",
-    "explanation": "Deletes an attribute from an object by name.",
+    "explanation": "מוחק מאפיין מאובייקט לפי שם.",
     "example": "delattr(obj, 'name')"
   },
   "globals": {
     "type": "built_in_function",
-    "explanation": "Returns a dictionary of the current global namespace.",
+    "explanation": "מחזיר מילון של מרחב השמות הגלובלי הנוכחי.",
     "example": "print(globals().keys())"
   },
   "locals": {
     "type": "built_in_function",
-    "explanation": "Returns a dictionary of the current local namespace.",
+    "explanation": "מחזיר מילון של מרחב השמות המקומי הנוכחי.",
     "example": "def f():\n    x = 1\n    print(locals())"
   },
   "hash": {
     "type": "built_in_function",
-    "explanation": "Returns an integer hash value for a hashable object.",
+    "explanation": "מחזיר ערך hash מספרי עבור אובייקט שניתן לבצע עליו hashing.",
     "example": "print(hash('abc'))"
   },
   "help": {
     "type": "built_in_function",
-    "explanation": "Starts Python's interactive help or shows help for an object.",
+    "explanation": "פותח את מערכת העזרה האינטראקטיבית של Python או מציג עזרה עבור אובייקט.",
     "example": "help(str)"
   },
   "hex": {
     "type": "built_in_function",
-    "explanation": "Converts an integer to a hexadecimal string.",
+    "explanation": "ממיר מספר שלם למחרוזת הקסדצימלית.",
     "example": "print(hex(255))"
   },
   "id": {
     "type": "built_in_function",
-    "explanation": "Returns the identity number of an object for its lifetime.",
+    "explanation": "מחזיר את מספר הזהות של אובייקט למשך חייו.",
     "example": "x = []\nprint(id(x))"
   },
   "isinstance": {
     "type": "built_in_function",
-    "explanation": "Checks whether an object is an instance of a class or tuple of classes.",
+    "explanation": "בודק האם אובייקט הוא מופע של מחלקה או של tuple של מחלקות.",
     "example": "if isinstance(value, int):\n    print('number')"
   },
   "issubclass": {
     "type": "built_in_function",
-    "explanation": "Checks whether one class is a subclass of another.",
+    "explanation": "בודק האם מחלקה אחת היא תת-מחלקה של אחרת.",
     "example": "print(issubclass(bool, int))"
   },
   "iter": {
     "type": "built_in_function",
-    "explanation": "Returns an iterator from an iterable object.",
+    "explanation": "מחזיר iterator מאובייקט iterable.",
     "example": "it = iter([1, 2, 3])"
   },
   "next": {
     "type": "built_in_function",
-    "explanation": "Returns the next item from an iterator.",
+    "explanation": "מחזיר את הפריט הבא מ-iterator.",
     "example": "it = iter([1, 2, 3])\nprint(next(it))"
   },
   "map": {
     "type": "built_in_function",
-    "explanation": "Builds an iterator by applying a function to each item.",
+    "explanation": "בונה iterator על ידי החלת פונקציה על כל פריט.",
     "example": "squares = map(lambda x: x*x, [1, 2, 3])"
   },
   "max": {
     "type": "built_in_function",
-    "explanation": "Returns the largest item.",
+    "explanation": "מחזיר את הפריט הגדול ביותר.",
     "example": "print(max([1, 7, 3]))"
   },
   "min": {
     "type": "built_in_function",
-    "explanation": "Returns the smallest item.",
+    "explanation": "מחזיר את הפריט הקטן ביותר.",
     "example": "print(min([1, 7, 3]))"
   },
   "oct": {
     "type": "built_in_function",
-    "explanation": "Converts an integer to an octal string.",
+    "explanation": "ממיר מספר שלם למחרוזת אוקטלית.",
     "example": "print(oct(8))"
   },
   "ord": {
     "type": "built_in_function",
-    "explanation": "Returns the Unicode code point for a one-character string.",
+    "explanation": "מחזיר את נקודת הקוד של Unicode עבור מחרוזת בתו אחד.",
     "example": "print(ord('A'))"
   },
   "pow": {
     "type": "built_in_function",
-    "explanation": "Raises a number to a power, optionally modulo another number.",
+    "explanation": "מעלה מספר בחזקה, אופציונלית מודולו מספר אחר.",
     "example": "print(pow(2, 3))"
   },
   "repr": {
     "type": "built_in_function",
-    "explanation": "Returns a developer-oriented string representation of an object.",
+    "explanation": "מחזיר ייצוג מחרוזת של אובייקט שמיועד למפתחים.",
     "example": "print(repr('hello\\n'))"
   },
   "reversed": {
     "type": "built_in_function",
-    "explanation": "Returns a reverse iterator over a sequence.",
+    "explanation": "מחזיר iterator הפוך על רצף.",
     "example": "for x in reversed([1, 2, 3]):\n    print(x)"
   },
   "round": {
     "type": "built_in_function",
-    "explanation": "Rounds a number to a given number of digits.",
+    "explanation": "מעגל מספר למספר נתון של ספרות.",
     "example": "print(round(3.14159, 2))"
   },
   "sorted": {
     "type": "built_in_function",
-    "explanation": "Returns a new sorted list from an iterable.",
+    "explanation": "מחזיר רשימה חדשה וממוינת מתוך iterable.",
     "example": "print(sorted([3, 1, 2]))"
   },
   "sum": {
     "type": "built_in_function",
-    "explanation": "Adds numeric items in an iterable.",
+    "explanation": "מחבר פריטים מספריים בתוך iterable.",
     "example": "print(sum([1, 2, 3]))"
   },
   "vars": {
     "type": "built_in_function",
-    "explanation": "Returns the __dict__ attribute for an object, or local variables when called without arguments.",
+    "explanation": "מחזיר את מאפיין __dict__ של אובייקט, או משתנים מקומיים כאשר נקרא ללא ארגומנטים.",
     "example": "print(vars(obj))"
   },
   "zip": {
     "type": "built_in_function",
-    "explanation": "Combines iterables item-by-item into tuples.",
+    "explanation": "משלב iterables פריט-מול-פריט ל-tuples.",
     "example": "for name, score in zip(names, scores):\n    print(name, score)"
   },
   "__import__": {
     "type": "built_in_function",
-    "explanation": "Low-level import function used internally by the import statement.",
+    "explanation": "פונקציית import ברמה נמוכה שמשמשת פנימית את משפט import.",
     "example": "math = __import__('math')\nprint(math.sqrt(16))"
   },
   "Exception": {
     "type": "built_in_exception",
-    "explanation": "Base class for most user-handled exceptions.",
+    "explanation": "מחלקת בסיס לרוב החריגות שהמשתמשים מטפלים בהן.",
     "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
   },
   "BaseException": {
     "type": "built_in_exception",
-    "explanation": "Base class for all built-in exceptions.",
+    "explanation": "מחלקת בסיס לכל החריגות המובנות.",
     "example": "except BaseException as e:\n    print(e)"
   },
   "ValueError": {
     "type": "built_in_exception",
-    "explanation": "Raised when a value has the right type but an invalid value.",
+    "explanation": "נזרקת כאשר לערך יש טיפוס נכון אך ערך לא תקין.",
     "example": "raise ValueError('Invalid age')"
   },
   "TypeError": {
     "type": "built_in_exception",
-    "explanation": "Raised when an operation is applied to an object of inappropriate type.",
+    "explanation": "נזרקת כאשר פעולה מופעלת על אובייקט מטיפוס לא מתאים.",
     "example": "raise TypeError('Expected int')"
   },
   "IndexError": {
     "type": "built_in_exception",
-    "explanation": "Raised when a sequence index is out of range.",
+    "explanation": "נזרקת כאשר אינדקס ברצף נמצא מחוץ לטווח.",
     "example": "numbers = [1]\nprint(numbers[5])"
   },
   "KeyError": {
     "type": "built_in_exception",
-    "explanation": "Raised when a dictionary key is not found.",
+    "explanation": "נזרקת כאשר מפתח לא נמצא במילון.",
     "example": "user = {}\nprint(user['name'])"
   },
   "NameError": {
     "type": "built_in_exception",
-    "explanation": "Raised when a local or global name is not found.",
+    "explanation": "נזרקת כאשר שם מקומי או גלובלי לא נמצא.",
     "example": "print(unknown_variable)"
   },
   "AttributeError": {
     "type": "built_in_exception",
-    "explanation": "Raised when an attribute reference or assignment fails.",
+    "explanation": "נזרקת כאשר גישה או הקצאה של מאפיין נכשלת.",
     "example": "x = 5\nx.append(1)"
   },
   "ImportError": {
     "type": "built_in_exception",
-    "explanation": "Raised when an import operation fails.",
+    "explanation": "נזרקת כאשר פעולת import נכשלת.",
     "example": "from missing_module import thing"
   },
   "ModuleNotFoundError": {
     "type": "built_in_exception",
-    "explanation": "Raised when Python cannot find a module during import.",
+    "explanation": "נזרקת כאשר Python לא מצליחה למצוא מודול בזמן import.",
     "example": "import module_that_does_not_exist"
   },
   "ZeroDivisionError": {
     "type": "built_in_exception",
-    "explanation": "Raised when dividing by zero.",
+    "explanation": "נזרקת כאשר מחלקים באפס.",
     "example": "x = 1 / 0"
   },
   "FileNotFoundError": {
     "type": "built_in_exception",
-    "explanation": "Raised when a requested file or directory does not exist.",
+    "explanation": "נזרקת כאשר קובץ או תיקייה מבוקשים אינם קיימים.",
     "example": "open('missing.txt')"
   },
   "StopIteration": {
     "type": "built_in_exception",
-    "explanation": "Raised by next() when an iterator has no more items.",
+    "explanation": "נזרקת על ידי next() כאשר ל-iterator אין עוד פריטים.",
     "example": "it = iter([])\nnext(it)"
   },
   "AssertionError": {
     "type": "built_in_exception",
-    "explanation": "Raised when an assert statement fails.",
+    "explanation": "נזרקת כאשר משפט assert נכשל.",
     "example": "assert False, 'failed'"
   },
   "self": {
     "type": "convention",
-    "explanation": "Conventional first parameter name for instance methods, referring to the object itself. Not a keyword.",
+    "explanation": "שם מוסכם לפרמטר הראשון של מתודות מופע, שמפנה לאובייקט עצמו. זו לא מילת מפתח.",
     "example": "class Counter:\n    def __init__(self):\n        self.count = 0"
   },
   "cls": {
     "type": "convention",
-    "explanation": "Conventional first parameter name for class methods, referring to the class itself. Not a keyword.",
+    "explanation": "שם מוסכם לפרמטר הראשון של מתודות מחלקה, שמפנה למחלקה עצמה. זו לא מילת מפתח.",
     "example": "class User:\n    @classmethod\n    def create(cls):\n        return cls()"
   },
   "super": {
     "type": "built_in_function",
-    "explanation": "Returns a proxy object for calling parent-class methods.",
+    "explanation": "מחזירה אובייקט proxy לקריאה למתודות של מחלקת האב.",
     "example": "class Dog(Animal):\n    def __init__(self, name):\n        super().__init__(name)"
   },
   "*args": {
     "type": "syntax_pattern",
-    "explanation": "Function parameter pattern that collects extra positional arguments into a tuple.",
+    "explanation": "תבנית פרמטר בפונקציה שאוספת ארגומנטים מיקומיים נוספים לתוך tuple.",
     "example": "def total(*args):\n    return sum(args)"
   },
   "**kwargs": {
     "type": "syntax_pattern",
-    "explanation": "Function parameter pattern that collects extra named keyword arguments into a dictionary.",
+    "explanation": "תבנית פרמטר בפונקציה שאוספת ארגומנטים שמיים נוספים לתוך מילון.",
     "example": "def greet(**kwargs):\n    print(kwargs['name'])"
   },
   "decorator": {
     "type": "syntax_pattern",
-    "explanation": "Syntax that wraps or modifies a function or class using @ before its definition.",
+    "explanation": "תחביר שעוטף או משנה פונקציה או מחלקה באמצעות @ לפני ההגדרה שלה.",
     "example": "@staticmethod\ndef square(x):\n    return x * x"
   },
   "list comprehension": {
     "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a list by transforming and/or filtering an iterable.",
+    "explanation": "תחביר מקוצר לבניית רשימה על ידי המרה ו/או סינון של iterable.",
     "example": "squares = [x**2 for x in range(5)]"
   },
   "dict comprehension": {
     "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a dictionary from an iterable.",
+    "explanation": "תחביר מקוצר לבניית מילון מתוך iterable.",
     "example": "squares = {x: x*x for x in range(5)}"
   },
   "set comprehension": {
     "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a set from an iterable.",
+    "explanation": "תחביר מקוצר לבניית set מתוך iterable.",
     "example": "unique_lengths = {len(word) for word in words}"
   },
   "generator expression": {
     "type": "syntax_pattern",
-    "explanation": "Lazy expression that produces values one at a time instead of building a full list.",
+    "explanation": "ביטוי עצל שמפיק ערכים אחד בכל פעם במקום לבנות רשימה מלאה.",
     "example": "total = sum(x*x for x in range(10))"
   },
   "f-string": {
     "type": "syntax_pattern",
-    "explanation": "Formatted string literal that embeds expressions inside braces.",
+    "explanation": "ליטרל מחרוזת מעוצב שמטמיע ביטויים בתוך סוגריים מסולסלים.",
     "example": "name = 'Nina'\nprint(f'Hello, {name}!')"
   },
   "__init__": {
     "type": "special_method",
-    "explanation": "Special method called when a new object is initialized, commonly used as a constructor-like setup method.",
+    "explanation": "מתודה מיוחדת שנקראת כאשר אובייקט חדש מאותחל, ונפוצה להגדרת מצב התחלתי בדומה לבנאי.",
     "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
   },
   "__str__": {
     "type": "special_method",
-    "explanation": "Special method used by str() and print() to create a user-friendly string representation.",
+    "explanation": "מתודה מיוחדת שמשמשת את str() ו-print() ליצירת ייצוג מחרוזת ידידותי למשתמש.",
     "example": "class User:\n    def __str__(self):\n        return 'User'"
   },
   "__repr__": {
     "type": "special_method",
-    "explanation": "Special method used by repr() to create a developer-oriented representation.",
+    "explanation": "מתודה מיוחדת שמשמשת את repr() ליצירת ייצוג שמיועד למפתחים.",
     "example": "class User:\n    def __repr__(self):\n        return 'User()'"
   },
   "__len__": {
     "type": "special_method",
-    "explanation": "Special method called by len().",
+    "explanation": "מתודה מיוחדת שנקראת על ידי len().",
     "example": "class Bag:\n    def __len__(self):\n        return 3"
   },
   "__iter__": {
     "type": "special_method",
-    "explanation": "Special method that returns an iterator for an object.",
+    "explanation": "מתודה מיוחדת שמחזירה iterator עבור אובייקט.",
     "example": "class Numbers:\n    def __iter__(self):\n        return iter([1, 2, 3])"
   },
   "__next__": {
     "type": "special_method",
-    "explanation": "Special method that returns the next item from an iterator.",
+    "explanation": "מתודה מיוחדת שמחזירה את הפריט הבא מתוך iterator.",
     "example": "class Counter:\n    def __next__(self):\n        return 1"
   },
   "__enter__": {
     "type": "special_method",
-    "explanation": "Special method called when entering a with block.",
+    "explanation": "מתודה מיוחדת שנקראת בכניסה לבלוק with.",
     "example": "class Resource:\n    def __enter__(self):\n        return self"
   },
   "__exit__": {
     "type": "special_method",
-    "explanation": "Special method called when leaving a with block.",
+    "explanation": "מתודה מיוחדת שנקראת ביציאה מבלוק with.",
     "example": "class Resource:\n    def __exit__(self, exc_type, exc, tb):\n        pass"
   },
   "__name__": {
     "type": "special_variable",
-    "explanation": "Special module variable containing the module name. It equals '__main__' when the file is run directly.",
+    "explanation": "משתנה מודול מיוחד שמכיל את שם המודול. הוא שווה ל-'__main__' כאשר הקובץ מורץ ישירות.",
     "example": "if __name__ == '__main__':\n    main()"
   },
   "__main__": {
     "type": "special_value",
-    "explanation": "Value of __name__ for the file currently being executed as the main program.",
+    "explanation": "הערך של __name__ עבור הקובץ שמורץ כעת כתוכנית הראשית.",
     "example": "if __name__ == '__main__':\n    print('Running directly')"
   },
   "__file__": {
     "type": "special_variable",
-    "explanation": "Special module variable containing the path to the current file when available.",
+    "explanation": "משתנה מודול מיוחד שמכיל את הנתיב לקובץ הנוכחי כאשר הוא זמין.",
     "example": "print(__file__)"
   },
   "sys": {
     "type": "standard_library_module",
-    "explanation": "Provides access to interpreter-specific variables and functions, such as command-line arguments and exit.",
+    "explanation": "מספק גישה למשתנים ופונקציות ספציפיים למפרש, כמו ארגומנטים משורת הפקודה ויציאה.",
     "example": "import sys\nprint(sys.argv)"
   },
   "os": {
     "type": "standard_library_module",
-    "explanation": "Provides operating-system interfaces like environment variables, paths, and process utilities.",
+    "explanation": "מספק ממשקים למערכת ההפעלה כמו משתני סביבה, נתיבים וכלי תהליכים.",
     "example": "import os\nprint(os.getcwd())"
   },
   "math": {
     "type": "standard_library_module",
-    "explanation": "Provides common mathematical functions and constants.",
+    "explanation": "מספק פונקציות וקבועים מתמטיים נפוצים.",
     "example": "import math\nprint(math.sqrt(16))"
   },
   "random": {
     "type": "standard_library_module",
-    "explanation": "Provides functions for pseudo-random numbers and random choices.",
+    "explanation": "מספק פונקציות למספרים פסאודו-אקראיים ולבחירות אקראיות.",
     "example": "import random\nprint(random.randint(1, 6))"
   },
   "datetime": {
     "type": "standard_library_module",
-    "explanation": "Provides classes for dates, times, datetimes, and time deltas.",
+    "explanation": "מספק מחלקות לתאריכים, שעות, תאריכי-שעה והפרשי זמן.",
     "example": "from datetime import datetime\nprint(datetime.now())"
   },
   "time": {
     "type": "standard_library_module",
-    "explanation": "Provides time-related functions such as sleep and timestamps.",
+    "explanation": "מספק פונקציות הקשורות לזמן, כמו sleep וחותמות זמן.",
     "example": "import time\ntime.sleep(1)"
   },
   "json": {
     "type": "standard_library_module",
-    "explanation": "Reads and writes JSON data.",
+    "explanation": "קורא וכותב נתוני JSON.",
     "example": "import json\ntext = json.dumps({'name': 'Nina'})"
   },
   "pathlib": {
     "type": "standard_library_module",
-    "explanation": "Provides object-oriented filesystem paths.",
+    "explanation": "מספק נתיבי מערכת קבצים בגישה מונחית-עצמים.",
     "example": "from pathlib import Path\nprint(Path('data.txt').exists())"
   },
   "re": {
     "type": "standard_library_module",
-    "explanation": "Provides regular expression pattern matching.",
+    "explanation": "מספק התאמת תבניות באמצעות ביטויים רגולריים.",
     "example": "import re\nprint(re.findall(r'\\d+', 'A12 B34'))"
   },
   "collections": {
     "type": "standard_library_module",
-    "explanation": "Provides specialized container datatypes such as Counter, defaultdict, and deque.",
+    "explanation": "מספק טיפוסי container מיוחדים כמו Counter, defaultdict ו-deque.",
     "example": "from collections import Counter\nprint(Counter('banana'))"
   },
   "itertools": {
     "type": "standard_library_module",
-    "explanation": "Provides fast iterator-building tools for looping and combinations.",
+    "explanation": "מספק כלים מהירים לבניית iterators עבור לולאות ושילובים.",
     "example": "import itertools\nprint(list(itertools.product([1, 2], ['a', 'b'])))"
   },
   "functools": {
     "type": "standard_library_module",
-    "explanation": "Provides higher-order function helpers such as partial, reduce, and lru_cache.",
+    "explanation": "מספק עזרי פונקציות מסדר גבוה כמו partial, reduce ו-lru_cache.",
     "example": "from functools import lru_cache\n\n@lru_cache\ndef fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)"
   },
   "typing": {
     "type": "standard_library_module",
-    "explanation": "Provides support for type hints and static typing tools.",
+    "explanation": "מספק תמיכה ב-type hints ובכלי טיפוס סטטיים.",
     "example": "from typing import Optional\nname: Optional[str] = None"
   },
   "asyncio": {
     "type": "standard_library_module",
-    "explanation": "Provides tools for writing asynchronous programs using async and await.",
+    "explanation": "מספק כלים לכתיבת תוכניות אסינכרוניות באמצעות async ו-await.",
     "example": "import asyncio\nasyncio.run(main())"
   },
   "csv": {
     "type": "standard_library_module",
-    "explanation": "Reads and writes CSV files.",
+    "explanation": "קורא וכותב קבצי CSV.",
     "example": "import csv\nwith open('data.csv') as f:\n    rows = list(csv.reader(f))"
   },
   "sqlite3": {
     "type": "standard_library_module",
-    "explanation": "Provides a built-in interface to SQLite databases.",
+    "explanation": "מספק ממשק מובנה למסדי נתונים SQLite.",
     "example": "import sqlite3\nconn = sqlite3.connect('app.db')"
   },
   "logging": {
     "type": "standard_library_module",
-    "explanation": "Provides flexible event logging for applications.",
+    "explanation": "מספק רישום אירועים גמיש עבור אפליקציות.",
     "example": "import logging\nlogging.info('Started')"
   },
   "argparse": {
     "type": "standard_library_module",
-    "explanation": "Builds command-line interfaces and parses command-line arguments.",
+    "explanation": "בונה ממשקי שורת פקודה ומנתח ארגומנטים משורת הפקודה.",
     "example": "import argparse\nparser = argparse.ArgumentParser()"
   },
   "subprocess": {
     "type": "standard_library_module",
-    "explanation": "Runs external commands and processes.",
+    "explanation": "מריץ פקודות ותהליכים חיצוניים.",
     "example": "import subprocess\nsubprocess.run(['echo', 'hi'])"
   },
   "threading": {
     "type": "standard_library_module",
-    "explanation": "Provides thread-based parallelism tools.",
+    "explanation": "מספק כלים למקביליות מבוססת threads.",
     "example": "import threading\nthread = threading.Thread(target=work)"
   },
   "multiprocessing": {
     "type": "standard_library_module",
-    "explanation": "Provides process-based parallelism tools.",
+    "explanation": "מספק כלים למקביליות מבוססת תהליכים.",
     "example": "from multiprocessing import Process\np = Process(target=work)"
   },
   "concurrent.futures": {
     "type": "standard_library_module",
-    "explanation": "Provides high-level thread and process pool executors.",
+    "explanation": "מספק executors ברמה גבוהה לבריכות threads ותהליכים.",
     "example": "from concurrent.futures import ThreadPoolExecutor\nwith ThreadPoolExecutor() as ex:\n    ex.submit(work)"
   },
   "dataclasses": {
     "type": "standard_library_module",
-    "explanation": "Provides the @dataclass decorator for concise data-holding classes.",
+    "explanation": "מספק את הדקורטור @dataclass למחלקות נתונים תמציתיות.",
     "example": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: int\n    y: int"
   },
   "enum": {
     "type": "standard_library_module",
-    "explanation": "Provides support for enumeration classes.",
+    "explanation": "מספק תמיכה במחלקות enumeration.",
     "example": "from enum import Enum\nclass Color(Enum):\n    RED = 1"
   },
   "abc": {
     "type": "standard_library_module",
-    "explanation": "Provides tools for abstract base classes.",
+    "explanation": "מספק כלים למחלקות בסיס אבסטרקטיות.",
     "example": "from abc import ABC, abstractmethod\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        pass"
   },
   "copy": {
     "type": "standard_library_module",
-    "explanation": "Provides shallow and deep copy operations.",
+    "explanation": "מספק פעולות העתקה שטחית ועמוקה.",
     "example": "import copy\nb = copy.deepcopy(a)"
   },
   "io": {
     "type": "standard_library_module",
-    "explanation": "Provides tools for working with streams, text I/O, and binary I/O.",
+    "explanation": "מספק כלים לעבודה עם streams, קלט/פלט טקסטואלי וקלט/פלט בינארי.",
     "example": "from io import StringIO\nf = StringIO('hello')"
   },
   "decimal": {
     "type": "standard_library_module",
-    "explanation": "Provides decimal floating-point arithmetic for precise base-10 calculations.",
+    "explanation": "מספק חשבון נקודה עשרונית לחישובים מדויקים בבסיס 10.",
     "example": "from decimal import Decimal\nprice = Decimal('19.99')"
   },
   "fractions": {
     "type": "standard_library_module",
-    "explanation": "Provides rational number arithmetic using Fraction.",
+    "explanation": "מספק חשבון מספרים רציונליים באמצעות Fraction.",
     "example": "from fractions import Fraction\nprint(Fraction(1, 3))"
   },
   "statistics": {
     "type": "standard_library_module",
-    "explanation": "Provides basic statistical functions such as mean and median.",
+    "explanation": "מספק פונקציות סטטיסטיות בסיסיות כמו mean ו-median.",
     "example": "import statistics\nprint(statistics.mean([1, 2, 3]))"
   },
   "hashlib": {
     "type": "standard_library_module",
-    "explanation": "Provides secure hash and message digest algorithms.",
+    "explanation": "מספק אלגוריתמי hash ו-message digest מאובטחים.",
     "example": "import hashlib\nprint(hashlib.sha256(b'hello').hexdigest())"
   },
   "secrets": {
     "type": "standard_library_module",
-    "explanation": "Provides cryptographically strong random values for secrets and tokens.",
+    "explanation": "מספק ערכים אקראיים קריפטוגרפיים חזקים עבור סודות וטוקנים.",
     "example": "import secrets\nprint(secrets.token_hex(16))"
   },
   "urllib": {
     "type": "standard_library_module",
-    "explanation": "Package for working with URLs and basic HTTP requests.",
+    "explanation": "חבילה לעבודה עם URLs ובקשות HTTP בסיסיות.",
     "example": "from urllib.request import urlopen\n# response = urlopen('https://example.com')"
   },
   "http": {
     "type": "standard_library_module",
-    "explanation": "Package containing HTTP client/server utilities and status codes.",
+    "explanation": "חבילה שמכילה כלי HTTP client/server וקודי סטטוס.",
     "example": "from http import HTTPStatus\nprint(HTTPStatus.OK)"
   },
   "unittest": {
     "type": "standard_library_module",
-    "explanation": "Python's built-in unit testing framework.",
+    "explanation": "מסגרת בדיקות היחידה המובנית של Python.",
     "example": "import unittest\nclass MyTest(unittest.TestCase):\n    pass"
   },
   "pprint": {
     "type": "standard_library_module",
-    "explanation": "Pretty-prints data structures in a more readable way.",
+    "explanation": "מדפיס מבני נתונים בצורה יפה וקריאה יותר.",
     "example": "from pprint import pprint\npprint({'a': [1, 2, 3]})"
   },
   "pickle": {
     "type": "standard_library_module",
-    "explanation": "Serializes and deserializes Python objects. Only unpickle trusted data.",
+    "explanation": "מבצע סריאליזציה ודה-סריאליזציה של אובייקטי Python. יש לבצע unpickle רק לנתונים מהימנים.",
     "example": "import pickle\ndata = pickle.dumps({'a': 1})"
   },
   "shutil": {
     "type": "standard_library_module",
-    "explanation": "Provides high-level file and directory operations.",
+    "explanation": "מספק פעולות קבצים ותיקיות ברמה גבוהה.",
     "example": "import shutil\nshutil.copy('a.txt', 'b.txt')"
   },
   "glob": {
     "type": "standard_library_module",
-    "explanation": "Finds pathnames matching Unix-style wildcard patterns.",
+    "explanation": "מוצא נתיבים שתואמים לתבניות wildcard בסגנון Unix.",
     "example": "import glob\nprint(glob.glob('*.py'))"
   },
   "Any": {
     "type": "typing_type",
-    "explanation": "Type hint meaning any value is allowed.",
+    "explanation": "type hint שמשמעותו שכל ערך מותר.",
     "example": "from typing import Any\nvalue: Any = 123"
   },
   "Optional": {
     "type": "typing_type",
-    "explanation": "Type hint meaning a value can be of a given type or None.",
+    "explanation": "type hint שמשמעותו שערך יכול להיות מטיפוס נתון או None.",
     "example": "from typing import Optional\nname: Optional[str] = None"
   },
   "Union": {
     "type": "typing_type",
-    "explanation": "Type hint meaning a value may be one of several types.",
+    "explanation": "type hint שמשמעותו שערך יכול להיות אחד מכמה טיפוסים.",
     "example": "from typing import Union\nvalue: Union[int, str] = 5"
   },
   "Callable": {
     "type": "typing_type",
-    "explanation": "Type hint for a function or callable object.",
+    "explanation": "type hint לפונקציה או אובייקט שניתן לקרוא לו.",
     "example": "from typing import Callable\nfunc: Callable[[int], int]"
   },
   "Iterable": {
     "type": "typing_type",
-    "explanation": "Type hint for objects that can be iterated over.",
+    "explanation": "type hint לאובייקטים שניתן לעבור עליהם באיטרציה.",
     "example": "from typing import Iterable\ndef total(xs: Iterable[int]) -> int:\n    return sum(xs)"
   },
   "Literal": {
     "type": "typing_type",
-    "explanation": "Type hint for values restricted to specific literal values.",
+    "explanation": "type hint לערכים שמוגבלים לערכים ליטרליים ספציפיים.",
     "example": "from typing import Literal\nmode: Literal['read', 'write'] = 'read'"
   },
   "Protocol": {
     "type": "typing_type",
-    "explanation": "Type hint tool for structural subtyping: an object matches if it has the required members.",
+    "explanation": "כלי type hint לתת-טיפוס מבני: אובייקט מתאים אם יש לו את החברים הנדרשים.",
     "example": "from typing import Protocol\nclass HasName(Protocol):\n    name: str"
   },
   "TypeVar": {
     "type": "typing_type",
-    "explanation": "Creates a generic type variable for type hints.",
+    "explanation": "יוצר משתנה טיפוס גנרי עבור type hints.",
     "example": "from typing import TypeVar\nT = TypeVar('T')"
   }
 }

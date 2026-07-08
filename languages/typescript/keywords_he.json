@@ -1,1527 +1,1527 @@
 {
   "var": {
     "type": "javascript_keyword",
-    "explanation": "Declares a function-scoped or global variable. It can be reassigned and is hoisted; modern TypeScript usually prefers let or const.",
+    "explanation": "מכריז על משתנה בטווח פונקציה או בטווח גלובלי. אפשר להקצות לו ערך מחדש והוא עובר hoisting; ב-TypeScript מודרני בדרך כלל מעדיפים `let` או `const`.",
     "example": "var count: number = 0;\ncount = count + 1;"
   },
   "let": {
     "type": "javascript_keyword",
-    "explanation": "Declares a block-scoped variable whose value can be reassigned later.",
+    "explanation": "מכריז על משתנה בטווח בלוק שאפשר להקצות לו ערך מחדש בהמשך.",
     "example": "let score: number = 0;\nscore += 10;"
   },
   "const": {
     "type": "javascript_keyword",
-    "explanation": "Declares a block-scoped variable that cannot be reassigned after initialization. Object and array contents may still be mutated unless their types prevent it.",
+    "explanation": "מכריז על משתנה בטווח בלוק שלא ניתן להקצות לו מחדש אחרי האתחול. אם הערך הוא אובייקט או מערך, עדיין ייתכן שניתן לשנות את התוכן שלו אלא אם הטיפוסים מונעים זאת.",
     "example": "const PI = 3.14159;\nconst list: number[] = [1, 2];\nlist.push(3);"
   },
   "function": {
     "type": "javascript_keyword",
-    "explanation": "Defines a reusable block of code. In TypeScript, parameters and return values can be typed.",
+    "explanation": "מגדיר בלוק קוד שניתן להשתמש בו שוב. ב-TypeScript אפשר להגדיר טיפוסים לפרמטרים ולערכי ההחזרה.",
     "example": "function add(a: number, b: number): number {\n  return a + b;\n}"
   },
   "return": {
     "type": "javascript_keyword",
-    "explanation": "Exits a function and optionally sends a value back to the caller.",
+    "explanation": "יוצא מפונקציה, ובאופן אופציונלי מחזיר ערך אל מי שקרא לה.",
     "example": "function square(x: number): number {\n  return x * x;\n}"
   },
   "if": {
     "type": "javascript_keyword",
-    "explanation": "Runs a block of code only when a condition is true.",
+    "explanation": "מריץ בלוק קוד רק כאשר תנאי מסוים מתקיים.",
     "example": "if (age >= 18) {\n  console.log('Adult');\n}"
   },
   "else": {
     "type": "javascript_keyword",
-    "explanation": "Runs a block of code when the preceding if or else-if condition was false.",
+    "explanation": "מריץ בלוק קוד כאשר תנאי ה-if או ה-else-if הקודם לא התקיים.",
     "example": "if (age >= 18) {\n  console.log('Adult');\n} else {\n  console.log('Minor');\n}"
   },
   "else if": {
     "type": "syntax_pattern",
-    "explanation": "Checks another condition after a previous if condition was false. It is a common syntax pattern, not one single keyword.",
+    "explanation": "בודק תנאי נוסף אחרי שתנאי if קודם לא התקיים. זהו דפוס תחביר נפוץ, לא מילת מפתח אחת נפרדת.",
     "example": "if (score >= 90) {\n  console.log('A');\n} else if (score >= 80) {\n  console.log('B');\n}"
   },
   "for": {
     "type": "javascript_keyword",
-    "explanation": "Creates a loop, commonly with initialization, condition, and step expressions.",
+    "explanation": "יוצר לולאה, בדרך כלל עם ביטויי אתחול, תנאי וצעד התקדמות.",
     "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
   },
   "for...of": {
     "type": "syntax_pattern",
-    "explanation": "Loops over values from an iterable such as an array, string, Map, or Set.",
+    "explanation": "עובר על ערכים מתוך iterable כמו מערך, מחרוזת, Map או Set.",
     "example": "for (const value of [10, 20, 30]) {\n  console.log(value);\n}"
   },
   "for...in": {
     "type": "syntax_pattern",
-    "explanation": "Loops over enumerable property names of an object.",
+    "explanation": "עובר על שמות המאפיינים הניתנים למנייה של אובייקט.",
     "example": "const obj = { a: 1, b: 2 };\nfor (const key in obj) {\n  console.log(key, obj[key as keyof typeof obj]);\n}"
   },
   "while": {
     "type": "javascript_keyword",
-    "explanation": "Repeats a block while a condition remains true; the condition is checked before each iteration.",
+    "explanation": "חוזר על בלוק כל עוד תנאי נשאר true; התנאי נבדק לפני כל איטרציה.",
     "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
   },
   "do": {
     "type": "javascript_keyword",
-    "explanation": "Starts a do-while loop, where the body runs once before the condition is checked.",
+    "explanation": "מתחיל לולאת do-while, שבה גוף הלולאה רץ פעם אחת לפני בדיקת התנאי.",
     "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
   },
   "do...while": {
     "type": "syntax_pattern",
-    "explanation": "A loop pattern using do and while where the body executes at least once.",
+    "explanation": "דפוס לולאה שמשתמש ב-do וב-while, שבו הגוף מתבצע לפחות פעם אחת.",
     "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
   },
   "switch": {
     "type": "javascript_keyword",
-    "explanation": "Compares a value against several cases and runs the matching branch.",
+    "explanation": "משווה ערך למספר מקרים ומריץ את הענף המתאים.",
     "example": "switch (status) {\n  case 'active':\n    console.log('Active');\n    break;\n  default:\n    console.log('Unknown');\n}"
   },
   "case": {
     "type": "javascript_keyword",
-    "explanation": "Defines one branch inside a switch statement.",
+    "explanation": "מגדיר ענף אחד בתוך משפט switch.",
     "example": "switch (grade) {\n  case 'A':\n    console.log('Great');\n    break;\n}"
   },
   "default": {
     "type": "javascript_keyword",
-    "explanation": "Defines the fallback branch in a switch statement, or the default export from a module.",
+    "explanation": "מגדיר את ענף ברירת המחדל במשפט switch, או את ייצוא ברירת המחדל ממודול.",
     "example": "export default function App() {\n  return null;\n}"
   },
   "break": {
     "type": "javascript_keyword",
-    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "explanation": "יוצא מיד מהלולאה או ממשפט ה-switch הקרובים ביותר.",
     "example": "for (let i = 0; i < 10; i++) {\n  if (i === 3) break;\n}"
   },
   "continue": {
     "type": "javascript_keyword",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "explanation": "מדלג על שאר האיטרציה הנוכחית של הלולאה ועובר לאיטרציה הבאה.",
     "example": "for (let i = 0; i < 5; i++) {\n  if (i % 2 === 0) continue;\n  console.log(i);\n}"
   },
   "try": {
     "type": "javascript_keyword",
-    "explanation": "Marks a block of code whose errors can be handled by catch or cleaned up with finally.",
+    "explanation": "מסמן בלוק קוד ששגיאות בו יכולות להיות מטופלות על ידי catch או להתנקות עם finally.",
     "example": "try {\n  JSON.parse('bad json');\n} catch (err) {\n  console.log((err as Error).message);\n}"
   },
   "catch": {
     "type": "javascript_keyword",
-    "explanation": "Handles an exception thrown inside the matching try block.",
+    "explanation": "מטפל בחריגה שנזרקה בתוך בלוק ה-try המתאים.",
     "example": "try {\n  risky();\n} catch (err) {\n  console.error(err);\n}"
   },
   "finally": {
     "type": "javascript_keyword",
-    "explanation": "Runs after try/catch whether or not an error happened.",
+    "explanation": "רץ אחרי try/catch בין אם אירעה שגיאה ובין אם לא.",
     "example": "try {\n  doWork();\n} finally {\n  cleanup();\n}"
   },
   "throw": {
     "type": "javascript_keyword",
-    "explanation": "Raises an error and stops normal execution unless the error is caught.",
+    "explanation": "זורק שגיאה ועוצר את הזרימה הרגילה, אלא אם השגיאה נתפסת.",
     "example": "if (age < 0) {\n  throw new Error('Age cannot be negative');\n}"
   },
   "class": {
     "type": "javascript_keyword",
-    "explanation": "Defines a blueprint for creating objects. TypeScript adds type checking for fields, methods, constructors, visibility, and inheritance.",
+    "explanation": "מגדיר תבנית ליצירת אובייקטים. TypeScript מוסיף בדיקות טיפוסים לשדות, מתודות, בנאים, נראות וירושה.",
     "example": "class Point {\n  constructor(public x: number, public y: number) {}\n}"
   },
   "extends": {
     "type": "javascript_keyword",
-    "explanation": "Makes a class inherit from a parent class. In TypeScript it also constrains generics and extends interfaces/types in certain contexts.",
+    "explanation": "גורם למחלקה לרשת ממחלקת אב. ב-TypeScript הוא גם מגביל generics ומרחיב interfaces/types בהקשרים מסוימים.",
     "example": "class Dog extends Animal {\n  speak() { console.log('Woof'); }\n}\nfunction getId<T extends { id: string }>(value: T) {\n  return value.id;\n}"
   },
   "constructor": {
     "type": "class_member",
-    "explanation": "A special class method that runs when a new instance is created.",
+    "explanation": "מתודה מיוחדת במחלקה שרצה כאשר נוצרת מופע חדש.",
     "example": "class User {\n  constructor(public name: string) {}\n}"
   },
   "this": {
     "type": "javascript_keyword",
-    "explanation": "Refers to the current execution context or object instance. TypeScript can type-check this in methods and functions.",
+    "explanation": "מתייחס להקשר הריצה הנוכחי או למופע האובייקט הנוכחי. TypeScript יכול לבדוק טיפוסית את this במתודות ובפונקציות.",
     "example": "class Counter {\n  count = 0;\n  increment() { this.count++; }\n}"
   },
   "super": {
     "type": "javascript_keyword",
-    "explanation": "Calls or accesses members from a parent class inside a subclass.",
+    "explanation": "קורא או ניגש לחברים ממחלקת האב מתוך מחלקת בת.",
     "example": "class Dog extends Animal {\n  constructor(name: string) {\n    super(name);\n  }\n}"
   },
   "new": {
     "type": "javascript_keyword",
-    "explanation": "Creates a new object from a class or constructor function.",
+    "explanation": "יוצר אובייקט חדש ממחלקה או מפונקציית בנאי.",
     "example": "const p = new Point(3, 4);"
   },
   "static": {
     "type": "javascript_keyword",
-    "explanation": "Defines a class member that belongs to the class itself instead of instances.",
+    "explanation": "מגדיר חבר מחלקה ששייך למחלקה עצמה ולא למופעים שלה.",
     "example": "class MathUtils {\n  static square(x: number) { return x * x; }\n}\nMathUtils.square(4);"
   },
   "import": {
     "type": "javascript_keyword",
-    "explanation": "Imports values from another module. TypeScript also supports type-only imports.",
+    "explanation": "מייבא ערכים ממודול אחר. TypeScript תומך גם בייבוא של טיפוסים בלבד.",
     "example": "import { add } from './math';\nimport type { User } from './types';"
   },
   "export": {
     "type": "javascript_keyword",
-    "explanation": "Exports values or types from a module so other files can import them.",
+    "explanation": "מייצא ערכים או טיפוסים ממודול כדי שקבצים אחרים יוכלו לייבא אותם.",
     "example": "export function add(a: number, b: number) {\n  return a + b;\n}\nexport type ID = string | number;"
   },
   "from": {
     "type": "module_syntax",
-    "explanation": "Used in import/export declarations to specify the source module.",
+    "explanation": "משמש בהצהרות import/export כדי לציין את מודול המקור.",
     "example": "import { readFile } from 'node:fs/promises';"
   },
   "as": {
     "type": "typescript_keyword",
-    "explanation": "Renames imports/exports in JavaScript, and performs type assertions or type remapping in TypeScript.",
+    "explanation": "משנה שם של import/export ב-JavaScript, ומבצע type assertions או מיפוי טיפוסים ב-TypeScript.",
     "example": "import { readFile as read } from 'node:fs/promises';\nconst input = document.getElementById('name') as HTMLInputElement;"
   },
   "async": {
     "type": "javascript_keyword",
-    "explanation": "Marks a function as asynchronous. It returns a Promise and can use await inside.",
+    "explanation": "מסמן פונקציה כאסינכרונית. היא מחזירה Promise ויכולה להשתמש ב-await בתוכה.",
     "example": "async function loadData(): Promise<string> {\n  return await fetchData();\n}"
   },
   "await": {
     "type": "javascript_keyword",
-    "explanation": "Waits for a Promise to settle and gives the resolved value inside async code or supported modules.",
+    "explanation": "ממתין ש-Promise יסתיים ומחזיר את הערך שנפתר בתוך קוד async או במודולים נתמכים.",
     "example": "const result = await loadData();"
   },
   "yield": {
     "type": "javascript_keyword",
-    "explanation": "Pauses a generator function and produces a value to the caller.",
+    "explanation": "משהה פונקציית generator ומחזיר ערך לקורא.",
     "example": "function* ids(): Generator<number> {\n  yield 1;\n  yield 2;\n}"
   },
   "typeof": {
     "type": "javascript_keyword",
-    "explanation": "At runtime, returns a string describing a value's JavaScript type. In TypeScript type positions, gets the type of a value.",
+    "explanation": "בזמן ריצה מחזיר מחרוזת שמתארת את טיפוס ה-JavaScript של ערך. בעמדות טיפוס ב-TypeScript הוא מקבל את הטיפוס של ערך.",
     "example": "const x = 42;\ntype XType = typeof x; // number"
   },
   "instanceof": {
     "type": "javascript_keyword",
-    "explanation": "Checks at runtime whether an object is an instance of a class or constructor.",
+    "explanation": "בודק בזמן ריצה האם אובייקט הוא מופע של מחלקה או פונקציית בנאי.",
     "example": "if (err instanceof Error) {\n  console.log(err.message);\n}"
   },
   "in": {
     "type": "javascript_keyword",
-    "explanation": "Checks whether a property exists in an object, and can also help TypeScript narrow union types.",
+    "explanation": "בודק האם מאפיין קיים באובייקט, ויכול גם לעזור ל-TypeScript לצמצם טיפוסי union.",
     "example": "if ('name' in value) {\n  console.log(value.name);\n}"
   },
   "delete": {
     "type": "javascript_keyword",
-    "explanation": "Removes a property from an object.",
+    "explanation": "מסיר מאפיין מאובייקט.",
     "example": "const user: { name?: string } = { name: 'Nina' };\ndelete user.name;"
   },
   "void": {
     "type": "typescript_type",
-    "explanation": "In TypeScript, usually means a function returns no meaningful value. In JavaScript, void evaluates an expression and returns undefined.",
+    "explanation": "ב-TypeScript בדרך כלל מציין שפונקציה לא מחזירה ערך משמעותי. ב-JavaScript, void מעריך ביטוי ומחזיר undefined.",
     "example": "function log(msg: string): void {\n  console.log(msg);\n}"
   },
   "debugger": {
     "type": "javascript_keyword",
-    "explanation": "Places a breakpoint for debugging tools when execution reaches it.",
+    "explanation": "מציב נקודת עצירה לכלי דיבוג כאשר הביצוע מגיע אליו.",
     "example": "function inspect(value: unknown) {\n  debugger;\n  console.log(value);\n}"
   },
   "with": {
     "type": "javascript_keyword",
-    "explanation": "A legacy JavaScript statement that extends the scope chain. It is forbidden in strict mode and should not be used.",
+    "explanation": "משפט JavaScript ישן שמרחיב את שרשרת ה-scope. הוא אסור ב-strict mode ולא מומלץ לשימוש.",
     "example": "// Avoid using with in TypeScript/modern JavaScript."
   },
   "interface": {
     "type": "typescript_keyword",
-    "explanation": "Describes the shape an object must have, including property and method names and their types.",
+    "explanation": "מתאר את הצורה שאובייקט חייב לעמוד בה, כולל שמות מאפיינים ומתודות והטיפוסים שלהם.",
     "example": "interface Point {\n  x: number;\n  y: number;\n}\nconst p: Point = { x: 1, y: 2 };"
   },
   "type": {
     "type": "typescript_keyword",
-    "explanation": "Creates a reusable type alias for any type expression, such as unions, intersections, tuples, objects, and function types.",
+    "explanation": "יוצר כינוי טיפוס שניתן להשתמש בו שוב עבור כל ביטוי טיפוס, כמו unions, intersections, tuples, אובייקטים וטיפוסי פונקציה.",
     "example": "type ID = string | number;\nlet userId: ID = 42;"
   },
   "enum": {
     "type": "typescript_keyword",
-    "explanation": "Defines a set of named constants. TypeScript emits runtime JavaScript for normal enums.",
+    "explanation": "מגדיר קבוצה של קבועים בעלי שמות. עבור enum רגיל TypeScript מפיק גם JavaScript בזמן ריצה.",
     "example": "enum Color { Red, Green, Blue }\nconst c: Color = Color.Green;"
   },
   "const enum": {
     "type": "typescript_syntax",
-    "explanation": "Defines an enum that TypeScript tries to inline at compile time instead of emitting a runtime enum object.",
+    "explanation": "מגדיר enum ש-TypeScript מנסה להטמיע בזמן הקומפילציה במקום לייצר עבורו אובייקט enum בזמן ריצה.",
     "example": "const enum Direction { Up, Down }\nconst d = Direction.Up;"
   },
   "implements": {
     "type": "typescript_keyword",
-    "explanation": "Declares that a class must provide the members required by an interface or type shape.",
+    "explanation": "מצהיר שמחלקה חייבת לספק את החברים הנדרשים על ידי interface או צורת טיפוס.",
     "example": "interface Shape { area(): number; }\nclass Circle implements Shape {\n  constructor(public r: number) {}\n  area() { return Math.PI * this.r ** 2; }\n}"
   },
   "namespace": {
     "type": "typescript_keyword",
-    "explanation": "Groups related code under a named container. Modern TypeScript often prefers ES modules, but namespaces are still supported.",
+    "explanation": "מקבץ קוד קשור תחת מכולה בשם. TypeScript מודרני לרוב מעדיף ES modules, אך namespaces עדיין נתמכים.",
     "example": "namespace Utils {\n  export function double(x: number) { return x * 2; }\n}\nUtils.double(4);"
   },
   "module": {
     "type": "typescript_keyword",
-    "explanation": "A TypeScript declaration construct used for ambient external modules and legacy internal module syntax. In Node/CommonJS, use module.exports as the runtime object instead.",
+    "explanation": "מבנה הצהרה של TypeScript המשמש למודולים חיצוניים ambient ולתחביר מודולים פנימיים ישן. ב-Node/CommonJS משתמשים ב-module.exports כאובייקט זמן ריצה.",
     "example": "declare module 'legacy-lib' {\n  export function run(): void;\n}"
   },
   "declare": {
     "type": "typescript_keyword",
-    "explanation": "Tells TypeScript that a variable, function, class, module, or type exists elsewhere without generating JavaScript output.",
+    "explanation": "אומר ל-TypeScript שמשתנה, פונקציה, מחלקה, מודול או טיפוס קיימים במקום אחר, בלי לייצר פלט JavaScript.",
     "example": "declare const VERSION: string;\ndeclare function track(event: string): void;"
   },
   "global": {
     "type": "declaration_syntax",
-    "explanation": "Used in declaration files with declare global to add names to the global scope.",
+    "explanation": "משמש בקבצי declaration יחד עם declare global כדי להוסיף שמות ל-scope הגלובלי.",
     "example": "declare global {\n  interface Window { appVersion: string; }\n}"
   },
   "public": {
     "type": "typescript_modifier",
-    "explanation": "Marks a class member as accessible from anywhere. This is the default visibility in TypeScript classes.",
+    "explanation": "מסמן חבר מחלקה כנגיש מכל מקום. זוהי נראות ברירת המחדל במחלקות TypeScript.",
     "example": "class User {\n  public name: string = '';\n}"
   },
   "private": {
     "type": "typescript_modifier",
-    "explanation": "Marks a class member as accessible only inside the class that declares it.",
+    "explanation": "מסמן חבר מחלקה כנגיש רק בתוך המחלקה שהצהירה עליו.",
     "example": "class Account {\n  private balance = 0;\n}"
   },
   "protected": {
     "type": "typescript_modifier",
-    "explanation": "Marks a class member as accessible inside the declaring class and its subclasses, but not from outside.",
+    "explanation": "מסמן חבר מחלקה כנגיש בתוך המחלקה המצהירה ובמחלקות היורשות ממנה, אך לא מבחוץ.",
     "example": "class Base {\n  protected id = 1;\n}\nclass Derived extends Base {\n  show() { console.log(this.id); }\n}"
   },
   "readonly": {
     "type": "typescript_modifier",
-    "explanation": "Marks a property or index signature as not assignable after initialization.",
+    "explanation": "מסמן מאפיין או index signature ככזה שלא ניתן להקצות לו ערך אחרי האתחול.",
     "example": "class Point {\n  constructor(public readonly x: number) {}\n}"
   },
   "abstract": {
     "type": "typescript_modifier",
-    "explanation": "Marks a class or member as incomplete and intended to be implemented by subclasses.",
+    "explanation": "מסמן מחלקה או חבר כלא שלמים וכמיועדים למימוש על ידי מחלקות בת.",
     "example": "abstract class Shape {\n  abstract area(): number;\n}"
   },
   "override": {
     "type": "typescript_modifier",
-    "explanation": "Marks a subclass method or property as intentionally overriding a member from a base class.",
+    "explanation": "מסמן שמתודה או מאפיין במחלקת בת דורסים בכוונה חבר ממחלקת בסיס.",
     "example": "class Dog extends Animal {\n  override speak() {\n    console.log('Woof');\n  }\n}"
   },
   "accessor": {
     "type": "typescript_modifier",
-    "explanation": "Declares an auto-accessor class member, generating getter/setter behavior with TypeScript support.",
+    "explanation": "מכריז על חבר מחלקה מסוג auto-accessor, שמייצר התנהגות getter/setter עם תמיכת TypeScript.",
     "example": "class Person {\n  accessor name: string = 'Nina';\n}"
   },
   "get": {
     "type": "class_member",
-    "explanation": "Defines a getter method that is accessed like a property.",
+    "explanation": "מגדיר מתודת getter שניגשים אליה כמו אל מאפיין.",
     "example": "class Circle {\n  constructor(public r: number) {}\n  get area(): number { return Math.PI * this.r ** 2; }\n}"
   },
   "set": {
     "type": "class_member",
-    "explanation": "Defines a setter method that runs when a property-like assignment happens.",
+    "explanation": "מגדיר מתודת setter שרצה כאשר מתבצעת השמה בסגנון מאפיין.",
     "example": "class User {\n  private _name = '';\n  set name(value: string) { this._name = value.trim(); }\n}"
   },
   "keyof": {
     "type": "type_operator",
-    "explanation": "Produces a union of the property names of a type.",
+    "explanation": "מייצר union של שמות המאפיינים של טיפוס.",
     "example": "interface Point { x: number; y: number; }\ntype PointKey = keyof Point; // 'x' | 'y'"
   },
   "typeof type operator": {
     "type": "type_operator",
-    "explanation": "In a type position, captures the static type of a value or variable.",
+    "explanation": "בעמדת טיפוס, לוכד את הטיפוס הסטטי של ערך או משתנה.",
     "example": "const user = { id: 1, name: 'Nina' };\ntype User = typeof user;"
   },
   "indexed access type": {
     "type": "type_operator",
-    "explanation": "Uses T[K] to look up the type of a property or element.",
+    "explanation": "משתמש ב-T[K] כדי לשלוף את הטיפוס של מאפיין או איבר.",
     "example": "type User = { name: string; age: number };\ntype Name = User['name']; // string"
   },
   "conditional type": {
     "type": "type_operator",
-    "explanation": "Chooses one type or another using a type-level condition with extends.",
+    "explanation": "בוחר טיפוס אחד או אחר בעזרת תנאי ברמת הטיפוסים עם extends.",
     "example": "type IsString<T> = T extends string ? true : false;"
   },
   "infer": {
     "type": "type_operator",
-    "explanation": "Introduces a type variable inside a conditional type to extract part of another type.",
+    "explanation": "מציג משתנה טיפוס בתוך conditional type כדי לחלץ חלק מטיפוס אחר.",
     "example": "type ElementType<T> = T extends (infer U)[] ? U : T;\ntype X = ElementType<string[]>; // string"
   },
   "mapped type": {
     "type": "type_operator",
-    "explanation": "Creates a new object type by transforming each key in another type.",
+    "explanation": "יוצר טיפוס אובייקט חדש על ידי טרנספורמציה של כל מפתח מטיפוס אחר.",
     "example": "type Readonlyish<T> = { readonly [K in keyof T]: T[K] };"
   },
   "template literal type": {
     "type": "type_operator",
-    "explanation": "Builds string literal types using template literal syntax at the type level.",
+    "explanation": "בונה טיפוסי מחרוזת literal באמצעות תחביר template literal ברמת הטיפוסים.",
     "example": "type EventName<T extends string> = `on${Capitalize<T>}`;\ntype Click = EventName<'click'>; // 'onClick'"
   },
   "satisfies": {
     "type": "typescript_keyword",
-    "explanation": "Checks that an expression matches a type while preserving the expression's more specific inferred type.",
+    "explanation": "בודק שביטוי מתאים לטיפוס תוך שמירה על הטיפוס הספציפי יותר ש-TypeScript הסיק לביטוי.",
     "example": "const config = { mode: 'dark' } satisfies { mode: string };"
   },
   "asserts": {
     "type": "type_predicate",
-    "explanation": "Declares that a function narrows or asserts a condition when it returns successfully.",
+    "explanation": "מצהיר שפונקציה מצמצמת או מאשרת תנאי כאשר היא חוזרת בהצלחה.",
     "example": "function assertString(value: unknown): asserts value is string {\n  if (typeof value !== 'string') throw new Error('Not a string');\n}"
   },
   "is": {
     "type": "type_predicate",
-    "explanation": "Used in a type predicate to tell TypeScript how a function narrows a value.",
+    "explanation": "משמש ב-type predicate כדי להגיד ל-TypeScript איך פונקציה מצמצמת ערך.",
     "example": "function isString(value: unknown): value is string {\n  return typeof value === 'string';\n}"
   },
   "unique": {
     "type": "type_operator",
-    "explanation": "Used with symbol to create a unique symbol type for strongly typed symbolic keys.",
+    "explanation": "משמש עם symbol כדי ליצור טיפוס unique symbol למפתחות סימבוליים עם טיפוס חזק.",
     "example": "const token: unique symbol = Symbol('token');\ntype Token = typeof token;"
   },
   "unique symbol": {
     "type": "typescript_type",
-    "explanation": "A subtype of symbol where each declaration has a distinct type identity.",
+    "explanation": "תת-טיפוס של symbol שבו לכל הצהרה יש זהות טיפוס נפרדת.",
     "example": "declare const ID: unique symbol;\ntype ID = typeof ID;"
   },
   "import type": {
     "type": "typescript_syntax",
-    "explanation": "Imports only types and erases the import from emitted JavaScript when possible.",
+    "explanation": "מייבא רק טיפוסים ומוחק את ה-import מה-JavaScript שנפלט כאשר אפשר.",
     "example": "import type { User } from './types';"
   },
   "export type": {
     "type": "typescript_syntax",
-    "explanation": "Exports only a type alias, interface, or other type-only declaration.",
+    "explanation": "מייצא רק type alias, interface או הצהרה אחרת של טיפוס בלבד.",
     "example": "export type ID = string | number;"
   },
   "as const": {
     "type": "typescript_syntax",
-    "explanation": "A const assertion that narrows literals and makes object/array properties readonly.",
+    "explanation": "const assertion שמצמצם literals והופך מאפייני אובייקט/מערך ל-readonly.",
     "example": "const roles = ['admin', 'user'] as const;\ntype Role = typeof roles[number];"
   },
   "as any": {
     "type": "typescript_syntax",
-    "explanation": "A type assertion that forces a value into any, disabling type checking for that value.",
+    "explanation": "type assertion שמכריח ערך להיות any, ובכך מבטל בדיקת טיפוסים עבור הערך הזה.",
     "example": "const unsafe = value as any;\nunsafe.anything();"
   },
   "non-null assertion": {
     "type": "typescript_syntax",
-    "explanation": "The postfix ! tells TypeScript to treat a value as not null or undefined.",
+    "explanation": "סימן ! בסוף ביטוי אומר ל-TypeScript להתייחס לערך כאילו אינו null או undefined.",
     "example": "const el = document.getElementById('app')!;\nel.textContent = 'Loaded';"
   },
   "definite assignment assertion": {
     "type": "typescript_syntax",
-    "explanation": "The ! on a class property tells TypeScript it will be assigned before use, even if not assigned in the constructor.",
+    "explanation": "סימן ! על מאפיין מחלקה אומר ל-TypeScript שהוא יוקצה לפני השימוש, גם אם לא הוקצה בבנאי.",
     "example": "class Service {\n  config!: Config;\n}"
   },
   "optional property": {
     "type": "typescript_syntax",
-    "explanation": "The ? after a property name marks it as optional.",
+    "explanation": "סימן ? אחרי שם מאפיין מסמן אותו כאופציונלי.",
     "example": "interface User {\n  name: string;\n  age?: number;\n}"
   },
   "optional parameter": {
     "type": "typescript_syntax",
-    "explanation": "The ? after a parameter name marks it as optional.",
+    "explanation": "סימן ? אחרי שם פרמטר מסמן אותו כאופציונלי.",
     "example": "function greet(name?: string) {\n  console.log(name ?? 'Guest');\n}"
   },
   "parameter property": {
     "type": "typescript_syntax",
-    "explanation": "A constructor parameter with a visibility or readonly modifier automatically becomes a class property.",
+    "explanation": "פרמטר בבנאי עם modifier של נראות או readonly הופך אוטומטית למאפיין מחלקה.",
     "example": "class Point {\n  constructor(public x: number, public y: number) {}\n}"
   },
   "generic constraint": {
     "type": "typescript_syntax",
-    "explanation": "Uses extends to restrict which types a generic parameter can accept.",
+    "explanation": "משתמש ב-extends כדי להגביל אילו טיפוסים פרמטר generic יכול לקבל.",
     "example": "function getId<T extends { id: string }>(value: T): string {\n  return value.id;\n}"
   },
   "generic default": {
     "type": "typescript_syntax",
-    "explanation": "Provides a default type for a generic parameter.",
+    "explanation": "מספק טיפוס ברירת מחדל לפרמטר generic.",
     "example": "type ApiResponse<T = unknown> = { data: T; ok: boolean };"
   },
   "const type parameter": {
     "type": "typescript_syntax",
-    "explanation": "A generic type parameter modifier that helps preserve literal types for inference.",
+    "explanation": "modifier לפרמטר טיפוס generic שעוזר לשמר טיפוסי literal בזמן inference.",
     "example": "function tuple<const T extends readonly unknown[]>(value: T): T {\n  return value;\n}"
   },
   "using": {
     "type": "javascript_keyword",
-    "explanation": "Declares a disposable resource for explicit resource management in supported ECMAScript/TypeScript targets.",
+    "explanation": "מכריז על משאב disposable לניהול משאבים מפורש ביעדי ECMAScript/TypeScript נתמכים.",
     "example": "using file = openFile();\n// disposed automatically at end of scope"
   },
   "await using": {
     "type": "syntax_pattern",
-    "explanation": "Declares an async-disposable resource whose cleanup is awaited at the end of scope.",
+    "explanation": "מכריז על משאב async-disposable שהניקוי שלו ממתין עם await בסוף ה-scope.",
     "example": "await using connection = await openConnection();"
   },
   "decorator": {
     "type": "typescript_syntax",
-    "explanation": "An @ expression applied to a class or class member to add metadata or transform behavior when decorators are enabled.",
+    "explanation": "ביטוי @ שמוחל על מחלקה או חבר מחלקה כדי להוסיף metadata או לשנות התנהגות כאשר decorators מופעלים.",
     "example": "@sealed\nclass Service {}"
   },
   "@": {
     "type": "operator",
-    "explanation": "Decorator prefix used before a decorator expression.",
+    "explanation": "קידומת decorator שמופיעה לפני ביטוי decorator.",
     "example": "@logged\nclass UserService {}"
   },
   "declare module": {
     "type": "declaration_syntax",
-    "explanation": "Declares the types for an external module, often in .d.ts files.",
+    "explanation": "מכריז על הטיפוסים של מודול חיצוני, לעיתים קרובות בקבצי .d.ts.",
     "example": "declare module 'my-lib' {\n  export function work(): void;\n}"
   },
   "declare global": {
     "type": "declaration_syntax",
-    "explanation": "Augments global types from inside a module declaration file.",
+    "explanation": "מרחיב טיפוסים גלובליים מתוך קובץ declaration שהוא מודול.",
     "example": "export {};\ndeclare global {\n  interface Window { appReady: boolean; }\n}"
   },
   "ambient declaration": {
     "type": "declaration_syntax",
-    "explanation": "A declaration that describes existing runtime code without emitting JavaScript.",
+    "explanation": "הצהרה שמתארת קוד קיים בזמן ריצה בלי לפלוט JavaScript.",
     "example": "declare const process: { env: Record<string, string | undefined> };"
   },
   "triple-slash directive": {
     "type": "compiler_directive",
-    "explanation": "A /// directive that gives the TypeScript compiler extra file, type, or lib information.",
+    "explanation": "הוראת /// שנותנת לקומפיילר TypeScript מידע נוסף על קבצים, טיפוסים או ספריות.",
     "example": "/// <reference types=\"node\" />"
   },
   "// @ts-ignore": {
     "type": "compiler_directive",
-    "explanation": "Suppresses the next line's TypeScript error without checking that an error actually exists.",
+    "explanation": "מדכא את שגיאת TypeScript בשורה הבאה בלי לבדוק שבאמת קיימת שגיאה.",
     "example": "// @ts-ignore\nlegacyCall(1, 2, 3);"
   },
   "// @ts-expect-error": {
     "type": "compiler_directive",
-    "explanation": "Suppresses the next line's TypeScript error and reports an error if no TypeScript error exists.",
+    "explanation": "מדכא את שגיאת TypeScript בשורה הבאה ומדווח שגיאה אם לא קיימת שם שגיאת TypeScript.",
     "example": "// @ts-expect-error legacy API intentionally wrong\nlegacyCall(1, 2, 3);"
   },
   "// @ts-check": {
     "type": "compiler_directive",
-    "explanation": "Enables TypeScript checking in a JavaScript file.",
+    "explanation": "מפעיל בדיקת TypeScript בקובץ JavaScript.",
     "example": "// @ts-check\nconst x = 1;"
   },
   "// @ts-nocheck": {
     "type": "compiler_directive",
-    "explanation": "Disables TypeScript checking for an entire file.",
+    "explanation": "מכבה בדיקת TypeScript עבור קובץ שלם.",
     "example": "// @ts-nocheck\nlegacyCode.doAnything();"
   },
   "string": {
     "type": "typescript_type",
-    "explanation": "Represents text values.",
+    "explanation": "מייצג ערכי טקסט.",
     "example": "let name: string = 'Nina';"
   },
   "number": {
     "type": "typescript_type",
-    "explanation": "Represents JavaScript numbers, including integers and floating-point values.",
+    "explanation": "מייצג מספרי JavaScript, כולל מספרים שלמים ומספרי נקודה צפה.",
     "example": "let age: number = 37;\nlet price: number = 19.99;"
   },
   "boolean": {
     "type": "typescript_type",
-    "explanation": "Represents true or false values.",
+    "explanation": "מייצג ערכי true או false.",
     "example": "let isActive: boolean = true;"
   },
   "bigint": {
     "type": "typescript_type",
-    "explanation": "Represents arbitrary-size integer values using JavaScript BigInt.",
+    "explanation": "מייצג ערכי מספר שלם בגודל שרירותי באמצעות JavaScript BigInt.",
     "example": "const huge: bigint = 9007199254740993n;"
   },
   "symbol": {
     "type": "typescript_type",
-    "explanation": "Represents JavaScript symbol values, commonly used as unique object keys.",
+    "explanation": "מייצג ערכי symbol של JavaScript, המשמשים לרוב כמפתחות אובייקט ייחודיים.",
     "example": "const key: symbol = Symbol('key');"
   },
   "object": {
     "type": "typescript_type",
-    "explanation": "Represents non-primitive values, such as arrays, functions, and plain objects.",
+    "explanation": "מייצג ערכים שאינם פרימיטיביים, כמו מערכים, פונקציות ואובייקטים רגילים.",
     "example": "let value: object = { id: 1 };"
   },
   "undefined": {
     "type": "typescript_type",
-    "explanation": "Represents the JavaScript value undefined, often meaning no value has been assigned.",
+    "explanation": "מייצג את הערך undefined של JavaScript, שלרוב פירושו שלא הוקצה ערך.",
     "example": "let x: undefined = undefined;"
   },
   "null": {
     "type": "literal",
-    "explanation": "Represents an intentional empty value. With strictNullChecks, null must be included in a type explicitly.",
+    "explanation": "מייצג ערך ריק מכוון. עם strictNullChecks, צריך לכלול null במפורש בטיפוס.",
     "example": "let selected: string | null = null;"
   },
   "true": {
     "type": "literal",
-    "explanation": "The boolean literal value true. It can also be used as a literal type.",
+    "explanation": "הערך הבוליאני literal true. אפשר להשתמש בו גם כטיפוס literal.",
     "example": "let ok: true = true;"
   },
   "false": {
     "type": "literal",
-    "explanation": "The boolean literal value false. It can also be used as a literal type.",
+    "explanation": "הערך הבוליאני literal false. אפשר להשתמש בו גם כטיפוס literal.",
     "example": "let disabled: false = false;"
   },
   "any": {
     "type": "typescript_type",
-    "explanation": "Disables type checking for a value. Useful as an escape hatch, but removes TypeScript safety.",
+    "explanation": "מבטל בדיקת טיפוסים עבור ערך. שימושי כפתח מילוט, אבל מסיר את הבטיחות של TypeScript.",
     "example": "let data: any = legacyApi();\ndata.whatever.deep.call();"
   },
   "unknown": {
     "type": "typescript_type",
-    "explanation": "A safer top type: any value can be assigned to unknown, but it must be narrowed before use.",
+    "explanation": "טיפוס עליון בטוח יותר: כל ערך יכול להיות מוקצה ל-unknown, אבל חייבים לצמצם אותו לפני שימוש.",
     "example": "let value: unknown = getData();\nif (typeof value === 'string') {\n  console.log(value.toUpperCase());\n}"
   },
   "never": {
     "type": "typescript_type",
-    "explanation": "Represents values that should never occur, often for functions that always throw or exhaustive checks.",
+    "explanation": "מייצג ערכים שלא אמורים להתרחש, לעיתים קרובות עבור פונקציות שתמיד זורקות או לבדיקות exhaustive.",
     "example": "function fail(message: string): never {\n  throw new Error(message);\n}"
   },
   "void type": {
     "type": "typescript_type",
-    "explanation": "A function return type meaning callers should not use a returned value.",
+    "explanation": "טיפוס החזרה של פונקציה שמשמעותו שהקוראים לא אמורים להשתמש בערך מוחזר.",
     "example": "function logMessage(msg: string): void {\n  console.log(msg);\n}"
   },
   "literal type": {
     "type": "typescript_type",
-    "explanation": "A type that allows only a specific literal value, such as a specific string, number, boolean, or bigint.",
+    "explanation": "טיפוס שמאפשר רק ערך literal מסוים, כמו מחרוזת, מספר, boolean או bigint מסוימים.",
     "example": "type Direction = 'up' | 'down';\nlet d: Direction = 'up';"
   },
   "union type": {
     "type": "typescript_type",
-    "explanation": "Combines multiple possible types with |, so a value can be any one of them.",
+    "explanation": "משלב כמה טיפוסים אפשריים בעזרת |, כך שערך יכול להיות כל אחד מהם.",
     "example": "function printId(id: string | number) {\n  console.log(id);\n}"
   },
   "intersection type": {
     "type": "typescript_type",
-    "explanation": "Combines multiple types with &, so a value must satisfy all of them.",
+    "explanation": "משלב כמה טיפוסים בעזרת &, כך שערך חייב לעמוד בכולם.",
     "example": "type Named = { name: string };\ntype Timestamped = { createdAt: Date };\ntype RecordItem = Named & Timestamped;"
   },
   "tuple": {
     "type": "typescript_type",
-    "explanation": "An array type with a fixed number of positions and known types for each position.",
+    "explanation": "טיפוס מערך עם מספר קבוע של מקומות וטיפוסים ידועים לכל מקום.",
     "example": "let point: [number, number] = [10, 20];"
   },
   "readonly tuple": {
     "type": "typescript_type",
-    "explanation": "A tuple whose elements cannot be reassigned.",
+    "explanation": "tuple שלא ניתן להקצות מחדש את האיברים שלו.",
     "example": "const point: readonly [number, number] = [10, 20];"
   },
   "array type": {
     "type": "typescript_type",
-    "explanation": "Represents a list of values of the same type.",
+    "explanation": "מייצג רשימה של ערכים מאותו טיפוס.",
     "example": "let scores: number[] = [90, 85, 100];\nlet names: Array<string> = ['Nina', 'Alex'];"
   },
   "function type": {
     "type": "typescript_type",
-    "explanation": "Describes the parameter and return types of a function value.",
+    "explanation": "מתאר את טיפוסי הפרמטרים וההחזרה של ערך פונקציה.",
     "example": "type Add = (a: number, b: number) => number;\nconst add: Add = (a, b) => a + b;"
   },
   "call signature": {
     "type": "typescript_type",
-    "explanation": "Describes a callable object type.",
+    "explanation": "מתאר טיפוס אובייקט שניתן לקרוא לו כפונקציה.",
     "example": "type Greeter = {\n  (name: string): string;\n  language: string;\n};"
   },
   "construct signature": {
     "type": "typescript_type",
-    "explanation": "Describes a type that can be called with new.",
+    "explanation": "מתאר טיפוס שאפשר לקרוא לו עם new.",
     "example": "type Ctor<T> = new (...args: any[]) => T;"
   },
   "index signature": {
     "type": "typescript_type",
-    "explanation": "Describes property types for keys that are not known in advance.",
+    "explanation": "מתאר טיפוסי מאפיינים עבור מפתחות שאינם ידועים מראש.",
     "example": "type Scores = { [name: string]: number };"
   },
   "discriminated union": {
     "type": "typescript_type",
-    "explanation": "A union where each member has a shared literal property used to narrow the exact case.",
+    "explanation": "union שבו לכל איבר יש מאפיין literal משותף המשמש לצמצום המקרה המדויק.",
     "example": "type Result =\n  | { ok: true; value: string }\n  | { ok: false; error: Error };\n\nfunction handle(r: Result) {\n  if (r.ok) console.log(r.value);\n}"
   },
   "recursive type": {
     "type": "typescript_type",
-    "explanation": "A type that refers to itself, often used for trees or nested data.",
+    "explanation": "טיפוס שמתייחס לעצמו, לרוב עבור עצים או נתונים מקוננים.",
     "example": "type Json = string | number | boolean | null | Json[] | { [key: string]: Json };"
   },
   "=>": {
     "type": "operator",
-    "explanation": "Arrow function syntax for creating functions, often with inferred parameter and return types.",
+    "explanation": "תחביר arrow function ליצירת פונקציות, לעיתים עם inference של פרמטרים וערכי החזרה.",
     "example": "const add = (a: number, b: number): number => a + b;"
   },
   "?": {
     "type": "optional_marker",
-    "explanation": "When used after a property or parameter name, marks it as optional in TypeScript.",
+    "explanation": "כאשר הוא מופיע אחרי שם מאפיין או פרמטר, הוא מסמן אותו כאופציונלי ב-TypeScript.",
     "example": "interface Options {\n  retries?: number;\n}"
   },
   "!": {
     "type": "operator",
-    "explanation": "Logical not at runtime, and non-null/definite-assignment assertion in TypeScript positions.",
+    "explanation": "NOT לוגי בזמן ריצה, וגם non-null או definite-assignment assertion במיקומי TypeScript.",
     "example": "const el = document.getElementById('app')!;\nif (!ready) console.log('wait');"
   },
   "?.": {
     "type": "operator",
-    "explanation": "Optional chaining safely accesses nested properties or calls without throwing on null or undefined.",
+    "explanation": "Optional chaining ניגש בבטחה למאפיינים מקוננים או לקריאות בלי לזרוק שגיאה על null או undefined.",
     "example": "const city = user?.address?.city;"
   },
   "??": {
     "type": "operator",
-    "explanation": "Nullish coalescing returns the right side only when the left side is null or undefined.",
+    "explanation": "Nullish coalescing מחזיר את הצד הימני רק כאשר הצד השמאלי הוא null או undefined.",
     "example": "const name = userName ?? 'Guest';"
   },
   "??=": {
     "type": "operator",
-    "explanation": "Nullish assignment assigns the right side only when the left side is null or undefined.",
+    "explanation": "השמת nullish מקצה את הצד הימני רק כאשר הצד השמאלי הוא null או undefined.",
     "example": "options.timeout ??= 5000;"
   },
   "||": {
     "type": "operator",
-    "explanation": "Logical OR returns the first truthy value or the last value.",
+    "explanation": "OR לוגי מחזיר את הערך הראשון שהוא truthy או את הערך האחרון.",
     "example": "const port = envPort || 3000;"
   },
   "&&": {
     "type": "operator",
-    "explanation": "Logical AND returns the first falsy value or the last value.",
+    "explanation": "AND לוגי מחזיר את הערך הראשון שהוא falsy או את הערך האחרון.",
     "example": "ready && start();"
   },
   "||=": {
     "type": "operator",
-    "explanation": "Logical OR assignment assigns only when the left side is falsy.",
+    "explanation": "השמת OR לוגי מקצה רק כאשר הצד השמאלי הוא falsy.",
     "example": "settings.theme ||= 'light';"
   },
   "&&=": {
     "type": "operator",
-    "explanation": "Logical AND assignment assigns only when the left side is truthy.",
+    "explanation": "השמת AND לוגי מקצה רק כאשר הצד השמאלי הוא truthy.",
     "example": "user.isActive &&= checkSubscription();"
   },
   "===": {
     "type": "operator",
-    "explanation": "Strict equality compares values without type coercion.",
+    "explanation": "שוויון מחמיר משווה ערכים בלי המרת טיפוסים.",
     "example": "if (value === 42) {\n  console.log('exact match');\n}"
   },
   "!==": {
     "type": "operator",
-    "explanation": "Strict inequality compares values without type coercion.",
+    "explanation": "אי-שוויון מחמיר משווה ערכים בלי המרת טיפוסים.",
     "example": "if (value !== null) {\n  console.log(value);\n}"
   },
   "==": {
     "type": "operator",
-    "explanation": "Loose equality compares values with JavaScript type coercion. Prefer === in most TypeScript code.",
+    "explanation": "שוויון רופף משווה ערכים עם המרות טיפוס של JavaScript. ברוב קוד TypeScript עדיף להשתמש ב-===.",
     "example": "if (value == null) {\n  console.log('null or undefined');\n}"
   },
   "!=": {
     "type": "operator",
-    "explanation": "Loose inequality compares values with JavaScript type coercion. Prefer !== in most TypeScript code.",
+    "explanation": "אי-שוויון רופף משווה ערכים עם המרות טיפוס של JavaScript. ברוב קוד TypeScript עדיף להשתמש ב-!==.",
     "example": "if (value != null) {\n  console.log(value);\n}"
   },
   "...": {
     "type": "operator",
-    "explanation": "Spread/rest syntax. Expands arrays/objects or collects remaining parameters/elements.",
+    "explanation": "תחביר spread/rest. מרחיב מערכים/אובייקטים או אוסף פרמטרים/איברים שנותרו.",
     "example": "function total(...nums: number[]) {\n  return nums.reduce((a, b) => a + b, 0);\n}\nconst copy = { ...user };"
   },
   "spread": {
     "type": "syntax_pattern",
-    "explanation": "The ... syntax used to expand arrays or objects into another array/object or function call.",
+    "explanation": "תחביר ... המשמש להרחבת מערכים או אובייקטים לתוך מערך/אובייקט אחר או קריאת פונקציה.",
     "example": "const b = [...a, 3, 4];\nconst merged = { ...defaults, ...options };"
   },
   "rest parameter": {
     "type": "syntax_pattern",
-    "explanation": "The ... syntax in a function parameter list that collects extra arguments into an array.",
+    "explanation": "תחביר ... ברשימת פרמטרים של פונקציה, שאוסף ארגומנטים נוספים למערך.",
     "example": "function total(...values: number[]): number {\n  return values.reduce((sum, n) => sum + n, 0);\n}"
   },
   "destructuring": {
     "type": "syntax_pattern",
-    "explanation": "Extracts values from arrays or objects into variables.",
+    "explanation": "מחלץ ערכים ממערכים או מאובייקטים לתוך משתנים.",
     "example": "const { name, age } = user;\nconst [first, second] = values;"
   },
   "template literal": {
     "type": "syntax_pattern",
-    "explanation": "A backtick string that supports interpolation with ${...} and multi-line text.",
+    "explanation": "מחרוזת עם backticks שתומכת בשילוב ביטויים עם ${...} ובטקסט רב-שורות.",
     "example": "const message = `Hello, ${name}!`;"
   },
   "optional chaining": {
     "type": "syntax_pattern",
-    "explanation": "Safe property access/call/index syntax using ?., returning undefined instead of throwing on nullish values.",
+    "explanation": "תחביר גישה/קריאה/אינדוקס בטוח עם ?., שמחזיר undefined במקום לזרוק על ערכי nullish.",
     "example": "const result = apiResponse?.data?.items?.[0];"
   },
   "nullish coalescing": {
     "type": "syntax_pattern",
-    "explanation": "Uses ?? to provide a fallback only for null or undefined.",
+    "explanation": "משתמש ב-?? כדי לספק ברירת מחדל רק עבור null או undefined.",
     "example": "const pageSize = input.pageSize ?? 20;"
   },
   "ternary operator": {
     "type": "operator",
-    "explanation": "A conditional expression that chooses between two expressions.",
+    "explanation": "ביטוי תנאי שבוחר בין שני ביטויים.",
     "example": "const label = isAdmin ? 'Admin' : 'User';"
   },
   "destructured parameter": {
     "type": "syntax_pattern",
-    "explanation": "A function parameter that destructures an object or array and can be typed inline.",
+    "explanation": "פרמטר פונקציה שמבצע destructuring לאובייקט או מערך ויכול לקבל טיפוס inline.",
     "example": "function greet({ name }: { name: string }) {\n  console.log(name);\n}"
   },
   "Object": {
     "type": "builtin_class",
-    "explanation": "The base constructor and namespace for object-related methods.",
+    "explanation": "הבנאי הבסיסי וה-namespace למתודות הקשורות לאובייקטים.",
     "example": "const keys = Object.keys({ a: 1, b: 2 });"
   },
   "Array": {
     "type": "builtin_class",
-    "explanation": "The JavaScript array constructor and type for ordered lists.",
+    "explanation": "בנאי המערכים של JavaScript והטיפוס לרשימות מסודרות.",
     "example": "const nums: Array<number> = [1, 2, 3];"
   },
   "String": {
     "type": "builtin_class",
-    "explanation": "The boxed String constructor and namespace for string conversion. Prefer the primitive type string for annotations.",
+    "explanation": "בנאי String העטוף וה-namespace להמרת מחרוזות. בהערות טיפוס עדיף להשתמש בטיפוס הפרימיטיבי string.",
     "example": "const s = String(42);\nlet name: string = 'Nina';"
   },
   "Number": {
     "type": "builtin_class",
-    "explanation": "The boxed Number constructor and number utility namespace. Prefer the primitive type number for annotations.",
+    "explanation": "בנאי Number העטוף ו-namespace לכלי number. בהערות טיפוס עדיף להשתמש בטיפוס הפרימיטיבי number.",
     "example": "const n = Number('42');\nNumber.isFinite(n);"
   },
   "Boolean": {
     "type": "builtin_class",
-    "explanation": "The boxed Boolean constructor. Prefer the primitive type boolean for annotations.",
+    "explanation": "בנאי Boolean העטוף. בהערות טיפוס עדיף להשתמש בטיפוס הפרימיטיבי boolean.",
     "example": "const b = Boolean(value);\nlet ok: boolean = true;"
   },
   "BigInt": {
     "type": "builtin_class",
-    "explanation": "Creates bigint values from integers or strings.",
+    "explanation": "יוצר ערכי bigint ממספרים שלמים או ממחרוזות.",
     "example": "const id = BigInt('9007199254740993');"
   },
   "Symbol": {
     "type": "builtin_class",
-    "explanation": "Creates unique symbol values.",
+    "explanation": "יוצר ערכי symbol ייחודיים.",
     "example": "const key = Symbol('key');"
   },
   "Date": {
     "type": "builtin_class",
-    "explanation": "Represents dates and times.",
+    "explanation": "מייצג תאריכים וזמנים.",
     "example": "const now: Date = new Date();"
   },
   "Math": {
     "type": "builtin_object",
-    "explanation": "Provides common mathematical constants and functions.",
+    "explanation": "מספק קבועים ופונקציות מתמטיים נפוצים.",
     "example": "const radius = 3;\nconst area = Math.PI * radius ** 2;"
   },
   "JSON": {
     "type": "builtin_object",
-    "explanation": "Provides JSON parsing and serialization functions.",
+    "explanation": "מספק פונקציות לפענוח ולסריאליזציה של JSON.",
     "example": "const data = JSON.parse('{\"ok\":true}') as { ok: boolean };\nconst text = JSON.stringify(data);"
   },
   "RegExp": {
     "type": "builtin_class",
-    "explanation": "Represents regular expressions for pattern matching strings.",
+    "explanation": "מייצג ביטויים רגולריים להתאמת תבניות במחרוזות.",
     "example": "const emailPattern: RegExp = /.+@.+/;"
   },
   "Promise": {
     "type": "builtin_class",
-    "explanation": "Represents a value that may be available later after an asynchronous operation.",
+    "explanation": "מייצג ערך שעשוי להיות זמין מאוחר יותר אחרי פעולה אסינכרונית.",
     "example": "const value: Promise<string> = fetchText();"
   },
   "Map": {
     "type": "builtin_class",
-    "explanation": "Stores key-value pairs where keys can be any value.",
+    "explanation": "מאחסן זוגות מפתח-ערך, כאשר מפתחות יכולים להיות כל ערך.",
     "example": "const scores = new Map<string, number>();\nscores.set('Nina', 100);"
   },
   "Set": {
     "type": "builtin_class",
-    "explanation": "Stores unique values.",
+    "explanation": "מאחסן ערכים ייחודיים.",
     "example": "const unique = new Set<number>([1, 1, 2]);"
   },
   "WeakMap": {
     "type": "builtin_class",
-    "explanation": "Stores weakly held object keys mapped to values, allowing garbage collection.",
+    "explanation": "מאחסן מפתחות אובייקט מוחזקים חלש שממופים לערכים, ומאפשר garbage collection.",
     "example": "const meta = new WeakMap<object, string>();"
   },
   "WeakSet": {
     "type": "builtin_class",
-    "explanation": "Stores weakly held object values, allowing garbage collection.",
+    "explanation": "מאחסן ערכי אובייקט מוחזקים חלש, ומאפשר garbage collection.",
     "example": "const seen = new WeakSet<object>();"
   },
   "Error": {
     "type": "builtin_class",
-    "explanation": "Base class for JavaScript runtime errors.",
+    "explanation": "מחלקת הבסיס לשגיאות runtime של JavaScript.",
     "example": "throw new Error('Something went wrong');"
   },
   "TypeError": {
     "type": "builtin_class",
-    "explanation": "Error thrown when a value is not of the expected runtime type.",
+    "explanation": "שגיאה שנזרקת כאשר ערך אינו מהטיפוס המצופה בזמן ריצה.",
     "example": "throw new TypeError('Expected string');"
   },
   "ReferenceError": {
     "type": "builtin_class",
-    "explanation": "Error thrown when code references a variable that does not exist.",
+    "explanation": "שגיאה שנזרקת כאשר קוד מתייחס למשתנה שאינו קיים.",
     "example": "// console.log(missingVariable); // ReferenceError"
   },
   "RangeError": {
     "type": "builtin_class",
-    "explanation": "Error thrown when a numeric value is outside an allowed range.",
+    "explanation": "שגיאה שנזרקת כאשר ערך מספרי מחוץ לטווח מותר.",
     "example": "throw new RangeError('Out of range');"
   },
   "SyntaxError": {
     "type": "builtin_class",
-    "explanation": "Error thrown when code or parsed text has invalid syntax.",
+    "explanation": "שגיאה שנזרקת כאשר קוד או טקסט מפוענח מכילים תחביר לא תקין.",
     "example": "try { JSON.parse('{bad'); } catch (err) { console.log(err instanceof SyntaxError); }"
   },
   "URIError": {
     "type": "builtin_class",
-    "explanation": "Error thrown by URI encoding/decoding functions when input is invalid.",
+    "explanation": "שגיאה שנזרקת על ידי פונקציות קידוד/פענוח URI כאשר הקלט לא תקין.",
     "example": "try { decodeURIComponent('%'); } catch (err) { console.log(err instanceof URIError); }"
   },
   "EvalError": {
     "type": "builtin_class",
-    "explanation": "Legacy error type related to eval. Rarely used in modern code.",
+    "explanation": "סוג שגיאה ישן שקשור ל-eval. כמעט לא משתמשים בו בקוד מודרני.",
     "example": "const err = new EvalError('eval issue');"
   },
   "AggregateError": {
     "type": "builtin_class",
-    "explanation": "Represents multiple errors grouped into one error object.",
+    "explanation": "מייצג כמה שגיאות שמקובצות לאובייקט שגיאה אחד.",
     "example": "throw new AggregateError([new Error('A'), new Error('B')], 'Many errors');"
   },
   "ArrayBuffer": {
     "type": "builtin_class",
-    "explanation": "Represents a fixed-length raw binary data buffer.",
+    "explanation": "מייצג חוצץ נתונים בינארי גולמי באורך קבוע.",
     "example": "const buffer = new ArrayBuffer(8);"
   },
   "DataView": {
     "type": "builtin_class",
-    "explanation": "Reads and writes multiple number types from an ArrayBuffer.",
+    "explanation": "קורא וכותב כמה טיפוסים מספריים מתוך ArrayBuffer.",
     "example": "const view = new DataView(new ArrayBuffer(8));\nview.setInt32(0, 123);"
   },
   "Int8Array": {
     "type": "typed_array",
-    "explanation": "A typed array for signed 8-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים חתומים בגודל 8 ביט.",
     "example": "const values = new Int8Array([1, 2, 3]);"
   },
   "Uint8Array": {
     "type": "typed_array",
-    "explanation": "A typed array for unsigned 8-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים לא חתומים בגודל 8 ביט.",
     "example": "const bytes = new Uint8Array([255, 0, 1]);"
   },
   "Uint8ClampedArray": {
     "type": "typed_array",
-    "explanation": "A typed array for unsigned 8-bit integers clamped between 0 and 255.",
+    "explanation": "מערך typed עבור מספרים שלמים לא חתומים בגודל 8 ביט שמוגבלים לטווח 0 עד 255.",
     "example": "const pixels = new Uint8ClampedArray([300, -10]);"
   },
   "Int16Array": {
     "type": "typed_array",
-    "explanation": "A typed array for signed 16-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים חתומים בגודל 16 ביט.",
     "example": "const values = new Int16Array([1000]);"
   },
   "Uint16Array": {
     "type": "typed_array",
-    "explanation": "A typed array for unsigned 16-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים לא חתומים בגודל 16 ביט.",
     "example": "const values = new Uint16Array([1000]);"
   },
   "Int32Array": {
     "type": "typed_array",
-    "explanation": "A typed array for signed 32-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים חתומים בגודל 32 ביט.",
     "example": "const values = new Int32Array([100000]);"
   },
   "Uint32Array": {
     "type": "typed_array",
-    "explanation": "A typed array for unsigned 32-bit integers.",
+    "explanation": "מערך typed עבור מספרים שלמים לא חתומים בגודל 32 ביט.",
     "example": "const values = new Uint32Array([100000]);"
   },
   "Float32Array": {
     "type": "typed_array",
-    "explanation": "A typed array for 32-bit floating-point numbers.",
+    "explanation": "מערך typed עבור מספרי נקודה צפה בגודל 32 ביט.",
     "example": "const values = new Float32Array([1.5, 2.5]);"
   },
   "Float64Array": {
     "type": "typed_array",
-    "explanation": "A typed array for 64-bit floating-point numbers.",
+    "explanation": "מערך typed עבור מספרי נקודה צפה בגודל 64 ביט.",
     "example": "const values = new Float64Array([1.5, 2.5]);"
   },
   "BigInt64Array": {
     "type": "typed_array",
-    "explanation": "A typed array for signed 64-bit bigint values.",
+    "explanation": "מערך typed עבור ערכי bigint חתומים בגודל 64 ביט.",
     "example": "const values = new BigInt64Array([1n, 2n]);"
   },
   "BigUint64Array": {
     "type": "typed_array",
-    "explanation": "A typed array for unsigned 64-bit bigint values.",
+    "explanation": "מערך typed עבור ערכי bigint לא חתומים בגודל 64 ביט.",
     "example": "const values = new BigUint64Array([1n, 2n]);"
   },
   "console": {
     "type": "runtime_global",
-    "explanation": "Common runtime object for logging messages in browsers and Node.js.",
+    "explanation": "אובייקט runtime נפוץ לרישום הודעות בדפדפנים וב-Node.js.",
     "example": "console.log('Hello');\nconsole.error('Oops');"
   },
   "fetch": {
     "type": "runtime_global",
-    "explanation": "Common Web/API function for making HTTP requests. Available in browsers and modern Node runtimes with appropriate libs.",
+    "explanation": "פונקציית Web/API נפוצה לביצוע בקשות HTTP. זמינה בדפדפנים ובסביבות Node מודרניות עם ספריות מתאימות.",
     "example": "const res = await fetch('/api/users');\nconst users = await res.json();"
   },
   "setTimeout": {
     "type": "runtime_global",
-    "explanation": "Runs a callback after a delay.",
+    "explanation": "מריץ callback אחרי השהיה.",
     "example": "setTimeout(() => console.log('Later'), 1000);"
   },
   "setInterval": {
     "type": "runtime_global",
-    "explanation": "Runs a callback repeatedly after a delay interval.",
+    "explanation": "מריץ callback שוב ושוב אחרי מרווח השהיה.",
     "example": "const id = setInterval(() => console.log('tick'), 1000);"
   },
   "clearTimeout": {
     "type": "runtime_global",
-    "explanation": "Cancels a timeout created by setTimeout.",
+    "explanation": "מבטל timeout שנוצר על ידי setTimeout.",
     "example": "const id = setTimeout(run, 1000);\nclearTimeout(id);"
   },
   "clearInterval": {
     "type": "runtime_global",
-    "explanation": "Cancels an interval created by setInterval.",
+    "explanation": "מבטל interval שנוצר על ידי setInterval.",
     "example": "const id = setInterval(run, 1000);\nclearInterval(id);"
   },
   "queueMicrotask": {
     "type": "runtime_global",
-    "explanation": "Queues a function to run as a microtask after the current task completes.",
+    "explanation": "מוסיף פונקציה לתור microtask שתרוץ אחרי שהמשימה הנוכחית מסתיימת.",
     "example": "queueMicrotask(() => console.log('microtask'));"
   },
   "parseInt": {
     "type": "global_function",
-    "explanation": "Parses a string and returns an integer.",
+    "explanation": "מנתח מחרוזת ומחזיר מספר שלם.",
     "example": "const n = parseInt('42px', 10);"
   },
   "parseFloat": {
     "type": "global_function",
-    "explanation": "Parses a string and returns a floating-point number.",
+    "explanation": "מנתח מחרוזת ומחזיר מספר נקודה צפה.",
     "example": "const n = parseFloat('3.14');"
   },
   "isNaN": {
     "type": "global_function",
-    "explanation": "Checks whether a value is NaN after coercion. Prefer Number.isNaN for stricter checks.",
+    "explanation": "בודק האם ערך הוא NaN אחרי המרה. לבדיקות מחמירות יותר עדיף Number.isNaN.",
     "example": "isNaN('hello');"
   },
   "isFinite": {
     "type": "global_function",
-    "explanation": "Checks whether a value is finite after coercion. Prefer Number.isFinite for stricter checks.",
+    "explanation": "בודק האם ערך סופי אחרי המרה. לבדיקות מחמירות יותר עדיף Number.isFinite.",
     "example": "isFinite('42');"
   },
   "encodeURI": {
     "type": "global_function",
-    "explanation": "Encodes a full URI by escaping characters where needed.",
+    "explanation": "מקודד URI מלא על ידי escape לתווים לפי הצורך.",
     "example": "const url = encodeURI('https://example.com/a b');"
   },
   "decodeURI": {
     "type": "global_function",
-    "explanation": "Decodes a URI previously encoded with encodeURI.",
+    "explanation": "מפענח URI שקודד קודם באמצעות encodeURI.",
     "example": "const url = decodeURI(encoded);"
   },
   "encodeURIComponent": {
     "type": "global_function",
-    "explanation": "Encodes a URI component such as a query parameter value.",
+    "explanation": "מקודד רכיב URI כמו ערך של פרמטר query.",
     "example": "const q = encodeURIComponent('hello world');"
   },
   "decodeURIComponent": {
     "type": "global_function",
-    "explanation": "Decodes a URI component.",
+    "explanation": "מפענח רכיב URI.",
     "example": "const text = decodeURIComponent(q);"
   },
   "globalThis": {
     "type": "runtime_global",
-    "explanation": "Standard global object reference that works across environments.",
+    "explanation": "הפניה סטנדרטית לאובייקט הגלובלי שעובדת בסביבות שונות.",
     "example": "globalThis.console.log('Hello');"
   },
   "window": {
     "type": "dom_global",
-    "explanation": "The browser global object for a window/tab. Available when DOM libs are included.",
+    "explanation": "האובייקט הגלובלי של הדפדפן עבור חלון/טאב. זמין כאשר ספריות DOM כלולות.",
     "example": "window.addEventListener('load', () => console.log('ready'));"
   },
   "document": {
     "type": "dom_global",
-    "explanation": "The browser DOM document object. Available when DOM libs are included.",
+    "explanation": "אובייקט מסמך ה-DOM של הדפדפן. זמין כאשר ספריות DOM כלולות.",
     "example": "const el = document.getElementById('app');"
   },
   "HTMLElement": {
     "type": "dom_type",
-    "explanation": "Base DOM type for HTML elements.",
+    "explanation": "טיפוס DOM בסיסי לאלמנטים של HTML.",
     "example": "const el = document.getElementById('app') as HTMLElement;"
   },
   "HTMLInputElement": {
     "type": "dom_type",
-    "explanation": "DOM type for input elements, exposing properties like value and checked.",
+    "explanation": "טיפוס DOM לאלמנטים מסוג input, שחושף מאפיינים כמו value ו-checked.",
     "example": "const input = document.querySelector('input') as HTMLInputElement;\nconsole.log(input.value);"
   },
   "Event": {
     "type": "dom_type",
-    "explanation": "Base DOM event type.",
+    "explanation": "טיפוס בסיסי לאירועי DOM.",
     "example": "function handle(event: Event) {\n  console.log(event.type);\n}"
   },
   "MouseEvent": {
     "type": "dom_type",
-    "explanation": "DOM event type for mouse interactions.",
+    "explanation": "טיפוס אירוע DOM לאינטראקציות עכבר.",
     "example": "document.addEventListener('click', (event: MouseEvent) => {\n  console.log(event.clientX);\n});"
   },
   "KeyboardEvent": {
     "type": "dom_type",
-    "explanation": "DOM event type for keyboard interactions.",
+    "explanation": "טיפוס אירוע DOM לאינטראקציות מקלדת.",
     "example": "document.addEventListener('keydown', (event: KeyboardEvent) => {\n  console.log(event.key);\n});"
   },
   "Response": {
     "type": "dom_type",
-    "explanation": "Type for HTTP responses returned by fetch.",
+    "explanation": "טיפוס לתגובות HTTP שמוחזרות על ידי fetch.",
     "example": "const res: Response = await fetch('/api');"
   },
   "Request": {
     "type": "dom_type",
-    "explanation": "Type representing a fetch request.",
+    "explanation": "טיפוס שמייצג בקשת fetch.",
     "example": "const req = new Request('/api/users');"
   },
   "Headers": {
     "type": "dom_type",
-    "explanation": "Type for HTTP headers used with fetch requests and responses.",
+    "explanation": "טיפוס לכותרות HTTP שמשמשות בבקשות ותגובות fetch.",
     "example": "const headers = new Headers({ Accept: 'application/json' });"
   },
   "URL": {
     "type": "web_api_class",
-    "explanation": "Parses and manipulates URLs.",
+    "explanation": "מנתח ומשנה כתובות URL.",
     "example": "const url = new URL('https://example.com?x=1');\nconsole.log(url.searchParams.get('x'));"
   },
   "URLSearchParams": {
     "type": "web_api_class",
-    "explanation": "Represents and manipulates query-string parameters.",
+    "explanation": "מייצג ומשנה פרמטרים של query string.",
     "example": "const params = new URLSearchParams({ q: 'test' });"
   },
   "Partial": {
     "type": "utility_type",
-    "explanation": "Makes all properties of a type optional.",
+    "explanation": "הופך את כל המאפיינים של טיפוס לאופציונליים.",
     "example": "type UserPatch = Partial<User>;"
   },
   "Required": {
     "type": "utility_type",
-    "explanation": "Makes all properties of a type required.",
+    "explanation": "הופך את כל המאפיינים של טיפוס לחובה.",
     "example": "type CompleteUser = Required<User>;"
   },
   "Readonly": {
     "type": "utility_type",
-    "explanation": "Makes all properties of a type readonly.",
+    "explanation": "הופך את כל המאפיינים של טיפוס ל-readonly.",
     "example": "type FrozenUser = Readonly<User>;"
   },
   "Record": {
     "type": "utility_type",
-    "explanation": "Creates an object type with keys K and values T.",
+    "explanation": "יוצר טיפוס אובייקט עם מפתחות K וערכים T.",
     "example": "type Scores = Record<string, number>;"
   },
   "Pick": {
     "type": "utility_type",
-    "explanation": "Creates a type by selecting specific properties from another type.",
+    "explanation": "יוצר טיפוס על ידי בחירת מאפיינים מסוימים מטיפוס אחר.",
     "example": "type UserName = Pick<User, 'name'>;"
   },
   "Omit": {
     "type": "utility_type",
-    "explanation": "Creates a type by removing specific properties from another type.",
+    "explanation": "יוצר טיפוס על ידי הסרת מאפיינים מסוימים מטיפוס אחר.",
     "example": "type PublicUser = Omit<User, 'password'>;"
   },
   "Exclude": {
     "type": "utility_type",
-    "explanation": "Removes union members that are assignable to another type.",
+    "explanation": "מסיר איברי union שניתנים להשמה לטיפוס אחר.",
     "example": "type NonNullish = Exclude<string | null | undefined, null | undefined>;"
   },
   "Extract": {
     "type": "utility_type",
-    "explanation": "Keeps union members that are assignable to another type.",
+    "explanation": "משאיר איברי union שניתנים להשמה לטיפוס אחר.",
     "example": "type Strings = Extract<string | number | boolean, string>;"
   },
   "NonNullable": {
     "type": "utility_type",
-    "explanation": "Removes null and undefined from a type.",
+    "explanation": "מסיר null ו-undefined מטיפוס.",
     "example": "type Name = NonNullable<string | null>;"
   },
   "Parameters": {
     "type": "utility_type",
-    "explanation": "Gets a tuple of a function type's parameter types.",
+    "explanation": "מקבל tuple של טיפוסי הפרמטרים של טיפוס פונקציה.",
     "example": "type Args = Parameters<(a: string, b: number) => void>;"
   },
   "ConstructorParameters": {
     "type": "utility_type",
-    "explanation": "Gets a tuple of constructor parameter types from a class/constructor type.",
+    "explanation": "מקבל tuple של טיפוסי פרמטרי הבנאי ממחלקה/טיפוס בנאי.",
     "example": "type DateArgs = ConstructorParameters<typeof Date>;"
   },
   "ReturnType": {
     "type": "utility_type",
-    "explanation": "Gets the return type of a function type.",
+    "explanation": "מקבל את טיפוס ההחזרה של טיפוס פונקציה.",
     "example": "type Result = ReturnType<typeof parseUser>;"
   },
   "InstanceType": {
     "type": "utility_type",
-    "explanation": "Gets the instance type created by a constructor type.",
+    "explanation": "מקבל את טיפוס המופע שנוצר על ידי טיפוס בנאי.",
     "example": "type DateInstance = InstanceType<typeof Date>;"
   },
   "NoInfer": {
     "type": "utility_type",
-    "explanation": "Blocks inference into a type position so another source controls the generic type.",
+    "explanation": "חוסם inference בעמדת טיפוס כדי שמקור אחר יקבע את הטיפוס הגנרי.",
     "example": "function choose<T>(values: T[], fallback: NoInfer<T>): T {\n  return values[0] ?? fallback;\n}"
   },
   "ThisParameterType": {
     "type": "utility_type",
-    "explanation": "Extracts the type of a function's this parameter.",
+    "explanation": "מחלץ את הטיפוס של פרמטר this של פונקציה.",
     "example": "function f(this: Date) { return this.getTime(); }\ntype T = ThisParameterType<typeof f>;"
   },
   "OmitThisParameter": {
     "type": "utility_type",
-    "explanation": "Removes the this parameter from a function type.",
+    "explanation": "מסיר את פרמטר this מטיפוס פונקציה.",
     "example": "type Bound = OmitThisParameter<typeof f>;"
   },
   "ThisType": {
     "type": "utility_type",
-    "explanation": "Marks the contextual this type for object literals. It is a marker interface.",
+    "explanation": "מסמן את טיפוס ה-this ההקשרי עבור object literals. זהו marker interface.",
     "example": "const obj: { x: number; methods: { getX(): number } } & ThisType<{ x: number }> = {\n  x: 1,\n  methods: { getX() { return this.x; } }\n};"
   },
   "Awaited": {
     "type": "utility_type",
-    "explanation": "Recursively unwraps the resolved type of a Promise-like value.",
+    "explanation": "פותח רקורסיבית את הטיפוס שנפתר של ערך דמוי Promise.",
     "example": "type Value = Awaited<Promise<Promise<string>>>; // string"
   },
   "Uppercase": {
     "type": "utility_type",
-    "explanation": "Converts a string literal type to uppercase.",
+    "explanation": "ממיר טיפוס string literal לאותיות גדולות.",
     "example": "type Loud = Uppercase<'hello'>; // 'HELLO'"
   },
   "Lowercase": {
     "type": "utility_type",
-    "explanation": "Converts a string literal type to lowercase.",
+    "explanation": "ממיר טיפוס string literal לאותיות קטנות.",
     "example": "type Quiet = Lowercase<'HELLO'>; // 'hello'"
   },
   "Capitalize": {
     "type": "utility_type",
-    "explanation": "Capitalizes the first character of a string literal type.",
+    "explanation": "הופך את התו הראשון של טיפוס string literal לאות גדולה.",
     "example": "type Name = Capitalize<'user'>; // 'User'"
   },
   "Uncapitalize": {
     "type": "utility_type",
-    "explanation": "Lowercases the first character of a string literal type.",
+    "explanation": "הופך את התו הראשון של טיפוס string literal לאות קטנה.",
     "example": "type Name = Uncapitalize<'User'>; // 'user'"
   },
   "ArrayLike": {
     "type": "lib_type",
-    "explanation": "Describes an object with numeric indexes and a length, similar to an array but not necessarily an Array.",
+    "explanation": "מתאר אובייקט עם אינדקסים מספריים ו-length, בדומה למערך אך לא בהכרח Array.",
     "example": "function first<T>(xs: ArrayLike<T>): T | undefined {\n  return xs[0];\n}"
   },
   "ReadonlyArray": {
     "type": "lib_type",
-    "explanation": "An array type whose elements cannot be modified through that reference.",
+    "explanation": "טיפוס מערך שלא ניתן לשנות את איבריו דרך ההפניה הזו.",
     "example": "const nums: ReadonlyArray<number> = [1, 2, 3];"
   },
   "PromiseLike": {
     "type": "lib_type",
-    "explanation": "Describes values that behave like Promises because they have a then method.",
+    "explanation": "מתאר ערכים שמתנהגים כמו Promises כי יש להם מתודת then.",
     "example": "function accept<T>(p: PromiseLike<T>) {\n  return p.then(value => value);\n}"
   },
   "Iterable": {
     "type": "lib_type",
-    "explanation": "Describes values that can be iterated with for...of.",
+    "explanation": "מתאר ערכים שאפשר לעבור עליהם עם for...of.",
     "example": "function logAll<T>(items: Iterable<T>) {\n  for (const item of items) console.log(item);\n}"
   },
   "Iterator": {
     "type": "lib_type",
-    "explanation": "Describes an object that produces values one at a time through next().",
+    "explanation": "מתאר אובייקט שמייצר ערכים אחד בכל פעם דרך next().",
     "example": "const iterator: Iterator<number> = [1, 2][Symbol.iterator]();"
   },
   "Generator": {
     "type": "lib_type",
-    "explanation": "A type for generator objects returned from generator functions.",
+    "explanation": "טיפוס לאובייקטי generator שמוחזרים מפונקציות generator.",
     "example": "function* ids(): Generator<number> {\n  yield 1;\n}"
   },
   "AsyncIterable": {
     "type": "lib_type",
-    "explanation": "Describes values that can be iterated asynchronously with for await...of.",
+    "explanation": "מתאר ערכים שאפשר לעבור עליהם אסינכרונית עם for await...of.",
     "example": "async function readAll<T>(items: AsyncIterable<T>) {\n  for await (const item of items) console.log(item);\n}"
   },
   "AsyncIterator": {
     "type": "lib_type",
-    "explanation": "Describes an async iterator object whose next method returns promises.",
+    "explanation": "מתאר אובייקט async iterator שמתודת next שלו מחזירה promises.",
     "example": "let it: AsyncIterator<string>;"
   },
   "AsyncGenerator": {
     "type": "lib_type",
-    "explanation": "A type for async generator objects returned from async generator functions.",
+    "explanation": "טיפוס לאובייקטי async generator שמוחזרים מפונקציות async generator.",
     "example": "async function* stream(): AsyncGenerator<string> {\n  yield 'a';\n}"
   },
   "PropertyKey": {
     "type": "lib_type",
-    "explanation": "A built-in alias for string | number | symbol, the valid JavaScript property key types.",
+    "explanation": "כינוי מובנה ל-string | number | symbol, שהם טיפוסי המפתח התקפים של מאפייני JavaScript.",
     "example": "function get(obj: object, key: PropertyKey) {\n  return key in obj;\n}"
   },
   "Function": {
     "type": "lib_type",
-    "explanation": "The broad type for callable JavaScript Function objects. Prefer specific function types when possible.",
+    "explanation": "הטיפוס הרחב לאובייקטי Function קריאים של JavaScript. כשאפשר, עדיף להשתמש בטיפוסי פונקציה ספציפיים.",
     "example": "let fn: Function = () => 123;"
   },
   "CallableFunction": {
     "type": "lib_type",
-    "explanation": "Library interface for callable function objects with stronger call/apply/bind typing.",
+    "explanation": "ממשק ספרייה לאובייקטי פונקציה קריאים עם טיפוס חזק יותר ל-call/apply/bind.",
     "example": "declare const fn: CallableFunction;"
   },
   "NewableFunction": {
     "type": "lib_type",
-    "explanation": "Library interface for constructor-like function objects.",
+    "explanation": "ממשק ספרייה לאובייקטי פונקציה שניתן להשתמש בהם כבנאים.",
     "example": "declare const Ctor: NewableFunction;"
   },
   "IArguments": {
     "type": "lib_type",
-    "explanation": "Type for the legacy arguments object inside non-arrow functions.",
+    "explanation": "טיפוס לאובייקט arguments הישן בתוך פונקציות שאינן arrow functions.",
     "example": "function f() {\n  const args: IArguments = arguments;\n}"
   },
   "ReadonlyMap": {
     "type": "lib_type",
-    "explanation": "A Map type exposed through read-only methods.",
+    "explanation": "טיפוס Map שנחשף דרך מתודות לקריאה בלבד.",
     "example": "const m: ReadonlyMap<string, number> = new Map([['a', 1]]);"
   },
   "ReadonlySet": {
     "type": "lib_type",
-    "explanation": "A Set type exposed through read-only methods.",
+    "explanation": "טיפוס Set שנחשף דרך מתודות לקריאה בלבד.",
     "example": "const s: ReadonlySet<number> = new Set([1, 2]);"
   },
   "WeakRef": {
     "type": "builtin_class",
-    "explanation": "Represents a weak reference to an object, if the target environment includes it.",
+    "explanation": "מייצג הפניה חלשה לאובייקט, אם סביבת היעד כוללת אותו.",
     "example": "const ref = new WeakRef({ value: 1 });\nconst value = ref.deref();"
   },
   "FinalizationRegistry": {
     "type": "builtin_class",
-    "explanation": "Registers cleanup callbacks that may run after objects are garbage-collected.",
+    "explanation": "רושם callbacks לניקוי שעשויים לרוץ אחרי שאובייקטים נאספים על ידי garbage collection.",
     "example": "const registry = new FinalizationRegistry((heldValue) => console.log(heldValue));"
   },
   "Disposable": {
     "type": "lib_type",
-    "explanation": "Interface for explicitly disposable resources used by using declarations.",
+    "explanation": "ממשק למשאבים disposable מפורשים שמשמשים בהצהרות using.",
     "example": "class FileHandle implements Disposable {\n  [Symbol.dispose]() { /* close */ }\n}"
   },
   "AsyncDisposable": {
     "type": "lib_type",
-    "explanation": "Interface for resources that need asynchronous cleanup with await using.",
+    "explanation": "ממשק למשאבים שצריכים ניקוי אסינכרוני עם await using.",
     "example": "class Connection implements AsyncDisposable {\n  async [Symbol.asyncDispose]() { /* close async */ }\n}"
   },
   "require": {
     "type": "node_global",
-    "explanation": "CommonJS function for importing modules in Node.js. ES module import is preferred in modern TypeScript when possible.",
+    "explanation": "פונקציית CommonJS לייבוא מודולים ב-Node.js. ב-TypeScript מודרני עדיף להשתמש ב-ES module import כשאפשר.",
     "example": "const fs = require('node:fs');"
   },
   "exports": {
     "type": "node_global",
-    "explanation": "CommonJS shortcut for adding named exports to module.exports.",
+    "explanation": "קיצור CommonJS להוספת exports בשם אל module.exports.",
     "example": "exports.add = (a: number, b: number) => a + b;"
   },
   "process": {
     "type": "node_global",
-    "explanation": "Node.js global object containing process information, environment variables, and exit controls.",
+    "explanation": "אובייקט גלובלי של Node.js שמכיל מידע על התהליך, משתני סביבה ובקרות יציאה.",
     "example": "console.log(process.env.NODE_ENV);"
   },
   "Buffer": {
     "type": "node_global",
-    "explanation": "Node.js class for working with binary data.",
+    "explanation": "מחלקת Node.js לעבודה עם נתונים בינאריים.",
     "example": "const buf = Buffer.from('hello');"
   },
   "__dirname": {
     "type": "node_global",
-    "explanation": "CommonJS variable containing the current module directory path.",
+    "explanation": "משתנה CommonJS שמכיל את נתיב התיקייה של המודול הנוכחי.",
     "example": "console.log(__dirname);"
   },
   "__filename": {
     "type": "node_global",
-    "explanation": "CommonJS variable containing the current module file path.",
+    "explanation": "משתנה CommonJS שמכיל את נתיב קובץ המודול הנוכחי.",
     "example": "console.log(__filename);"
   },
   "NodeJS": {
     "type": "namespace",
-    "explanation": "Namespace commonly provided by @types/node for Node-specific TypeScript types.",
+    "explanation": "namespace שמסופק לרוב על ידי @types/node עבור טיפוסי TypeScript ספציפיים ל-Node.",
     "example": "let timer: NodeJS.Timeout = setTimeout(() => {}, 1000);"
   },
   "global namespace": {
     "type": "namespace",
-    "explanation": "The top-level namespace where globally available types and values live.",
+    "explanation": "ה-namespace העליון שבו חיים טיפוסים וערכים גלובליים.",
     "example": "declare global {\n  interface Window { userId: string; }\n}"
   },
   "ES module": {
     "type": "module_system",
-    "explanation": "A file using import/export syntax with its own module scope.",
+    "explanation": "קובץ שמשתמש בתחביר import/export עם scope מודול משלו.",
     "example": "export const version = '1.0.0';\nimport { version } from './version';"
   },
   "CommonJS": {
     "type": "module_system",
-    "explanation": "Node's older module system based on require and module.exports.",
+    "explanation": "מערכת המודולים הישנה יותר של Node המבוססת על require ו-module.exports.",
     "example": "const path = require('node:path');\nmodule.exports = { path };"
   },
   ".d.ts": {
     "type": "declaration_file",
-    "explanation": "A TypeScript declaration file that describes types for JavaScript or generated code without implementation.",
+    "explanation": "קובץ declaration של TypeScript שמתאר טיפוסים עבור JavaScript או קוד שנוצר, ללא מימוש.",
     "example": "// index.d.ts\nexport interface User { id: string; }"
   },
   "tsconfig.json": {
     "type": "config",
-    "explanation": "TypeScript project configuration file that controls compiler options and included files.",
+    "explanation": "קובץ תצורת פרויקט TypeScript ששולט באפשרויות הקומפיילר ובקבצים הכלולים.",
     "example": "{\n  \"compilerOptions\": {\n    \"strict\": true\n  }\n}"
   },
   "strict": {
     "type": "compiler_option",
-    "explanation": "Compiler option family that enables stronger type checking rules.",
+    "explanation": "משפחת אפשרויות קומפיילר שמפעילה כללי בדיקת טיפוסים חזקים יותר.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"strict\": true } }"
   },
   "noImplicitAny": {
     "type": "compiler_option",
-    "explanation": "Reports an error when TypeScript would infer any implicitly.",
+    "explanation": "מדווחת שגיאה כאשר TypeScript היה מסיק any באופן מרומז.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"noImplicitAny\": true } }"
   },
   "strictNullChecks": {
     "type": "compiler_option",
-    "explanation": "Makes null and undefined distinct types that must be handled explicitly.",
+    "explanation": "הופכת את null ו-undefined לטיפוסים נפרדים שחייבים לטפל בהם במפורש.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"strictNullChecks\": true } }"
   },
   "target": {
     "type": "compiler_option",
-    "explanation": "Sets the JavaScript language version TypeScript emits.",
+    "explanation": "קובע את גרסת שפת JavaScript ש-TypeScript יפלוט.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"target\": \"ES2022\" } }"
   },
   "module compiler option": {
     "type": "compiler_option",
-    "explanation": "Controls the emitted module format or module behavior.",
+    "explanation": "שולטת בפורמט המודולים הנפלט או בהתנהגות המודולים.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"module\": \"NodeNext\" } }"
   },
   "lib": {
     "type": "compiler_option",
-    "explanation": "Chooses which built-in library declarations are included, such as DOM or ES2023.",
+    "explanation": "בוחרת אילו הצהרות ספרייה מובנות ייכללו, כמו DOM או ES2023.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"lib\": [\"ES2023\", \"DOM\"] } }"
   },
   "jsx": {
     "type": "compiler_option",
-    "explanation": "Controls JSX parsing/emission for React or other JSX runtimes.",
+    "explanation": "שולטת בפענוח/פליטה של JSX עבור React או סביבות JSX אחרות.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"jsx\": \"react-jsx\" } }"
   },
   "types": {
     "type": "compiler_option",
-    "explanation": "Limits which @types packages are included globally.",
+    "explanation": "מגבילה אילו חבילות @types ייכללו באופן גלובלי.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"types\": [\"node\"] } }"
   },
   "paths": {
     "type": "compiler_option",
-    "explanation": "Defines import path aliases when used with baseUrl/module resolution.",
+    "explanation": "מגדירה aliases לנתיבי import כאשר משתמשים ב-baseUrl/module resolution.",
     "example": "// tsconfig.json\n{ \"compilerOptions\": { \"paths\": { \"@/*\": [\"src/*\"] } } }"
   },
   "Array.map": {
     "type": "method",
-    "explanation": "Creates a new array by transforming each item.",
+    "explanation": "יוצר מערך חדש על ידי טרנספורמציה של כל איבר.",
     "example": "const doubled = [1, 2, 3].map((n): number => n * 2);"
   },
   "Array.filter": {
     "type": "method",
-    "explanation": "Creates a new array containing only items that pass a test.",
+    "explanation": "יוצר מערך חדש שמכיל רק איברים שעוברים בדיקה.",
     "example": "const adults = users.filter(user => user.age >= 18);"
   },
   "Array.reduce": {
     "type": "method",
-    "explanation": "Combines array items into one accumulated value.",
+    "explanation": "משלב איברי מערך לערך מצטבר אחד.",
     "example": "const total = nums.reduce((sum, n) => sum + n, 0);"
   },
   "Array.find": {
     "type": "method",
-    "explanation": "Returns the first array item that matches a predicate, or undefined.",
+    "explanation": "מחזיר את איבר המערך הראשון שתואם predicate, או undefined.",
     "example": "const user = users.find(u => u.id === id);"
   },
   "Array.includes": {
     "type": "method",
-    "explanation": "Checks whether an array contains a value.",
+    "explanation": "בודק האם מערך מכיל ערך.",
     "example": "const hasAdmin = roles.includes('admin');"
   },
   "String.includes": {
     "type": "method",
-    "explanation": "Checks whether a string contains a substring.",
+    "explanation": "בודק האם מחרוזת מכילה תת-מחרוזת.",
     "example": "const hasAt = email.includes('@');"
   },
   "String.split": {
     "type": "method",
-    "explanation": "Splits a string into an array of substrings.",
+    "explanation": "מפצל מחרוזת למערך של תתי-מחרוזות.",
     "example": "const parts = 'a,b,c'.split(',');"
   },
   "String.trim": {
     "type": "method",
-    "explanation": "Removes whitespace from both ends of a string.",
+    "explanation": "מסיר רווחים לבנים משני קצות המחרוזת.",
     "example": "const cleaned = input.trim();"
   },
   "Promise.all": {
     "type": "method",
-    "explanation": "Waits for all promises to resolve or rejects when one rejects.",
+    "explanation": "ממתין שכל ה-promises ייפתרו או נדחה כאשר אחד מהם נדחה.",
     "example": "const [user, posts] = await Promise.all([loadUser(), loadPosts()]);"
   },
   "Promise.race": {
     "type": "method",
-    "explanation": "Settles as soon as the first promise settles.",
+    "explanation": "מסתיים ברגע שה-promise הראשון מסתיים, בין אם בהצלחה ובין אם בכישלון.",
     "example": "const winner = await Promise.race([slow(), fast()]);"
   },
   "Promise.allSettled": {
     "type": "method",
-    "explanation": "Waits for all promises to settle and returns status objects for each one.",
+    "explanation": "ממתין שכל ה-promises יסתיימו ומחזיר אובייקטי סטטוס עבור כל אחד.",
     "example": "const results = await Promise.allSettled(tasks);"
   },
   "Promise.any": {
     "type": "method",
-    "explanation": "Resolves with the first fulfilled promise, or rejects if all reject.",
+    "explanation": "נפתר עם ה-promise הראשון שהצליח, או נדחה אם כולם נדחו.",
     "example": "const firstGood = await Promise.any(requests);"
   },
   "package": {
     "type": "reserved_word",
-    "explanation": "Reserved in strict JavaScript/TypeScript contexts; not used as a normal variable name.",
+    "explanation": "שמורה בהקשרי JavaScript/TypeScript במצב strict; לא משמשת כשם משתנה רגיל.",
     "example": "// Avoid: const package = 'x';"
   },
   "eval": {
     "type": "restricted_identifier",
-    "explanation": "A built-in function name that is restricted in strict mode and should not be used as a variable name.",
+    "explanation": "שם של פונקציה מובנית שמוגבל ב-strict mode ולא כדאי להשתמש בו כשם משתנה.",
     "example": "// Avoid shadowing eval.\nconst result = eval('1 + 1');"
   },
   "arguments": {
     "type": "restricted_identifier",
-    "explanation": "A special function-local object in non-arrow functions; restricted as a binding name in strict mode.",
+    "explanation": "אובייקט מיוחד מקומי לפונקציה בפונקציות שאינן arrow functions; מוגבל כשם binding ב-strict mode.",
     "example": "function showArgs() {\n  console.log(arguments.length);\n}"
   },
   "module.exports": {
     "type": "node_global",
-    "explanation": "CommonJS export object used in Node.js to define what a module exports at runtime.",
+    "explanation": "אובייקט export של CommonJS שמשמש ב-Node.js להגדיר מה מודול מייצא בזמן ריצה.",
     "example": "module.exports = { add };"
   },
   "import = require": {
     "type": "typescript_syntax",
-    "explanation": "TypeScript syntax for importing CommonJS or export= modules in declaration-compatible code.",
+    "explanation": "תחביר TypeScript לייבוא מודולי CommonJS או export= בקוד שמתאים ל-declarations.",
     "example": "import fs = require('node:fs');"
   },
   "export =": {
     "type": "typescript_syntax",
-    "explanation": "TypeScript syntax used in declaration files for modules that export a single CommonJS-style value.",
+    "explanation": "תחביר TypeScript שמשמש בקבצי declaration עבור מודולים שמייצאים ערך יחיד בסגנון CommonJS.",
     "example": "declare function createApp(): App;\nexport = createApp;"
   },
   "import defer": {
     "type": "module_syntax",
-    "explanation": "Deferred module import syntax supported by TypeScript for ECMAScript's deferred module evaluation proposal.",
+    "explanation": "תחביר ייבוא מודול מושהה שנתמך על ידי TypeScript עבור הצעת deferred module evaluation של ECMAScript.",
     "example": "import defer * as feature from './feature.js';"
   },
   "defer": {
     "type": "module_syntax",
-    "explanation": "Used as part of import defer syntax to delay module evaluation until the namespace is accessed.",
+    "explanation": "משמש כחלק מתחביר import defer כדי לדחות הערכת מודול עד שניגשים ל-namespace.",
     "example": "import defer * as heavy from './heavy-module.js';"
   },
   "out": {
     "type": "type_operator",
-    "explanation": "Variance annotation for generic type parameters, marking a type parameter as covariant in supported positions.",
+    "explanation": "הערת variance לפרמטרי טיפוס generic, שמסמנת פרמטר טיפוס כ-covariant במיקומים נתמכים.",
     "example": "interface Producer<out T> {\n  produce(): T;\n}"
   },
   "in variance": {
     "type": "type_operator",
-    "explanation": "Variance annotation pattern for generic type parameters, marking a type parameter as contravariant in supported positions.",
+    "explanation": "דפוס הערת variance לפרמטרי טיפוס generic, שמסמן פרמטר טיפוס כ-contravariant במיקומים נתמכים.",
     "example": "interface Consumer<in T> {\n  consume(value: T): void;\n}"
   },
   "in out": {
     "type": "type_operator",
-    "explanation": "Variance annotation pattern for generic type parameters that are both input and output positions.",
+    "explanation": "דפוס הערת variance לפרמטרי טיפוס generic שנמצאים גם במיקומי קלט וגם במיקומי פלט.",
     "example": "interface State<in out T> {\n  get(): T;\n  set(value: T): void;\n}"
   },
   "intrinsic": {
     "type": "typescript_type",
-    "explanation": "A special marker used internally by TypeScript for compiler-provided intrinsic string manipulation types.",
+    "explanation": "סמן מיוחד שמשמש פנימית את TypeScript עבור טיפוסי string manipulation שהקומפיילר מספק.",
     "example": "type Uppercase<S extends string> = intrinsic;"
   },
   "Symbol.dispose": {
     "type": "builtin_symbol",
-    "explanation": "Well-known symbol used by explicit resource management for synchronous disposal.",
+    "explanation": "symbol מוכר שמשמש ניהול משאבים מפורש עבור ניקוי סינכרוני.",
     "example": "class FileHandle {\n  [Symbol.dispose]() {\n    // cleanup\n  }\n}"
   },
   "Symbol.asyncDispose": {
     "type": "builtin_symbol",
-    "explanation": "Well-known symbol used by explicit resource management for asynchronous disposal.",
+    "explanation": "symbol מוכר שמשמש ניהול משאבים מפורש עבור ניקוי אסינכרוני.",
     "example": "class Connection {\n  async [Symbol.asyncDispose]() {\n    // async cleanup\n  }\n}"
   },
   "import attributes": {
     "type": "module_syntax",
-    "explanation": "Module import metadata syntax, commonly used for things like JSON module loading depending on runtime/tooling support.",
+    "explanation": "תחביר metadata לייבוא מודולים, נפוץ לדברים כמו טעינת מודולי JSON בהתאם לתמיכת runtime/tooling.",
     "example": "import data from './data.json' with { type: 'json' };"
   },
   "with import attribute": {
     "type": "module_syntax",
-    "explanation": "The with clause used in import attributes, not to be confused with the legacy JavaScript with statement.",
+    "explanation": "פסוקית with שמשמשת ב-import attributes, לא להתבלבל עם משפט with הישן של JavaScript.",
     "example": "import config from './config.json' with { type: 'json' };"
   },
   "type assertion": {
     "type": "typescript_syntax",
-    "explanation": "Syntax that tells TypeScript to treat a value as a specific type. Prefer as syntax in TSX-compatible code.",
+    "explanation": "תחביר שאומר ל-TypeScript להתייחס לערך כאל טיפוס מסוים. בקוד תואם TSX עדיף להשתמש בתחביר as.",
     "example": "const input = document.getElementById('name') as HTMLInputElement;"
   },
   "angle-bracket assertion": {
     "type": "typescript_syntax",
-    "explanation": "Older type assertion syntax using <Type>value. It cannot be used in TSX files because it conflicts with JSX.",
+    "explanation": "תחביר type assertion ישן יותר שמשתמש ב-<Type>value. אי אפשר להשתמש בו בקבצי TSX כי הוא מתנגש עם JSX.",
     "example": "const input = <HTMLInputElement>document.getElementById('name');"
   }
 }

@@ -32,11 +32,27 @@ export interface LanguageConfig {
 export interface KeywordEntry {
   explanation: string;
   example: string;
+  // Optional category tag (e.g. "control_flow", "access_modifier") shown as a
+  // small badge in the "Explain this keyword" popup, when present.
+  type?: string;
 }
 
 export interface LoadedLanguage extends LanguageConfig {
   starters: Record<string, string>;
   keywords: Record<string, KeywordEntry>;
+  // Optional Hebrew translations of `keywords` (explanation only - type,
+  // keyword name, and example always stay in English). Safe to be empty if
+  // languages/<id>/keywords_he.json doesn't exist for this language yet.
+  keywordsHe: Record<string, KeywordEntry>;
+}
+
+// What getKeywordExplanation() actually returns: an English KeywordEntry,
+// with `explanation` swapped for the Hebrew translation (and `rtl: true`)
+// when the UI language is Hebrew AND a translation exists for that keyword.
+// Falls back to the English explanation (rtl: false) otherwise - keeps the
+// popup fail-safe if a keywords_he.json file or a specific entry is missing.
+export interface ResolvedKeywordEntry extends KeywordEntry {
+  rtl: boolean;
 }
 
 export type LanguageId = string;

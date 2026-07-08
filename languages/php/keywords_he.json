@@ -1,1457 +1,1457 @@
 {
   "<?php": {
     "type": "opening_tag",
-    "explanation": "The opening tag that tells the PHP interpreter where PHP code starts. Most PHP files start with this tag.",
+    "explanation": "תג הפתיחה שמציין למפרש PHP היכן מתחיל קוד PHP. רוב קובצי PHP מתחילים בתג הזה.",
     "example": "<?php\necho 'Hello, World!';"
   },
   "?>": {
     "type": "closing_tag",
-    "explanation": "The optional closing tag that ends a PHP code block. In pure PHP files it is commonly omitted to avoid accidental whitespace output.",
+    "explanation": "תג הסגירה האופציונלי שמסיים בלוק קוד PHP. בקבצי PHP טהורים נהוג להשמיט אותו כדי למנוע פלט רווחים לא מכוון.",
     "example": "<?php\necho 'Hello';\n?>"
   },
   "declare": {
     "type": "keyword",
-    "explanation": "Sets execution directives for a block or file, most commonly strict type checking with strict_types.",
+    "explanation": "מגדיר הוראות ביצוע לבלוק או לקובץ, לרוב בדיקת טיפוסים קפדנית באמצעות strict_types.",
     "example": "<?php\ndeclare(strict_types=1);\n\nfunction add(int $a, int $b): int {\n    return $a + $b;\n}"
   },
   "__halt_compiler": {
     "type": "keyword",
-    "explanation": "Stops the PHP compiler from reading the rest of the file. Rarely used, mostly for embedding data after PHP code.",
+    "explanation": "עוצר את מהדר PHP מלקרוא את המשך הקובץ. נדיר בשימוש, בעיקר להטמעת נתונים אחרי קוד PHP.",
     "example": "<?php\n__halt_compiler();\nraw data can appear after this point"
   },
   "echo": {
     "type": "language_construct",
-    "explanation": "Outputs one or more strings. It is a language construct, not a normal function, so parentheses are optional.",
+    "explanation": "מדפיס מחרוזת אחת או יותר. זהו מבנה שפה ולא פונקציה רגילה, לכן סוגריים הם אופציונליים.",
     "example": "<?php\necho 'Hello, World!';"
   },
   "print": {
     "type": "language_construct",
-    "explanation": "Outputs a single string and returns 1, so it can be used inside expressions.",
+    "explanation": "מדפיס מחרוזת אחת ומחזיר 1, ולכן אפשר להשתמש בו בתוך ביטויים.",
     "example": "<?php\n$result = print 'Hello!';"
   },
   "exit": {
     "type": "language_construct",
-    "explanation": "Stops script execution immediately. It can optionally output a message or use an exit status code.",
+    "explanation": "עוצר מיד את הרצת הסקריפט. אפשר לצרף הודעה להדפסה או קוד יציאה.",
     "example": "<?php\nif (!$allowed) {\n    exit('Access denied');\n}"
   },
   "die": {
     "type": "language_construct",
-    "explanation": "Alias of exit; stops script execution immediately.",
+    "explanation": "כינוי ל־exit; עוצר מיד את הרצת הסקריפט.",
     "example": "<?php\nif (!$db) {\n    die('Database connection failed');\n}"
   },
   "eval": {
     "type": "language_construct",
-    "explanation": "Executes a string as PHP code. Avoid it in normal application code because it is dangerous and hard to debug.",
+    "explanation": "מריץ מחרוזת כקוד PHP. מומלץ להימנע ממנו בקוד אפליקטיבי רגיל כי הוא מסוכן וקשה לניפוי.",
     "example": "<?php\n$code = 'return 2 + 3;';\n$result = eval($code);"
   },
   "include": {
     "type": "language_construct",
-    "explanation": "Includes and runs another PHP file. If the file is missing, PHP raises a warning and continues.",
+    "explanation": "כולל ומריץ קובץ PHP אחר. אם הקובץ חסר, PHP מעלה אזהרה וממשיך לרוץ.",
     "example": "<?php\ninclude 'header.php';"
   },
   "include_once": {
     "type": "language_construct",
-    "explanation": "Includes another PHP file only once, preventing duplicate definitions if it was already included.",
+    "explanation": "כולל קובץ PHP אחר פעם אחת בלבד, כדי למנוע הגדרות כפולות אם הוא כבר נכלל.",
     "example": "<?php\ninclude_once 'helpers.php';"
   },
   "require": {
     "type": "language_construct",
-    "explanation": "Includes and runs another PHP file. If the file is missing, PHP stops with a fatal error.",
+    "explanation": "כולל ומריץ קובץ PHP אחר. אם הקובץ חסר, PHP עוצר עם שגיאה חמורה.",
     "example": "<?php\nrequire 'config.php';"
   },
   "require_once": {
     "type": "language_construct",
-    "explanation": "Requires another PHP file only once, preventing duplicate definitions while still failing fatally if missing.",
+    "explanation": "דורש קובץ PHP אחר פעם אחת בלבד, כדי למנוע הגדרות כפולות ועדיין לעצור בשגיאה חמורה אם הקובץ חסר.",
     "example": "<?php\nrequire_once 'bootstrap.php';"
   },
   "if": {
     "type": "control_structure",
-    "explanation": "Runs a block of code only when a condition is true.",
+    "explanation": "מריץ בלוק קוד רק כאשר התנאי הוא true.",
     "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n}"
   },
   "elseif": {
     "type": "control_structure",
-    "explanation": "Checks another condition when the previous if or elseif condition was false. Can also be written as else if.",
+    "explanation": "בודק תנאי נוסף כאשר תנאי if או elseif הקודם היה false. אפשר לכתוב גם else if.",
     "example": "<?php\nif ($score >= 90) {\n    echo 'A';\n} elseif ($score >= 80) {\n    echo 'B';\n} else {\n    echo 'C';\n}"
   },
   "else": {
     "type": "control_structure",
-    "explanation": "Runs a block of code when the preceding if or elseif condition was false.",
+    "explanation": "מריץ בלוק קוד כאשר תנאי if או elseif הקודם היה false.",
     "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n} else {\n    echo 'Minor';\n}"
   },
   "endif": {
     "type": "alternative_syntax",
-    "explanation": "Ends an if block when using PHP's colon-based alternative syntax, often used in templates.",
+    "explanation": "מסיים בלוק if כאשר משתמשים בתחביר החלופי מבוסס הנקודתיים של PHP, נפוץ בתבניות.",
     "example": "<?php if ($loggedIn): ?>\n    Welcome\n<?php endif; ?>"
   },
   "switch": {
     "type": "control_structure",
-    "explanation": "Compares a value against several cases and runs the matching branch.",
+    "explanation": "משווה ערך מול כמה מקרים ומריץ את הענף המתאים.",
     "example": "<?php\nswitch ($day) {\n    case 'Mon':\n        echo 'Start of week';\n        break;\n    default:\n        echo 'Another day';\n}"
   },
   "case": {
     "type": "control_structure",
-    "explanation": "Defines one branch inside a switch statement or a match expression.",
+    "explanation": "מגדיר ענף אחד בתוך משפט switch או ביטוי match.",
     "example": "<?php\nswitch ($grade) {\n    case 'A':\n        echo 'Great!';\n        break;\n}"
   },
   "default": {
     "type": "control_structure",
-    "explanation": "Defines the fallback branch in a switch statement or match expression.",
+    "explanation": "מגדיר את ענף ברירת המחדל במשפט switch או בביטוי match.",
     "example": "<?php\nswitch ($status) {\n    default:\n        echo 'Unknown';\n}"
   },
   "endswitch": {
     "type": "alternative_syntax",
-    "explanation": "Ends a switch block when using PHP's colon-based alternative syntax.",
+    "explanation": "מסיים בלוק switch כאשר משתמשים בתחביר החלופי מבוסס הנקודתיים של PHP.",
     "example": "<?php switch ($role):\ncase 'admin': echo 'Admin'; break;\ndefault: echo 'User';\nendswitch; ?>"
   },
   "match": {
     "type": "control_structure",
-    "explanation": "A PHP 8+ expression that compares strictly, returns a value directly, and does not require break statements.",
+    "explanation": "ביטוי של PHP 8+ שמשווה בצורה קפדנית, מחזיר ערך ישירות ואינו דורש משפטי break.",
     "example": "<?php\n$result = match ($status) {\n    1 => 'Active',\n    2 => 'Inactive',\n    default => 'Unknown',\n};"
   },
   "for": {
     "type": "control_structure",
-    "explanation": "Repeats a block of code using initialization, condition, and update expressions.",
+    "explanation": "חוזר על בלוק קוד באמצעות ביטויי אתחול, תנאי ועדכון.",
     "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    echo $i;\n}"
   },
   "endfor": {
     "type": "alternative_syntax",
-    "explanation": "Ends a for loop when using PHP's colon-based alternative syntax.",
+    "explanation": "מסיים לולאת for כאשר משתמשים בתחביר החלופי מבוסס הנקודתיים של PHP.",
     "example": "<?php for ($i = 0; $i < 3; $i++): ?>\n    <?= $i ?>\n<?php endfor; ?>"
   },
   "foreach": {
     "type": "control_structure",
-    "explanation": "Loops over each element of an array or Traversable object, optionally exposing both key and value.",
+    "explanation": "עובר על כל איבר במערך או באובייקט Traversable, ובאופן אופציונלי חושף גם מפתח וגם ערך.",
     "example": "<?php\n$arr = ['a' => 1, 'b' => 2];\nforeach ($arr as $key => $value) {\n    echo $key . ': ' . $value;\n}"
   },
   "endforeach": {
     "type": "alternative_syntax",
-    "explanation": "Ends a foreach loop when using PHP's colon-based alternative syntax.",
+    "explanation": "מסיים לולאת foreach כאשר משתמשים בתחביר החלופי מבוסס הנקודתיים של PHP.",
     "example": "<?php foreach ($users as $user): ?>\n    <?= $user->name ?>\n<?php endforeach; ?>"
   },
   "while": {
     "type": "control_structure",
-    "explanation": "Repeats a block of code while a condition remains true. The condition is checked before each iteration.",
+    "explanation": "חוזר על בלוק קוד כל עוד התנאי נשאר true. התנאי נבדק לפני כל איטרציה.",
     "example": "<?php\n$n = 3;\nwhile ($n > 0) {\n    echo $n;\n    $n--;\n}"
   },
   "endwhile": {
     "type": "alternative_syntax",
-    "explanation": "Ends a while loop when using PHP's colon-based alternative syntax.",
+    "explanation": "מסיים לולאת while כאשר משתמשים בתחביר החלופי מבוסס הנקודתיים של PHP.",
     "example": "<?php while ($row = fetchRow()): ?>\n    <?= $row['name'] ?>\n<?php endwhile; ?>"
   },
   "do": {
     "type": "control_structure",
-    "explanation": "Starts a do-while loop, which runs once before checking the condition.",
+    "explanation": "מתחיל לולאת do-while, שבה הגוף רץ פעם אחת לפני בדיקת התנאי.",
     "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
   },
   "do-while": {
     "type": "syntax_pattern",
-    "explanation": "A loop pattern built from do and while. The body runs at least once before the condition is checked.",
+    "explanation": "תבנית לולאה הבנויה מ־do ו־while. גוף הלולאה רץ לפחות פעם אחת לפני בדיקת התנאי.",
     "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
   },
   "break": {
     "type": "control_structure",
-    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "explanation": "יוצא מיד מהלולאה או ממשפט ה־switch הקרובים ביותר.",
     "example": "<?php\nfor ($i = 0; $i < 10; $i++) {\n    if ($i === 3) break;\n    echo $i;\n}"
   },
   "continue": {
     "type": "control_structure",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "explanation": "מדלג על שאר האיטרציה הנוכחית וממשיך לאיטרציה הבאה.",
     "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    if ($i % 2 === 0) continue;\n    echo $i;\n}"
   },
   "goto": {
     "type": "control_structure",
-    "explanation": "Jumps to a labeled statement in the same file and context. Rarely used because it can make code hard to follow.",
+    "explanation": "קופץ לתווית באותו קובץ ובאותו הקשר. נדיר בשימוש כי הוא עלול להפוך קוד לקשה למעקב.",
     "example": "<?php\ngoto end;\necho 'Skipped';\nend:\necho 'Done';"
   },
   "function": {
     "type": "keyword",
-    "explanation": "Defines a reusable function or method that can take parameters and optionally return a value.",
+    "explanation": "מגדיר פונקציה או מתודה לשימוש חוזר, שיכולה לקבל פרמטרים ולהחזיר ערך באופן אופציונלי.",
     "example": "<?php\nfunction add($a, $b) {\n    return $a + $b;\n}\necho add(2, 3);"
   },
   "return": {
     "type": "keyword",
-    "explanation": "Exits a function or included file and optionally sends back a value.",
+    "explanation": "יוצא מפונקציה או מקובץ שנכלל ומחזיר ערך באופן אופציונלי.",
     "example": "<?php\nfunction square($x) {\n    return $x * $x;\n}"
   },
   "fn": {
     "type": "keyword",
-    "explanation": "Defines a short arrow function that automatically captures variables from the parent scope by value.",
+    "explanation": "מגדיר פונקציית חץ קצרה שלוכדת אוטומטית משתנים מההיקף האב לפי ערך.",
     "example": "<?php\n$double = fn($x) => $x * 2;\necho $double(5);"
   },
   "yield": {
     "type": "keyword",
-    "explanation": "Produces a value from a generator function without returning all values at once.",
+    "explanation": "מפיק ערך מפונקציית גנרטור בלי להחזיר את כל הערכים בבת אחת.",
     "example": "<?php\nfunction numbers() {\n    yield 1;\n    yield 2;\n}"
   },
   "yield from": {
     "type": "syntax_pattern",
-    "explanation": "Delegates part of a generator to another iterable or generator.",
+    "explanation": "מאציל חלק מגנרטור לאובייקט iterable או לגנרטור אחר.",
     "example": "<?php\nfunction allNumbers() {\n    yield from [1, 2, 3];\n}"
   },
   "global": {
     "type": "keyword",
-    "explanation": "Imports a global variable into the local scope of a function.",
+    "explanation": "מייבא משתנה גלובלי אל ההיקף המקומי של פונקציה.",
     "example": "<?php\n$count = 0;\nfunction inc() {\n    global $count;\n    $count++;\n}"
   },
   "static variable": {
     "type": "syntax_pattern",
-    "explanation": "A local variable declared with static inside a function keeps its value between function calls.",
+    "explanation": "משתנה מקומי שמוגדר עם static בתוך פונקציה שומר את ערכו בין קריאות לפונקציה.",
     "example": "<?php\nfunction counter() {\n    static $count = 0;\n    return ++$count;\n}"
   },
   "...$args": {
     "type": "syntax_pattern",
-    "explanation": "Collects a variable number of arguments into an array when used in a function parameter list.",
+    "explanation": "אוסף מספר משתנה של ארגומנטים לתוך מערך כאשר משתמשים בו ברשימת פרמטרים של פונקציה.",
     "example": "<?php\nfunction sum(...$numbers) {\n    return array_sum($numbers);\n}"
   },
   "spread operator": {
     "type": "operator",
-    "explanation": "The ... syntax expands arrays into argument lists or array elements.",
+    "explanation": "תחביר ... שמרחיב מערכים לרשימות ארגומנטים או לאיברי מערך.",
     "example": "<?php\n$nums = [1, 2, 3];\necho sum(...$nums);"
   },
   "try": {
     "type": "control_structure",
-    "explanation": "Marks a block of code to attempt running so errors or exceptions can be caught.",
+    "explanation": "מסמן בלוק קוד לניסיון הרצה כדי שניתן יהיה לתפוס שגיאות או חריגות.",
     "example": "<?php\ntry {\n    riskyOperation();\n} catch (Exception $e) {\n    echo $e->getMessage();\n}"
   },
   "catch": {
     "type": "control_structure",
-    "explanation": "Handles a matching exception or error thrown inside the corresponding try block.",
+    "explanation": "מטפל בחריגה או בשגיאה מתאימה שנזרקה בתוך בלוק try המקביל.",
     "example": "<?php\ntry {\n    intdiv(1, 0);\n} catch (DivisionByZeroError $e) {\n    echo $e->getMessage();\n}"
   },
   "finally": {
     "type": "control_structure",
-    "explanation": "Runs after try/catch whether or not an exception occurred, usually for cleanup.",
+    "explanation": "רץ אחרי try/catch בין אם התרחשה חריגה ובין אם לא, לרוב לצורכי ניקוי.",
     "example": "<?php\ntry {\n    doWork();\n} finally {\n    echo 'Always runs';\n}"
   },
   "throw": {
     "type": "keyword",
-    "explanation": "Raises an exception or error object, stopping normal execution unless it is caught.",
+    "explanation": "זורק אובייקט חריגה או שגיאה ועוצר את הביצוע הרגיל אלא אם הוא נתפס.",
     "example": "<?php\nfunction check($age) {\n    if ($age < 0) throw new InvalidArgumentException('Age cannot be negative');\n}"
   },
   "throws": {
     "type": "concept",
-    "explanation": "PHP does not have a throws keyword. Exceptions are documented by convention, attributes, static analysis, or PHPDoc.",
+    "explanation": "ב־PHP אין מילת מפתח throws. חריגות מתועדות לפי מוסכמה, attributes, ניתוח סטטי או PHPDoc.",
     "example": "<?php\n/** @throws RuntimeException */\nfunction loadConfig(): array {\n    throw new RuntimeException('Missing config');\n}"
   },
   "class": {
     "type": "keyword",
-    "explanation": "Defines a blueprint for creating objects with properties, constants, and methods.",
+    "explanation": "מגדיר תבנית ליצירת אובייקטים עם מאפיינים, קבועים ומתודות.",
     "example": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n}"
   },
   "interface": {
     "type": "keyword",
-    "explanation": "Defines a contract of methods that implementing classes must provide.",
+    "explanation": "מגדיר חוזה של מתודות שמחלקות מממשות חייבות לספק.",
     "example": "<?php\ninterface Shape {\n    public function area(): float;\n}"
   },
   "trait": {
     "type": "keyword",
-    "explanation": "Defines reusable methods and properties that can be inserted into multiple classes.",
+    "explanation": "מגדיר מתודות ומאפיינים לשימוש חוזר שאפשר להכניס לכמה מחלקות.",
     "example": "<?php\ntrait Logs {\n    public function log(string $msg): void {\n        echo $msg;\n    }\n}"
   },
   "enum": {
     "type": "keyword",
-    "explanation": "Defines a fixed set of named cases. PHP enums can be pure enums or backed by string/int values.",
+    "explanation": "מגדיר סט קבוע של מקרים בשם. enum ב־PHP יכול להיות טהור או מגובה בערכי string/int.",
     "example": "<?php\nenum Status: string {\n    case Active = 'active';\n    case Inactive = 'inactive';\n}"
   },
   "extends": {
     "type": "keyword",
-    "explanation": "Makes one class inherit from another class, or one interface inherit from another interface.",
+    "explanation": "גורם למחלקה אחת לרשת ממחלקה אחרת, או לממשק אחד לרשת מממשק אחר.",
     "example": "<?php\nclass Dog extends Animal {\n    public function speak() { echo 'Woof!'; }\n}"
   },
   "implements": {
     "type": "keyword",
-    "explanation": "Declares that a class provides all methods required by one or more interfaces.",
+    "explanation": "מצהיר שמחלקה מספקת את כל המתודות הנדרשות מממשק אחד או יותר.",
     "example": "<?php\nclass Circle implements Shape {\n    public function area(): float { return 3.14; }\n}"
   },
   "new": {
     "type": "keyword",
-    "explanation": "Creates a new object instance from a class.",
+    "explanation": "יוצר מופע אובייקט חדש ממחלקה.",
     "example": "<?php\n$p = new Point();"
   },
   "clone": {
     "type": "keyword",
-    "explanation": "Creates a shallow copy of an object, optionally triggering the object's __clone method.",
+    "explanation": "יוצר עותק שטחי של אובייקט, ובאופן אופציונלי מפעיל את מתודת __clone של האובייקט.",
     "example": "<?php\n$copy = clone $original;"
   },
   "instanceof": {
     "type": "operator",
-    "explanation": "Checks whether an object is an instance of a class or implements an interface.",
+    "explanation": "בודק אם אובייקט הוא מופע של מחלקה או מממש ממשק.",
     "example": "<?php\nif ($value instanceof DateTimeInterface) {\n    echo $value->format('Y-m-d');\n}"
   },
   "insteadof": {
     "type": "keyword",
-    "explanation": "Resolves method-name conflicts when a class uses multiple traits.",
+    "explanation": "פותר התנגשויות שמות מתודות כאשר מחלקה משתמשת בכמה traits.",
     "example": "<?php\nclass MyClass {\n    use A, B {\n        A::run insteadof B;\n    }\n}"
   },
   "abstract": {
     "type": "keyword",
-    "explanation": "Marks a class as not directly instantiable, or marks a method that subclasses must implement.",
+    "explanation": "מסמן מחלקה שלא ניתן ליצור ממנה מופע ישירות, או מתודה שתתי־מחלקות חייבות לממש.",
     "example": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}"
   },
   "final": {
     "type": "keyword",
-    "explanation": "Prevents a class from being extended, or prevents a method from being overridden.",
+    "explanation": "מונע הרחבה של מחלקה או דריסה של מתודה.",
     "example": "<?php\nfinal class Config {}"
   },
   "readonly": {
     "type": "keyword",
-    "explanation": "Marks a property or class as readonly, meaning assigned values cannot be changed after initialization.",
+    "explanation": "מסמן מאפיין או מחלקה כ־readonly, כלומר אי אפשר לשנות ערכים מוקצים אחרי האתחול.",
     "example": "<?php\nreadonly class UserData {\n    public function __construct(public string $name) {}\n}"
   },
   "public": {
     "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible from anywhere.",
+    "explanation": "מאפשר גישה לחבר מחלקה מכל מקום.",
     "example": "<?php\nclass User {\n    public string $name;\n}"
   },
   "private": {
     "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible only inside the class where it is declared.",
+    "explanation": "מאפשר גישה לחבר מחלקה רק מתוך המחלקה שבה הוא הוגדר.",
     "example": "<?php\nclass Account {\n    private float $balance = 0;\n}"
   },
   "protected": {
     "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible inside the declaring class and subclasses.",
+    "explanation": "מאפשר גישה לחבר מחלקה מתוך המחלקה המצהירה ומתתי־המחלקות שלה.",
     "example": "<?php\nclass Base {\n    protected int $id = 1;\n}"
   },
   "static": {
     "type": "keyword",
-    "explanation": "Defines a class-level property or method, or can be used as a late-static-bound type/reference.",
+    "explanation": "מגדיר מאפיין או מתודה ברמת המחלקה, או משמש כהפניה/טיפוס עם late static binding.",
     "example": "<?php\nclass MathUtils {\n    public static function square($x) { return $x * $x; }\n}\necho MathUtils::square(4);"
   },
   "const": {
     "type": "keyword",
-    "explanation": "Defines a constant at class level or namespace/global level.",
+    "explanation": "מגדיר קבוע ברמת מחלקה או ברמת namespace/גלובלית.",
     "example": "<?php\nclass Circle {\n    public const PI = 3.14159;\n}"
   },
   "var": {
     "type": "keyword",
-    "explanation": "Legacy visibility keyword for class properties. It behaves like public and is mostly replaced by explicit public/private/protected.",
+    "explanation": "מילת נראות ישנה למאפייני מחלקה. מתנהגת כמו public וכיום מוחלפת לרוב ב־public/private/protected מפורשים.",
     "example": "<?php\nclass User {\n    var $name;\n}"
   },
   "$this": {
     "type": "special_variable",
-    "explanation": "Inside an instance method, refers to the current object instance.",
+    "explanation": "בתוך מתודת מופע, מתייחס למופע האובייקט הנוכחי.",
     "example": "<?php\nclass Counter {\n    private int $count = 0;\n    public function increment(): void { $this->count++; }\n}"
   },
   "self": {
     "type": "reserved_word",
-    "explanation": "Refers to the current class where code is written, commonly used for constants, static methods, and return types.",
+    "explanation": "מתייחס למחלקה הנוכחית שבה הקוד כתוב, נפוץ לקבועים, מתודות סטטיות וטיפוסי החזרה.",
     "example": "<?php\nclass Config {\n    public const NAME = 'app';\n    public static function name(): string { return self::NAME; }\n}"
   },
   "parent": {
     "type": "reserved_word",
-    "explanation": "Refers to the parent class, commonly used to call a parent constructor or overridden method.",
+    "explanation": "מתייחס למחלקת האב, נפוץ לקריאה לבנאי האב או למתודה שנדרסה.",
     "example": "<?php\nclass Dog extends Animal {\n    public function __construct($name) {\n        parent::__construct($name);\n    }\n}"
   },
   "::": {
     "type": "operator",
-    "explanation": "Scope resolution operator used to access class constants, static methods, static properties, and parent/self references.",
+    "explanation": "אופרטור רזולוציית היקף המשמש לגישה לקבועי מחלקה, מתודות סטטיות, מאפיינים סטטיים והפניות parent/self.",
     "example": "<?php\necho User::class;\nConfig::load();"
   },
   "->": {
     "type": "operator",
-    "explanation": "Object operator used to access instance properties and methods.",
+    "explanation": "אופרטור אובייקט המשמש לגישה למאפייני מופע ולמתודות מופע.",
     "example": "<?php\n$user->name = 'Nina';\necho $user->getName();"
   },
   "?->": {
     "type": "operator",
-    "explanation": "Null-safe object operator. It accesses a property or method only if the left side is not null.",
+    "explanation": "אופרטור אובייקט בטוח ל־null. ניגש למאפיין או למתודה רק אם הצד השמאלי אינו null.",
     "example": "<?php\n$city = $user?->address?->city;"
   },
   "::class": {
     "type": "syntax_pattern",
-    "explanation": "Returns the fully qualified class name as a string.",
+    "explanation": "מחזיר את שם המחלקה המלא כמחרוזת.",
     "example": "<?php\necho DateTime::class;"
   },
   "constructor": {
     "type": "concept",
-    "explanation": "A method named __construct that runs when a new object is created.",
+    "explanation": "מתודה בשם __construct שרצה כאשר נוצר אובייקט חדש.",
     "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
   },
   "property promotion": {
     "type": "syntax_pattern",
-    "explanation": "A constructor shorthand that declares and assigns properties directly from constructor parameters.",
+    "explanation": "קיצור בתחביר הבנאי שמצהיר ומאתחל מאפיינים ישירות מפרמטרי הבנאי.",
     "example": "<?php\nclass User {\n    public function __construct(public string $name, private int $age) {}\n}"
   },
   "namespace": {
     "type": "keyword",
-    "explanation": "Groups related classes, interfaces, traits, enums, functions, and constants to avoid name collisions.",
+    "explanation": "מקבץ מחלקות, ממשקים, traits, enums, פונקציות וקבועים קשורים כדי למנוע התנגשויות שמות.",
     "example": "<?php\nnamespace App\\Models;\n\nclass User {}"
   },
   "use": {
     "type": "keyword",
-    "explanation": "Imports a class, function, constant, or trait into the current namespace/scope.",
+    "explanation": "מייבא מחלקה, פונקציה, קבוע או trait אל ה־namespace/ההיקף הנוכחי.",
     "example": "<?php\nuse App\\Models\\User;\n\n$u = new User();"
   },
   "as": {
     "type": "keyword",
-    "explanation": "Gives an alias in foreach loops, namespace imports, and trait conflict resolution.",
+    "explanation": "נותן כינוי בלולאות foreach, בייבוא namespaces ובפתרון התנגשויות traits.",
     "example": "<?php\nuse App\\Models\\User as AppUser;\n\nforeach ($items as $item) {\n    echo $item;\n}"
   },
   "namespace\\name": {
     "type": "syntax_pattern",
-    "explanation": "A namespaced identifier that refers to code inside a namespace hierarchy.",
+    "explanation": "מזהה עם namespace שמתייחס לקוד בתוך היררכיית namespaces.",
     "example": "<?php\n$user = new App\\Models\\User();"
   },
   "\\": {
     "type": "namespace_separator",
-    "explanation": "The namespace separator used in fully qualified PHP names.",
+    "explanation": "מפריד ה־namespace המשמש בשמות PHP מלאים.",
     "example": "<?php\n$date = new \\DateTimeImmutable();"
   },
   "global namespace": {
     "type": "namespace",
-    "explanation": "The root namespace where PHP built-in classes/functions and non-namespaced user code live.",
+    "explanation": "ה־namespace השורשי שבו נמצאות מחלקות/פונקציות מובנות של PHP וקוד משתמש ללא namespace.",
     "example": "<?php\n$value = \\strlen('hello');"
   },
   "int": {
     "type": "type",
-    "explanation": "Integer type declaration for whole numbers.",
+    "explanation": "הצהרת טיפוס למספרים שלמים.",
     "example": "<?php\nfunction double(int $x): int {\n    return $x * 2;\n}"
   },
   "integer": {
     "type": "type_alias",
-    "explanation": "Long-form name often returned by gettype for integers, but int is used in type declarations.",
+    "explanation": "שם ארוך שמוחזר לעיתים על ידי gettype עבור מספרים שלמים, אך בהצהרות טיפוס משתמשים ב־int.",
     "example": "<?php\n$x = 10;\necho gettype($x); // integer"
   },
   "float": {
     "type": "type",
-    "explanation": "Floating-point number type declaration for decimal numbers.",
+    "explanation": "הצהרת טיפוס למספרים עשרוניים בנקודה צפה.",
     "example": "<?php\nfunction half(float $x): float {\n    return $x / 2;\n}"
   },
   "double": {
     "type": "type_alias",
-    "explanation": "Historical/internal name related to floating-point numbers. In PHP type declarations, use float.",
+    "explanation": "שם היסטורי/פנימי הקשור למספרי נקודה צפה. בהצהרות טיפוס ב־PHP משתמשים ב־float.",
     "example": "<?php\n$x = 3.14;\necho gettype($x); // double"
   },
   "string": {
     "type": "type",
-    "explanation": "Text value type declaration.",
+    "explanation": "הצהרת טיפוס לערכי טקסט.",
     "example": "<?php\nfunction greet(string $name): string {\n    return 'Hello ' . $name;\n}"
   },
   "bool": {
     "type": "type",
-    "explanation": "Boolean type declaration for true/false values.",
+    "explanation": "הצהרת טיפוס לערכי true/false.",
     "example": "<?php\nfunction isAdult(int $age): bool {\n    return $age >= 18;\n}"
   },
   "boolean": {
     "type": "type_alias",
-    "explanation": "Long-form name commonly used in documentation/gettype for booleans. In type declarations, use bool.",
+    "explanation": "שם ארוך נפוץ בתיעוד/gettype עבור בוליאנים. בהצהרות טיפוס משתמשים ב־bool.",
     "example": "<?php\n$ok = true;\necho gettype($ok); // boolean"
   },
   "array": {
     "type": "type",
-    "explanation": "PHP's ordered map type used for lists and key-value pairs. It can also be used as a type declaration.",
+    "explanation": "סוג המפה המסודרת של PHP המשמש לרשימות ולזוגות מפתח־ערך. אפשר להשתמש בו גם כהצהרת טיפוס.",
     "example": "<?php\n$fruits = ['apple', 'banana'];\nfunction first(array $items): mixed { return $items[0] ?? null; }"
   },
   "object": {
     "type": "type",
-    "explanation": "Type declaration requiring any object instance.",
+    "explanation": "הצהרת טיפוס שמחייבת כל מופע אובייקט.",
     "example": "<?php\nfunction inspect(object $obj): void {\n    var_dump($obj);\n}"
   },
   "callable": {
     "type": "type",
-    "explanation": "Type declaration for something that can be called like a function, such as a closure, function name, or method pair.",
+    "explanation": "הצהרת טיפוס למשהו שניתן לקרוא לו כמו פונקציה, כגון closure, שם פונקציה או זוג מתודה.",
     "example": "<?php\nfunction run(callable $fn): mixed {\n    return $fn();\n}"
   },
   "iterable": {
     "type": "type",
-    "explanation": "Type declaration accepting arrays or objects that can be traversed with foreach.",
+    "explanation": "הצהרת טיפוס שמקבלת מערכים או אובייקטים שניתן לעבור עליהם עם foreach.",
     "example": "<?php\nfunction printAll(iterable $items): void {\n    foreach ($items as $item) echo $item;\n}"
   },
   "mixed": {
     "type": "type",
-    "explanation": "Type declaration meaning any value is allowed.",
+    "explanation": "הצהרת טיפוס שמשמעותה שכל ערך מותר.",
     "example": "<?php\nfunction debug(mixed $value): void {\n    var_dump($value);\n}"
   },
   "void": {
     "type": "type",
-    "explanation": "Return type meaning the function does not return a value.",
+    "explanation": "טיפוס החזרה שמשמעותו שהפונקציה אינה מחזירה ערך.",
     "example": "<?php\nfunction logMessage(string $msg): void {\n    echo $msg;\n}"
   },
   "never": {
     "type": "type",
-    "explanation": "Return type meaning the function never returns normally because it always exits or throws.",
+    "explanation": "טיפוס החזרה שמשמעותו שהפונקציה לעולם אינה חוזרת בצורה רגילה כי היא תמיד יוצאת או זורקת חריגה.",
     "example": "<?php\nfunction fail(string $message): never {\n    throw new RuntimeException($message);\n}"
   },
   "null": {
     "type": "literal",
-    "explanation": "Represents the absence of a value.",
+    "explanation": "מייצג היעדר ערך.",
     "example": "<?php\n$selected = null;"
   },
   "true": {
     "type": "literal",
-    "explanation": "Boolean literal representing truth.",
+    "explanation": "ליטרל בוליאני שמייצג אמת.",
     "example": "<?php\n$isActive = true;"
   },
   "false": {
     "type": "literal",
-    "explanation": "Boolean literal representing falsehood.",
+    "explanation": "ליטרל בוליאני שמייצג שקר.",
     "example": "<?php\n$isDeleted = false;"
   },
   "union type": {
     "type": "syntax_pattern",
-    "explanation": "A type declaration using | to allow more than one possible type.",
+    "explanation": "הצהרת טיפוס שמשתמשת ב־| כדי לאפשר יותר מטיפוס אפשרי אחד.",
     "example": "<?php\nfunction parse(string|int $value): string {\n    return (string) $value;\n}"
   },
   "intersection type": {
     "type": "syntax_pattern",
-    "explanation": "A type declaration using & to require a value to satisfy multiple class/interface types.",
+    "explanation": "הצהרת טיפוס שמשתמשת ב־& כדי לדרוש שערך יעמוד בכמה טיפוסי מחלקה/ממשק.",
     "example": "<?php\nfunction handle(Countable&Iterator $items): void {\n    echo count($items);\n}"
   },
   "nullable type": {
     "type": "syntax_pattern",
-    "explanation": "A type declaration prefixed with ? to allow either the type or null.",
+    "explanation": "הצהרת טיפוס עם הקידומת ? שמאפשרת את הטיפוס או null.",
     "example": "<?php\nfunction findName(): ?string {\n    return null;\n}"
   },
   "true type": {
     "type": "type",
-    "explanation": "A literal type that allows only true, available in modern PHP type declarations.",
+    "explanation": "טיפוס ליטרלי שמאפשר רק true, זמין בהצהרות טיפוס מודרניות ב־PHP.",
     "example": "<?php\nfunction enabled(): true {\n    return true;\n}"
   },
   "false type": {
     "type": "type",
-    "explanation": "A literal type that allows only false, commonly used in legacy APIs that return a value or false.",
+    "explanation": "טיפוס ליטרלי שמאפשר רק false, נפוץ ב־APIs ישנים שמחזירים ערך או false.",
     "example": "<?php\nfunction notFound(): false {\n    return false;\n}"
   },
   "null type": {
     "type": "type",
-    "explanation": "A literal type that allows only null in type declarations.",
+    "explanation": "טיפוס ליטרלי שמאפשר רק null בהצהרות טיפוס.",
     "example": "<?php\nfunction nothing(): null {\n    return null;\n}"
   },
   "and": {
     "type": "operator",
-    "explanation": "Logical AND operator with lower precedence than &&.",
+    "explanation": "אופרטור AND לוגי עם קדימות נמוכה יותר מ־&&.",
     "example": "<?php\nif ($ready and $valid) {\n    echo 'OK';\n}"
   },
   "or": {
     "type": "operator",
-    "explanation": "Logical OR operator with lower precedence than ||.",
+    "explanation": "אופרטור OR לוגי עם קדימות נמוכה יותר מ־||.",
     "example": "<?php\nif ($admin or $owner) {\n    echo 'Allowed';\n}"
   },
   "xor": {
     "type": "operator",
-    "explanation": "Logical exclusive OR: true only when exactly one side is true.",
+    "explanation": "OR לוגי בלעדי: true רק כאשר בדיוק אחד מהצדדים הוא true.",
     "example": "<?php\nif ($a xor $b) {\n    echo 'Only one is true';\n}"
   },
   "&&": {
     "type": "operator",
-    "explanation": "Logical AND operator. True only when both sides are true.",
+    "explanation": "אופרטור AND לוגי. true רק כאשר שני הצדדים הם true.",
     "example": "<?php\nif ($age >= 18 && $hasId) {\n    echo 'Allowed';\n}"
   },
   "||": {
     "type": "operator",
-    "explanation": "Logical OR operator. True when at least one side is true.",
+    "explanation": "אופרטור OR לוגי. true כאשר לפחות אחד מהצדדים הוא true.",
     "example": "<?php\nif ($weekend || $holiday) {\n    echo 'Rest';\n}"
   },
   "!": {
     "type": "operator",
-    "explanation": "Logical NOT operator. Reverses a boolean value.",
+    "explanation": "אופרטור NOT לוגי. הופך ערך בוליאני.",
     "example": "<?php\nif (!$ready) {\n    echo 'Not ready';\n}"
   },
   "==": {
     "type": "operator",
-    "explanation": "Loose equality comparison that may convert types before comparing.",
+    "explanation": "השוואת שוויון רופפת שעשויה להמיר טיפוסים לפני ההשוואה.",
     "example": "<?php\nvar_dump('5' == 5); // true"
   },
   "===": {
     "type": "operator",
-    "explanation": "Strict equality comparison requiring both value and type to match.",
+    "explanation": "השוואת שוויון קפדנית שדורשת התאמה גם בערך וגם בטיפוס.",
     "example": "<?php\nvar_dump('5' === 5); // false"
   },
   "!=": {
     "type": "operator",
-    "explanation": "Loose inequality comparison.",
+    "explanation": "השוואת אי־שוויון רופפת.",
     "example": "<?php\nif ($a != $b) echo 'Different';"
   },
   "!==": {
     "type": "operator",
-    "explanation": "Strict inequality comparison requiring value or type to differ.",
+    "explanation": "השוואת אי־שוויון קפדנית שדורשת הבדל בערך או בטיפוס.",
     "example": "<?php\nif ($a !== $b) echo 'Different';"
   },
   "<=>": {
     "type": "operator",
-    "explanation": "Spaceship comparison operator. Returns -1, 0, or 1 depending on ordering.",
+    "explanation": "אופרטור השוואת חללית. מחזיר ‎-1, 0 או 1 לפי הסדר.",
     "example": "<?php\necho 10 <=> 20; // -1"
   },
   "??": {
     "type": "operator",
-    "explanation": "Null coalescing operator. Returns the left value if it exists and is not null, otherwise the right value.",
+    "explanation": "אופרטור מיזוג null. מחזיר את הערך השמאלי אם הוא קיים ואינו null, אחרת את הערך הימני.",
     "example": "<?php\n$name = $_GET['name'] ?? 'Guest';"
   },
   "??=": {
     "type": "operator",
-    "explanation": "Null coalescing assignment. Assigns the right value only if the variable is null or not set.",
+    "explanation": "השמת מיזוג null. משייך את הערך הימני רק אם המשתנה הוא null או לא מוגדר.",
     "example": "<?php\n$options['limit'] ??= 10;"
   },
   "?:": {
     "type": "operator",
-    "explanation": "Elvis shorthand ternary operator. Returns the left expression if truthy, otherwise the right expression.",
+    "explanation": "קיצור ternary מסוג Elvis. מחזיר את הביטוי השמאלי אם הוא truthy, אחרת את הביטוי הימני.",
     "example": "<?php\n$name = $input ?: 'Guest';"
   },
   "? :": {
     "type": "operator",
-    "explanation": "Ternary conditional operator. Chooses between two expressions based on a condition.",
+    "explanation": "אופרטור תנאי ternary. בוחר בין שני ביטויים לפי תנאי.",
     "example": "<?php\n$type = $age >= 18 ? 'adult' : 'minor';"
   },
   "=>": {
     "type": "operator",
-    "explanation": "Double-arrow operator used for array key/value pairs, foreach key/value binding, match arms, and arrow functions.",
+    "explanation": "אופרטור חץ כפול המשמש לזוגות מפתח/ערך במערכים, לקישור מפתח/ערך ב־foreach, לזרועות match ולפונקציות חץ.",
     "example": "<?php\n$user = ['name' => 'Nina'];\n$result = match ($x) { 1 => 'one', default => 'other' };"
   },
   "@": {
     "type": "operator",
-    "explanation": "Error control operator that suppresses errors from an expression. Avoid using it in clean code.",
+    "explanation": "אופרטור בקרת שגיאות שמדכא שגיאות מביטוי. מומלץ להימנע ממנו בקוד נקי.",
     "example": "<?php\n$content = @file_get_contents('missing.txt');"
   },
   "[]": {
     "type": "syntax_pattern",
-    "explanation": "Short array syntax or array append syntax.",
+    "explanation": "תחביר קצר למערכים או תחביר הוספה למערך.",
     "example": "<?php\n$list = [1, 2];\n$list[] = 3;"
   },
   "array()": {
     "type": "syntax_pattern",
-    "explanation": "Legacy array creation syntax, equivalent to short [] array syntax.",
+    "explanation": "תחביר יצירת מערך ישן, שקול לתחביר המערך הקצר [].",
     "example": "<?php\n$list = array(1, 2, 3);"
   },
   "list": {
     "type": "language_construct",
-    "explanation": "Assigns array values to multiple variables at once.",
+    "explanation": "משייך ערכי מערך לכמה משתנים בבת אחת.",
     "example": "<?php\n[$a, $b] = [1, 2];\nlist($x, $y) = [3, 4];"
   },
   "destructuring": {
     "type": "syntax_pattern",
-    "explanation": "Unpacks array values into variables using [] or list().",
+    "explanation": "מפרק ערכי מערך למשתנים באמצעות [] או list().",
     "example": "<?php\n['name' => $name, 'age' => $age] = $user;"
   },
   "reference &": {
     "type": "syntax_pattern",
-    "explanation": "Makes a variable, parameter, or return value refer to the same underlying value instead of a copy.",
+    "explanation": "גורם למשתנה, פרמטר או ערך מוחזר להתייחס לאותו ערך בסיסי במקום לעותק.",
     "example": "<?php\nfunction addOne(int &$x): void {\n    $x++;\n}"
   },
   "arrow function": {
     "type": "syntax_pattern",
-    "explanation": "A compact function syntax using fn($x) => expression.",
+    "explanation": "תחביר פונקציה קומפקטי המשתמש ב־fn($x) => expression.",
     "example": "<?php\n$ids = array_map(fn($user) => $user->id, $users);"
   },
   "anonymous function": {
     "type": "syntax_pattern",
-    "explanation": "A function without a name, often stored in a variable or passed as a callback.",
+    "explanation": "פונקציה ללא שם, לעיתים נשמרת במשתנה או מועברת כ־callback.",
     "example": "<?php\n$double = function ($x) {\n    return $x * 2;\n};"
   },
   "closure use": {
     "type": "syntax_pattern",
-    "explanation": "Captures variables from the parent scope into an anonymous function.",
+    "explanation": "לוכד משתנים מההיקף האב אל תוך פונקציה אנונימית.",
     "example": "<?php\n$factor = 2;\n$double = function ($x) use ($factor) {\n    return $x * $factor;\n};"
   },
   "attribute": {
     "type": "syntax_pattern",
-    "explanation": "Metadata added to declarations using #[...], available through reflection.",
+    "explanation": "מטא־דאטה שמתווסף להצהרות באמצעות #[...] וזמין דרך reflection.",
     "example": "<?php\n#[Route('/users')]\nclass UserController {}"
   },
   "#[Attribute]": {
     "type": "attribute",
-    "explanation": "Built-in attribute class used to define custom PHP attributes.",
+    "explanation": "מחלקת attribute מובנית המשמשת להגדרת attributes מותאמים אישית ב־PHP.",
     "example": "<?php\n#[Attribute]\nclass Route {\n    public function __construct(public string $path) {}\n}"
   },
   "__LINE__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current line number.",
+    "explanation": "קבוע קסם שמכיל את מספר השורה הנוכחית.",
     "example": "<?php\necho __LINE__;"
   },
   "__FILE__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the full path and filename of the current file.",
+    "explanation": "קבוע קסם שמכיל את הנתיב המלא ושם הקובץ הנוכחי.",
     "example": "<?php\necho __FILE__;"
   },
   "__DIR__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the directory of the current file.",
+    "explanation": "קבוע קסם שמכיל את התיקייה של הקובץ הנוכחי.",
     "example": "<?php\necho __DIR__;"
   },
   "__FUNCTION__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current function name.",
+    "explanation": "קבוע קסם שמכיל את שם הפונקציה הנוכחית.",
     "example": "<?php\nfunction test() { echo __FUNCTION__; }"
   },
   "__CLASS__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current class name.",
+    "explanation": "קבוע קסם שמכיל את שם המחלקה הנוכחית.",
     "example": "<?php\nclass User { public function name() { echo __CLASS__; } }"
   },
   "__TRAIT__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current trait name.",
+    "explanation": "קבוע קסם שמכיל את שם ה־trait הנוכחי.",
     "example": "<?php\ntrait T { public function name() { echo __TRAIT__; } }"
   },
   "__METHOD__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current class method name.",
+    "explanation": "קבוע קסם שמכיל את שם מתודת המחלקה הנוכחית.",
     "example": "<?php\nclass User { public function save() { echo __METHOD__; } }"
   },
   "__NAMESPACE__": {
     "type": "magic_constant",
-    "explanation": "Magic constant containing the current namespace name.",
+    "explanation": "קבוע קסם שמכיל את שם ה־namespace הנוכחי.",
     "example": "<?php\nnamespace App;\necho __NAMESPACE__;"
   },
   "__construct": {
     "type": "special_method",
-    "explanation": "Constructor method called automatically when a new object is created.",
+    "explanation": "מתודת בנאי שנקראת אוטומטית כאשר נוצר אובייקט חדש.",
     "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
   },
   "__destruct": {
     "type": "special_method",
-    "explanation": "Destructor method called when an object is destroyed.",
+    "explanation": "מתודת הרס שנקראת כאשר אובייקט מושמד.",
     "example": "<?php\nclass FileHandle {\n    public function __destruct() { /* cleanup */ }\n}"
   },
   "__call": {
     "type": "special_method",
-    "explanation": "Runs when inaccessible or undefined instance methods are called.",
+    "explanation": "רצה כאשר נקראות מתודות מופע לא נגישות או לא מוגדרות.",
     "example": "<?php\npublic function __call(string $name, array $args): mixed {\n    return null;\n}"
   },
   "__callStatic": {
     "type": "special_method",
-    "explanation": "Runs when inaccessible or undefined static methods are called.",
+    "explanation": "רצה כאשר נקראות מתודות סטטיות לא נגישות או לא מוגדרות.",
     "example": "<?php\npublic static function __callStatic(string $name, array $args): mixed {\n    return null;\n}"
   },
   "__get": {
     "type": "special_method",
-    "explanation": "Runs when reading an inaccessible or undefined property.",
+    "explanation": "רצה כאשר קוראים מאפיין לא נגיש או לא מוגדר.",
     "example": "<?php\npublic function __get(string $name): mixed {\n    return $this->data[$name] ?? null;\n}"
   },
   "__set": {
     "type": "special_method",
-    "explanation": "Runs when writing to an inaccessible or undefined property.",
+    "explanation": "רצה כאשר כותבים למאפיין לא נגיש או לא מוגדר.",
     "example": "<?php\npublic function __set(string $name, mixed $value): void {\n    $this->data[$name] = $value;\n}"
   },
   "__isset": {
     "type": "special_method",
-    "explanation": "Runs when isset() or empty() is used on an inaccessible or undefined property.",
+    "explanation": "רצה כאשר משתמשים ב־isset() או empty() על מאפיין לא נגיש או לא מוגדר.",
     "example": "<?php\npublic function __isset(string $name): bool {\n    return isset($this->data[$name]);\n}"
   },
   "__unset": {
     "type": "special_method",
-    "explanation": "Runs when unset() is used on an inaccessible or undefined property.",
+    "explanation": "רצה כאשר משתמשים ב־unset() על מאפיין לא נגיש או לא מוגדר.",
     "example": "<?php\npublic function __unset(string $name): void {\n    unset($this->data[$name]);\n}"
   },
   "__sleep": {
     "type": "special_method",
-    "explanation": "Legacy serialization hook called before serialize().",
+    "explanation": "hook ישן לסריאליזציה שנקרא לפני serialize().",
     "example": "<?php\npublic function __sleep(): array {\n    return ['name'];\n}"
   },
   "__wakeup": {
     "type": "special_method",
-    "explanation": "Legacy unserialization hook called after unserialize().",
+    "explanation": "hook ישן ל־unserialization שנקרא אחרי unserialize().",
     "example": "<?php\npublic function __wakeup(): void {\n    $this->connect();\n}"
   },
   "__serialize": {
     "type": "special_method",
-    "explanation": "Modern serialization hook that returns data to serialize.",
+    "explanation": "hook מודרני לסריאליזציה שמחזיר נתונים לסריאליזציה.",
     "example": "<?php\npublic function __serialize(): array {\n    return ['name' => $this->name];\n}"
   },
   "__unserialize": {
     "type": "special_method",
-    "explanation": "Modern unserialization hook that restores object state from data.",
+    "explanation": "hook מודרני ל־unserialization שמשחזר מצב אובייקט מנתונים.",
     "example": "<?php\npublic function __unserialize(array $data): void {\n    $this->name = $data['name'];\n}"
   },
   "__toString": {
     "type": "special_method",
-    "explanation": "Returns a string representation of an object.",
+    "explanation": "מחזירה ייצוג מחרוזתי של אובייקט.",
     "example": "<?php\npublic function __toString(): string {\n    return $this->name;\n}"
   },
   "__invoke": {
     "type": "special_method",
-    "explanation": "Allows an object to be called like a function.",
+    "explanation": "מאפשרת לקרוא לאובייקט כמו לפונקציה.",
     "example": "<?php\nclass Greeter { public function __invoke() { echo 'Hi'; } }\n$g = new Greeter();\n$g();"
   },
   "__set_state": {
     "type": "special_method",
-    "explanation": "Static method used by var_export() to recreate an object.",
+    "explanation": "מתודה סטטית שמשמשת את var_export() ליצירה מחדש של אובייקט.",
     "example": "<?php\npublic static function __set_state(array $props): object {\n    return new self();\n}"
   },
   "__clone": {
     "type": "special_method",
-    "explanation": "Runs after an object is cloned.",
+    "explanation": "רצה אחרי שאובייקט משוכפל.",
     "example": "<?php\npublic function __clone(): void {\n    $this->id = null;\n}"
   },
   "__debugInfo": {
     "type": "special_method",
-    "explanation": "Controls what var_dump() shows for an object.",
+    "explanation": "שולטת במה ש־var_dump() מציג עבור אובייקט.",
     "example": "<?php\npublic function __debugInfo(): array {\n    return ['id' => $this->id];\n}"
   },
   "$GLOBALS": {
     "type": "superglobal",
-    "explanation": "Associative array containing references to all variables in the global scope.",
+    "explanation": "מערך אסוציאטיבי שמכיל הפניות לכל המשתנים בהיקף הגלובלי.",
     "example": "<?php\n$GLOBALS['count'] = 1;"
   },
   "$_SERVER": {
     "type": "superglobal",
-    "explanation": "Server and execution environment information such as request method, script name, and headers.",
+    "explanation": "מידע על השרת וסביבת הביצוע, כגון שיטת בקשה, שם הסקריפט וכותרות.",
     "example": "<?php\necho $_SERVER['REQUEST_METHOD'];"
   },
   "$_GET": {
     "type": "superglobal",
-    "explanation": "HTTP query-string parameters sent with the request URL.",
+    "explanation": "פרמטרים מ־query string שנשלחו עם כתובת הבקשה.",
     "example": "<?php\n$name = $_GET['name'] ?? 'Guest';"
   },
   "$_POST": {
     "type": "superglobal",
-    "explanation": "HTTP POST body parameters from form submissions.",
+    "explanation": "פרמטרים מגוף בקשת POST מטפסים.",
     "example": "<?php\n$email = $_POST['email'] ?? '';"
   },
   "$_FILES": {
     "type": "superglobal",
-    "explanation": "Uploaded file information from multipart form requests.",
+    "explanation": "מידע על קבצים שהועלו מבקשות טופס multipart.",
     "example": "<?php\n$tmp = $_FILES['avatar']['tmp_name'] ?? null;"
   },
   "$_COOKIE": {
     "type": "superglobal",
-    "explanation": "HTTP cookies sent by the client.",
+    "explanation": "עוגיות HTTP שנשלחו על ידי הלקוח.",
     "example": "<?php\n$theme = $_COOKIE['theme'] ?? 'light';"
   },
   "$_SESSION": {
     "type": "superglobal",
-    "explanation": "Session data stored for the current user after session_start().",
+    "explanation": "נתוני session שנשמרים עבור המשתמש הנוכחי אחרי session_start().",
     "example": "<?php\nsession_start();\n$_SESSION['user_id'] = 123;"
   },
   "$_REQUEST": {
     "type": "superglobal",
-    "explanation": "Combined request data from GET, POST, and COOKIE depending on PHP configuration.",
+    "explanation": "נתוני בקשה משולבים מ־GET, POST ו־COOKIE בהתאם להגדרות PHP.",
     "example": "<?php\n$value = $_REQUEST['q'] ?? null;"
   },
   "$_ENV": {
     "type": "superglobal",
-    "explanation": "Environment variables available to the PHP process.",
+    "explanation": "משתני סביבה הזמינים לתהליך PHP.",
     "example": "<?php\n$env = $_ENV['APP_ENV'] ?? 'local';"
   },
   "$argc": {
     "type": "predefined_variable",
-    "explanation": "Command-line argument count when PHP runs from the CLI.",
+    "explanation": "מספר הארגומנטים משורת הפקודה כאשר PHP רץ דרך CLI.",
     "example": "<?php\necho $argc;"
   },
   "$argv": {
     "type": "predefined_variable",
-    "explanation": "Command-line argument values when PHP runs from the CLI.",
+    "explanation": "ערכי הארגומנטים משורת הפקודה כאשר PHP רץ דרך CLI.",
     "example": "<?php\nprint_r($argv);"
   },
   "isset": {
     "type": "language_construct",
-    "explanation": "Checks whether a variable is declared and not null.",
+    "explanation": "בודק אם משתנה הוגדר ואינו null.",
     "example": "<?php\nif (isset($user['name'])) echo $user['name'];"
   },
   "empty": {
     "type": "language_construct",
-    "explanation": "Checks whether a variable is empty, such as '', 0, '0', false, null, or an empty array.",
+    "explanation": "בודק אם משתנה ריק, למשל '', 0, '0', false, null או מערך ריק.",
     "example": "<?php\nif (empty($items)) echo 'No items';"
   },
   "unset": {
     "type": "language_construct",
-    "explanation": "Destroys a variable or removes an array element/object property.",
+    "explanation": "משמיד משתנה או מסיר איבר מערך/מאפיין אובייקט.",
     "example": "<?php\nunset($user['password']);"
   },
   "define": {
     "type": "function",
-    "explanation": "Defines a named constant at runtime.",
+    "explanation": "מגדירה קבוע בשם בזמן ריצה.",
     "example": "<?php\ndefine('APP_NAME', 'Demo');"
   },
   "defined": {
     "type": "function",
-    "explanation": "Checks whether a constant with a given name exists.",
+    "explanation": "בודקת אם קיים קבוע בשם נתון.",
     "example": "<?php\nif (defined('APP_NAME')) echo APP_NAME;"
   },
   "constant": {
     "type": "function",
-    "explanation": "Returns the value of a constant by name.",
+    "explanation": "מחזירה את ערכו של קבוע לפי שם.",
     "example": "<?php\necho constant('PHP_VERSION');"
   },
   "var_dump": {
     "type": "function",
-    "explanation": "Prints detailed debugging information about one or more values, including type and value.",
+    "explanation": "מדפיסה מידע מפורט לניפוי על ערך אחד או יותר, כולל טיפוס וערך.",
     "example": "<?php\nvar_dump($user);"
   },
   "print_r": {
     "type": "function",
-    "explanation": "Prints a human-readable representation of arrays and objects.",
+    "explanation": "מדפיסה ייצוג קריא לבני אדם של מערכים ואובייקטים.",
     "example": "<?php\nprint_r(['a' => 1]);"
   },
   "debug_backtrace": {
     "type": "function",
-    "explanation": "Returns a stack trace array showing how code reached the current point.",
+    "explanation": "מחזירה מערך stack trace שמראה איך הקוד הגיע לנקודה הנוכחית.",
     "example": "<?php\nprint_r(debug_backtrace());"
   },
   "count": {
     "type": "function",
-    "explanation": "Counts the elements in an array or Countable object.",
+    "explanation": "סופרת איברים במערך או באובייקט Countable.",
     "example": "<?php\necho count([1, 2, 3]);"
   },
   "sizeof": {
     "type": "function_alias",
-    "explanation": "Alias of count().",
+    "explanation": "כינוי ל־count().",
     "example": "<?php\necho sizeof([1, 2, 3]);"
   },
   "strlen": {
     "type": "function",
-    "explanation": "Returns the length of a binary string in bytes.",
+    "explanation": "מחזירה את אורך המחרוזת הבינארית בבייטים.",
     "example": "<?php\necho strlen('hello');"
   },
   "mb_strlen": {
     "type": "function",
-    "explanation": "Returns the length of a multibyte string, useful for Unicode text when the mbstring extension is available.",
+    "explanation": "מחזירה את אורך המחרוזת מרובת הבייטים, שימושי לטקסט Unicode כאשר הרחבת mbstring זמינה.",
     "example": "<?php\necho mb_strlen('שלום');"
   },
   "trim": {
     "type": "function",
-    "explanation": "Removes whitespace or specified characters from the beginning and end of a string.",
+    "explanation": "מסירה רווחים לבנים או תווים מוגדרים מתחילת ומסוף מחרוזת.",
     "example": "<?php\necho trim(' hello ');"
   },
   "strtolower": {
     "type": "function",
-    "explanation": "Converts a string to lowercase.",
+    "explanation": "ממירה מחרוזת לאותיות קטנות.",
     "example": "<?php\necho strtolower('Hello');"
   },
   "strtoupper": {
     "type": "function",
-    "explanation": "Converts a string to uppercase.",
+    "explanation": "ממירה מחרוזת לאותיות גדולות.",
     "example": "<?php\necho strtoupper('Hello');"
   },
   "substr": {
     "type": "function",
-    "explanation": "Returns part of a string.",
+    "explanation": "מחזירה חלק ממחרוזת.",
     "example": "<?php\necho substr('abcdef', 1, 3); // bcd"
   },
   "str_replace": {
     "type": "function",
-    "explanation": "Replaces occurrences of a substring with another string.",
+    "explanation": "מחליפה מופעים של תת־מחרוזת במחרוזת אחרת.",
     "example": "<?php\necho str_replace('cat', 'dog', 'cat food');"
   },
   "str_contains": {
     "type": "function",
-    "explanation": "Checks whether a string contains another string.",
+    "explanation": "בודקת אם מחרוזת מכילה מחרוזת אחרת.",
     "example": "<?php\nif (str_contains('hello', 'ell')) echo 'yes';"
   },
   "str_starts_with": {
     "type": "function",
-    "explanation": "Checks whether a string starts with a given prefix.",
+    "explanation": "בודקת אם מחרוזת מתחילה בקידומת נתונה.",
     "example": "<?php\nif (str_starts_with('hello', 'he')) echo 'yes';"
   },
   "str_ends_with": {
     "type": "function",
-    "explanation": "Checks whether a string ends with a given suffix.",
+    "explanation": "בודקת אם מחרוזת מסתיימת בסיומת נתונה.",
     "example": "<?php\nif (str_ends_with('file.txt', '.txt')) echo 'text file';"
   },
   "explode": {
     "type": "function",
-    "explanation": "Splits a string into an array using a delimiter.",
+    "explanation": "מפצלת מחרוזת למערך באמצעות מפריד.",
     "example": "<?php\n$parts = explode(',', 'a,b,c');"
   },
   "implode": {
     "type": "function",
-    "explanation": "Joins array values into a string using a delimiter.",
+    "explanation": "מחברת ערכי מערך למחרוזת באמצעות מפריד.",
     "example": "<?php\necho implode(', ', ['a', 'b', 'c']);"
   },
   "sprintf": {
     "type": "function",
-    "explanation": "Returns a formatted string.",
+    "explanation": "מחזירה מחרוזת מעוצבת.",
     "example": "<?php\n$msg = sprintf('Hello %s', 'Nina');"
   },
   "preg_match": {
     "type": "function",
-    "explanation": "Matches a string against a regular expression.",
+    "explanation": "מתאימה מחרוזת מול ביטוי רגולרי.",
     "example": "<?php\nif (preg_match('/^[a-z]+$/', $name)) echo 'valid';"
   },
   "array_map": {
     "type": "function",
-    "explanation": "Applies a callback to each array element and returns the results.",
+    "explanation": "מפעילה callback על כל איבר במערך ומחזירה את התוצאות.",
     "example": "<?php\n$doubled = array_map(fn($x) => $x * 2, [1, 2, 3]);"
   },
   "array_filter": {
     "type": "function",
-    "explanation": "Filters array elements using a callback or truthiness.",
+    "explanation": "מסננת איברי מערך באמצעות callback או לפי truthiness.",
     "example": "<?php\n$evens = array_filter([1, 2, 3], fn($x) => $x % 2 === 0);"
   },
   "array_reduce": {
     "type": "function",
-    "explanation": "Reduces an array to a single value using a callback.",
+    "explanation": "מצמצמת מערך לערך יחיד באמצעות callback.",
     "example": "<?php\n$total = array_reduce([1, 2, 3], fn($c, $x) => $c + $x, 0);"
   },
   "array_merge": {
     "type": "function",
-    "explanation": "Merges one or more arrays.",
+    "explanation": "ממזגת מערך אחד או יותר.",
     "example": "<?php\n$result = array_merge([1], [2, 3]);"
   },
   "array_keys": {
     "type": "function",
-    "explanation": "Returns all keys from an array.",
+    "explanation": "מחזירה את כל המפתחות ממערך.",
     "example": "<?php\n$keys = array_keys(['a' => 1]);"
   },
   "array_values": {
     "type": "function",
-    "explanation": "Returns all values from an array with numeric keys reset.",
+    "explanation": "מחזירה את כל הערכים ממערך עם איפוס מפתחות מספריים.",
     "example": "<?php\n$values = array_values(['a' => 1]);"
   },
   "array_key_exists": {
     "type": "function",
-    "explanation": "Checks whether an array contains a key, even if its value is null.",
+    "explanation": "בודקת אם מערך מכיל מפתח, גם אם הערך שלו הוא null.",
     "example": "<?php\nif (array_key_exists('name', $user)) echo 'exists';"
   },
   "in_array": {
     "type": "function",
-    "explanation": "Checks whether a value exists in an array.",
+    "explanation": "בודקת אם ערך קיים במערך.",
     "example": "<?php\nif (in_array('admin', $roles, true)) echo 'admin';"
   },
   "sort": {
     "type": "function",
-    "explanation": "Sorts an array in ascending order and reindexes numeric keys.",
+    "explanation": "ממיינת מערך בסדר עולה וממספרת מחדש מפתחות מספריים.",
     "example": "<?php\n$nums = [3, 1, 2];\nsort($nums);"
   },
   "json_encode": {
     "type": "function",
-    "explanation": "Converts a PHP value to a JSON string.",
+    "explanation": "ממירה ערך PHP למחרוזת JSON.",
     "example": "<?php\necho json_encode(['name' => 'Nina']);"
   },
   "json_decode": {
     "type": "function",
-    "explanation": "Converts a JSON string into a PHP value.",
+    "explanation": "ממירה מחרוזת JSON לערך PHP.",
     "example": "<?php\n$data = json_decode('{\"x\":1}', true);"
   },
   "file_get_contents": {
     "type": "function",
-    "explanation": "Reads an entire file or URL into a string.",
+    "explanation": "קוראת קובץ או URL שלם למחרוזת.",
     "example": "<?php\n$text = file_get_contents('data.txt');"
   },
   "file_put_contents": {
     "type": "function",
-    "explanation": "Writes a string to a file.",
+    "explanation": "כותבת מחרוזת לקובץ.",
     "example": "<?php\nfile_put_contents('data.txt', 'hello');"
   },
   "fopen": {
     "type": "function",
-    "explanation": "Opens a file or stream and returns a resource.",
+    "explanation": "פותחת קובץ או stream ומחזירה resource.",
     "example": "<?php\n$handle = fopen('data.txt', 'r');"
   },
   "fclose": {
     "type": "function",
-    "explanation": "Closes an open file handle.",
+    "explanation": "סוגרת handle פתוח של קובץ.",
     "example": "<?php\nfclose($handle);"
   },
   "fread": {
     "type": "function",
-    "explanation": "Reads bytes from an open file handle.",
+    "explanation": "קוראת בייטים מ־handle פתוח של קובץ.",
     "example": "<?php\n$data = fread($handle, 1024);"
   },
   "fwrite": {
     "type": "function",
-    "explanation": "Writes data to an open file handle.",
+    "explanation": "כותבת נתונים ל־handle פתוח של קובץ.",
     "example": "<?php\nfwrite($handle, 'hello');"
   },
   "dirname": {
     "type": "function",
-    "explanation": "Returns the parent directory path.",
+    "explanation": "מחזירה את נתיב תיקיית האב.",
     "example": "<?php\necho dirname('/app/index.php');"
   },
   "basename": {
     "type": "function",
-    "explanation": "Returns the filename part of a path.",
+    "explanation": "מחזירה את חלק שם הקובץ מנתיב.",
     "example": "<?php\necho basename('/app/index.php');"
   },
   "pathinfo": {
     "type": "function",
-    "explanation": "Returns information about a file path.",
+    "explanation": "מחזירה מידע על נתיב קובץ.",
     "example": "<?php\n$info = pathinfo('/app/index.php');"
   },
   "is_array": {
     "type": "function",
-    "explanation": "Checks whether a value is an array.",
+    "explanation": "בודקת אם ערך הוא מערך.",
     "example": "<?php\nvar_dump(is_array([]));"
   },
   "is_string": {
     "type": "function",
-    "explanation": "Checks whether a value is a string.",
+    "explanation": "בודקת אם ערך הוא מחרוזת.",
     "example": "<?php\nvar_dump(is_string('hi'));"
   },
   "is_int": {
     "type": "function",
-    "explanation": "Checks whether a value is an integer.",
+    "explanation": "בודקת אם ערך הוא מספר שלם.",
     "example": "<?php\nvar_dump(is_int(42));"
   },
   "is_float": {
     "type": "function",
-    "explanation": "Checks whether a value is a float.",
+    "explanation": "בודקת אם ערך הוא float.",
     "example": "<?php\nvar_dump(is_float(3.14));"
   },
   "is_bool": {
     "type": "function",
-    "explanation": "Checks whether a value is a boolean.",
+    "explanation": "בודקת אם ערך הוא בוליאני.",
     "example": "<?php\nvar_dump(is_bool(true));"
   },
   "is_null": {
     "type": "function",
-    "explanation": "Checks whether a value is null.",
+    "explanation": "בודקת אם ערך הוא null.",
     "example": "<?php\nvar_dump(is_null(null));"
   },
   "is_object": {
     "type": "function",
-    "explanation": "Checks whether a value is an object.",
+    "explanation": "בודקת אם ערך הוא אובייקט.",
     "example": "<?php\nvar_dump(is_object(new stdClass()));"
   },
   "is_callable": {
     "type": "function",
-    "explanation": "Checks whether a value can be called as a function.",
+    "explanation": "בודקת אם ניתן לקרוא לערך כפונקציה.",
     "example": "<?php\nvar_dump(is_callable('strlen'));"
   },
   "gettype": {
     "type": "function",
-    "explanation": "Returns the type name of a variable.",
+    "explanation": "מחזירה את שם הטיפוס של משתנה.",
     "example": "<?php\necho gettype(42);"
   },
   "settype": {
     "type": "function",
-    "explanation": "Changes the type of a variable.",
+    "explanation": "משנה את הטיפוס של משתנה.",
     "example": "<?php\n$x = '42';\nsettype($x, 'int');"
   },
   "intval": {
     "type": "function",
-    "explanation": "Converts a value to an integer.",
+    "explanation": "ממירה ערך למספר שלם.",
     "example": "<?php\n$id = intval($_GET['id'] ?? 0);"
   },
   "floatval": {
     "type": "function",
-    "explanation": "Converts a value to a float.",
+    "explanation": "ממירה ערך ל־float.",
     "example": "<?php\n$price = floatval('12.5');"
   },
   "strval": {
     "type": "function",
-    "explanation": "Converts a value to a string.",
+    "explanation": "ממירה ערך למחרוזת.",
     "example": "<?php\n$text = strval(123);"
   },
   "boolval": {
     "type": "function",
-    "explanation": "Converts a value to a boolean.",
+    "explanation": "ממירה ערך לבוליאני.",
     "example": "<?php\n$ok = boolval(1);"
   },
   "htmlspecialchars": {
     "type": "function",
-    "explanation": "Escapes special HTML characters to help prevent XSS when outputting text.",
+    "explanation": "ממירה תווי HTML מיוחדים כדי לעזור למנוע XSS בעת הדפסת טקסט.",
     "example": "<?php\necho htmlspecialchars($name, ENT_QUOTES, 'UTF-8');"
   },
   "filter_var": {
     "type": "function",
-    "explanation": "Filters or validates a value using built-in filters.",
+    "explanation": "מסננת או מאמתת ערך באמצעות פילטרים מובנים.",
     "example": "<?php\n$email = filter_var($input, FILTER_VALIDATE_EMAIL);"
   },
   "password_hash": {
     "type": "function",
-    "explanation": "Creates a secure password hash.",
+    "explanation": "יוצרת hash מאובטח לסיסמה.",
     "example": "<?php\n$hash = password_hash($password, PASSWORD_DEFAULT);"
   },
   "password_verify": {
     "type": "function",
-    "explanation": "Checks whether a password matches a hash.",
+    "explanation": "בודקת אם סיסמה מתאימה ל־hash.",
     "example": "<?php\nif (password_verify($password, $hash)) echo 'OK';"
   },
   "session_start": {
     "type": "function",
-    "explanation": "Starts or resumes a PHP session.",
+    "explanation": "מתחילה או ממשיכה session של PHP.",
     "example": "<?php\nsession_start();"
   },
   "header": {
     "type": "function",
-    "explanation": "Sends a raw HTTP header.",
+    "explanation": "שולחת כותרת HTTP גולמית.",
     "example": "<?php\nheader('Content-Type: application/json');"
   },
   "http_response_code": {
     "type": "function",
-    "explanation": "Gets or sets the HTTP response status code.",
+    "explanation": "מקבלת או מגדירה את קוד סטטוס תגובת ה־HTTP.",
     "example": "<?php\nhttp_response_code(404);"
   },
   "time": {
     "type": "function",
-    "explanation": "Returns the current Unix timestamp.",
+    "explanation": "מחזירה את חותמת הזמן הנוכחית של Unix.",
     "example": "<?php\necho time();"
   },
   "date": {
     "type": "function",
-    "explanation": "Formats a timestamp as a date/time string.",
+    "explanation": "מעצבת timestamp כמחרוזת תאריך/שעה.",
     "example": "<?php\necho date('Y-m-d');"
   },
   "microtime": {
     "type": "function",
-    "explanation": "Returns the current Unix timestamp with microseconds.",
+    "explanation": "מחזירה את חותמת הזמן הנוכחית של Unix עם מיקרו־שניות.",
     "example": "<?php\n$start = microtime(true);"
   },
   "sleep": {
     "type": "function",
-    "explanation": "Pauses execution for a number of seconds.",
+    "explanation": "משהה את הביצוע למספר שניות.",
     "example": "<?php\nsleep(1);"
   },
   "random_int": {
     "type": "function",
-    "explanation": "Returns a cryptographically secure random integer.",
+    "explanation": "מחזירה מספר שלם אקראי מאובטח קריפטוגרפית.",
     "example": "<?php\n$code = random_int(100000, 999999);"
   },
   "uniqid": {
     "type": "function",
-    "explanation": "Generates a unique string based on the current time. Not suitable for security tokens.",
+    "explanation": "יוצרת מחרוזת ייחודית על בסיס הזמן הנוכחי. לא מתאימה לטוקנים אבטחתיים.",
     "example": "<?php\necho uniqid('id_', true);"
   },
   "mail": {
     "type": "function",
-    "explanation": "Sends an email using the server's mail configuration.",
+    "explanation": "שולחת אימייל באמצעות הגדרת הדואר של השרת.",
     "example": "<?php\nmail('user@example.com', 'Subject', 'Body');"
   },
   "stdClass": {
     "type": "class",
-    "explanation": "Generic empty PHP class often used as a simple object container.",
+    "explanation": "מחלקת PHP ריקה כללית, נפוצה כמכל אובייקט פשוט.",
     "example": "<?php\n$obj = new stdClass();\n$obj->name = 'Nina';"
   },
   "Closure": {
     "type": "class",
-    "explanation": "Built-in class used to represent anonymous functions.",
+    "explanation": "מחלקה מובנית שמייצגת פונקציות אנונימיות.",
     "example": "<?php\n$fn = function () { return 1; };\nvar_dump($fn instanceof Closure);"
   },
   "Generator": {
     "type": "class",
-    "explanation": "Class used internally for generator objects returned by functions that use yield.",
+    "explanation": "מחלקה המשמשת פנימית לאובייקטי generator שמוחזרים מפונקציות המשתמשות ב־yield.",
     "example": "<?php\nfunction nums() { yield 1; }\n$g = nums();"
   },
   "Fiber": {
     "type": "class",
-    "explanation": "Represents a lightweight interruptible execution context introduced in PHP 8.1.",
+    "explanation": "מייצגת הקשר ביצוע קל־משקל שניתן להשהיה, הוצג ב־PHP 8.1.",
     "example": "<?php\n$fiber = new Fiber(fn() => 'done');\necho $fiber->start();"
   },
   "WeakReference": {
     "type": "class",
-    "explanation": "Holds a reference to an object without preventing it from being garbage collected.",
+    "explanation": "מחזיקה הפניה לאובייקט בלי למנוע ממנו להיאסף על ידי garbage collector.",
     "example": "<?php\n$ref = WeakReference::create($object);"
   },
   "WeakMap": {
     "type": "class",
-    "explanation": "Map with object keys that do not prevent those objects from being garbage collected.",
+    "explanation": "מפה עם מפתחות אובייקטים שאינה מונעת מאותם אובייקטים להיאסף על ידי garbage collector.",
     "example": "<?php\n$map = new WeakMap();\n$map[$object] = 'data';"
   },
   "DateTime": {
     "type": "class",
-    "explanation": "Mutable date and time object.",
+    "explanation": "אובייקט תאריך ושעה ניתן לשינוי.",
     "example": "<?php\n$date = new DateTime('now');"
   },
   "DateTimeImmutable": {
     "type": "class",
-    "explanation": "Immutable date and time object. Modifying it returns a new object.",
+    "explanation": "אובייקט תאריך ושעה בלתי ניתן לשינוי. שינוי שלו מחזיר אובייקט חדש.",
     "example": "<?php\n$date = new DateTimeImmutable('now');"
   },
   "DateTimeInterface": {
     "type": "interface",
-    "explanation": "Common interface implemented by DateTime and DateTimeImmutable.",
+    "explanation": "ממשק משותף שממומש על ידי DateTime ו־DateTimeImmutable.",
     "example": "<?php\nfunction formatDate(DateTimeInterface $date): string {\n    return $date->format('Y-m-d');\n}"
   },
   "DateTimeZone": {
     "type": "class",
-    "explanation": "Represents a time zone for date/time operations.",
+    "explanation": "מייצגת אזור זמן לפעולות תאריך/שעה.",
     "example": "<?php\n$tz = new DateTimeZone('Asia/Jerusalem');"
   },
   "DateInterval": {
     "type": "class",
-    "explanation": "Represents a duration or interval of time.",
+    "explanation": "מייצגת משך או מרווח זמן.",
     "example": "<?php\n$interval = new DateInterval('P1D');"
   },
   "DatePeriod": {
     "type": "class",
-    "explanation": "Represents an iterable period of dates.",
+    "explanation": "מייצגת תקופה של תאריכים שניתן לעבור עליה.",
     "example": "<?php\n$period = new DatePeriod(new DateTime('today'), new DateInterval('P1D'), 3);"
   },
   "Throwable": {
     "type": "interface",
-    "explanation": "Base interface implemented by Exception and Error, allowing both to be caught.",
+    "explanation": "ממשק בסיס שממומש על ידי Exception ו־Error, ומאפשר לתפוס את שניהם.",
     "example": "<?php\ntry { risky(); } catch (Throwable $e) { echo $e->getMessage(); }"
   },
   "Exception": {
     "type": "class",
-    "explanation": "Base class for most userland exceptions.",
+    "explanation": "מחלקת בסיס לרוב החריגות בקוד משתמש.",
     "example": "<?php\nthrow new Exception('Something went wrong');"
   },
   "Error": {
     "type": "class",
-    "explanation": "Base class for internal PHP errors that can be caught.",
+    "explanation": "מחלקת בסיס לשגיאות פנימיות של PHP שניתן לתפוס.",
     "example": "<?php\ntry { undefinedFunction(); } catch (Error $e) { echo $e->getMessage(); }"
   },
   "TypeError": {
     "type": "class",
-    "explanation": "Thrown when a value does not match a required type.",
+    "explanation": "נזרקת כאשר ערך אינו מתאים לטיפוס הנדרש.",
     "example": "<?php\nfunction f(int $x) {}\nf('no');"
   },
   "ValueError": {
     "type": "class",
-    "explanation": "Thrown when a value has the correct type but an invalid value.",
+    "explanation": "נזרקת כאשר לערך יש טיפוס נכון אבל ערך לא חוקי.",
     "example": "<?php\nthrow new ValueError('Invalid value');"
   },
   "ParseError": {
     "type": "class",
-    "explanation": "Thrown when dynamically evaluated PHP code contains a parse error.",
+    "explanation": "נזרקת כאשר קוד PHP שהוערך דינמית מכיל שגיאת parsing.",
     "example": "<?php\ntry { eval('invalid code'); } catch (ParseError $e) {}"
   },
   "ArithmeticError": {
     "type": "class",
-    "explanation": "Base class for arithmetic-related errors.",
+    "explanation": "מחלקת בסיס לשגיאות הקשורות לחישובים.",
     "example": "<?php\nthrow new ArithmeticError('Bad math');"
   },
   "DivisionByZeroError": {
     "type": "class",
-    "explanation": "Thrown for integer division by zero.",
+    "explanation": "נזרקת עבור חילוק שלם באפס.",
     "example": "<?php\nintdiv(1, 0);"
   },
   "ArgumentCountError": {
     "type": "class",
-    "explanation": "Thrown when too few arguments are passed to a user-defined function or method.",
+    "explanation": "נזרקת כאשר מועברים מעט מדי ארגומנטים לפונקציה או מתודה שהוגדרה על ידי המשתמש.",
     "example": "<?php\nfunction f($x) {}\nf();"
   },
   "AssertionError": {
     "type": "class",
-    "explanation": "Thrown when an assertion fails and assertions are configured to throw exceptions.",
+    "explanation": "נזרקת כאשר assert נכשל וה־assertions מוגדרות לזרוק חריגות.",
     "example": "<?php\nassert(false);"
   },
   "RuntimeException": {
     "type": "class",
-    "explanation": "SPL exception for errors that occur only at runtime.",
+    "explanation": "חריגת SPL לשגיאות שמתרחשות רק בזמן ריצה.",
     "example": "<?php\nthrow new RuntimeException('Runtime failure');"
   },
   "InvalidArgumentException": {
     "type": "class",
-    "explanation": "SPL exception for invalid function or method arguments.",
+    "explanation": "חריגת SPL עבור ארגומנטים לא חוקיים לפונקציה או מתודה.",
     "example": "<?php\nthrow new InvalidArgumentException('Bad argument');"
   },
   "LogicException": {
     "type": "class",
-    "explanation": "SPL exception for errors that represent programming logic mistakes.",
+    "explanation": "חריגת SPL לשגיאות שמייצגות טעויות לוגיקה בתכנות.",
     "example": "<?php\nthrow new LogicException('Impossible state');"
   },
   "PDO": {
     "type": "class",
-    "explanation": "Database access class from PHP Data Objects, used for connecting to databases with prepared statements.",
+    "explanation": "מחלקת גישה למסדי נתונים מ־PHP Data Objects, משמשת להתחברות למסדי נתונים עם prepared statements.",
     "example": "<?php\n$pdo = new PDO($dsn, $user, $pass);"
   },
   "PDOStatement": {
     "type": "class",
-    "explanation": "Represents a prepared PDO SQL statement.",
+    "explanation": "מייצגת משפט SQL מוכן של PDO.",
     "example": "<?php\n$stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');"
   },
   "Traversable": {
     "type": "interface",
-    "explanation": "Internal base interface for objects that can be used in foreach.",
+    "explanation": "ממשק בסיס פנימי לאובייקטים שניתן להשתמש בהם ב־foreach.",
     "example": "<?php\nfunction walk(Traversable $items): void { foreach ($items as $item) {} }"
   },
   "Iterator": {
     "type": "interface",
-    "explanation": "Interface for objects that define their own iteration behavior.",
+    "explanation": "ממשק לאובייקטים שמגדירים התנהגות איטרציה משל עצמם.",
     "example": "<?php\nclass Items implements Iterator { /* current, key, next, rewind, valid */ }"
   },
   "IteratorAggregate": {
     "type": "interface",
-    "explanation": "Interface for objects that return an external iterator.",
+    "explanation": "ממשק לאובייקטים שמחזירים איטרטור חיצוני.",
     "example": "<?php\nclass Items implements IteratorAggregate {\n    public function getIterator(): Traversable { return new ArrayIterator([]); }\n}"
   },
   "ArrayIterator": {
     "type": "class",
-    "explanation": "Iterator implementation for arrays and objects.",
+    "explanation": "מימוש Iterator למערכים ולאובייקטים.",
     "example": "<?php\n$it = new ArrayIterator([1, 2, 3]);"
   },
   "Countable": {
     "type": "interface",
-    "explanation": "Interface for objects that can be counted with count().",
+    "explanation": "ממשק לאובייקטים שניתן לספור עם count().",
     "example": "<?php\nclass Bag implements Countable {\n    public function count(): int { return 0; }\n}"
   },
   "ArrayAccess": {
     "type": "interface",
-    "explanation": "Interface that lets objects be accessed like arrays.",
+    "explanation": "ממשק שמאפשר לגשת לאובייקטים כמו למערכים.",
     "example": "<?php\nclass Config implements ArrayAccess { /* offsetExists/get/set/unset */ }"
   },
   "Stringable": {
     "type": "interface",
-    "explanation": "Interface automatically implemented by classes with __toString().",
+    "explanation": "ממשק שממומש אוטומטית על ידי מחלקות עם __toString().",
     "example": "<?php\nfunction printValue(Stringable $x): void { echo $x; }"
   },
   "JsonSerializable": {
     "type": "interface",
-    "explanation": "Interface for classes that define custom JSON serialization.",
+    "explanation": "ממשק למחלקות שמגדירות סריאליזציה מותאמת ל־JSON.",
     "example": "<?php\nclass User implements JsonSerializable {\n    public function jsonSerialize(): mixed { return ['name' => 'Nina']; }\n}"
   },
   "UnitEnum": {
     "type": "interface",
-    "explanation": "Internal interface automatically implemented by all enums.",
+    "explanation": "ממשק פנימי שממומש אוטומטית על ידי כל enums.",
     "example": "<?php\nfunction show(UnitEnum $case): string { return $case->name; }"
   },
   "BackedEnum": {
     "type": "interface",
-    "explanation": "Internal interface automatically implemented by backed enums.",
+    "explanation": "ממשק פנימי שממומש אוטומטית על ידי backed enums.",
     "example": "<?php\nenum Status: string { case Active = 'active'; }"
   },
   "Attribute": {
     "type": "class",
-    "explanation": "Built-in class used as an attribute on custom attribute classes.",
+    "explanation": "מחלקה מובנית המשמשת כ־attribute על מחלקות attribute מותאמות אישית.",
     "example": "<?php\n#[Attribute]\nclass Route {}"
   },
   "PHP_VERSION": {
     "type": "constant",
-    "explanation": "String containing the current PHP version.",
+    "explanation": "מחרוזת שמכילה את גרסת PHP הנוכחית.",
     "example": "<?php\necho PHP_VERSION;"
   },
   "PHP_MAJOR_VERSION": {
     "type": "constant",
-    "explanation": "Integer containing the current major PHP version.",
+    "explanation": "מספר שלם שמכיל את גרסת ה־major הנוכחית של PHP.",
     "example": "<?php\necho PHP_MAJOR_VERSION;"
   },
   "PHP_OS": {
     "type": "constant",
-    "explanation": "Operating system PHP was built for.",
+    "explanation": "מערכת ההפעלה שעבורה PHP נבנה.",
     "example": "<?php\necho PHP_OS;"
   },
   "PHP_EOL": {
     "type": "constant",
-    "explanation": "Platform-specific end-of-line string.",
+    "explanation": "מחרוזת סוף־שורה ספציפית לפלטפורמה.",
     "example": "<?php\necho 'Line' . PHP_EOL;"
   },
   "DIRECTORY_SEPARATOR": {
     "type": "constant",
-    "explanation": "Platform-specific directory separator.",
+    "explanation": "מפריד תיקיות ספציפי לפלטפורמה.",
     "example": "<?php\necho 'app' . DIRECTORY_SEPARATOR . 'src';"
   },
   "PATH_SEPARATOR": {
     "type": "constant",
-    "explanation": "Platform-specific separator for include paths.",
+    "explanation": "מפריד ספציפי לפלטפורמה לנתיבי include.",
     "example": "<?php\necho PATH_SEPARATOR;"
   },
   "STDIN": {
     "type": "constant",
-    "explanation": "CLI input stream resource.",
+    "explanation": "משאב stream קלט של CLI.",
     "example": "<?php\n$line = fgets(STDIN);"
   },
   "STDOUT": {
     "type": "constant",
-    "explanation": "CLI output stream resource.",
+    "explanation": "משאב stream פלט של CLI.",
     "example": "<?php\nfwrite(STDOUT, 'Hello');"
   },
   "STDERR": {
     "type": "constant",
-    "explanation": "CLI error output stream resource.",
+    "explanation": "משאב stream פלט שגיאות של CLI.",
     "example": "<?php\nfwrite(STDERR, 'Error');"
   },
   "composer": {
     "type": "tool",
-    "explanation": "PHP dependency manager used to install packages and generate autoloading.",
+    "explanation": "מנהל התלויות של PHP המשמש להתקנת חבילות וליצירת autoloading.",
     "example": "composer require monolog/monolog"
   },
   "vendor/autoload.php": {
     "type": "ecosystem_file",
-    "explanation": "Composer-generated autoloader file commonly required at application startup.",
+    "explanation": "קובץ autoloader שנוצר על ידי Composer ונדרש בדרך כלל בתחילת אפליקציה.",
     "example": "<?php\nrequire __DIR__ . '/vendor/autoload.php';"
   },
   "autoloading": {
     "type": "concept",
-    "explanation": "Automatic loading of class files when a class is first used, usually handled by Composer PSR-4 autoloading.",
+    "explanation": "טעינה אוטומטית של קובצי מחלקות כאשר משתמשים במחלקה לראשונה, לרוב באמצעות PSR-4 autoloading של Composer.",
     "example": "<?php\n// Composer autoloads App\\Models\\User when it is used.\n$user = new App\\Models\\User();"
   },
   "PSR-4": {
     "type": "standard",
-    "explanation": "Common PHP autoloading standard that maps namespaces to directory paths.",
+    "explanation": "תקן autoloading נפוץ ב־PHP שממפה namespaces לנתיבי תיקיות.",
     "example": "{\n  \"autoload\": {\n    \"psr-4\": { \"App\\\\\": \"src/\" }\n  }\n}"
   }
 }

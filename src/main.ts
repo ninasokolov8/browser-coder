@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import { getAllLanguages, getLanguage, getKeywordExplanation, getStarterAsync, preloadDefaultStarters, preloadStarters } from "./languages";
 import type { LoadedLanguage, VersionConfig } from "./languages";
 import { TabManager, Tab } from "./tabs";
-import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLanguages, isRTL } from "./i18n";
+import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLanguages } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════
 // STEP-UP INTEGRATION - URL Parameters & PostMessage API
@@ -344,11 +344,16 @@ function setStatus(s: string) {
 }
 
 function setOutput(text: string) {
+  // Output is always raw program stdout/stderr/exit-code text - never
+  // translated - so it must stay LTR even if the element previously held a
+  // translated (and possibly RTL) placeholder via data-i18n.
+  panelContentEl.dir = "ltr";
   panelContentEl.textContent = text || "";
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 
 function appendOutput(text: string) {
+  panelContentEl.dir = "ltr";
   panelContentEl.textContent += (panelContentEl.textContent ? "\n" : "") + text;
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
@@ -375,7 +380,17 @@ function onKeywordPopupEscape(e: KeyboardEvent) {
   if (e.key === "Escape") closeKeywordHelpPopup();
 }
 
-function showKeywordHelpPopup(keyword: string, explanation: string, example: string, x: number, y: number) {
+// Formats a snake_case/underscore type tag (e.g. "control_flow") into a
+// friendlier display label (e.g. "Control Flow") for the popup badge.
+function formatKeywordTypeTag(type: string): string {
+  return type
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function showKeywordHelpPopup(keyword: string, type: string | undefined, explanation: string, example: string, rtl: boolean, x: number, y: number) {
   closeKeywordHelpPopup();
 
   const popup = document.createElement("div");
@@ -383,26 +398,41 @@ function showKeywordHelpPopup(keyword: string, explanation: string, example: str
 
   const header = document.createElement("div");
   header.className = "kw-help-header";
+  const titleGroup = document.createElement("span");
+  titleGroup.className = "kw-help-title-group";
   const title = document.createElement("span");
   title.className = "kw-help-title";
   title.textContent = keyword;
+  titleGroup.appendChild(title);
+  if (type) {
+    const tag = document.createElement("span");
+    tag.className = "kw-help-tag";
+    tag.textContent = formatKeywordTypeTag(type);
+    titleGroup.appendChild(tag);
+  }
   const closeBtn = document.createElement("button");
   closeBtn.className = "kw-help-close";
   closeBtn.setAttribute("aria-label", "Close");
   closeBtn.textContent = "✕";
   closeBtn.addEventListener("click", closeKeywordHelpPopup);
-  header.appendChild(title);
+  header.appendChild(titleGroup);
   header.appendChild(closeBtn);
   popup.appendChild(header);
 
+  // Only the explanation text is ever translated (Hebrew), so only it gets
+  // dir="rtl" - the keyword name, type tag, and example code always stay LTR.
   const desc = document.createElement("div");
   desc.className = "kw-help-desc";
   desc.textContent = explanation;
+  if (rtl) {
+    desc.dir = "rtl";
+    desc.classList.add("kw-help-desc-rtl");
+  }
   popup.appendChild(desc);
 
   const exampleLabel = document.createElement("div");
   exampleLabel.className = "kw-help-example-label";
-  exampleLabel.textContent = "Example:";
+  exampleLabel.textContent = t("editor.example") || "Example:";
   popup.appendChild(exampleLabel);
 
   const code = document.createElement("pre");
@@ -431,9 +461,13 @@ function showKeywordHelpPopup(keyword: string, explanation: string, example: str
 
 // ===== Run loader (VSCode-style "busy" feedback) =====
 let runLoaderTimer: number | null = null;
-const runBtnDefaultHTML = runBtn.innerHTML;
+// Captured fresh in startRunLoader() (not once at page load) so it always
+// reflects the button's current label - including after a UI language
+// switch, which rewrites this HTML via translatePage().
+let runBtnRestoreHTML = runBtn.innerHTML;
 
 function startRunLoader() {
+  runBtnRestoreHTML = runBtn.innerHTML;
   runBtn.disabled = true;
   runBtn.innerHTML = `<span class="btn-spinner"></span>${t("titlebar.running") || "Running"}`;
 
@@ -451,7 +485,7 @@ function stopRunLoader() {
     runLoaderTimer = null;
   }
   runBtn.disabled = false;
-  runBtn.innerHTML = runBtnDefaultHTML;
+  runBtn.innerHTML = runBtnRestoreHTML;
 }
 
 function downloadFile(filename: string, content: string) {
@@ -466,18 +500,17 @@ function downloadFile(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-// Update grid layout for RTL/LTR
+// Sidebar-width resize handling. Kept as a named function (not inlined at
+// each call site) since the sidebar resize handler also needs to reapply it.
+// NOTE: layout never mirrors for RTL/Hebrew - every element stays in the
+// exact same position as English (product decision), so this always uses
+// the same LTR column order regardless of UI language.
 function updateGridForRTL() {
   // In embedded mode, grid is fully controlled by mode-specific CSS - never override
   if (isEmbedded) return;
   const appEl = document.getElementById("app")!;
   const sidebarWidth = sidebarEl.offsetWidth || 220;
-  
-  if (isRTL()) {
-    appEl.style.gridTemplateColumns = `1fr ${sidebarWidth}px 48px`;
-  } else {
-    appEl.style.gridTemplateColumns = `48px ${sidebarWidth}px 1fr`;
-  }
+  appEl.style.gridTemplateColumns = `48px ${sidebarWidth}px 1fr`;
 }
 
 // Monaco target mapping
@@ -2455,14 +2488,13 @@ function applyTheme(theme: string) {
   });
 
   // Run button
-  runBtn.addEventListener("click", async () => {
+  async function runCode(code: string) {
     const activeTab = tabManager.getActiveTab();
     if (!activeTab) return;
 
     const lang = getLanguage(activeTab.file.language);
     if (!lang) return;
 
-    const code = editor.getValue();
     setStatus("Running…");
     startRunLoader();
 
@@ -2534,7 +2566,9 @@ function applyTheme(theme: string) {
       // Safety net: guarantees the button is never left stuck in a disabled/spinning state
       stopRunLoader();
     }
-  });
+  }
+
+  runBtn.addEventListener("click", () => runCode(editor.getValue()));
 
   // Keyboard shortcuts
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
@@ -2574,32 +2608,63 @@ function applyTheme(theme: string) {
   });
 
   // "Explain this keyword" — right-click a keyword to see a plain-English
-  // explanation + example, backed by languages/*/keywords.json
+  // explanation + example, backed by languages/*/keywords.json.
+  //
+  // The menu item only appears when the word under the cursor/selection is
+  // actually present in the active language's keyword dictionary - driven by
+  // a Monaco context key kept in sync on every cursor/selection/model change,
+  // so adding a new entry to keywords.json makes it "just work" with no other
+  // code changes, and it stays hidden for anything not in the file.
+  function resolveKeywordAtCursor(ed: monaco.editor.IStandaloneCodeEditor): string {
+    const position = ed.getPosition();
+    const model = ed.getModel();
+    if (!position || !model) return "";
+
+    const wordInfo = model.getWordAtPosition(position);
+    if (wordInfo) return wordInfo.word;
+
+    const selection = ed.getSelection();
+    if (selection && !selection.isEmpty()) {
+      return model.getValueInRange(selection).trim();
+    }
+    return "";
+  }
+
+  const keywordHelpAvailable = editor.createContextKey<boolean>("keywordHelpAvailable", false);
+
+  function updateKeywordHelpAvailability() {
+    const word = resolveKeywordAtCursor(editor);
+    if (!word) {
+      keywordHelpAvailable.set(false);
+      return;
+    }
+    const activeTab = tabManager.getActiveTab();
+    const langId = activeTab ? activeTab.file.language : currentLang.id;
+    keywordHelpAvailable.set(!!getKeywordExplanation(langId, word));
+  }
+
+  editor.onDidChangeCursorSelection(updateKeywordHelpAvailability);
+  editor.onDidChangeModel(updateKeywordHelpAvailability);
+
   editor.addAction({
     id: "explainKeyword",
     label: t("editor.explainKeyword") || "💡 Explain this keyword",
     contextMenuGroupId: "9_cutcopypaste",
     contextMenuOrder: 1.5,
+    precondition: "keywordHelpAvailable",
     run: (ed) => {
       const position = ed.getPosition();
       const model = ed.getModel();
       if (!position || !model) return;
 
       const wordInfo = model.getWordAtPosition(position);
-      const word = wordInfo?.word || model.getValueInRange(ed.getSelection()!).trim();
-      if (!word) {
-        setStatus("Select or click on a keyword first");
-        return;
-      }
+      const word = wordInfo?.word || resolveKeywordAtCursor(ed);
+      if (!word) return;
 
       const activeTab = tabManager.getActiveTab();
       const langId = activeTab ? activeTab.file.language : currentLang.id;
-      const entry = getKeywordExplanation(langId, word);
-
-      if (!entry) {
-        setStatus(`No explanation found for "${word}"`);
-        return;
-      }
+      const entry = getKeywordExplanation(langId, word, getUILang());
+      if (!entry) return;
 
       // Position the popup near the clicked word on screen
       const coords = wordInfo
@@ -2610,9 +2675,61 @@ function applyTheme(theme: string) {
       const x = (editorRect?.left || 0) + (coords?.left || 0);
       const y = (editorRect?.top || 0) + (coords?.top || 0) + (coords?.height || 18);
 
-      showKeywordHelpPopup(word, entry.explanation, entry.example, x, y);
+      showKeywordHelpPopup(word, entry.type, entry.explanation, entry.example, entry.rtl, x, y);
     },
   });
+
+  // "Run Selected" — right-click a selection to execute just those lines.
+  // Only appears when the selection covers at least one full line: either a
+  // multi-line selection, or a single line selected in its entirety (e.g.
+  // triple-click, or Home then Shift+End) - not for a plain cursor or a
+  // partial in-line text selection like a variable name.
+  const runSelectionAvailable = editor.createContextKey<boolean>("runSelectionAvailable", false);
+
+  function updateRunSelectionAvailability() {
+    const selection = editor.getSelection();
+    const model = editor.getModel();
+    if (!selection || !model || selection.isEmpty()) {
+      runSelectionAvailable.set(false);
+      return;
+    }
+    if (selection.startLineNumber !== selection.endLineNumber) {
+      runSelectionAvailable.set(true);
+      return;
+    }
+    // Single line selected - only counts if the whole line is covered
+    const lineMaxColumn = model.getLineMaxColumn(selection.startLineNumber);
+    runSelectionAvailable.set(selection.startColumn === 1 && selection.endColumn === lineMaxColumn);
+  }
+
+  editor.onDidChangeCursorSelection(updateRunSelectionAvailability);
+  editor.onDidChangeModel(updateRunSelectionAvailability);
+
+  editor.addAction({
+    id: "runSelectedLines",
+    label: t("editor.runSelected") || "▶ Run Selected",
+    contextMenuGroupId: "1_run",
+    contextMenuOrder: 1,
+    precondition: "runSelectionAvailable",
+    run: (ed) => {
+      const selection = ed.getSelection();
+      const model = ed.getModel();
+      if (!selection || !model) return;
+
+      // Always execute the FULL lines touched by the selection, not just the
+      // exact (possibly partial-column) selected text - matches how the
+      // context menu becomes available in the first place.
+      const startLine = selection.startLineNumber;
+      const endLine = selection.endLineNumber;
+      const code = model.getValueInRange(
+        new monaco.Range(startLine, 1, endLine, model.getLineMaxColumn(endLine))
+      );
+      if (!code.trim()) return;
+
+      runCode(code);
+    },
+  });
+
 
   // ===== VS Code-like UI Features =====
 

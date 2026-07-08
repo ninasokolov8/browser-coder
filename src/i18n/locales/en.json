@@ -41,6 +41,8 @@
   "editor.createFile": "Create a new file to start coding",
   "editor.newFile": "New File",
   "editor.explainKeyword": "💡 Explain this keyword",
+  "editor.runSelected": "▶ Run Selected",
+  "editor.example": "Example:",
   
   "panel.output": "Output",
   "panel.clear": "Clear",

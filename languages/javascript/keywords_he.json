@@ -1,0 +1,1052 @@
+{
+  "var": {
+    "type": "keyword",
+    "explanation": "מכריזה על משתנה בטווח פונקציה או בטווח גלובלי. אפשר להקצות לו ערך חדש, וההכרזה שלו מורמת לראש הטווח. בקוד מודרני עדיף להשתמש ב־let או const.",
+    "example": "var count = 0;\ncount = count + 1;"
+  },
+  "let": {
+    "type": "keyword",
+    "explanation": "מכריזה על משתנה בטווח בלוק שאפשר להקצות לו ערך חדש בהמשך.",
+    "example": "let score = 0;\nscore += 10;"
+  },
+  "const": {
+    "type": "keyword",
+    "explanation": "מכריזה על קישור בטווח בלוק שאי אפשר להקצות לו ערך חדש אחרי האתחול. אם הערך הוא אובייקט או מערך, עדיין אפשר לשנות את התוכן שלו.",
+    "example": "const PI = 3.14159;\nconst list = [1, 2];\nlist.push(3);"
+  },
+  "function": {
+    "type": "keyword",
+    "explanation": "מגדירה בלוק קוד רב־פעמי שיכול לקבל פרמטרים ולהחזיר ערך באופן אופציונלי.",
+    "example": "function add(a, b) {\n  return a + b;\n}\nconsole.log(add(2, 3));"
+  },
+  "class": {
+    "type": "keyword",
+    "explanation": "מגדירה תבנית ליצירת אובייקטים עם שדות, בנאים ומתודות משותפים.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "extends": {
+    "type": "keyword",
+    "explanation": "גורמת למחלקה אחת לרשת ממחלקה אחרת, או מאפשרת לביטוי מחלקה לרשת מבנאי אחר.",
+    "example": "class Dog extends Animal {\n  speak() {\n    console.log(\"Woof!\");\n  }\n}"
+  },
+  "super": {
+    "type": "keyword",
+    "explanation": "קוראת לבנאי של מחלקת האב או למתודות של מחלקת האב מתוך מחלקת בת.",
+    "example": "class Dog extends Animal {\n  constructor(name) {\n    super(name);\n  }\n}"
+  },
+  "this": {
+    "type": "keyword",
+    "explanation": "מתייחסת להקשר הביצוע הנוכחי. במתודות היא בדרך כלל מתייחסת לאובייקט; בפונקציות חץ היא נלקחת מהטווח החיצוני.",
+    "example": "const user = {\n  name: \"Nina\",\n  sayHi() {\n    console.log(this.name);\n  }\n};"
+  },
+  "new": {
+    "type": "keyword",
+    "explanation": "יוצרת מופע אובייקט חדש מתוך פונקציית בנאי או מחלקה.",
+    "example": "const p = new Point(3, 4);"
+  },
+  "return": {
+    "type": "keyword",
+    "explanation": "יוצאת מפונקציה ושולחת באופן אופציונלי ערך בחזרה לקוד שקרא לה.",
+    "example": "function square(x) {\n  return x * x;\n}"
+  },
+  "if": {
+    "type": "keyword",
+    "explanation": "מריצה בלוק קוד רק כאשר התנאי הוא truthy.",
+    "example": "if (age >= 18) {\n  console.log(\"Adult\");\n}"
+  },
+  "else": {
+    "type": "keyword",
+    "explanation": "מריצה בלוק קוד כאשר תנאי ה־if הקודם היה falsy, או מתחילה שרשרת else-if.",
+    "example": "if (age >= 18) {\n  console.log(\"Adult\");\n} else {\n  console.log(\"Minor\");\n}"
+  },
+  "switch": {
+    "type": "keyword",
+    "explanation": "משווה ביטוי מול כמה תוויות case ומריצה את הענף המתאים.",
+    "example": "switch (day) {\n  case \"Mon\":\n    console.log(\"Start of week\");\n    break;\n  default:\n    console.log(\"Another day\");\n}"
+  },
+  "case": {
+    "type": "keyword",
+    "explanation": "מגדירה ענף התאמה אחד בתוך משפט switch.",
+    "example": "switch (grade) {\n  case \"A\":\n    console.log(\"Great!\");\n    break;\n}"
+  },
+  "default": {
+    "type": "keyword",
+    "explanation": "מגדירה את ענף ברירת המחדל בתוך switch, או מסמנת ייצוא ברירת מחדל ממודול.",
+    "example": "switch (value) {\n  default:\n    console.log(\"No match\");\n}\n\nexport default function App() {}"
+  },
+  "for": {
+    "type": "keyword",
+    "explanation": "מתחילה לולאה. היא יכולה להיות לולאת מונה רגילה, לולאת for...of או לולאת for...in.",
+    "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
+  },
+  "while": {
+    "type": "keyword",
+    "explanation": "חוזרת על בלוק קוד כל עוד התנאי נשאר truthy. התנאי נבדק לפני כל איטרציה.",
+    "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
+  },
+  "do": {
+    "type": "keyword",
+    "explanation": "מתחילה לולאת do...while, שבה גוף הלולאה רץ פעם אחת לפני בדיקת התנאי.",
+    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
+  },
+  "break": {
+    "type": "keyword",
+    "explanation": "יוצאת מיד מהלולאה או ממשפט ה־switch הקרוב ביותר.",
+    "example": "for (let i = 0; i < 10; i++) {\n  if (i === 3) break;\n  console.log(i);\n}"
+  },
+  "continue": {
+    "type": "keyword",
+    "explanation": "מדלגת על שאר האיטרציה הנוכחית בלולאה ועוברת לאיטרציה הבאה.",
+    "example": "for (let i = 0; i < 5; i++) {\n  if (i % 2 === 0) continue;\n  console.log(i);\n}"
+  },
+  "try": {
+    "type": "keyword",
+    "explanation": "מתחילה בלוק קוד שבו אפשר לתפוס ולטפל בשגיאות שנזרקות.",
+    "example": "try {\n  JSON.parse(\"not json\");\n} catch (err) {\n  console.log(err.message);\n}"
+  },
+  "catch": {
+    "type": "keyword",
+    "explanation": "מטפלת בשגיאה שנזרקה מתוך בלוק ה־try המתאים.",
+    "example": "try {\n  risky();\n} catch (err) {\n  console.error(err.message);\n}"
+  },
+  "finally": {
+    "type": "keyword",
+    "explanation": "רצה אחרי try/catch בין אם התרחשה שגיאה ובין אם לא, לרוב לצורכי ניקוי.",
+    "example": "try {\n  doWork();\n} finally {\n  console.log(\"Always runs\");\n}"
+  },
+  "throw": {
+    "type": "keyword",
+    "explanation": "זורקת חריגה/שגיאה ועוצרת את זרימת הביצוע הרגילה, אלא אם השגיאה נתפסת.",
+    "example": "if (age < 0) {\n  throw new Error(\"Age cannot be negative\");\n}"
+  },
+  "import": {
+    "type": "keyword",
+    "explanation": "מביאה ערכים שיוצאו ממודול אחר אל המודול הנוכחי.",
+    "example": "import { add } from \"./math.js\";"
+  },
+  "export": {
+    "type": "keyword",
+    "explanation": "מאפשרת לערך, פונקציה או מחלקה להיות מיובאים על ידי מודולים אחרים.",
+    "example": "export function add(a, b) {\n  return a + b;\n}"
+  },
+  "await": {
+    "type": "keyword",
+    "explanation": "ממתינה עד ש־Promise יסתיים בתוך פונקציה async או ברמת מודול, ואז מחזירה את הערך שנפתר או זורקת את השגיאה שנדחתה.",
+    "example": "async function run() {\n  const data = await fetch(\"/api/data\");\n}"
+  },
+  "async": {
+    "type": "contextual-keyword",
+    "explanation": "מסמנת פונקציה כאסינכרונית. פונקציה async תמיד מחזירה Promise ויכולה להשתמש ב־await בתוכה.",
+    "example": "async function loadData() {\n  return await fetchData();\n}"
+  },
+  "yield": {
+    "type": "keyword",
+    "explanation": "משהה פונקציית generator ומפיקה ערך לקוד שקורא לה.",
+    "example": "function* count() {\n  yield 1;\n  yield 2;\n}"
+  },
+  "typeof": {
+    "type": "keyword",
+    "explanation": "מחזירה מחרוזת שמתארת את קטגוריית הטיפוס בזמן ריצה של ערך.",
+    "example": "console.log(typeof 42);      // \"number\"\nconsole.log(typeof \"hi\");    // \"string\""
+  },
+  "instanceof": {
+    "type": "keyword",
+    "explanation": "בודקת האם אובייקט מקושר לשרשרת האב־טיפוס של בנאי מסוים.",
+    "example": "class Dog {}\nconst d = new Dog();\nconsole.log(d instanceof Dog);"
+  },
+  "in": {
+    "type": "keyword",
+    "explanation": "בודקת האם מפתח מאפיין קיים באובייקט, או משתתפת בתחביר for...in.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(\"name\" in user);"
+  },
+  "delete": {
+    "type": "keyword",
+    "explanation": "מסירה מאפיין מאובייקט. היא לא מוחקת משתנים מקומיים שהוכרזו עם let/const/var.",
+    "example": "const obj = { a: 1 };\ndelete obj.a;"
+  },
+  "void": {
+    "type": "keyword",
+    "explanation": "מעריכה ביטוי ומחזירה undefined. כמעט שלא משתמשים בה בקוד אפליקטיבי מודרני.",
+    "example": "const result = void 0;\nconsole.log(result); // undefined"
+  },
+  "with": {
+    "type": "keyword",
+    "explanation": "מרחיבה את שרשרת הטווחים עבור בלוק. היא אסורה במצב strict ואין להשתמש בה.",
+    "example": "with (Math) {\n  console.log(round(3.7));\n}"
+  },
+  "debugger": {
+    "type": "keyword",
+    "explanation": "עוצרת את הביצוע ופותחת נקודת עצירה כאשר כלי הפיתוח זמינים.",
+    "example": "function test() {\n  debugger;\n  console.log(\"Paused here in devtools\");\n}"
+  },
+  "enum": {
+    "type": "reserved-word",
+    "explanation": "מילה שמורה עתידית ב־JavaScript. אי אפשר להשתמש בה כמזהה.",
+    "example": "/* Invalid: */\n// const enum = 1;"
+  },
+  "implements": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict עבור תכונות עתידיות אפשריות. זו לא הדרך שבה JavaScript מממשת ממשקים.",
+    "example": "\"use strict\";\n// const implements = 1; // SyntaxError"
+  },
+  "interface": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict. ל־JavaScript אין ממשקים מובנים; TypeScript משתמשת במילה זו להצהרות טיפוסים.",
+    "example": "\"use strict\";\n// const interface = 1; // SyntaxError"
+  },
+  "package": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict עבור תכונות עתידיות אפשריות.",
+    "example": "\"use strict\";\n// const package = \"x\"; // SyntaxError"
+  },
+  "private": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict, אך אינה משמשת כמודיפייר גישה ב־JavaScript. שדות פרטיים ב־JavaScript משתמשים בתחביר ‎#name.",
+    "example": "\"use strict\";\n// const private = 1; // SyntaxError"
+  },
+  "protected": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict, אך אינה משמשת כמודיפייר גישה ב־JavaScript.",
+    "example": "\"use strict\";\n// const protected = 1; // SyntaxError"
+  },
+  "public": {
+    "type": "strict-reserved-word",
+    "explanation": "שמורה במצב strict, אך אינה משמשת כמודיפייר גישה ב־JavaScript.",
+    "example": "\"use strict\";\n// const public = 1; // SyntaxError"
+  },
+  "static": {
+    "type": "keyword",
+    "explanation": "מגדירה איברי מחלקה ששייכים למחלקה עצמה ולא למופעים שלה. היא גם שמורה במצב strict.",
+    "example": "class MathUtils {\n  static square(x) {\n    return x * x;\n  }\n}\nconsole.log(MathUtils.square(4));"
+  },
+  "null": {
+    "type": "literal",
+    "explanation": "מייצגת היעדר מכוון של ערך אובייקט.",
+    "example": "let selected = null;"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "ליטרל בוליאני שמייצג כן/פעיל/אמת.",
+    "example": "const isActive = true;"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "ליטרל בוליאני שמייצג לא/כבוי/שקר.",
+    "example": "const isDeleted = false;"
+  },
+  "undefined": {
+    "type": "global-value",
+    "explanation": "ערך גלובלי המשמש כאשר משתנה הוכרז אך לא קיבל ערך, או כאשר מאפיין אינו קיים.",
+    "example": "let x;\nconsole.log(x); // undefined"
+  },
+  "NaN": {
+    "type": "global-value",
+    "explanation": "ערך מספרי מיוחד שמשמעותו Not-a-Number, בדרך כלל תוצאה של פעולות מספריות לא תקינות.",
+    "example": "console.log(Number(\"abc\")); // NaN"
+  },
+  "Infinity": {
+    "type": "global-value",
+    "explanation": "ערך מספרי שמייצג אינסוף חיובי.",
+    "example": "console.log(1 / 0); // Infinity"
+  },
+  "globalThis": {
+    "type": "global-object",
+    "explanation": "דרך תקנית לגשת לאובייקט הגלובלי בדפדפנים, ב־Node.js, ב־workers ובסביבות JavaScript אחרות.",
+    "example": "console.log(globalThis.Array === Array);"
+  },
+  "string": {
+    "type": "primitive-type",
+    "explanation": "טיפוס פרימיטיבי לערכי טקסט.",
+    "example": "const name = \"Nina\";\nconsole.log(typeof name); // \"string\""
+  },
+  "number": {
+    "type": "primitive-type",
+    "explanation": "טיפוס פרימיטיבי לערכים מספריים המשתמשים במספרים עשרוניים בדיוק כפול.",
+    "example": "const price = 19.99;\nconsole.log(typeof price); // \"number\""
+  },
+  "bigint": {
+    "type": "primitive-type",
+    "explanation": "טיפוס פרימיטיבי למספרים שלמים גדולים יותר ממה ש־Number יכול לייצג בבטחה.",
+    "example": "const big = 9007199254740993n;\nconsole.log(typeof big); // \"bigint\""
+  },
+  "boolean": {
+    "type": "primitive-type",
+    "explanation": "טיפוס פרימיטיבי שיש לו רק את הערכים true ו־false.",
+    "example": "const ok = true;\nconsole.log(typeof ok); // \"boolean\""
+  },
+  "symbol": {
+    "type": "primitive-type",
+    "explanation": "טיפוס פרימיטיבי המשמש ליצירת מפתחות מאפיין ייחודיים.",
+    "example": "const id = Symbol(\"id\");\nconsole.log(typeof id); // \"symbol\""
+  },
+  "object": {
+    "type": "language-type",
+    "explanation": "טיפוס ערך לא־פרימיטיבי המשמש לאובייקטים, מערכים, פונקציות, תאריכים, מפות ורוב המבנים המורכבים.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(typeof user); // \"object\""
+  },
+  "function type": {
+    "type": "language-type",
+    "explanation": "אובייקטים שניתן לקרוא להם מחזירים typeof \"function\", אף על פי שפונקציות הן עדיין אובייקטים.",
+    "example": "function hello() {}\nconsole.log(typeof hello); // \"function\""
+  },
+  "Object": {
+    "type": "built-in-object",
+    "explanation": "הבנאי הבסיסי לאובייקטים רגילים ב־JavaScript וגם מרחב שמות למתודות עזר של אובייקטים.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(Object.keys(user));"
+  },
+  "Function": {
+    "type": "built-in-object",
+    "explanation": "הבנאי ובסיס האב־טיפוס לפונקציות JavaScript. פונקציות הן אובייקטים שניתן לקרוא להם.",
+    "example": "function add(a, b) { return a + b; }\nconsole.log(add instanceof Function);"
+  },
+  "Boolean": {
+    "type": "built-in-object",
+    "explanation": "בנאי מעטפת ואובייקט עזר לערכים בוליאניים. בדרך כלל עדיף להשתמש בבוליאנים פרימיטיביים ולא באובייקטי Boolean.",
+    "example": "const value = Boolean(1);\nconsole.log(value); // true"
+  },
+  "Symbol": {
+    "type": "built-in-object",
+    "explanation": "יוצרת ערכי symbol ייחודיים, המשמשים לעיתים קרובות כמפתחות מיוחדים באובייקטים.",
+    "example": "const key = Symbol(\"secret\");\nconst obj = { [key]: 123 };"
+  },
+  "Number": {
+    "type": "built-in-object",
+    "explanation": "בנאי מעטפת ומרחב שמות לעזרי מספרים כגון Number.isNaN ו־Number.isInteger.",
+    "example": "console.log(Number.isInteger(42));"
+  },
+  "BigInt": {
+    "type": "built-in-object",
+    "explanation": "יוצרת ערכי BigInt ומייצגת את טיפוס המספרים BigInt.",
+    "example": "const big = BigInt(\"12345678901234567890\");"
+  },
+  "Math": {
+    "type": "built-in-object",
+    "explanation": "אובייקט מובנה המכיל קבועים ופונקציות מתמטיות. הוא אינו בנאי.",
+    "example": "console.log(Math.round(3.7));\nconsole.log(Math.PI);"
+  },
+  "Date": {
+    "type": "built-in-object",
+    "explanation": "מייצגת תאריכים וזמנים.",
+    "example": "const now = new Date();\nconsole.log(now.toISOString());"
+  },
+  "String": {
+    "type": "built-in-object",
+    "explanation": "בנאי מעטפת ומרחב שמות לעזרי מחרוזות. לערכי String יש מתודות כמו includes, slice ו־toUpperCase.",
+    "example": "const text = \"hello\";\nconsole.log(text.toUpperCase());"
+  },
+  "RegExp": {
+    "type": "built-in-object",
+    "explanation": "מייצגת ביטויים רגולריים להתאמת תבניות בתוך מחרוזות.",
+    "example": "const re = /\\d+/;\nconsole.log(re.test(\"abc123\"));"
+  },
+  "Array": {
+    "type": "built-in-object",
+    "explanation": "מייצגת רשימות מסודרות של ערכים ומספקת מתודות כמו map, filter, reduce ו־push.",
+    "example": "const nums = [1, 2, 3];\nconsole.log(nums.map(n => n * 2));"
+  },
+  "JSON": {
+    "type": "built-in-object",
+    "explanation": "מספקת מתודות להמרת טקסט JSON לערכים ולהמרת ערכים לטקסט JSON.",
+    "example": "const obj = JSON.parse(\"{\\\"x\\\":1}\");\nconsole.log(JSON.stringify(obj));"
+  },
+  "Promise": {
+    "type": "built-in-object",
+    "explanation": "מייצג ערך שעשוי להיות זמין בעתיד לאחר שפעולה אסינכרונית מסתיימת.",
+    "example": "const p = new Promise(resolve => resolve(\"done\"));\np.then(console.log);"
+  },
+  "Proxy": {
+    "type": "built-in-object",
+    "explanation": "עוטף אובייקט ומיירט פעולות כמו גישה למאפיינים, השמה וקריאה לפונקציות.",
+    "example": "const target = {};\nconst proxy = new Proxy(target, {\n  get(obj, prop) { return prop in obj ? obj[prop] : \"missing\"; }\n});"
+  },
+  "Reflect": {
+    "type": "built-in-object",
+    "explanation": "מספקת פונקציות שמקבילות לפעולות נמוכות־רמה על אובייקטים כמו get, set, apply ו־construct.",
+    "example": "const obj = { x: 1 };\nconsole.log(Reflect.get(obj, \"x\"));"
+  },
+  "Intl": {
+    "type": "built-in-object",
+    "explanation": "מספקת ממשקי internationalization לעיצוב תאריכים, מספרים, רשימות, זמן יחסי ועוד.",
+    "example": "const fmt = new Intl.NumberFormat(\"en-US\");\nconsole.log(fmt.format(1234567));"
+  },
+  "WebAssembly": {
+    "type": "built-in-object",
+    "explanation": "מספקת API לטעינה ואינטראקציה עם מודולי WebAssembly.",
+    "example": "console.log(typeof WebAssembly); // \"object\""
+  },
+  "Map": {
+    "type": "collection",
+    "explanation": "אוסף מפתח־ערך שבו המפתחות יכולים להיות כל ערך, כולל אובייקטים.",
+    "example": "const map = new Map();\nmap.set(\"name\", \"Nina\");\nconsole.log(map.get(\"name\"));"
+  },
+  "Set": {
+    "type": "collection",
+    "explanation": "אוסף של ערכים ייחודיים.",
+    "example": "const set = new Set([1, 2, 2, 3]);\nconsole.log(set.size); // 3"
+  },
+  "WeakMap": {
+    "type": "collection",
+    "explanation": "אוסף מפתח־ערך שבו המפתחות חייבים להיות אובייקטים ויכולים להיאסף בזבל כאשר אין אליהם הפניות אחרות.",
+    "example": "const wm = new WeakMap();\nconst key = {};\nwm.set(key, \"secret\");"
+  },
+  "WeakSet": {
+    "type": "collection",
+    "explanation": "אוסף של אובייקטים שמוחזקים באופן חלש, כך שאפשר לאסוף אותם בזבל כאשר אין אליהם הפניות אחרות.",
+    "example": "const ws = new WeakSet();\nconst obj = {};\nws.add(obj);"
+  },
+  "WeakRef": {
+    "type": "built-in-object",
+    "explanation": "מחזיק הפניה חלשה לאובייקט בלי למנוע את איסוף הזבל שלו.",
+    "example": "const ref = new WeakRef({ value: 1 });\nconsole.log(ref.deref());"
+  },
+  "FinalizationRegistry": {
+    "type": "built-in-object",
+    "explanation": "מאפשרת לרשום callbacks לניקוי שייקראו אחרי שאובייקטים נאספים בזבל. יש להשתמש בזהירות.",
+    "example": "const registry = new FinalizationRegistry(value => {\n  console.log(\"cleaned\", value);\n});"
+  },
+  "Iterator": {
+    "type": "built-in-object",
+    "explanation": "מייצג את אובייקט/פרוטוקול הבסיס לאיטרטורים סינכרוניים בסביבות JavaScript מודרניות.",
+    "example": "const iterator = [1, 2][Symbol.iterator]();\nconsole.log(iterator.next());"
+  },
+  "AsyncIterator": {
+    "type": "built-in-object",
+    "explanation": "מייצג התנהגות איטרטור אסינכרוני המשמשת את for await...of ואת תוצאות async generator.",
+    "example": "async function* gen() {\n  yield 1;\n}"
+  },
+  "ArrayBuffer": {
+    "type": "binary-data",
+    "explanation": "מייצג מאגר נתונים בינארי גולמי באורך קבוע.",
+    "example": "const buffer = new ArrayBuffer(8);"
+  },
+  "SharedArrayBuffer": {
+    "type": "binary-data",
+    "explanation": "מייצג מאגר בינארי משותף שניתן לגשת אליו מכמה agents/threads כאשר הסביבה מאפשרת זאת.",
+    "example": "const buffer = new SharedArrayBuffer(8);"
+  },
+  "DataView": {
+    "type": "binary-data",
+    "explanation": "מספקת מתודות לקריאה וכתיבה של כמה טיפוסים מספריים מתוך ArrayBuffer.",
+    "example": "const buffer = new ArrayBuffer(8);\nconst view = new DataView(buffer);\nview.setInt32(0, 123);"
+  },
+  "Atomics": {
+    "type": "binary-data",
+    "explanation": "מספקת פעולות אטומיות לזיכרון משותף עם SharedArrayBuffer ומערכים טיפוסיים.",
+    "example": "const sab = new SharedArrayBuffer(4);\nconst arr = new Int32Array(sab);\nAtomics.store(arr, 0, 123);"
+  },
+  "Int8Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים חתומים בגודל 8 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Int8Array(4);\nvalues[0] = 1;"
+  },
+  "Uint8Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים לא־חתומים בגודל 8 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Uint8Array(4);\nvalues[0] = 1;"
+  },
+  "Uint8ClampedArray": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים לא־חתומים בגודל 8 ביט שמוגבלים לטווח 0–255 בתוך מאגרים בינאריים.",
+    "example": "const values = new Uint8ClampedArray(4);\nvalues[0] = 1;"
+  },
+  "Int16Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים חתומים בגודל 16 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Int16Array(4);\nvalues[0] = 1;"
+  },
+  "Uint16Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים לא־חתומים בגודל 16 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Uint16Array(4);\nvalues[0] = 1;"
+  },
+  "Int32Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים חתומים בגודל 32 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Int32Array(4);\nvalues[0] = 1;"
+  },
+  "Uint32Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרים שלמים לא־חתומים בגודל 32 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Uint32Array(4);\nvalues[0] = 1;"
+  },
+  "BigInt64Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון ערכי BigInt חתומים בגודל 64 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new BigInt64Array(4);\nvalues[0] = 1n;"
+  },
+  "BigUint64Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון ערכי BigInt לא־חתומים בגודל 64 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new BigUint64Array(4);\nvalues[0] = 1n;"
+  },
+  "Float16Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרי נקודה צפה בגודל 16 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Float16Array(4);\nvalues[0] = 1;"
+  },
+  "Float32Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרי נקודה צפה בגודל 32 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Float32Array(4);\nvalues[0] = 1;"
+  },
+  "Float64Array": {
+    "type": "typed-array",
+    "explanation": "מערך טיפוסי לאחסון מספרי נקודה צפה בגודל 64 ביט בתוך מאגרים בינאריים.",
+    "example": "const values = new Float64Array(4);\nvalues[0] = 1;"
+  },
+  "Error": {
+    "type": "error-class",
+    "explanation": "מחלקת הבסיס לשגיאות JavaScript.",
+    "example": "throw new Error(\"Something went wrong\");"
+  },
+  "AggregateError": {
+    "type": "error-class",
+    "explanation": "מייצגת כמה שגיאות שנעטפות בתוך אובייקט שגיאה אחד.",
+    "example": "throw new AggregateError([new Error(\"A\"), new Error(\"B\")], \"Multiple failures\");"
+  },
+  "EvalError": {
+    "type": "error-class",
+    "explanation": "טיפוס שגיאה ישן הקשור ל־eval. כמעט שלא משתמשים בו ישירות בקוד מודרני.",
+    "example": "const err = new EvalError(\"eval problem\");"
+  },
+  "RangeError": {
+    "type": "error-class",
+    "explanation": "נזרקת כאשר ערך נמצא מחוץ לטווח מספרי מותר.",
+    "example": "throw new RangeError(\"Value is out of range\");"
+  },
+  "ReferenceError": {
+    "type": "error-class",
+    "explanation": "נזרקת כאשר הקוד מתייחס למשתנה שלא קיים או שאי אפשר לגשת אליו.",
+    "example": "// console.log(missingVariable); // ReferenceError"
+  },
+  "SyntaxError": {
+    "type": "error-class",
+    "explanation": "נזרקת כאשר הקוד מכיל תחביר JavaScript לא תקין או קלט מפוענח לא תקין כמו JSON שבור.",
+    "example": "try {\n  JSON.parse(\"{\");\n} catch (err) {\n  console.log(err instanceof SyntaxError);\n}"
+  },
+  "TypeError": {
+    "type": "error-class",
+    "explanation": "נזרקת כאשר משתמשים בערך בצורה לא מתאימה, למשל קריאה לערך שאינו פונקציה.",
+    "example": "try {\n  null.toString();\n} catch (err) {\n  console.log(err instanceof TypeError);\n}"
+  },
+  "URIError": {
+    "type": "error-class",
+    "explanation": "נזרקת כאשר פונקציות קידוד או פענוח URI מקבלות קלט לא תקין.",
+    "example": "try {\n  decodeURIComponent(\"%E0%A4%A\");\n} catch (err) {\n  console.log(err instanceof URIError);\n}"
+  },
+  "eval": {
+    "type": "built-in-function",
+    "explanation": "מריצה מחרוזת כקוד JavaScript. מומלץ להימנע ממנה כי היא איטית, קשה לאבטחה וקשה לדיבוג.",
+    "example": "eval(\"console.log(2 + 3)\");"
+  },
+  "isFinite": {
+    "type": "built-in-function",
+    "explanation": "בודקת האם ערך הוא מספר סופי לאחר המרה אוטומטית. לבדיקות קפדניות יותר עדיף להשתמש ב־Number.isFinite.",
+    "example": "console.log(isFinite(\"123\")); // true"
+  },
+  "isNaN": {
+    "type": "built-in-function",
+    "explanation": "בודקת האם ערך הוא NaN לאחר המרה אוטומטית. לבדיקות קפדניות יותר עדיף להשתמש ב־Number.isNaN.",
+    "example": "console.log(isNaN(\"abc\")); // true"
+  },
+  "parseFloat": {
+    "type": "built-in-function",
+    "explanation": "מפרקת מחרוזת ומחזירה מספר נקודה צפה.",
+    "example": "console.log(parseFloat(\"3.14px\")); // 3.14"
+  },
+  "parseInt": {
+    "type": "built-in-function",
+    "explanation": "מפרקת מחרוזת ומחזירה מספר שלם, באופן אופציונלי לפי בסיס מספרים נתון.",
+    "example": "console.log(parseInt(\"101\", 2)); // 5"
+  },
+  "encodeURI": {
+    "type": "built-in-function",
+    "explanation": "מקודדת URI תוך שמירה יחסית על תווי תחביר של URI.",
+    "example": "console.log(encodeURI(\"https://example.com/a b\"));"
+  },
+  "encodeURIComponent": {
+    "type": "built-in-function",
+    "explanation": "מקודדת מחרוזת כך שתהיה בטוחה לשימוש כרכיב בתוך URI.",
+    "example": "console.log(encodeURIComponent(\"a b&c\"));"
+  },
+  "decodeURI": {
+    "type": "built-in-function",
+    "explanation": "מפענחת URI שקודד בעבר עם encodeURI.",
+    "example": "console.log(decodeURI(\"https://example.com/a%20b\"));"
+  },
+  "decodeURIComponent": {
+    "type": "built-in-function",
+    "explanation": "מפענחת רכיב URI שקודד בעבר עם encodeURIComponent.",
+    "example": "console.log(decodeURIComponent(\"a%20b%26c\"));"
+  },
+  "escape": {
+    "type": "deprecated-built-in-function",
+    "explanation": "פונקציית בריחה ישנה למחרוזות. היא deprecated; השתמשו במקום זאת ב־encodeURI או encodeURIComponent.",
+    "example": "console.log(escape(\"a b\"));"
+  },
+  "unescape": {
+    "type": "deprecated-built-in-function",
+    "explanation": "פונקציית ביטול בריחה ישנה למחרוזות. היא deprecated; השתמשו במקום זאת ב־decodeURI או decodeURIComponent.",
+    "example": "console.log(unescape(\"a%20b\"));"
+  },
+  "from": {
+    "type": "module-syntax",
+    "explanation": "משמשת בהצהרות import/export לציון מקור המודול. זו לא מילה שמורה כללית.",
+    "example": "import { add } from \"./math.js\";"
+  },
+  "as": {
+    "type": "module-syntax",
+    "explanation": "משמשת לשינוי שם של imports/exports או בכמה מיקומי תחביר חדשים יותר. זו לא מילה שמורה כללית.",
+    "example": "import { longName as shortName } from \"./lib.js\";"
+  },
+  "of": {
+    "type": "loop-syntax",
+    "explanation": "משמשת בלולאות for...of כדי לעבור על ערכים מתוך iterable. זו לא מילה שמורה כללית.",
+    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
+  },
+  "get": {
+    "type": "class/object-syntax",
+    "explanation": "מגדירה מתודת getter לקריאת מאפיין.",
+    "example": "const user = {\n  firstName: \"Nina\",\n  get name() {\n    return this.firstName;\n  }\n};"
+  },
+  "set": {
+    "type": "class/object-syntax",
+    "explanation": "מגדירה מתודת setter להשמה למאפיין.",
+    "example": "const user = {\n  set name(value) {\n    this._name = value;\n  }\n};"
+  },
+  "constructor": {
+    "type": "class-syntax",
+    "explanation": "מתודה מיוחדת בתוך מחלקה שרצה כאשר נוצר מופע חדש.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "arguments": {
+    "type": "function-syntax",
+    "explanation": "אובייקט דמוי־מערך הזמין בתוך פונקציות שאינן פונקציות חץ, ומכיל את הארגומנטים שהועברו לפונקציה.",
+    "example": "function show() {\n  console.log(arguments[0]);\n}\nshow(\"hi\");"
+  },
+  "target": {
+    "type": "meta-property-part",
+    "explanation": "החלק השני של new.target, מטא־מאפיין שמשמש בתוך פונקציות או בנאים.",
+    "example": "function Example() {\n  console.log(new.target);\n}"
+  },
+  "meta": {
+    "type": "meta-property-part",
+    "explanation": "החלק השני של import.meta, מטא־מאפיין שמכיל מטא־נתונים על המודול.",
+    "example": "console.log(import.meta.url);"
+  },
+  "import.meta": {
+    "type": "module-syntax",
+    "explanation": "מטא־מאפיין של מודול שחושף מטא־נתונים על המודול הנוכחי, כמו ה־URL שלו.",
+    "example": "console.log(import.meta.url);"
+  },
+  "new.target": {
+    "type": "meta-property",
+    "explanation": "מטא־מאפיין שמראה האם פונקציה או בנאי נקראו עם new.",
+    "example": "function Person() {\n  if (!new.target) throw new Error(\"Use new\");\n}"
+  },
+  "for...of": {
+    "type": "syntax-pattern",
+    "explanation": "תבנית לולאה שעוברת על ערכים מתוך iterable כמו מערך, מחרוזת, Map, Set או generator.",
+    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
+  },
+  "for...in": {
+    "type": "syntax-pattern",
+    "explanation": "תבנית לולאה שעוברת על מפתחות מאפיינים enumerable של אובייקט.",
+    "example": "const obj = { a: 1, b: 2 };\nfor (const key in obj) {\n  console.log(key, obj[key]);\n}"
+  },
+  "do...while": {
+    "type": "syntax-pattern",
+    "explanation": "תבנית לולאה שבה הגוף רץ פעם אחת לפני בדיקת התנאי.",
+    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
+  },
+  "else if": {
+    "type": "syntax-pattern",
+    "explanation": "תבנית נפוצה של שרשרת if/else. ל־JavaScript אין מילת מפתח נפרדת בשם elif.",
+    "example": "if (score >= 90) {\n  console.log(\"A\");\n} else if (score >= 80) {\n  console.log(\"B\");\n}"
+  },
+  "arrow function": {
+    "type": "syntax-pattern",
+    "explanation": "תחביר פונקציה קומפקטי שמשתמש ב־=>. לפונקציות חץ אין this, arguments, super או new.target משל עצמן.",
+    "example": "const add = (a, b) => a + b;"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "הטוקן שמשמש להגדרת פונקציות חץ.",
+    "example": "const double = x => x * 2;"
+  },
+  "spread": {
+    "type": "syntax-pattern",
+    "explanation": "תחביר ... כאשר הוא מרחיב iterable או אובייקט לרכיבים/מאפיינים נפרדים.",
+    "example": "const a = [1, 2];\nconst b = [...a, 3, 4];"
+  },
+  "rest parameter": {
+    "type": "syntax-pattern",
+    "explanation": "תחביר ... ברשימת פרמטרים של פונקציה, שאוסף את שאר הארגומנטים למערך.",
+    "example": "function total(...numbers) {\n  return numbers.reduce((a, b) => a + b, 0);\n}"
+  },
+  "...": {
+    "type": "operator",
+    "explanation": "הטוקן המשמש לתחביר spread ולפרמטרים/מאפייני rest, בהתאם להקשר.",
+    "example": "const copy = { ...original };\nfunction f(...args) {}"
+  },
+  "destructuring": {
+    "type": "syntax-pattern",
+    "explanation": "תחביר לפירוק ערכים ממערכים או מאפיינים מאובייקטים לתוך משתנים.",
+    "example": "const { name, age } = person;\nconst [first, second] = [10, 20];"
+  },
+  "template literal": {
+    "type": "syntax-pattern",
+    "explanation": "מחרוזת שנכתבת עם backticks ותומכת בהצבת ביטויים עם ‎${...}‎ ובטקסט רב־שורות.",
+    "example": "const name = \"Nina\";\nconsole.log(`Hello, ${name}!`);"
+  },
+  "tagged template": {
+    "type": "syntax-pattern",
+    "explanation": "תחביר קריאה לפונקציה שבו פונקציה מעבדת template literal.",
+    "example": "function tag(strings, value) {\n  return strings[0] + value;\n}\ntag`Hi ${\"Nina\"}`;"
+  },
+  "optional chaining": {
+    "type": "operator",
+    "explanation": "האופרטור ?. ניגש בבטחה למאפיינים מקוננים או קורא לפונקציות כאשר הצד השמאלי עשוי להיות null או undefined.",
+    "example": "console.log(user?.address?.city);"
+  },
+  "?.": {
+    "type": "operator",
+    "explanation": "אופרטור optional chaining. הוא מחזיר undefined במקום לזרוק שגיאה כאשר הצד השמאלי הוא null או undefined.",
+    "example": "const city = user?.address?.city;"
+  },
+  "nullish coalescing": {
+    "type": "operator",
+    "explanation": "האופרטור ?? מחזיר את הערך הימני רק כאשר הערך השמאלי הוא null או undefined.",
+    "example": "const name = userName ?? \"Guest\";"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "אופרטור nullish coalescing. בניגוד ל־||, הוא שומר ערכי falsy תקינים כמו 0 ו־\"\".",
+    "example": "const count = value ?? 0;"
+  },
+  "logical AND": {
+    "type": "operator",
+    "explanation": "האופרטור && מחזיר את האופרנד ה־falsy הראשון או את האופרנד האחרון אם כולם truthy.",
+    "example": "if (age >= 18 && hasId) {\n  console.log(\"Allowed\");\n}"
+  },
+  "logical OR": {
+    "type": "operator",
+    "explanation": "האופרטור || מחזיר את האופרנד ה־truthy הראשון או את האופרנד האחרון אם כולם falsy.",
+    "example": "const name = input || \"Guest\";"
+  },
+  "logical NOT": {
+    "type": "operator",
+    "explanation": "האופרטור ! ממיר ערך לבוליאני והופך אותו.",
+    "example": "if (!isReady) {\n  console.log(\"Not ready\");\n}"
+  },
+  "strict equality": {
+    "type": "operator",
+    "explanation": "האופרטור === בודק שוויון בלי המרת טיפוסים. ברוב המקרים עדיף להשתמש בו במקום ==.",
+    "example": "console.log(1 === \"1\"); // false"
+  },
+  "strict inequality": {
+    "type": "operator",
+    "explanation": "האופרטור !== בודק אי־שוויון בלי המרת טיפוסים.",
+    "example": "console.log(1 !== \"1\"); // true"
+  },
+  "equality": {
+    "type": "operator",
+    "explanation": "האופרטור == בודק שוויון עם המרת טיפוסים. הוא יכול להפתיע, לכן עדיף להשתמש ב־=== אלא אם ההמרה מכוונת.",
+    "example": "console.log(1 == \"1\"); // true"
+  },
+  "ternary operator": {
+    "type": "operator",
+    "explanation": "האופרטור condition ? a : b בוחר אחד משני ביטויים לפי תנאי.",
+    "example": "const label = age >= 18 ? \"Adult\" : \"Minor\";"
+  },
+  "assignment": {
+    "type": "operator",
+    "explanation": "האופרטור = מקצה ערך למשתנה, מאפיין או יעד destructuring.",
+    "example": "let x = 5;"
+  },
+  "compound assignment": {
+    "type": "operator",
+    "explanation": "אופרטורים כמו +=, -=, *= ו־??= מעדכנים משתנה על בסיס הערך הנוכחי שלו.",
+    "example": "let count = 1;\ncount += 2;"
+  },
+  "async function": {
+    "type": "syntax-pattern",
+    "explanation": "פונקציה שמוכרזת עם async, מחזירה Promise ומאפשרת להשתמש ב־await בתוכה.",
+    "example": "async function load() {\n  return await fetch(\"/data\");\n}"
+  },
+  "generator function": {
+    "type": "syntax-pattern",
+    "explanation": "פונקציה שמוכרזת עם function* ויכולה להפיק כמה ערכים לאורך זמן בעזרת yield.",
+    "example": "function* ids() {\n  yield 1;\n  yield 2;\n}"
+  },
+  "async generator function": {
+    "type": "syntax-pattern",
+    "explanation": "generator שיכול להמתין לעבודה אסינכרונית ולהפיק ערכים באופן אסינכרוני.",
+    "example": "async function* stream() {\n  yield await Promise.resolve(1);\n}"
+  },
+  "for await...of": {
+    "type": "syntax-pattern",
+    "explanation": "תבנית לולאה שצורכת async iterables ערך אחד בכל פעם.",
+    "example": "for await (const item of asyncItems) {\n  console.log(item);\n}"
+  },
+  "private field": {
+    "type": "class-syntax",
+    "explanation": "שדה או מתודה במחלקה ששמם מתחיל ב־# ונגישים רק מתוך גוף המחלקה.",
+    "example": "class Counter {\n  #count = 0;\n  increment() { this.#count++; }\n}"
+  },
+  "#": {
+    "type": "class-syntax",
+    "explanation": "הקידומת המשמשת לשדות פרטיים ולמתודות פרטיות במחלקות JavaScript.",
+    "example": "class Secret {\n  #value = 123;\n}"
+  },
+  "public field": {
+    "type": "class-syntax",
+    "explanation": "שדה מחלקה שמוכרז ישירות בגוף המחלקה. שדות public ב־JavaScript לא משתמשים במילת המפתח public.",
+    "example": "class Counter {\n  count = 0;\n}"
+  },
+  "static block": {
+    "type": "class-syntax",
+    "explanation": "בלוק אתחול static שרץ פעם אחת כאשר המחלקה מוערכת.",
+    "example": "class Config {\n  static value;\n  static {\n    this.value = 123;\n  }\n}"
+  },
+  "class field": {
+    "type": "class-syntax",
+    "explanation": "שדה שמוכרז ישירות בתוך גוף מחלקה, public או private.",
+    "example": "class User {\n  name = \"Nina\";\n  #id = 1;\n}"
+  },
+  "method": {
+    "type": "class/object-syntax",
+    "explanation": "קיצור תחביר לפונקציה בתוך אובייקט literal או מחלקה.",
+    "example": "const obj = {\n  speak() {\n    console.log(\"hi\");\n  }\n};"
+  },
+  "computed property": {
+    "type": "object-syntax",
+    "explanation": "שם מאפיין שנוצר מתוך ביטוי בתוך סוגריים מרובעים.",
+    "example": "const key = \"name\";\nconst obj = { [key]: \"Nina\" };"
+  },
+  "optional catch binding": {
+    "type": "syntax-pattern",
+    "explanation": "מאפשר catch בלי לתת שם למשתנה שגיאה כאשר אין צורך באובייקט השגיאה.",
+    "example": "try {\n  risky();\n} catch {\n  console.log(\"failed\");\n}"
+  },
+  "console": {
+    "type": "runtime-global",
+    "explanation": "אובייקט runtime נפוץ להדפסת הודעות. הוא מסופק על ידי דפדפנים, Node.js וסביבות מארחות אחרות, ולא על ידי שפת ECMAScript עצמה.",
+    "example": "console.log(\"Hello\");\nconsole.error(\"Oops\");"
+  },
+  "fetch": {
+    "type": "web-api",
+    "explanation": "פונקציית web/API runtime לביצוע בקשות HTTP. היא זמינה בדפדפנים וב־Node.js מודרני, אך אינה מילת מפתח של ECMAScript.",
+    "example": "const response = await fetch(\"/api/users\");\nconst data = await response.json();"
+  },
+  "setTimeout": {
+    "type": "runtime-global",
+    "explanation": "מתזמנת פונקציה לרוץ פעם אחת לאחר השהיה. מסופקת על ידי דפדפנים ו־Node.js, ולא על ידי ליבת ECMAScript.",
+    "example": "setTimeout(() => {\n  console.log(\"later\");\n}, 1000);"
+  },
+  "setInterval": {
+    "type": "runtime-global",
+    "explanation": "מתזמנת פונקציה לרוץ שוב ושוב עם השהיה בין ריצות. מסופקת על ידי דפדפנים ו־Node.js.",
+    "example": "const id = setInterval(() => console.log(\"tick\"), 1000);"
+  },
+  "clearTimeout": {
+    "type": "runtime-global",
+    "explanation": "מבטלת timeout שנוצר על ידי setTimeout.",
+    "example": "const id = setTimeout(doWork, 1000);\nclearTimeout(id);"
+  },
+  "clearInterval": {
+    "type": "runtime-global",
+    "explanation": "מבטלת interval שנוצר על ידי setInterval.",
+    "example": "const id = setInterval(doWork, 1000);\nclearInterval(id);"
+  },
+  "queueMicrotask": {
+    "type": "runtime-global",
+    "explanation": "מתזמנת פונקציה לרוץ כמיקרו־משימה אחרי שהמשימה הנוכחית מסתיימת.",
+    "example": "queueMicrotask(() => console.log(\"microtask\"));"
+  },
+  "structuredClone": {
+    "type": "runtime-global",
+    "explanation": "יוצרת עותק עמוק של ערכי JavaScript מובנים רבים באמצעות אלגוריתם structured clone.",
+    "example": "const copy = structuredClone({ a: [1, 2] });"
+  },
+  "window": {
+    "type": "web-api",
+    "explanation": "האובייקט הגלובלי של הדפדפן עבור טאב/חלון. הוא מכיל DOM, טיימרים, ניווט ו־API של הדפדפן.",
+    "example": "console.log(window.location.href);"
+  },
+  "document": {
+    "type": "web-api",
+    "explanation": "אובייקט מסמך ה־DOM של הדפדפן שמייצג את דף ה־HTML הנוכחי.",
+    "example": "const title = document.querySelector(\"h1\");"
+  },
+  "localStorage": {
+    "type": "web-api",
+    "explanation": "API אחסון בדפדפן לשמירת נתוני מפתח־ערך כמחרוזות בין סשנים.",
+    "example": "localStorage.setItem(\"name\", \"Nina\");\nconsole.log(localStorage.getItem(\"name\"));"
+  },
+  "sessionStorage": {
+    "type": "web-api",
+    "explanation": "API אחסון בדפדפן לשמירת נתוני מפתח־ערך כמחרוזות עבור הטאב/הסשן הנוכחי.",
+    "example": "sessionStorage.setItem(\"step\", \"1\");"
+  },
+  "URL": {
+    "type": "web/runtime-api",
+    "explanation": "מייצג ומנתח כתובות URL. זמין בדפדפנים וב־Node.js.",
+    "example": "const url = new URL(\"https://example.com?a=1\");\nconsole.log(url.searchParams.get(\"a\"));"
+  },
+  "URLSearchParams": {
+    "type": "web/runtime-api",
+    "explanation": "מייצג פרמטרים של query string ועוזר לקרוא או לבנות פרמטרי חיפוש ב־URL.",
+    "example": "const params = new URLSearchParams(\"?a=1&b=2\");\nconsole.log(params.get(\"a\"));"
+  },
+  "Event": {
+    "type": "web-api",
+    "explanation": "אובייקט אירוע DOM בדפדפן.",
+    "example": "button.addEventListener(\"click\", (event) => {\n  console.log(event.type);\n});"
+  },
+  "EventTarget": {
+    "type": "web-api",
+    "explanation": "ממשק בסיס בדפדפן/API לאובייקטים שיכולים לקבל ולשגר אירועים.",
+    "example": "const target = new EventTarget();\ntarget.addEventListener(\"done\", () => console.log(\"done\"));"
+  },
+  "ErrorEvent": {
+    "type": "web-api",
+    "explanation": "טיפוס אירוע בדפדפן המשמש לשגיאות סקריפט.",
+    "example": "window.addEventListener(\"error\", event => console.log(event.message));"
+  },
+  "Request": {
+    "type": "web-api",
+    "explanation": "מייצג בקשת HTTP המשמשת את fetch.",
+    "example": "const req = new Request(\"/api/users\");"
+  },
+  "Response": {
+    "type": "web-api",
+    "explanation": "מייצג תגובת HTTP שמוחזרת על ידי fetch.",
+    "example": "const response = new Response(JSON.stringify({ ok: true }));"
+  },
+  "Headers": {
+    "type": "web-api",
+    "explanation": "מייצג כותרות HTTP המשמשות עם אובייקטי Request ו־Response של fetch.",
+    "example": "const headers = new Headers({ \"Content-Type\": \"application/json\" });"
+  },
+  "AbortController": {
+    "type": "web-api",
+    "explanation": "יוצר signal שיכול לבטל fetch ופעולות אחרות הניתנות לביטול.",
+    "example": "const controller = new AbortController();\nfetch(\"/api\", { signal: controller.signal });\ncontroller.abort();"
+  },
+  "AbortSignal": {
+    "type": "web-api",
+    "explanation": "אובייקט signal שמודיע ל־API הניתנים לביטול שעליהם לבטל עבודה.",
+    "example": "const controller = new AbortController();\nconsole.log(controller.signal.aborted);"
+  },
+  "module": {
+    "type": "node-global",
+    "explanation": "אובייקט המודול של CommonJS ב־Node.js. אינו חלק ממודולי ECMAScript או מ־JavaScript בדפדפן.",
+    "example": "module.exports = { add };"
+  },
+  "exports": {
+    "type": "node-global",
+    "explanation": "הפניית עזר של CommonJS המשמשת לייצוא ערכים ממודול Node.js.",
+    "example": "exports.add = (a, b) => a + b;"
+  },
+  "require": {
+    "type": "node-global",
+    "explanation": "טוענת מודולי CommonJS ב־Node.js. מודולי ECMAScript מודרניים משתמשים ב־import/export במקום זאת.",
+    "example": "const fs = require(\"fs\");"
+  },
+  "__dirname": {
+    "type": "node-global",
+    "explanation": "נתיב התיקייה של מודול ה־CommonJS הנוכחי ב־Node.js.",
+    "example": "console.log(__dirname);"
+  },
+  "__filename": {
+    "type": "node-global",
+    "explanation": "נתיב שם הקובץ המלא של מודול ה־CommonJS הנוכחי ב־Node.js.",
+    "example": "console.log(__filename);"
+  },
+  "process": {
+    "type": "node-global",
+    "explanation": "אובייקט גלובלי של Node.js שמכיל מידע על התהליך, משתני סביבה וכלי יציאה/שליטה.",
+    "example": "console.log(process.env.NODE_ENV);"
+  },
+  "Buffer": {
+    "type": "node-global",
+    "explanation": "מחלקה של Node.js לעבודה עם נתונים בינאריים. ב־JavaScript בדפדפן משתמשים ב־ArrayBuffer או במערכים טיפוסיים.",
+    "example": "const buf = Buffer.from(\"hello\");"
+  },
+  "abstract": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `abstract` as an identifier in compatibility-sensitive code."
+  },
+  "byte": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `byte` as an identifier in compatibility-sensitive code."
+  },
+  "char": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `char` as an identifier in compatibility-sensitive code."
+  },
+  "double": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `double` as an identifier in compatibility-sensitive code."
+  },
+  "final": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `final` as an identifier in compatibility-sensitive code."
+  },
+  "float": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `float` as an identifier in compatibility-sensitive code."
+  },
+  "goto": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `goto` as an identifier in compatibility-sensitive code."
+  },
+  "int": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `int` as an identifier in compatibility-sensitive code."
+  },
+  "long": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `long` as an identifier in compatibility-sensitive code."
+  },
+  "native": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `native` as an identifier in compatibility-sensitive code."
+  },
+  "short": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `short` as an identifier in compatibility-sensitive code."
+  },
+  "synchronized": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `synchronized` as an identifier in compatibility-sensitive code."
+  },
+  "throws": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `throws` as an identifier in compatibility-sensitive code."
+  },
+  "transient": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `transient` as an identifier in compatibility-sensitive code."
+  },
+  "volatile": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
+    "example": "// Avoid using `volatile` as an identifier in compatibility-sensitive code."
+  }
+}

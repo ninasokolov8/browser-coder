@@ -522,11 +522,27 @@
         display: flex; align-items: center; justify-content: space-between;
         margin-bottom: 6px;
       }
+      .kw-help-title-group {
+        display: flex; align-items: center; gap: 8px;
+        min-width: 0;
+      }
       .kw-help-title {
         font-weight: 600;
         font-size: 13px;
         font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
         color: var(--accent);
+      }
+      .kw-help-tag {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 15%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+        border-radius: 10px;
+        padding: 2px 8px;
+        white-space: nowrap;
       }
       .kw-help-close {
         background: transparent; border: none;
@@ -543,6 +559,12 @@
         line-height: 1.5;
         color: var(--text-primary);
         margin-bottom: 8px;
+      }
+      /* Hebrew explanation translations render right-to-left; the keyword
+         title, type tag, and example code always stay LTR regardless. */
+      .kw-help-desc-rtl {
+        text-align: right;
+        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
       }
       .kw-help-example-label {
         font-size: 10px;
@@ -775,6 +797,12 @@
         line-height: 1.5;
         white-space: pre-wrap;
         color: var(--text-primary);
+        /* Always LTR regardless of UI language: this holds actual program
+           output (stdout/stderr/exit codes), never translated text - the
+           `dir="rtl"` that i18n sets on its placeholder (data-i18n) must
+           never carry over once real output replaces it. */
+        direction: ltr;
+        text-align: left;
       }
       #panel-content .error { color: #f48771; }
       #panel-content .success { color: #89d185; }
@@ -831,65 +859,21 @@
       /* ===== UTILITIES ===== */
       .hidden { display: none !important; }
 
-      /* ===== RTL SUPPORT ===== */
+      /* ===== RTL SUPPORT =====
+         Product decision: Hebrew keeps every UI element in the exact same
+         position as English (activity bar, sidebar, editor, controls, tree
+         indentation - nothing moves). Only the translated TEXT itself
+         becomes right-to-left / right-aligned, applied directly on each
+         translated element by i18n's translatePage() (see src/i18n/index.ts)
+         - never on <html> or on structural containers like #app/#sidebar/
+         #activitybar. Setting `direction: rtl` on a structural container
+         makes browsers auto-mirror flex/grid child order, which previously
+         caused the whole layout (and the editor's code) to visually
+         disappear when switching to Hebrew. This block intentionally does
+         NOT re-add that: no grid-template overrides, no border/margin
+         swaps, no flex-direction reversal. */
       .rtl {
-        direction: rtl;
-        text-align: right;
-      }
-      .rtl #app {
-        grid-template-columns: 1fr 220px 48px;
-        grid-template-areas:
-          "titlebar titlebar activitybar"
-          "main sidebar activitybar"
-          "statusbar statusbar statusbar";
-      }
-      .rtl #app:has(#sidebar.collapsed) {
-        grid-template-columns: 1fr 0 48px;
-      }
-      .rtl #activitybar {
-        border-left: 1px solid var(--border-color);
-        border-right: none;
-      }
-      .rtl .activity-icon {
-        border-left: none;
-        border-right: 2px solid transparent;
-      }
-      .rtl .activity-icon.active {
-        border-right-color: var(--icon-active);
-      }
-      .rtl #sidebar {
-        border-right: none;
-        border-left: 1px solid var(--border-color);
-      }
-      .rtl #sidebar-resize {
-        right: auto;
-        left: -3px;
-      }
-      .rtl .tree-children {
-        margin-left: 0;
-        margin-right: 12px;
-      }
-      .rtl .tree-item-chevron.expanded {
-        transform: rotate(-90deg);
-      }
-      .rtl #titlebar .controls {
-        margin-left: 0;
-        margin-right: auto;
-      }
-      .rtl .panel-actions {
-        margin-left: 0;
-        margin-right: auto;
-      }
-      .rtl .status-right {
-        flex-direction: row-reverse;
-      }
-      .rtl .search-match {
-        padding: 2px 28px 2px 8px;
-      }
-      .rtl .search-match-line {
-        text-align: left;
-        margin-right: 0;
-        margin-left: 8px;
+        /* No direction/text-align here on purpose - see comment above. */
       }
       /* Language selector */
       #lang-selector {

@@ -1,174 +1,1052 @@
 {
   "var": {
-    "explanation": "Declares a function-scoped (or global) variable. Its value can be reassigned, and it's hoisted to the top of its scope. Prefer let/const in modern code.",
+    "type": "keyword",
+    "explanation": "Declares a function-scoped or global variable. Its value can be reassigned, and the declaration is hoisted. Prefer let or const in modern code.",
     "example": "var count = 0;\ncount = count + 1;"
   },
   "let": {
-    "explanation": "Declares a block-scoped variable whose value can be reassigned later. This is the standard way to declare a variable you plan to change.",
+    "type": "keyword",
+    "explanation": "Declares a block-scoped variable whose value can be reassigned later.",
     "example": "let score = 0;\nscore += 10;"
   },
   "const": {
-    "explanation": "Declares a block-scoped variable that cannot be reassigned after it's set. The value itself can still be mutated if it's an object or array.",
-    "example": "const PI = 3.14159;\nconst list = [1, 2];\nlist.push(3); // OK, the array contents can change"
+    "type": "keyword",
+    "explanation": "Declares a block-scoped binding that cannot be reassigned after it is initialized. If the value is an object or array, its contents can still be mutated.",
+    "example": "const PI = 3.14159;\nconst list = [1, 2];\nlist.push(3);"
   },
   "function": {
-    "explanation": "Defines a reusable block of code that can take inputs (parameters) and optionally return a value.",
-    "example": "function add(a, b) {\n  return a + b;\n}\nconsole.log(add(2, 3)); // 5"
+    "type": "keyword",
+    "explanation": "Defines a reusable block of code that can take parameters and optionally return a value.",
+    "example": "function add(a, b) {\n  return a + b;\n}\nconsole.log(add(2, 3));"
   },
-  "=>": {
-    "explanation": "Arrow function syntax — a shorter way to write a function. Arrow functions don't have their own 'this', they inherit it from the surrounding scope.",
-    "example": "const add = (a, b) => a + b;\nconsole.log(add(2, 3)); // 5"
+  "class": {
+    "type": "keyword",
+    "explanation": "Defines a blueprint for creating objects with shared fields, constructors, and methods.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "extends": {
+    "type": "keyword",
+    "explanation": "Makes one class inherit from another class, or lets a class expression extend another constructor.",
+    "example": "class Dog extends Animal {\n  speak() {\n    console.log(\"Woof!\");\n  }\n}"
+  },
+  "super": {
+    "type": "keyword",
+    "explanation": "Calls the parent class constructor or parent methods from inside a subclass.",
+    "example": "class Dog extends Animal {\n  constructor(name) {\n    super(name);\n  }\n}"
+  },
+  "this": {
+    "type": "keyword",
+    "explanation": "Refers to the current execution context. In methods it usually refers to the object; in arrow functions it is inherited from the surrounding scope.",
+    "example": "const user = {\n  name: \"Nina\",\n  sayHi() {\n    console.log(this.name);\n  }\n};"
+  },
+  "new": {
+    "type": "keyword",
+    "explanation": "Creates a new object instance from a constructor function or class.",
+    "example": "const p = new Point(3, 4);"
+  },
+  "return": {
+    "type": "keyword",
+    "explanation": "Exits a function and optionally sends a value back to the caller.",
+    "example": "function square(x) {\n  return x * x;\n}"
   },
   "if": {
-    "explanation": "Runs a block of code only when a condition is true.",
-    "example": "if (age >= 18) {\n  console.log('Adult');\n}"
+    "type": "keyword",
+    "explanation": "Runs a block of code only when a condition is truthy.",
+    "example": "if (age >= 18) {\n  console.log(\"Adult\");\n}"
   },
   "else": {
-    "explanation": "Runs a block of code when the preceding if (or else if) condition was false.",
-    "example": "if (age >= 18) {\n  console.log('Adult');\n} else {\n  console.log('Minor');\n}"
-  },
-  "else if": {
-    "explanation": "Checks another condition when the previous if was false. You can chain several of these together.",
-    "example": "if (score >= 90) {\n  console.log('A');\n} else if (score >= 80) {\n  console.log('B');\n} else {\n  console.log('C');\n}"
-  },
-  "for": {
-    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable (start; condition; step).",
-    "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
-  },
-  "for...of": {
-    "explanation": "Loops over the values of an iterable (like an array or string), one at a time.",
-    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
-  },
-  "for...in": {
-    "explanation": "Loops over the enumerable property names (keys) of an object.",
-    "example": "const obj = { a: 1, b: 2 };\nfor (const key in obj) {\n  console.log(key, obj[key]);\n}"
-  },
-  "while": {
-    "explanation": "Repeats a block of code as long as a condition stays true. The condition is checked before each iteration.",
-    "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
-  },
-  "do...while": {
-    "explanation": "Like a while loop, but the code runs once before the condition is checked, so it always executes at least once.",
-    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
+    "type": "keyword",
+    "explanation": "Runs a block of code when the preceding if condition was falsy, or starts an else-if chain.",
+    "example": "if (age >= 18) {\n  console.log(\"Adult\");\n} else {\n  console.log(\"Minor\");\n}"
   },
   "switch": {
-    "explanation": "Compares a value against several possible cases and runs the matching block, instead of writing many if/else if statements.",
-    "example": "switch (day) {\n  case 'Mon':\n    console.log('Start of week');\n    break;\n  default:\n    console.log('Another day');\n}"
+    "type": "keyword",
+    "explanation": "Compares an expression against multiple case labels and runs the matching branch.",
+    "example": "switch (day) {\n  case \"Mon\":\n    console.log(\"Start of week\");\n    break;\n  default:\n    console.log(\"Another day\");\n}"
   },
   "case": {
-    "explanation": "Defines one branch inside a switch statement to match against.",
-    "example": "switch (grade) {\n  case 'A':\n    console.log('Great!');\n    break;\n}"
+    "type": "keyword",
+    "explanation": "Defines one matching branch inside a switch statement.",
+    "example": "switch (grade) {\n  case \"A\":\n    console.log(\"Great!\");\n    break;\n}"
+  },
+  "default": {
+    "type": "keyword",
+    "explanation": "Defines the fallback branch in a switch statement, or marks the default export of a module.",
+    "example": "switch (value) {\n  default:\n    console.log(\"No match\");\n}\n\nexport default function App() {}"
+  },
+  "for": {
+    "type": "keyword",
+    "explanation": "Starts a loop. It can be a classic counter loop, a for...of loop, or a for...in loop.",
+    "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
+  },
+  "while": {
+    "type": "keyword",
+    "explanation": "Repeats a block of code while a condition remains truthy. The condition is checked before each iteration.",
+    "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
+  },
+  "do": {
+    "type": "keyword",
+    "explanation": "Starts a do...while loop, where the body runs once before the condition is checked.",
+    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
   },
   "break": {
+    "type": "keyword",
     "explanation": "Immediately exits the nearest loop or switch statement.",
     "example": "for (let i = 0; i < 10; i++) {\n  if (i === 3) break;\n  console.log(i);\n}"
   },
   "continue": {
-    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
-    "example": "for (let i = 0; i < 5; i++) {\n  if (i % 2 === 0) continue;\n  console.log(i); // 1, 3\n}"
-  },
-  "return": {
-    "explanation": "Exits a function and optionally sends a value back to whoever called it.",
-    "example": "function square(x) {\n  return x * x;\n}"
+    "type": "keyword",
+    "explanation": "Skips the rest of the current loop iteration and moves to the next iteration.",
+    "example": "for (let i = 0; i < 5; i++) {\n  if (i % 2 === 0) continue;\n  console.log(i);\n}"
   },
   "try": {
-    "explanation": "Marks a block of code to 'try' running, so that if it throws an error, you can catch and handle it instead of crashing.",
-    "example": "try {\n  JSON.parse('not json');\n} catch (err) {\n  console.log('Invalid JSON:', err.message);\n}"
+    "type": "keyword",
+    "explanation": "Starts a block of code where thrown errors can be caught and handled.",
+    "example": "try {\n  JSON.parse(\"not json\");\n} catch (err) {\n  console.log(err.message);\n}"
   },
   "catch": {
-    "explanation": "Runs when the matching try block throws an error, giving you access to the error object.",
+    "type": "keyword",
+    "explanation": "Handles an error thrown from the matching try block.",
     "example": "try {\n  risky();\n} catch (err) {\n  console.error(err.message);\n}"
   },
   "finally": {
-    "explanation": "Runs after the try/catch, whether or not an error occurred — useful for cleanup code.",
-    "example": "try {\n  doWork();\n} finally {\n  console.log('Always runs');\n}"
+    "type": "keyword",
+    "explanation": "Runs after try/catch whether an error happened or not, often used for cleanup.",
+    "example": "try {\n  doWork();\n} finally {\n  console.log(\"Always runs\");\n}"
   },
   "throw": {
-    "explanation": "Raises an error, immediately stopping normal execution so it can be caught by a try/catch (or crash the program if uncaught).",
-    "example": "function check(age) {\n  if (age < 0) throw new Error('Age cannot be negative');\n}"
-  },
-  "class": {
-    "explanation": "Defines a blueprint for creating objects with shared properties and methods.",
-    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
-  },
-  "extends": {
-    "explanation": "Makes one class inherit properties and methods from another (parent) class.",
-    "example": "class Animal {\n  speak() { console.log('...'); }\n}\nclass Dog extends Animal {\n  speak() { console.log('Woof!'); }\n}"
-  },
-  "constructor": {
-    "explanation": "A special method inside a class that runs automatically when a new object is created from it, used to set up initial values.",
-    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
-  },
-  "this": {
-    "explanation": "Refers to the current object instance a method is running on. Its value depends on how the function was called (and arrow functions inherit it from the surrounding scope).",
-    "example": "class Counter {\n  count = 0;\n  increment() { this.count++; }\n}"
-  },
-  "super": {
-    "explanation": "Calls the parent class's constructor or methods from within a subclass.",
-    "example": "class Dog extends Animal {\n  constructor(name) {\n    super(name);\n  }\n}"
-  },
-  "new": {
-    "explanation": "Creates a new instance (object) from a class or constructor function.",
-    "example": "const p = new Point(3, 4);"
-  },
-  "static": {
-    "explanation": "Defines a property or method that belongs to the class itself, not to individual instances of it.",
-    "example": "class MathUtils {\n  static square(x) { return x * x; }\n}\nMathUtils.square(4); // 16"
+    "type": "keyword",
+    "explanation": "Raises an exception/error and stops normal execution unless it is caught.",
+    "example": "if (age < 0) {\n  throw new Error(\"Age cannot be negative\");\n}"
   },
   "import": {
-    "explanation": "Brings in code (functions, classes, values) exported from another file or module.",
-    "example": "import { add } from './math.js';"
+    "type": "keyword",
+    "explanation": "Brings exported values from another module into the current module.",
+    "example": "import { add } from \"./math.js\";"
   },
   "export": {
-    "explanation": "Makes a function, class, or value from the current file available to be imported elsewhere.",
+    "type": "keyword",
+    "explanation": "Makes a value, function, or class available to be imported by other modules.",
     "example": "export function add(a, b) {\n  return a + b;\n}"
   },
-  "async": {
-    "explanation": "Marks a function as asynchronous, meaning it always returns a Promise and can use 'await' inside it to pause for other async operations.",
-    "example": "async function loadData() {\n  const data = await fetchData();\n  return data;\n}"
-  },
   "await": {
-    "explanation": "Pauses an async function until a Promise settles, then gives you its resolved value (or throws if it rejected).",
-    "example": "async function run() {\n  const result = await delay(100);\n  console.log(result);\n}"
+    "type": "keyword",
+    "explanation": "Waits for a Promise to settle inside an async function or at top level in a module, then returns its resolved value or throws its rejection.",
+    "example": "async function run() {\n  const data = await fetch(\"/api/data\");\n}"
+  },
+  "async": {
+    "type": "contextual-keyword",
+    "explanation": "Marks a function as asynchronous. An async function always returns a Promise and can use await inside.",
+    "example": "async function loadData() {\n  return await fetchData();\n}"
+  },
+  "yield": {
+    "type": "keyword",
+    "explanation": "Pauses a generator function and produces a value for the caller.",
+    "example": "function* count() {\n  yield 1;\n  yield 2;\n}"
   },
   "typeof": {
-    "explanation": "Returns a string describing the type of a value, like 'string', 'number', 'boolean', 'object', or 'function'.",
-    "example": "console.log(typeof 42);      // 'number'\nconsole.log(typeof 'hi');    // 'string'"
+    "type": "keyword",
+    "explanation": "Returns a string describing the runtime type category of a value.",
+    "example": "console.log(typeof 42);      // \"number\"\nconsole.log(typeof \"hi\");    // \"string\""
   },
   "instanceof": {
-    "explanation": "Checks whether an object was created from a specific class (or its subclasses).",
-    "example": "class Dog {}\nconst d = new Dog();\nconsole.log(d instanceof Dog); // true"
+    "type": "keyword",
+    "explanation": "Checks whether an object is linked to a constructor's prototype chain.",
+    "example": "class Dog {}\nconst d = new Dog();\nconsole.log(d instanceof Dog);"
+  },
+  "in": {
+    "type": "keyword",
+    "explanation": "Checks whether a property key exists in an object, or participates in for...in syntax.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(\"name\" in user);"
+  },
+  "delete": {
+    "type": "keyword",
+    "explanation": "Removes a property from an object. It does not delete local variables declared with let/const/var.",
+    "example": "const obj = { a: 1 };\ndelete obj.a;"
+  },
+  "void": {
+    "type": "keyword",
+    "explanation": "Evaluates an expression and returns undefined. It is rarely used in modern application code.",
+    "example": "const result = void 0;\nconsole.log(result); // undefined"
+  },
+  "with": {
+    "type": "keyword",
+    "explanation": "Extends the scope chain for a block. It is forbidden in strict mode and should not be used.",
+    "example": "with (Math) {\n  console.log(round(3.7));\n}"
+  },
+  "debugger": {
+    "type": "keyword",
+    "explanation": "Pauses execution and opens a breakpoint when developer tools are available.",
+    "example": "function test() {\n  debugger;\n  console.log(\"Paused here in devtools\");\n}"
+  },
+  "enum": {
+    "type": "reserved-word",
+    "explanation": "A future reserved word in JavaScript. It cannot be used as an identifier.",
+    "example": "/* Invalid: */\n// const enum = 1;"
+  },
+  "implements": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode for possible future language features. It is not JavaScript's way to implement interfaces.",
+    "example": "\"use strict\";\n// const implements = 1; // SyntaxError"
+  },
+  "interface": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode. JavaScript does not have built-in interfaces; TypeScript uses this word for type declarations.",
+    "example": "\"use strict\";\n// const interface = 1; // SyntaxError"
+  },
+  "package": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode for possible future language features.",
+    "example": "\"use strict\";\n// const package = \"x\"; // SyntaxError"
+  },
+  "private": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode, but not used as a JavaScript access modifier. JavaScript private fields use #name syntax instead.",
+    "example": "\"use strict\";\n// const private = 1; // SyntaxError"
+  },
+  "protected": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode, but not used as a JavaScript access modifier.",
+    "example": "\"use strict\";\n// const protected = 1; // SyntaxError"
+  },
+  "public": {
+    "type": "strict-reserved-word",
+    "explanation": "Reserved in strict mode, but not used as a JavaScript access modifier.",
+    "example": "\"use strict\";\n// const public = 1; // SyntaxError"
+  },
+  "static": {
+    "type": "keyword",
+    "explanation": "Defines class members that belong to the class itself instead of instances. It is also reserved in strict mode.",
+    "example": "class MathUtils {\n  static square(x) {\n    return x * x;\n  }\n}\nconsole.log(MathUtils.square(4));"
   },
   "null": {
-    "explanation": "Represents the intentional absence of any value — you explicitly set something to 'nothing'.",
-    "example": "let selected = null; // no item selected yet"
+    "type": "literal",
+    "explanation": "Represents the intentional absence of an object value.",
+    "example": "let selected = null;"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "Boolean literal representing yes/on/true.",
+    "example": "const isActive = true;"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "Boolean literal representing no/off/false.",
+    "example": "const isDeleted = false;"
   },
   "undefined": {
-    "explanation": "The default value of a variable that has been declared but not yet assigned a value.",
+    "type": "global-value",
+    "explanation": "A global value used when a variable has been declared but not assigned, or when a property does not exist.",
     "example": "let x;\nconsole.log(x); // undefined"
   },
+  "NaN": {
+    "type": "global-value",
+    "explanation": "A special numeric value meaning Not-a-Number, usually produced by invalid numeric operations.",
+    "example": "console.log(Number(\"abc\")); // NaN"
+  },
+  "Infinity": {
+    "type": "global-value",
+    "explanation": "A numeric value representing positive infinity.",
+    "example": "console.log(1 / 0); // Infinity"
+  },
+  "globalThis": {
+    "type": "global-object",
+    "explanation": "A standard way to access the global object in browsers, Node.js, workers, and other JavaScript environments.",
+    "example": "console.log(globalThis.Array === Array);"
+  },
+  "string": {
+    "type": "primitive-type",
+    "explanation": "A primitive type for text values.",
+    "example": "const name = \"Nina\";\nconsole.log(typeof name); // \"string\""
+  },
+  "number": {
+    "type": "primitive-type",
+    "explanation": "A primitive type for numeric values using double-precision floating-point numbers.",
+    "example": "const price = 19.99;\nconsole.log(typeof price); // \"number\""
+  },
+  "bigint": {
+    "type": "primitive-type",
+    "explanation": "A primitive type for integers larger than Number can safely represent.",
+    "example": "const big = 9007199254740993n;\nconsole.log(typeof big); // \"bigint\""
+  },
+  "boolean": {
+    "type": "primitive-type",
+    "explanation": "A primitive type with only true and false values.",
+    "example": "const ok = true;\nconsole.log(typeof ok); // \"boolean\""
+  },
+  "symbol": {
+    "type": "primitive-type",
+    "explanation": "A primitive type used to create unique property keys.",
+    "example": "const id = Symbol(\"id\");\nconsole.log(typeof id); // \"symbol\""
+  },
+  "object": {
+    "type": "language-type",
+    "explanation": "A non-primitive value type used for objects, arrays, functions, dates, maps, and most complex structures.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(typeof user); // \"object\""
+  },
+  "function type": {
+    "type": "language-type",
+    "explanation": "Callable objects have typeof \"function\" even though functions are still objects.",
+    "example": "function hello() {}\nconsole.log(typeof hello); // \"function\""
+  },
+  "Object": {
+    "type": "built-in-object",
+    "explanation": "The base constructor for ordinary JavaScript objects and a namespace for object utility methods.",
+    "example": "const user = { name: \"Nina\" };\nconsole.log(Object.keys(user));"
+  },
+  "Function": {
+    "type": "built-in-object",
+    "explanation": "The constructor and prototype base for JavaScript functions. Functions are callable objects.",
+    "example": "function add(a, b) { return a + b; }\nconsole.log(add instanceof Function);"
+  },
+  "Boolean": {
+    "type": "built-in-object",
+    "explanation": "Wrapper constructor and utility object for boolean values. Usually prefer primitive booleans over Boolean objects.",
+    "example": "const value = Boolean(1);\nconsole.log(value); // true"
+  },
+  "Symbol": {
+    "type": "built-in-object",
+    "explanation": "Creates unique symbol values, often used as special object keys.",
+    "example": "const key = Symbol(\"secret\");\nconst obj = { [key]: 123 };"
+  },
+  "Number": {
+    "type": "built-in-object",
+    "explanation": "Wrapper constructor and namespace for number utilities such as Number.isNaN and Number.isInteger.",
+    "example": "console.log(Number.isInteger(42));"
+  },
+  "BigInt": {
+    "type": "built-in-object",
+    "explanation": "Creates BigInt values and represents the BigInt numeric type.",
+    "example": "const big = BigInt(\"12345678901234567890\");"
+  },
+  "Math": {
+    "type": "built-in-object",
+    "explanation": "A built-in object containing mathematical constants and functions. It is not a constructor.",
+    "example": "console.log(Math.round(3.7));\nconsole.log(Math.PI);"
+  },
+  "Date": {
+    "type": "built-in-object",
+    "explanation": "Represents dates and times.",
+    "example": "const now = new Date();\nconsole.log(now.toISOString());"
+  },
+  "String": {
+    "type": "built-in-object",
+    "explanation": "Wrapper constructor and namespace for string utilities. String values have methods like includes, slice, and toUpperCase.",
+    "example": "const text = \"hello\";\nconsole.log(text.toUpperCase());"
+  },
+  "RegExp": {
+    "type": "built-in-object",
+    "explanation": "Represents regular expressions for matching patterns in strings.",
+    "example": "const re = /\\d+/;\nconsole.log(re.test(\"abc123\"));"
+  },
+  "Array": {
+    "type": "built-in-object",
+    "explanation": "Represents ordered lists of values and provides methods like map, filter, reduce, and push.",
+    "example": "const nums = [1, 2, 3];\nconsole.log(nums.map(n => n * 2));"
+  },
+  "JSON": {
+    "type": "built-in-object",
+    "explanation": "Provides methods to parse JSON text into values and stringify values into JSON text.",
+    "example": "const obj = JSON.parse(\"{\\\"x\\\":1}\");\nconsole.log(JSON.stringify(obj));"
+  },
+  "Promise": {
+    "type": "built-in-object",
+    "explanation": "Represents a value that may become available later after an asynchronous operation settles.",
+    "example": "const p = new Promise(resolve => resolve(\"done\"));\np.then(console.log);"
+  },
+  "Proxy": {
+    "type": "built-in-object",
+    "explanation": "Wraps an object and intercepts operations like property access, assignment, and function calls.",
+    "example": "const target = {};\nconst proxy = new Proxy(target, {\n  get(obj, prop) { return prop in obj ? obj[prop] : \"missing\"; }\n});"
+  },
+  "Reflect": {
+    "type": "built-in-object",
+    "explanation": "Provides functions that mirror low-level object operations like get, set, apply, and construct.",
+    "example": "const obj = { x: 1 };\nconsole.log(Reflect.get(obj, \"x\"));"
+  },
+  "Intl": {
+    "type": "built-in-object",
+    "explanation": "Provides internationalization APIs for formatting dates, numbers, lists, relative time, and more.",
+    "example": "const fmt = new Intl.NumberFormat(\"en-US\");\nconsole.log(fmt.format(1234567));"
+  },
+  "WebAssembly": {
+    "type": "built-in-object",
+    "explanation": "Provides APIs for loading and interacting with WebAssembly modules.",
+    "example": "console.log(typeof WebAssembly); // \"object\""
+  },
+  "Map": {
+    "type": "collection",
+    "explanation": "A key-value collection where keys can be any value, including objects.",
+    "example": "const map = new Map();\nmap.set(\"name\", \"Nina\");\nconsole.log(map.get(\"name\"));"
+  },
+  "Set": {
+    "type": "collection",
+    "explanation": "A collection of unique values.",
+    "example": "const set = new Set([1, 2, 2, 3]);\nconsole.log(set.size); // 3"
+  },
+  "WeakMap": {
+    "type": "collection",
+    "explanation": "A key-value collection where keys must be objects and can be garbage-collected when no longer referenced elsewhere.",
+    "example": "const wm = new WeakMap();\nconst key = {};\nwm.set(key, \"secret\");"
+  },
+  "WeakSet": {
+    "type": "collection",
+    "explanation": "A collection of objects held weakly, allowing garbage collection when objects are no longer referenced elsewhere.",
+    "example": "const ws = new WeakSet();\nconst obj = {};\nws.add(obj);"
+  },
+  "WeakRef": {
+    "type": "built-in-object",
+    "explanation": "Holds a weak reference to an object without preventing it from being garbage-collected.",
+    "example": "const ref = new WeakRef({ value: 1 });\nconsole.log(ref.deref());"
+  },
+  "FinalizationRegistry": {
+    "type": "built-in-object",
+    "explanation": "Lets code register cleanup callbacks to be called after objects are garbage-collected. Use carefully.",
+    "example": "const registry = new FinalizationRegistry(value => {\n  console.log(\"cleaned\", value);\n});"
+  },
+  "Iterator": {
+    "type": "built-in-object",
+    "explanation": "Represents the base object/protocol for synchronous iterators in modern JavaScript environments.",
+    "example": "const iterator = [1, 2][Symbol.iterator]();\nconsole.log(iterator.next());"
+  },
+  "AsyncIterator": {
+    "type": "built-in-object",
+    "explanation": "Represents asynchronous iterator behavior used by for await...of and async generator results.",
+    "example": "async function* gen() {\n  yield 1;\n}"
+  },
+  "ArrayBuffer": {
+    "type": "binary-data",
+    "explanation": "Represents a fixed-length raw binary data buffer.",
+    "example": "const buffer = new ArrayBuffer(8);"
+  },
+  "SharedArrayBuffer": {
+    "type": "binary-data",
+    "explanation": "Represents a shared binary buffer that can be accessed from multiple agents/threads when allowed by the environment.",
+    "example": "const buffer = new SharedArrayBuffer(8);"
+  },
+  "DataView": {
+    "type": "binary-data",
+    "explanation": "Provides methods for reading and writing multiple numeric types from an ArrayBuffer.",
+    "example": "const buffer = new ArrayBuffer(8);\nconst view = new DataView(buffer);\nview.setInt32(0, 123);"
+  },
+  "Atomics": {
+    "type": "binary-data",
+    "explanation": "Provides atomic operations for shared memory with SharedArrayBuffer and typed arrays.",
+    "example": "const sab = new SharedArrayBuffer(4);\nconst arr = new Int32Array(sab);\nAtomics.store(arr, 0, 123);"
+  },
+  "Int8Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 8-bit signed integers in binary buffers.",
+    "example": "const values = new Int8Array(4);\nvalues[0] = 1;"
+  },
+  "Uint8Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 8-bit unsigned integers in binary buffers.",
+    "example": "const values = new Uint8Array(4);\nvalues[0] = 1;"
+  },
+  "Uint8ClampedArray": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 8-bit unsigned integers clamped to 0-255 in binary buffers.",
+    "example": "const values = new Uint8ClampedArray(4);\nvalues[0] = 1;"
+  },
+  "Int16Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 16-bit signed integers in binary buffers.",
+    "example": "const values = new Int16Array(4);\nvalues[0] = 1;"
+  },
+  "Uint16Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 16-bit unsigned integers in binary buffers.",
+    "example": "const values = new Uint16Array(4);\nvalues[0] = 1;"
+  },
+  "Int32Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 32-bit signed integers in binary buffers.",
+    "example": "const values = new Int32Array(4);\nvalues[0] = 1;"
+  },
+  "Uint32Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 32-bit unsigned integers in binary buffers.",
+    "example": "const values = new Uint32Array(4);\nvalues[0] = 1;"
+  },
+  "BigInt64Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 64-bit signed BigInts in binary buffers.",
+    "example": "const values = new BigInt64Array(4);\nvalues[0] = 1n;"
+  },
+  "BigUint64Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 64-bit unsigned BigInts in binary buffers.",
+    "example": "const values = new BigUint64Array(4);\nvalues[0] = 1n;"
+  },
+  "Float16Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 16-bit floating-point numbers in binary buffers.",
+    "example": "const values = new Float16Array(4);\nvalues[0] = 1;"
+  },
+  "Float32Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 32-bit floating-point numbers in binary buffers.",
+    "example": "const values = new Float32Array(4);\nvalues[0] = 1;"
+  },
+  "Float64Array": {
+    "type": "typed-array",
+    "explanation": "A typed array for storing 64-bit floating-point numbers in binary buffers.",
+    "example": "const values = new Float64Array(4);\nvalues[0] = 1;"
+  },
+  "Error": {
+    "type": "error-class",
+    "explanation": "The base class for JavaScript errors.",
+    "example": "throw new Error(\"Something went wrong\");"
+  },
+  "AggregateError": {
+    "type": "error-class",
+    "explanation": "Represents multiple errors wrapped into one error object.",
+    "example": "throw new AggregateError([new Error(\"A\"), new Error(\"B\")], \"Multiple failures\");"
+  },
+  "EvalError": {
+    "type": "error-class",
+    "explanation": "A legacy error type related to eval. Rarely used directly in modern code.",
+    "example": "const err = new EvalError(\"eval problem\");"
+  },
+  "RangeError": {
+    "type": "error-class",
+    "explanation": "Thrown when a value is outside an allowed numeric range.",
+    "example": "throw new RangeError(\"Value is out of range\");"
+  },
+  "ReferenceError": {
+    "type": "error-class",
+    "explanation": "Thrown when code refers to a variable that does not exist or cannot be accessed.",
+    "example": "// console.log(missingVariable); // ReferenceError"
+  },
+  "SyntaxError": {
+    "type": "error-class",
+    "explanation": "Thrown when code contains invalid JavaScript syntax or invalid parsed input like malformed JSON.",
+    "example": "try {\n  JSON.parse(\"{\");\n} catch (err) {\n  console.log(err instanceof SyntaxError);\n}"
+  },
+  "TypeError": {
+    "type": "error-class",
+    "explanation": "Thrown when a value is used in an incompatible way, such as calling a non-function.",
+    "example": "try {\n  null.toString();\n} catch (err) {\n  console.log(err instanceof TypeError);\n}"
+  },
+  "URIError": {
+    "type": "error-class",
+    "explanation": "Thrown when URI encoding or decoding functions receive invalid input.",
+    "example": "try {\n  decodeURIComponent(\"%E0%A4%A\");\n} catch (err) {\n  console.log(err instanceof URIError);\n}"
+  },
+  "eval": {
+    "type": "built-in-function",
+    "explanation": "Executes a string as JavaScript code. Avoid it because it is slow, hard to secure, and hard to debug.",
+    "example": "eval(\"console.log(2 + 3)\");"
+  },
+  "isFinite": {
+    "type": "built-in-function",
+    "explanation": "Checks whether a value is a finite number after coercion. Prefer Number.isFinite for stricter checks.",
+    "example": "console.log(isFinite(\"123\")); // true"
+  },
+  "isNaN": {
+    "type": "built-in-function",
+    "explanation": "Checks whether a value is NaN after coercion. Prefer Number.isNaN for stricter checks.",
+    "example": "console.log(isNaN(\"abc\")); // true"
+  },
+  "parseFloat": {
+    "type": "built-in-function",
+    "explanation": "Parses a string and returns a floating-point number.",
+    "example": "console.log(parseFloat(\"3.14px\")); // 3.14"
+  },
+  "parseInt": {
+    "type": "built-in-function",
+    "explanation": "Parses a string and returns an integer, optionally using a given radix.",
+    "example": "console.log(parseInt(\"101\", 2)); // 5"
+  },
+  "encodeURI": {
+    "type": "built-in-function",
+    "explanation": "Encodes a URI while leaving URI syntax characters mostly intact.",
+    "example": "console.log(encodeURI(\"https://example.com/a b\"));"
+  },
+  "encodeURIComponent": {
+    "type": "built-in-function",
+    "explanation": "Encodes a string so it is safe to use as a URI component.",
+    "example": "console.log(encodeURIComponent(\"a b&c\"));"
+  },
+  "decodeURI": {
+    "type": "built-in-function",
+    "explanation": "Decodes a URI previously encoded with encodeURI.",
+    "example": "console.log(decodeURI(\"https://example.com/a%20b\"));"
+  },
+  "decodeURIComponent": {
+    "type": "built-in-function",
+    "explanation": "Decodes a URI component previously encoded with encodeURIComponent.",
+    "example": "console.log(decodeURIComponent(\"a%20b%26c\"));"
+  },
+  "escape": {
+    "type": "deprecated-built-in-function",
+    "explanation": "Legacy string escaping function. It is deprecated; use encodeURI or encodeURIComponent instead.",
+    "example": "console.log(escape(\"a b\"));"
+  },
+  "unescape": {
+    "type": "deprecated-built-in-function",
+    "explanation": "Legacy string unescaping function. It is deprecated; use decodeURI or decodeURIComponent instead.",
+    "example": "console.log(unescape(\"a%20b\"));"
+  },
+  "from": {
+    "type": "module-syntax",
+    "explanation": "Used in import/export declarations to specify the module source. It is not a general reserved keyword.",
+    "example": "import { add } from \"./math.js\";"
+  },
+  "as": {
+    "type": "module-syntax",
+    "explanation": "Used to rename imports/exports or in some newer syntax positions. It is not a general reserved keyword.",
+    "example": "import { longName as shortName } from \"./lib.js\";"
+  },
+  "of": {
+    "type": "loop-syntax",
+    "explanation": "Used in for...of loops to iterate over values from an iterable. It is not a general reserved keyword.",
+    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
+  },
+  "get": {
+    "type": "class/object-syntax",
+    "explanation": "Defines a getter method for reading a property.",
+    "example": "const user = {\n  firstName: \"Nina\",\n  get name() {\n    return this.firstName;\n  }\n};"
+  },
+  "set": {
+    "type": "class/object-syntax",
+    "explanation": "Defines a setter method for assigning to a property.",
+    "example": "const user = {\n  set name(value) {\n    this._name = value;\n  }\n};"
+  },
+  "constructor": {
+    "type": "class-syntax",
+    "explanation": "A special method inside a class that runs when a new instance is created.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "arguments": {
+    "type": "function-syntax",
+    "explanation": "An array-like object available inside non-arrow functions that contains the arguments passed to the function.",
+    "example": "function show() {\n  console.log(arguments[0]);\n}\nshow(\"hi\");"
+  },
+  "target": {
+    "type": "meta-property-part",
+    "explanation": "The second part of new.target, a meta-property used inside functions or constructors.",
+    "example": "function Example() {\n  console.log(new.target);\n}"
+  },
+  "meta": {
+    "type": "meta-property-part",
+    "explanation": "The second part of import.meta, a meta-property containing module metadata.",
+    "example": "console.log(import.meta.url);"
+  },
+  "import.meta": {
+    "type": "module-syntax",
+    "explanation": "A module meta-property that exposes metadata about the current module, such as its URL.",
+    "example": "console.log(import.meta.url);"
+  },
+  "new.target": {
+    "type": "meta-property",
+    "explanation": "A meta-property that tells whether a function or constructor was called with new.",
+    "example": "function Person() {\n  if (!new.target) throw new Error(\"Use new\");\n}"
+  },
+  "for...of": {
+    "type": "syntax-pattern",
+    "explanation": "A loop pattern that iterates over values from an iterable such as an array, string, Map, Set, or generator.",
+    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
+  },
+  "for...in": {
+    "type": "syntax-pattern",
+    "explanation": "A loop pattern that iterates over enumerable property keys of an object.",
+    "example": "const obj = { a: 1, b: 2 };\nfor (const key in obj) {\n  console.log(key, obj[key]);\n}"
+  },
+  "do...while": {
+    "type": "syntax-pattern",
+    "explanation": "A loop pattern where the body runs once before the condition is checked.",
+    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
+  },
+  "else if": {
+    "type": "syntax-pattern",
+    "explanation": "A common if/else chain pattern. JavaScript does not have a separate elif keyword.",
+    "example": "if (score >= 90) {\n  console.log(\"A\");\n} else if (score >= 80) {\n  console.log(\"B\");\n}"
+  },
+  "arrow function": {
+    "type": "syntax-pattern",
+    "explanation": "A compact function syntax using =>. Arrow functions do not have their own this, arguments, super, or new.target.",
+    "example": "const add = (a, b) => a + b;"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "The token used to define arrow functions.",
+    "example": "const double = x => x * 2;"
+  },
   "spread": {
-    "explanation": "The '...' syntax expands an array or object into individual elements — useful for copying, merging, or passing many arguments at once.",
-    "example": "const a = [1, 2];\nconst b = [...a, 3, 4]; // [1, 2, 3, 4]"
+    "type": "syntax-pattern",
+    "explanation": "The ... syntax when it expands an iterable or object into individual elements/properties.",
+    "example": "const a = [1, 2];\nconst b = [...a, 3, 4];"
+  },
+  "rest parameter": {
+    "type": "syntax-pattern",
+    "explanation": "The ... syntax in a function parameter list, collecting remaining arguments into an array.",
+    "example": "function total(...numbers) {\n  return numbers.reduce((a, b) => a + b, 0);\n}"
+  },
+  "...": {
+    "type": "operator",
+    "explanation": "The token used for spread syntax and rest parameters/properties, depending on context.",
+    "example": "const copy = { ...original };\nfunction f(...args) {}"
   },
   "destructuring": {
-    "explanation": "A shorthand syntax for pulling values out of arrays or objects into their own variables.",
+    "type": "syntax-pattern",
+    "explanation": "Syntax for unpacking values from arrays or properties from objects into variables.",
     "example": "const { name, age } = person;\nconst [first, second] = [10, 20];"
   },
   "template literal": {
-    "explanation": "A string written with backticks that lets you embed expressions directly using ${...}, and supports multi-line text.",
-    "example": "const name = 'Nina';\nconsole.log(`Hello, ${name}!`);"
+    "type": "syntax-pattern",
+    "explanation": "A string written with backticks that supports interpolation with ${...} and multi-line text.",
+    "example": "const name = \"Nina\";\nconsole.log(`Hello, ${name}!`);"
   },
-  "Promise": {
-    "explanation": "An object representing a value that will be available later (after an asynchronous operation finishes successfully or fails).",
-    "example": "new Promise((resolve) => {\n  setTimeout(() => resolve('done'), 100);\n});"
+  "tagged template": {
+    "type": "syntax-pattern",
+    "explanation": "A function call syntax where a function processes a template literal.",
+    "example": "function tag(strings, value) {\n  return strings[0] + value;\n}\ntag`Hi ${\"Nina\"}`;"
   },
-  "??": {
-    "explanation": "The nullish coalescing operator — returns the right-hand value only if the left-hand value is null or undefined (unlike ||, it keeps 0 and '' as-is).",
-    "example": "const name = userName ?? 'Guest';"
+  "optional chaining": {
+    "type": "operator",
+    "explanation": "The ?. operator safely accesses nested properties or calls functions when the left side may be null or undefined.",
+    "example": "console.log(user?.address?.city);"
   },
   "?.": {
-    "explanation": "Optional chaining — safely accesses a nested property without throwing if something along the way is null or undefined.",
-    "example": "console.log(user?.address?.city); // undefined instead of a crash"
+    "type": "operator",
+    "explanation": "Optional chaining operator. It returns undefined instead of throwing when the left side is null or undefined.",
+    "example": "const city = user?.address?.city;"
+  },
+  "nullish coalescing": {
+    "type": "operator",
+    "explanation": "The ?? operator returns the right-hand value only when the left-hand value is null or undefined.",
+    "example": "const name = userName ?? \"Guest\";"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "Nullish coalescing operator. Unlike ||, it preserves valid falsy values like 0 and \"\".",
+    "example": "const count = value ?? 0;"
+  },
+  "logical AND": {
+    "type": "operator",
+    "explanation": "The && operator returns the first falsy operand or the last operand if all are truthy.",
+    "example": "if (age >= 18 && hasId) {\n  console.log(\"Allowed\");\n}"
+  },
+  "logical OR": {
+    "type": "operator",
+    "explanation": "The || operator returns the first truthy operand or the last operand if all are falsy.",
+    "example": "const name = input || \"Guest\";"
+  },
+  "logical NOT": {
+    "type": "operator",
+    "explanation": "The ! operator converts a value to boolean and negates it.",
+    "example": "if (!isReady) {\n  console.log(\"Not ready\");\n}"
+  },
+  "strict equality": {
+    "type": "operator",
+    "explanation": "The === operator checks equality without type coercion. Prefer it over == in most cases.",
+    "example": "console.log(1 === \"1\"); // false"
+  },
+  "strict inequality": {
+    "type": "operator",
+    "explanation": "The !== operator checks inequality without type coercion.",
+    "example": "console.log(1 !== \"1\"); // true"
+  },
+  "equality": {
+    "type": "operator",
+    "explanation": "The == operator checks equality with type coercion. It can be surprising, so prefer === unless coercion is intentional.",
+    "example": "console.log(1 == \"1\"); // true"
+  },
+  "ternary operator": {
+    "type": "operator",
+    "explanation": "The condition ? a : b operator chooses one of two expressions based on a condition.",
+    "example": "const label = age >= 18 ? \"Adult\" : \"Minor\";"
+  },
+  "assignment": {
+    "type": "operator",
+    "explanation": "The = operator assigns a value to a variable, property, or destructuring target.",
+    "example": "let x = 5;"
+  },
+  "compound assignment": {
+    "type": "operator",
+    "explanation": "Operators like +=, -=, *=, and ??= update a variable based on its current value.",
+    "example": "let count = 1;\ncount += 2;"
+  },
+  "async function": {
+    "type": "syntax-pattern",
+    "explanation": "A function declared with async, returning a Promise and allowing await inside.",
+    "example": "async function load() {\n  return await fetch(\"/data\");\n}"
+  },
+  "generator function": {
+    "type": "syntax-pattern",
+    "explanation": "A function declared with function* that can yield multiple values over time.",
+    "example": "function* ids() {\n  yield 1;\n  yield 2;\n}"
+  },
+  "async generator function": {
+    "type": "syntax-pattern",
+    "explanation": "A generator that can await async work and yield values asynchronously.",
+    "example": "async function* stream() {\n  yield await Promise.resolve(1);\n}"
+  },
+  "for await...of": {
+    "type": "syntax-pattern",
+    "explanation": "A loop pattern that consumes async iterables one value at a time.",
+    "example": "for await (const item of asyncItems) {\n  console.log(item);\n}"
+  },
+  "private field": {
+    "type": "class-syntax",
+    "explanation": "A class field or method whose name starts with # and is accessible only inside that class body.",
+    "example": "class Counter {\n  #count = 0;\n  increment() { this.#count++; }\n}"
+  },
+  "#": {
+    "type": "class-syntax",
+    "explanation": "The prefix used for JavaScript private class fields and private methods.",
+    "example": "class Secret {\n  #value = 123;\n}"
+  },
+  "public field": {
+    "type": "class-syntax",
+    "explanation": "A class field declared directly in the class body. JavaScript public fields do not use the public keyword.",
+    "example": "class Counter {\n  count = 0;\n}"
+  },
+  "static block": {
+    "type": "class-syntax",
+    "explanation": "A static initialization block that runs once when the class is evaluated.",
+    "example": "class Config {\n  static value;\n  static {\n    this.value = 123;\n  }\n}"
+  },
+  "class field": {
+    "type": "class-syntax",
+    "explanation": "A field declared directly inside a class body, either public or private.",
+    "example": "class User {\n  name = \"Nina\";\n  #id = 1;\n}"
+  },
+  "method": {
+    "type": "class/object-syntax",
+    "explanation": "Function shorthand used inside object literals or classes.",
+    "example": "const obj = {\n  speak() {\n    console.log(\"hi\");\n  }\n};"
+  },
+  "computed property": {
+    "type": "object-syntax",
+    "explanation": "A property name created from an expression inside square brackets.",
+    "example": "const key = \"name\";\nconst obj = { [key]: \"Nina\" };"
+  },
+  "optional catch binding": {
+    "type": "syntax-pattern",
+    "explanation": "Allows catch without naming an error variable when the error object is not needed.",
+    "example": "try {\n  risky();\n} catch {\n  console.log(\"failed\");\n}"
+  },
+  "console": {
+    "type": "runtime-global",
+    "explanation": "A common runtime object for logging messages. It is provided by browsers, Node.js, and other hosts, not by the ECMAScript core language itself.",
+    "example": "console.log(\"Hello\");\nconsole.error(\"Oops\");"
+  },
+  "fetch": {
+    "type": "web-api",
+    "explanation": "A web/API runtime function for making HTTP requests. It is available in browsers and modern Node.js, but it is not an ECMAScript keyword.",
+    "example": "const response = await fetch(\"/api/users\");\nconst data = await response.json();"
+  },
+  "setTimeout": {
+    "type": "runtime-global",
+    "explanation": "Schedules a function to run once after a delay. Provided by browsers and Node.js, not by the ECMAScript core language.",
+    "example": "setTimeout(() => {\n  console.log(\"later\");\n}, 1000);"
+  },
+  "setInterval": {
+    "type": "runtime-global",
+    "explanation": "Schedules a function to run repeatedly with a delay between runs. Provided by browsers and Node.js.",
+    "example": "const id = setInterval(() => console.log(\"tick\"), 1000);"
+  },
+  "clearTimeout": {
+    "type": "runtime-global",
+    "explanation": "Cancels a timeout created by setTimeout.",
+    "example": "const id = setTimeout(doWork, 1000);\nclearTimeout(id);"
+  },
+  "clearInterval": {
+    "type": "runtime-global",
+    "explanation": "Cancels an interval created by setInterval.",
+    "example": "const id = setInterval(doWork, 1000);\nclearInterval(id);"
+  },
+  "queueMicrotask": {
+    "type": "runtime-global",
+    "explanation": "Schedules a function to run as a microtask after the current task finishes.",
+    "example": "queueMicrotask(() => console.log(\"microtask\"));"
+  },
+  "structuredClone": {
+    "type": "runtime-global",
+    "explanation": "Creates a deep clone of many built-in JavaScript values using the structured clone algorithm.",
+    "example": "const copy = structuredClone({ a: [1, 2] });"
+  },
+  "window": {
+    "type": "web-api",
+    "explanation": "The browser global object for a tab/window. It contains DOM, timer, navigation, and browser APIs.",
+    "example": "console.log(window.location.href);"
+  },
+  "document": {
+    "type": "web-api",
+    "explanation": "The browser DOM document object representing the current HTML page.",
+    "example": "const title = document.querySelector(\"h1\");"
+  },
+  "localStorage": {
+    "type": "web-api",
+    "explanation": "A browser storage API for saving string key-value data across sessions.",
+    "example": "localStorage.setItem(\"name\", \"Nina\");\nconsole.log(localStorage.getItem(\"name\"));"
+  },
+  "sessionStorage": {
+    "type": "web-api",
+    "explanation": "A browser storage API for saving string key-value data for the current tab/session.",
+    "example": "sessionStorage.setItem(\"step\", \"1\");"
+  },
+  "URL": {
+    "type": "web/runtime-api",
+    "explanation": "Represents and parses URLs. Available in browsers and Node.js.",
+    "example": "const url = new URL(\"https://example.com?a=1\");\nconsole.log(url.searchParams.get(\"a\"));"
+  },
+  "URLSearchParams": {
+    "type": "web/runtime-api",
+    "explanation": "Represents query string parameters and helps read or build URL search params.",
+    "example": "const params = new URLSearchParams(\"?a=1&b=2\");\nconsole.log(params.get(\"a\"));"
+  },
+  "Event": {
+    "type": "web-api",
+    "explanation": "A browser DOM event object.",
+    "example": "button.addEventListener(\"click\", (event) => {\n  console.log(event.type);\n});"
+  },
+  "EventTarget": {
+    "type": "web-api",
+    "explanation": "A browser/API base interface for objects that can receive and dispatch events.",
+    "example": "const target = new EventTarget();\ntarget.addEventListener(\"done\", () => console.log(\"done\"));"
+  },
+  "ErrorEvent": {
+    "type": "web-api",
+    "explanation": "A browser event type used for script errors.",
+    "example": "window.addEventListener(\"error\", event => console.log(event.message));"
+  },
+  "Request": {
+    "type": "web-api",
+    "explanation": "Represents an HTTP request used by fetch.",
+    "example": "const req = new Request(\"/api/users\");"
+  },
+  "Response": {
+    "type": "web-api",
+    "explanation": "Represents an HTTP response returned by fetch.",
+    "example": "const response = new Response(JSON.stringify({ ok: true }));"
+  },
+  "Headers": {
+    "type": "web-api",
+    "explanation": "Represents HTTP headers used with fetch Request and Response objects.",
+    "example": "const headers = new Headers({ \"Content-Type\": \"application/json\" });"
+  },
+  "AbortController": {
+    "type": "web-api",
+    "explanation": "Creates a signal that can cancel fetch and other abortable operations.",
+    "example": "const controller = new AbortController();\nfetch(\"/api\", { signal: controller.signal });\ncontroller.abort();"
+  },
+  "AbortSignal": {
+    "type": "web-api",
+    "explanation": "The signal object used to notify abortable APIs that they should cancel work.",
+    "example": "const controller = new AbortController();\nconsole.log(controller.signal.aborted);"
+  },
+  "module": {
+    "type": "node-global",
+    "explanation": "The CommonJS module object in Node.js. Not part of ECMAScript modules or browser JavaScript.",
+    "example": "module.exports = { add };"
+  },
+  "exports": {
+    "type": "node-global",
+    "explanation": "A CommonJS helper reference used to export values from a Node.js module.",
+    "example": "exports.add = (a, b) => a + b;"
+  },
+  "require": {
+    "type": "node-global",
+    "explanation": "Loads CommonJS modules in Node.js. Modern ECMAScript modules use import/export instead.",
+    "example": "const fs = require(\"fs\");"
+  },
+  "__dirname": {
+    "type": "node-global",
+    "explanation": "The directory path of the current CommonJS module in Node.js.",
+    "example": "console.log(__dirname);"
+  },
+  "__filename": {
+    "type": "node-global",
+    "explanation": "The full filename path of the current CommonJS module in Node.js.",
+    "example": "console.log(__filename);"
+  },
+  "process": {
+    "type": "node-global",
+    "explanation": "Node.js global object containing process information, environment variables, and exit/control utilities.",
+    "example": "console.log(process.env.NODE_ENV);"
+  },
+  "Buffer": {
+    "type": "node-global",
+    "explanation": "Node.js class for working with binary data. In browser JavaScript, use ArrayBuffer or typed arrays.",
+    "example": "const buf = Buffer.from(\"hello\");"
+  },
+  "abstract": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `abstract` as an identifier in compatibility-sensitive code."
+  },
+  "byte": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `byte` as an identifier in compatibility-sensitive code."
+  },
+  "char": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `char` as an identifier in compatibility-sensitive code."
+  },
+  "double": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `double` as an identifier in compatibility-sensitive code."
+  },
+  "final": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `final` as an identifier in compatibility-sensitive code."
+  },
+  "float": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `float` as an identifier in compatibility-sensitive code."
+  },
+  "goto": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `goto` as an identifier in compatibility-sensitive code."
+  },
+  "int": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `int` as an identifier in compatibility-sensitive code."
+  },
+  "long": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `long` as an identifier in compatibility-sensitive code."
+  },
+  "native": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `native` as an identifier in compatibility-sensitive code."
+  },
+  "short": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `short` as an identifier in compatibility-sensitive code."
+  },
+  "synchronized": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `synchronized` as an identifier in compatibility-sensitive code."
+  },
+  "throws": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `throws` as an identifier in compatibility-sensitive code."
+  },
+  "transient": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `transient` as an identifier in compatibility-sensitive code."
+  },
+  "volatile": {
+    "type": "legacy-future-reserved-word",
+    "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
+    "example": "// Avoid using `volatile` as an identifier in compatibility-sensitive code."
   }
 }

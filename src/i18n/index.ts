@@ -125,35 +125,43 @@ export function t(key: string, params?: Record<string, string | number>): string
 }
 
 /**
- * Apply RTL/LTR direction
+ * Apply RTL/LTR direction.
+ *
+ * Product decision: every UI element stays in the exact same position as
+ * English (activity bar, sidebar, editor, controls, tree indentation -
+ * nothing moves) when Hebrew is selected. So this deliberately does NOT set
+ * `dir`/`direction` on <html> or <body>, and does NOT add a `.rtl` class
+ * that CSS uses to reposition layout - only `lang` is updated here (useful
+ * for accessibility/spellcheck). Individual translated text elements get
+ * their own `dir` set directly in translatePage() below, so only the text
+ * itself becomes right-to-left, never the surrounding layout.
  */
 function applyDirection(): void {
   const config = getLanguageConfig();
-  document.documentElement.dir = config.dir;
   document.documentElement.lang = config.code;
-  
-  // Toggle RTL class for CSS hooks
-  if (config.dir === 'rtl') {
-    document.body.classList.add('rtl');
-  } else {
-    document.body.classList.remove('rtl');
-  }
 }
 
 /**
  * Translate all elements with data-i18n attribute
  */
 function translatePage(): void {
-  // Translate text content
+  const dir = getLanguageConfig().dir;
+
+  // Translate text content. `dir` is set directly on each translated
+  // element (not inherited from an ancestor) so only that element's own
+  // text flows right-to-left - its position within the page layout is
+  // completely unaffected.
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n')!;
     el.textContent = t(key);
+    (el as HTMLElement).dir = dir;
   });
 
   // Translate placeholders
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder')!;
     (el as HTMLInputElement).placeholder = t(key);
+    (el as HTMLElement).dir = dir;
   });
 
   // Translate titles (tooltips)
@@ -169,7 +177,9 @@ function translatePage(): void {
 }
 
 /**
- * Check if current language is RTL
+ * Check if current language is RTL. Only meant for deciding text
+ * direction/alignment of specific content (e.g. the keyword-explain popup) -
+ * never for repositioning layout.
  */
 export function isRTL(): boolean {
   return getLanguageConfig().dir === 'rtl';
