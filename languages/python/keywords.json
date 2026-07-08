@@ -1,0 +1,166 @@
+{
+  "def": {
+    "explanation": "Defines a reusable function — a named block of code that can take inputs (parameters) and optionally return a value.",
+    "example": "def add(a, b):\n    return a + b\n\nprint(add(2, 3))  # 5"
+  },
+  "class": {
+    "explanation": "Defines a blueprint for creating objects that share properties and behavior.",
+    "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "if age >= 18:\n    print('Adult')"
+  },
+  "elif": {
+    "explanation": "Short for 'else if' — checks another condition when the previous if (or elif) was false.",
+    "example": "if score >= 90:\n    print('A')\nelif score >= 80:\n    print('B')\nelse:\n    print('C')"
+  },
+  "else": {
+    "explanation": "Runs a block of code when none of the preceding if/elif conditions were true.",
+    "example": "if age >= 18:\n    print('Adult')\nelse:\n    print('Minor')"
+  },
+  "for": {
+    "explanation": "Loops over the items of a sequence (like a list, string, or range), one at a time.",
+    "example": "for i in range(5):\n    print(i)"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true, checked before each iteration.",
+    "example": "n = 3\nwhile n > 0:\n    print(n)\n    n -= 1"
+  },
+  "break": {
+    "explanation": "Immediately exits the nearest enclosing loop.",
+    "example": "for i in range(10):\n    if i == 3:\n        break\n    print(i)"
+  },
+  "continue": {
+    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
+    "example": "for i in range(5):\n    if i % 2 == 0:\n        continue\n    print(i)  # 1, 3"
+  },
+  "pass": {
+    "explanation": "A no-op placeholder statement — used when Python requires a statement (like inside an empty function or class) but you have nothing to put there yet.",
+    "example": "def todo_later():\n    pass"
+  },
+  "return": {
+    "explanation": "Exits a function and optionally sends a value back to whoever called it.",
+    "example": "def square(x):\n    return x * x"
+  },
+  "try": {
+    "explanation": "Marks a block of code to attempt running, so that if it raises an error, you can catch and handle it instead of crashing.",
+    "example": "try:\n    int('not a number')\nexcept ValueError as e:\n    print('Invalid:', e)"
+  },
+  "except": {
+    "explanation": "Catches and handles an error raised inside the matching try block.",
+    "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
+  },
+  "finally": {
+    "explanation": "Runs after the try/except, whether or not an error occurred — useful for cleanup code.",
+    "example": "try:\n    do_work()\nfinally:\n    print('Always runs')"
+  },
+  "raise": {
+    "explanation": "Triggers an error (exception) on purpose, stopping normal execution unless it's caught by a try/except.",
+    "example": "def check(age):\n    if age < 0:\n        raise ValueError('Age cannot be negative')"
+  },
+  "with": {
+    "explanation": "Wraps code in a context manager that automatically handles setup and cleanup, most commonly used for files.",
+    "example": "with open('data.txt') as f:\n    content = f.read()\n# file is automatically closed here"
+  },
+  "as": {
+    "explanation": "Gives a name to something — used with 'with', 'except', and 'import' to bind a result to a variable.",
+    "example": "import numpy as np\nwith open('f.txt') as f:\n    pass"
+  },
+  "import": {
+    "explanation": "Brings in code (functions, classes, modules) from Python's standard library or another file.",
+    "example": "import math\nprint(math.sqrt(16))"
+  },
+  "from": {
+    "explanation": "Used with import to bring in specific names from a module, instead of the whole module.",
+    "example": "from math import sqrt\nprint(sqrt(16))"
+  },
+  "lambda": {
+    "explanation": "Creates a small, unnamed (anonymous) function in a single expression — useful for short throwaway functions.",
+    "example": "double = lambda x: x * 2\nprint(double(5))  # 10"
+  },
+  "yield": {
+    "explanation": "Used inside a function to turn it into a generator — it pauses and produces one value at a time instead of returning everything at once.",
+    "example": "def count_up(n):\n    for i in range(n):\n        yield i"
+  },
+  "global": {
+    "explanation": "Tells Python that an assignment inside a function should modify a variable at module (global) scope, instead of creating a new local one.",
+    "example": "counter = 0\ndef increment():\n    global counter\n    counter += 1"
+  },
+  "nonlocal": {
+    "explanation": "Tells Python that an assignment inside a nested function should modify a variable from its enclosing (but not global) function scope.",
+    "example": "def outer():\n    count = 0\n    def inner():\n        nonlocal count\n        count += 1\n    inner()\n    return count"
+  },
+  "in": {
+    "explanation": "Checks whether a value exists inside a sequence (list, string, dict, etc.), or is used to iterate over one in a for loop.",
+    "example": "if 3 in [1, 2, 3]:\n    print('found it')"
+  },
+  "is": {
+    "explanation": "Checks whether two variables refer to the exact same object in memory (not just equal values) — commonly used with None.",
+    "example": "x = None\nif x is None:\n    print('x has no value')"
+  },
+  "not": {
+    "explanation": "Reverses a boolean value — turns True into False and vice versa.",
+    "example": "if not is_ready:\n    print('Not ready yet')"
+  },
+  "and": {
+    "explanation": "A logical operator that's True only when both conditions on either side are True.",
+    "example": "if age >= 18 and has_id:\n    print('Allowed in')"
+  },
+  "or": {
+    "explanation": "A logical operator that's True when at least one of the conditions on either side is True.",
+    "example": "if is_weekend or is_holiday:\n    print('No work today')"
+  },
+  "None": {
+    "explanation": "Represents 'no value' or the absence of a value — Python's equivalent of null.",
+    "example": "selected_item = None  # nothing selected yet"
+  },
+  "True": {
+    "explanation": "One of Python's two boolean values, representing a true/'yes' condition.",
+    "example": "is_active = True"
+  },
+  "False": {
+    "explanation": "One of Python's two boolean values, representing a false/'no' condition.",
+    "example": "is_deleted = False"
+  },
+  "self": {
+    "explanation": "The conventional first parameter of every instance method, referring to the specific object the method is being called on.",
+    "example": "class Counter:\n    def __init__(self):\n        self.count = 0\n    def increment(self):\n        self.count += 1"
+  },
+  "super": {
+    "explanation": "Gives access to methods from a parent class, most often used to call the parent's __init__ from a subclass.",
+    "example": "class Dog(Animal):\n    def __init__(self, name):\n        super().__init__(name)"
+  },
+  "assert": {
+    "explanation": "Checks that a condition is true, and raises an AssertionError immediately if it isn't — useful for catching bugs early.",
+    "example": "def divide(a, b):\n    assert b != 0, 'Cannot divide by zero'\n    return a / b"
+  },
+  "del": {
+    "explanation": "Deletes a variable, or removes an item from a list/dict by reference.",
+    "example": "numbers = [1, 2, 3]\ndel numbers[0]  # [2, 3]"
+  },
+  "async": {
+    "explanation": "Marks a function as asynchronous (a coroutine), letting it use 'await' to pause for other async operations without blocking.",
+    "example": "async def fetch_data():\n    result = await some_async_call()\n    return result"
+  },
+  "await": {
+    "explanation": "Pauses an async function until another async operation finishes, then gives you its result.",
+    "example": "async def main():\n    data = await fetch_data()\n    print(data)"
+  },
+  "*args": {
+    "explanation": "Lets a function accept any number of extra positional arguments, collected into a tuple.",
+    "example": "def total(*args):\n    return sum(args)\n\nprint(total(1, 2, 3))  # 6"
+  },
+  "**kwargs": {
+    "explanation": "Lets a function accept any number of extra named (keyword) arguments, collected into a dictionary.",
+    "example": "def greet(**kwargs):\n    print(kwargs['name'])\n\ngreet(name='Nina')"
+  },
+  "__init__": {
+    "explanation": "A special method (constructor) that runs automatically when a new object is created from a class, used to set up its initial state.",
+    "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
+  },
+  "list comprehension": {
+    "explanation": "A compact syntax for building a new list by transforming and/or filtering an existing sequence, in a single line.",
+    "example": "squares = [x**2 for x in range(5)]\nprint(squares)  # [0, 1, 4, 9, 16]"
+  }
+}

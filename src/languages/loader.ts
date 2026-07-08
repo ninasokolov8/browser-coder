@@ -2,7 +2,7 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { LanguageConfig, LoadedLanguage, VersionConfig } from "./types";
+import type { KeywordEntry, LanguageConfig, LoadedLanguage, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
 
 // Import all config.json files at build time
@@ -10,6 +10,18 @@ const configModules = import.meta.glob<{ default: LanguageConfig }>(
   "/languages/*/config.json",
   { eager: true }
 );
+
+// Import all keywords.json files at build time (optional per language)
+const keywordModules = import.meta.glob<{ default: Record<string, KeywordEntry> }>(
+  "/languages/*/keywords.json",
+  { eager: true }
+);
+
+// Extract the language id from a glob path like "/languages/python/keywords.json"
+function languageIdFromPath(path: string): string {
+  const match = path.match(/\/languages\/([^/]+)\//);
+  return match ? match[1] : "";
+}
 
 // Cache for loaded starters with TTL
 interface CacheEntry {
@@ -33,7 +45,17 @@ function loadLanguages(): Map<string, LoadedLanguage> {
       ...config,
       icon: config.icon || LANGUAGE_ICONS[config.id] || '📄',
       starters: {},
+      keywords: {},
     });
+  }
+
+  // Attach keyword dictionaries, keyed by the same language id used for config.json
+  for (const [path, module] of Object.entries(keywordModules)) {
+    const langId = languageIdFromPath(path);
+    const lang = languages.get(langId);
+    if (lang) {
+      lang.keywords = module.default || {};
+    }
   }
 
   return languages;
@@ -185,4 +207,22 @@ export function getDefaultVersion(langId: string): string {
   if (!lang) return "";
   const defaultVersion = lang.versions.find((v) => v.default) || lang.versions[0];
   return defaultVersion?.id || "";
+}
+
+// Look up a beginner-friendly explanation for a keyword/symbol in a given language.
+// Tries an exact (case-sensitive) match first, since most keywords are case-sensitive
+// (e.g. Java/C# "public" vs a variable named "Public"), then falls back to a
+// case-insensitive match so things still work if the user right-clicks "Public".
+export function getKeywordExplanation(langId: string, word: string): KeywordEntry | null {
+  const lang = languages.get(langId);
+  if (!lang || !word) return null;
+
+  const dict = lang.keywords;
+  if (dict[word]) return dict[word];
+
+  const lowerWord = word.toLowerCase();
+  for (const key of Object.keys(dict)) {
+    if (key.toLowerCase() === lowerWord) return dict[key];
+  }
+  return null;
 }

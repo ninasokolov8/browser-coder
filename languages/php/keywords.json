@@ -1,0 +1,166 @@
+{
+  "<?php": {
+    "explanation": "The opening tag that tells the PHP interpreter where PHP code starts. Every PHP script or block needs one.",
+    "example": "<?php\necho 'Hello, World!';"
+  },
+  "echo": {
+    "explanation": "Outputs one or more strings to the page/console. It's a language construct, not a real function, so it doesn't need parentheses.",
+    "example": "<?php echo 'Hello, World!'; ?>"
+  },
+  "print": {
+    "explanation": "Outputs a single string, similar to echo, but always returns the value 1 so it can be used inside expressions.",
+    "example": "<?php print('Hello!'); ?>"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n}"
+  },
+  "elseif": {
+    "explanation": "Checks another condition when the previous if was false. Can also be written as two words: 'else if'.",
+    "example": "<?php\nif ($score >= 90) {\n    echo 'A';\n} elseif ($score >= 80) {\n    echo 'B';\n} else {\n    echo 'C';\n}"
+  },
+  "else": {
+    "explanation": "Runs a block of code when the preceding if (or elseif) condition was false.",
+    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n} else {\n    echo 'Minor';\n}"
+  },
+  "switch": {
+    "explanation": "Compares a value against several possible cases and runs the matching block.",
+    "example": "<?php\nswitch ($day) {\n    case 'Mon':\n        echo 'Start of week';\n        break;\n    default:\n        echo 'Another day';\n}"
+  },
+  "case": {
+    "explanation": "Defines one branch to match against inside a switch statement.",
+    "example": "<?php\nswitch ($grade) {\n    case 'A':\n        echo 'Great!';\n        break;\n}"
+  },
+  "for": {
+    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable.",
+    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    echo $i;\n}"
+  },
+  "foreach": {
+    "explanation": "Loops over each element of an array, one at a time — the most common way to iterate arrays in PHP.",
+    "example": "<?php\n$arr = [1, 2, 3];\nforeach ($arr as $x) {\n    echo $x;\n}"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true, checked before each iteration.",
+    "example": "<?php\n$n = 3;\nwhile ($n > 0) {\n    echo $n;\n    $n--;\n}"
+  },
+  "do-while": {
+    "explanation": "Like a while loop, but the code runs once before the condition is checked, so it always executes at least once.",
+    "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
+  },
+  "break": {
+    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "example": "<?php\nfor ($i = 0; $i < 10; $i++) {\n    if ($i === 3) break;\n    echo $i;\n}"
+  },
+  "continue": {
+    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
+    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    if ($i % 2 === 0) continue;\n    echo $i;\n}"
+  },
+  "function": {
+    "explanation": "Defines a reusable block of code that can take inputs (parameters) and optionally return a value.",
+    "example": "<?php\nfunction add($a, $b) {\n    return $a + $b;\n}\necho add(2, 3); // 5"
+  },
+  "return": {
+    "explanation": "Exits a function and optionally sends a value back to whoever called it.",
+    "example": "<?php\nfunction square($x) {\n    return $x * $x;\n}"
+  },
+  "class": {
+    "explanation": "Defines a blueprint for creating objects that share properties and behavior.",
+    "example": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n}"
+  },
+  "interface": {
+    "explanation": "Describes a set of methods a class must implement, without providing the implementation itself.",
+    "example": "<?php\ninterface Shape {\n    public function area(): float;\n}"
+  },
+  "extends": {
+    "explanation": "Makes one class inherit properties and methods from another (parent) class.",
+    "example": "<?php\nclass Animal {\n    public function speak() { echo '...'; }\n}\nclass Dog extends Animal {\n    public function speak() { echo 'Woof!'; }\n}"
+  },
+  "implements": {
+    "explanation": "Declares that a class provides everything required by one or more interfaces.",
+    "example": "<?php\nclass Circle implements Shape {\n    public function area(): float { return 3.14 * $this->r ** 2; }\n}"
+  },
+  "public": {
+    "explanation": "Marks a property or method as accessible from anywhere, including outside the class.",
+    "example": "<?php\nclass User {\n    public string $name;\n}"
+  },
+  "private": {
+    "explanation": "Marks a property or method as only accessible from inside the class it's defined in.",
+    "example": "<?php\nclass Account {\n    private float $balance = 0;\n}"
+  },
+  "protected": {
+    "explanation": "Marks a property or method as accessible from the class it's defined in and its subclasses, but not from outside.",
+    "example": "<?php\nclass Base {\n    protected int $id = 1;\n}"
+  },
+  "static": {
+    "explanation": "Defines a property or method that belongs to the class itself, not to individual instances.",
+    "example": "<?php\nclass MathUtils {\n    public static function square($x) { return $x * $x; }\n}\nMathUtils::square(4);"
+  },
+  "const": {
+    "explanation": "Defines a class-level (or global) constant whose value cannot change after it's declared.",
+    "example": "<?php\nclass Circle {\n    const PI = 3.14159;\n}"
+  },
+  "new": {
+    "explanation": "Creates a new instance (object) from a class.",
+    "example": "<?php\n$p = new Point(3, 4);"
+  },
+  "$this": {
+    "explanation": "Inside a method, refers to the current object instance the method is running on.",
+    "example": "<?php\nclass Counter {\n    private int $count = 0;\n    public function increment() { $this->count++; }\n}"
+  },
+  "parent": {
+    "explanation": "Refers to the parent class, most often used to call the parent's constructor or an overridden method.",
+    "example": "<?php\nclass Dog extends Animal {\n    public function __construct($name) {\n        parent::__construct($name);\n    }\n}"
+  },
+  "try": {
+    "explanation": "Marks a block of code to attempt running, so that if it throws an error, you can catch and handle it instead of crashing.",
+    "example": "<?php\ntry {\n    riskyOperation();\n} catch (Exception $e) {\n    echo 'Error: ' . $e->getMessage();\n}"
+  },
+  "catch": {
+    "explanation": "Runs when the matching try block throws an exception, giving you access to the exception object.",
+    "example": "<?php\ntry {\n    intdiv(1, 0);\n} catch (DivisionByZeroError $e) {\n    echo $e->getMessage();\n}"
+  },
+  "finally": {
+    "explanation": "Runs after the try/catch, whether or not an exception occurred — useful for cleanup.",
+    "example": "<?php\ntry {\n    doWork();\n} finally {\n    echo 'Always runs';\n}"
+  },
+  "throw": {
+    "explanation": "Raises an exception on purpose, stopping normal execution unless it's caught.",
+    "example": "<?php\nfunction check($age) {\n    if ($age < 0) throw new InvalidArgumentException('Age cannot be negative');\n}"
+  },
+  "namespace": {
+    "explanation": "Groups related classes/functions under a named container to avoid naming collisions between libraries.",
+    "example": "<?php\nnamespace App\\Models;\n\nclass User {}"
+  },
+  "use": {
+    "explanation": "Imports a class, function, or trait from another namespace so it can be referenced by its short name.",
+    "example": "<?php\nuse App\\Models\\User;\n\n$u = new User();"
+  },
+  "require": {
+    "explanation": "Includes and runs another PHP file, stopping the script with a fatal error if the file isn't found.",
+    "example": "<?php\nrequire 'config.php';"
+  },
+  "array": {
+    "explanation": "PHP's built-in data structure for storing an ordered list of values, or key-value pairs.",
+    "example": "<?php\n$fruits = ['apple', 'banana', 'cherry'];\necho $fruits[0]; // apple"
+  },
+  "match": {
+    "explanation": "A more modern alternative to switch (PHP 8+) that compares strictly, returns a value directly, and requires no 'break'.",
+    "example": "<?php\n$result = match ($status) {\n    1 => 'Active',\n    2 => 'Inactive',\n    default => 'Unknown',\n};"
+  },
+  "??": {
+    "explanation": "The null coalescing operator — returns the left value if it's set and not null, otherwise returns the right value.",
+    "example": "<?php\n$name = $_GET['name'] ?? 'Guest';"
+  },
+  "abstract": {
+    "explanation": "Marks a class or method that can't be instantiated/called directly — it must be extended and implemented by a subclass.",
+    "example": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}"
+  },
+  "final": {
+    "explanation": "Marks a class as unable to be extended, or a method as unable to be overridden by subclasses.",
+    "example": "<?php\nfinal class Config {}"
+  },
+  "null": {
+    "explanation": "Represents the intentional absence of a value.",
+    "example": "<?php\n$selected = null; // no item selected yet"
+  }
+}

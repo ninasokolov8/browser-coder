@@ -1300,7 +1300,24 @@ class SmartExecutor {
       const r = spawnSync(
         'dotnet',
         ['build', '-c', 'Release', '--nologo', '-v', 'q'],
-        { cwd: this.csharpTemplateDir, timeout: 120000, env: { ...process.env, DOTNET_NOLOGO: '1', DOTNET_CLI_TELEMETRY_OPTOUT: '1' } }
+        {
+          cwd: this.csharpTemplateDir,
+          timeout: 120000,
+          env: {
+            ...process.env,
+            DOTNET_NOLOGO: '1',
+            DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+            // Same fix as runProcess(): DOTNET_CLI_HOME must point somewhere
+            // writable. This runs with the Node process's own env (HOME=
+            // /home/app from the Dockerfile), which is read-only in production
+            // (`read_only: true`), so without this override the warm-up build
+            // itself fails and the template never gets a valid
+            // obj/project.assets.json - making every subsequent per-run copy
+            // fail with NETSDK1004, for every C# execution.
+            HOME: this.tempDir,
+            DOTNET_CLI_HOME: this.tempDir,
+          },
+        }
       );
       if (r.status !== 0) {
         log('warn', 'csharp_template_build_failed', { stderr: (r.stderr || '').toString().slice(0, 500) });
@@ -1390,6 +1407,16 @@ class SmartExecutor {
         DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false',
         DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: '1',
         DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1',
+        // .NET CLI writes its first-run sentinel/lock files under DOTNET_CLI_HOME
+        // (NOT the generic HOME env var, and NOT skipped by DOTNET_NOLOGO/
+        // DOTNET_SKIP_FIRST_TIME_EXPERIENCE above - those only silence the banner
+        // text). Without this, it defaults to the OS home directory of the
+        // container's user (e.g. /home/app), which is read-only in production
+        // (docker-compose.prod.yml sets `read_only: true` on the api service),
+        // so the "first time use" configurer throws an unhandled IOException and
+        // the whole `dotnet build`/`dotnet run` invocation fails - surfacing as a
+        // seemingly unrelated NETSDK1004 "assets file not found" error.
+        DOTNET_CLI_HOME: this.tempDir,
       };
       
       // Only add Java security manager for runtime, not compilation

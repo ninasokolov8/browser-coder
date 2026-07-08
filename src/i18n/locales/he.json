@@ -40,6 +40,7 @@
   "editor.noFile": "לא נפתח קובץ",
   "editor.createFile": "צור קובץ חדש כדי להתחיל לכתוב קוד",
   "editor.newFile": "קובץ חדש",
+  "editor.explainKeyword": "💡 הסבר מילת מפתח זו",
   
   "panel.output": "פלט",
   "panel.clear": "נקה",

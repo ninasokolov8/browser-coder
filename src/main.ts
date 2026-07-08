@@ -2,7 +2,7 @@ import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
 import JSZip from "jszip";
-import { getAllLanguages, getLanguage, getStarterAsync, preloadDefaultStarters, preloadStarters } from "./languages";
+import { getAllLanguages, getLanguage, getKeywordExplanation, getStarterAsync, preloadDefaultStarters, preloadStarters } from "./languages";
 import type { LoadedLanguage, VersionConfig } from "./languages";
 import { TabManager, Tab } from "./tabs";
 import { initI18n, setLanguage, t, getLanguage as getUILang, languages as uiLanguages, isRTL } from "./i18n";
@@ -351,6 +351,82 @@ function setOutput(text: string) {
 function appendOutput(text: string) {
   panelContentEl.textContent += (panelContentEl.textContent ? "\n" : "") + text;
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
+}
+
+// ===== Keyword help popup ("Explain this keyword") =====
+let keywordPopupEl: HTMLDivElement | null = null;
+
+function closeKeywordHelpPopup() {
+  if (keywordPopupEl) {
+    keywordPopupEl.remove();
+    keywordPopupEl = null;
+    document.removeEventListener("mousedown", onKeywordPopupOutsideClick, true);
+    document.removeEventListener("keydown", onKeywordPopupEscape, true);
+  }
+}
+
+function onKeywordPopupOutsideClick(e: MouseEvent) {
+  if (keywordPopupEl && !keywordPopupEl.contains(e.target as Node)) {
+    closeKeywordHelpPopup();
+  }
+}
+
+function onKeywordPopupEscape(e: KeyboardEvent) {
+  if (e.key === "Escape") closeKeywordHelpPopup();
+}
+
+function showKeywordHelpPopup(keyword: string, explanation: string, example: string, x: number, y: number) {
+  closeKeywordHelpPopup();
+
+  const popup = document.createElement("div");
+  popup.className = "keyword-help-popup";
+
+  const header = document.createElement("div");
+  header.className = "kw-help-header";
+  const title = document.createElement("span");
+  title.className = "kw-help-title";
+  title.textContent = keyword;
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "kw-help-close";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", closeKeywordHelpPopup);
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  popup.appendChild(header);
+
+  const desc = document.createElement("div");
+  desc.className = "kw-help-desc";
+  desc.textContent = explanation;
+  popup.appendChild(desc);
+
+  const exampleLabel = document.createElement("div");
+  exampleLabel.className = "kw-help-example-label";
+  exampleLabel.textContent = "Example:";
+  popup.appendChild(exampleLabel);
+
+  const code = document.createElement("pre");
+  code.className = "kw-help-code";
+  code.textContent = example;
+  popup.appendChild(code);
+
+  document.body.appendChild(popup);
+
+  // Position near the clicked word, then clamp so it never renders off-screen
+  const rect = popup.getBoundingClientRect();
+  const maxX = window.innerWidth - rect.width - 12;
+  const maxY = window.innerHeight - rect.height - 12;
+  popup.style.left = `${Math.max(8, Math.min(x, Math.max(8, maxX)))}px`;
+  popup.style.top = `${Math.max(8, Math.min(y, Math.max(8, maxY)))}px`;
+
+  keywordPopupEl = popup;
+
+  // Defer listener attachment so the same click/context-menu selection that
+  // opened the popup doesn't immediately close it again.
+  setTimeout(() => {
+    document.addEventListener("mousedown", onKeywordPopupOutsideClick, true);
+    document.addEventListener("keydown", onKeywordPopupEscape, true);
+  }, 0);
 }
 
 // ===== Run loader (VSCode-style "busy" feedback) =====
@@ -2495,6 +2571,47 @@ function applyTheme(theme: string) {
   // Format document
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
     editor.getAction("editor.action.formatDocument")?.run();
+  });
+
+  // "Explain this keyword" — right-click a keyword to see a plain-English
+  // explanation + example, backed by languages/*/keywords.json
+  editor.addAction({
+    id: "explainKeyword",
+    label: t("editor.explainKeyword") || "💡 Explain this keyword",
+    contextMenuGroupId: "9_cutcopypaste",
+    contextMenuOrder: 1.5,
+    run: (ed) => {
+      const position = ed.getPosition();
+      const model = ed.getModel();
+      if (!position || !model) return;
+
+      const wordInfo = model.getWordAtPosition(position);
+      const word = wordInfo?.word || model.getValueInRange(ed.getSelection()!).trim();
+      if (!word) {
+        setStatus("Select or click on a keyword first");
+        return;
+      }
+
+      const activeTab = tabManager.getActiveTab();
+      const langId = activeTab ? activeTab.file.language : currentLang.id;
+      const entry = getKeywordExplanation(langId, word);
+
+      if (!entry) {
+        setStatus(`No explanation found for "${word}"`);
+        return;
+      }
+
+      // Position the popup near the clicked word on screen
+      const coords = wordInfo
+        ? ed.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: wordInfo.startColumn })
+        : ed.getScrolledVisiblePosition(position);
+      const editorDomNode = ed.getDomNode();
+      const editorRect = editorDomNode?.getBoundingClientRect();
+      const x = (editorRect?.left || 0) + (coords?.left || 0);
+      const y = (editorRect?.top || 0) + (coords?.top || 0) + (coords?.height || 18);
+
+      showKeywordHelpPopup(word, entry.explanation, entry.example, x, y);
+    },
   });
 
   // ===== VS Code-like UI Features =====

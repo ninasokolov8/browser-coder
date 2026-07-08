@@ -506,6 +506,67 @@
         background: var(--border-color);
       }
 
+      /* "Explain this keyword" popup */
+      .keyword-help-popup {
+        position: fixed; z-index: 1000;
+        background: var(--bg-sidebar);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        min-width: 260px;
+        max-width: 420px;
+        padding: 10px 12px;
+      }
+      .kw-help-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .kw-help-title {
+        font-weight: 600;
+        font-size: 13px;
+        font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        color: var(--accent);
+      }
+      .kw-help-close {
+        background: transparent; border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+      .kw-help-close:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
+      .kw-help-desc {
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+      .kw-help-example-label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+      }
+      .kw-help-code {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 8px;
+        margin: 0;
+        font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: var(--text-primary);
+        max-height: 200px;
+        overflow: auto;
+      }
+
       /* ===== MAIN EDITOR AREA ===== */
       #main {
         grid-area: main;

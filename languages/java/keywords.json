@@ -1,0 +1,166 @@
+{
+  "public": {
+    "explanation": "An access modifier that makes a class, method, or field accessible from anywhere in the program.",
+    "example": "public class Main {\n    public static void main(String[] args) {}\n}"
+  },
+  "private": {
+    "explanation": "An access modifier that makes a method or field accessible only from inside the same class.",
+    "example": "public class Account {\n    private double balance;\n}"
+  },
+  "protected": {
+    "explanation": "An access modifier that makes a method or field accessible within the same package and by subclasses.",
+    "example": "public class Base {\n    protected int id;\n}"
+  },
+  "class": {
+    "explanation": "Defines a blueprint for creating objects that share fields (data) and methods (behavior).",
+    "example": "public class Point {\n    int x, y;\n}"
+  },
+  "interface": {
+    "explanation": "Declares a set of method signatures that implementing classes are required to provide, without any implementation itself.",
+    "example": "interface Shape {\n    double area();\n}"
+  },
+  "abstract": {
+    "explanation": "Marks a class that can't be instantiated directly, or a method with no body that subclasses must implement.",
+    "example": "abstract class Shape {\n    abstract double area();\n}"
+  },
+  "final": {
+    "explanation": "Marks a class that can't be subclassed, a method that can't be overridden, or a variable that can't be reassigned.",
+    "example": "final double PI = 3.14159;"
+  },
+  "static": {
+    "explanation": "Marks a field or method as belonging to the class itself, rather than to individual instances of it.",
+    "example": "class MathUtils {\n    static int square(int x) { return x * x; }\n}\nMathUtils.square(4);"
+  },
+  "void": {
+    "explanation": "Used as a method's return type to indicate it doesn't return any value.",
+    "example": "public void printHello() {\n    System.out.println('Hello');\n}"
+  },
+  "new": {
+    "explanation": "Creates a new instance (object) from a class.",
+    "example": "Point p = new Point(3, 4);"
+  },
+  "this": {
+    "explanation": "Refers to the current object instance a method is running on, often used to distinguish a field from a parameter of the same name.",
+    "example": "class Point {\n    int x;\n    Point(int x) { this.x = x; }\n}"
+  },
+  "super": {
+    "explanation": "Refers to the parent class, used to call its constructor or an overridden method from a subclass.",
+    "example": "class Dog extends Animal {\n    Dog(String name) { super(name); }\n}"
+  },
+  "extends": {
+    "explanation": "Makes one class inherit fields and methods from another (parent) class, or one interface extend another.",
+    "example": "class Dog extends Animal {\n    void speak() { System.out.println('Woof!'); }\n}"
+  },
+  "implements": {
+    "explanation": "Declares that a class provides implementations for all methods required by one or more interfaces.",
+    "example": "class Circle implements Shape {\n    public double area() { return Math.PI * r * r; }\n}"
+  },
+  "package": {
+    "explanation": "Groups related classes together under a named namespace to organize code and avoid naming collisions.",
+    "example": "package com.example.app;"
+  },
+  "import": {
+    "explanation": "Brings a class or an entire package from Java's standard library (or another package) into scope so it can be used without its full name.",
+    "example": "import java.util.Arrays;"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "if (age >= 18) {\n    System.out.println('Adult');\n}"
+  },
+  "else": {
+    "explanation": "Runs a block of code when the preceding if (or else if) condition was false.",
+    "example": "if (age >= 18) {\n    System.out.println('Adult');\n} else {\n    System.out.println('Minor');\n}"
+  },
+  "for": {
+    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable (init; condition; step).",
+    "example": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
+  },
+  "for-each": {
+    "explanation": "A simplified for loop that iterates directly over the elements of an array or collection.",
+    "example": "int[] nums = {1, 2, 3};\nfor (int n : nums) {\n    System.out.println(n);\n}"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true, checked before each iteration.",
+    "example": "int n = 3;\nwhile (n > 0) {\n    System.out.println(n);\n    n--;\n}"
+  },
+  "do-while": {
+    "explanation": "Like a while loop, but the code runs once before the condition is checked, so it always executes at least once.",
+    "example": "int n = 0;\ndo {\n    System.out.println(n);\n    n++;\n} while (n < 3);"
+  },
+  "switch": {
+    "explanation": "Compares a value against several possible cases and runs the matching block.",
+    "example": "switch (day) {\n    case 'M':\n        System.out.println('Monday');\n        break;\n    default:\n        System.out.println('Other');\n}"
+  },
+  "case": {
+    "explanation": "Defines one branch to match against inside a switch statement.",
+    "example": "switch (grade) {\n    case 'A':\n        System.out.println('Great!');\n        break;\n}"
+  },
+  "break": {
+    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n    System.out.println(i);\n}"
+  },
+  "continue": {
+    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
+    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    System.out.println(i);\n}"
+  },
+  "return": {
+    "explanation": "Exits a method and optionally sends a value back to whoever called it.",
+    "example": "int square(int x) {\n    return x * x;\n}"
+  },
+  "try": {
+    "explanation": "Marks a block of code to attempt running, so that if it throws an exception, you can catch and handle it instead of crashing.",
+    "example": "try {\n    int x = 1 / 0;\n} catch (ArithmeticException e) {\n    System.out.println(e.getMessage());\n}"
+  },
+  "catch": {
+    "explanation": "Runs when the matching try block throws a matching exception type, giving you access to the exception object.",
+    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
+  },
+  "finally": {
+    "explanation": "Runs after the try/catch, whether or not an exception occurred — useful for cleanup like closing resources.",
+    "example": "try {\n    doWork();\n} finally {\n    System.out.println('Always runs');\n}"
+  },
+  "throw": {
+    "explanation": "Raises an exception on purpose, stopping normal execution unless it's caught by a matching catch block.",
+    "example": "if (age < 0) {\n    throw new IllegalArgumentException('Age cannot be negative');\n}"
+  },
+  "throws": {
+    "explanation": "Declares in a method's signature that it might throw a checked exception, so callers know they need to handle it.",
+    "example": "void readFile(String path) throws IOException {\n    // ...\n}"
+  },
+  "enum": {
+    "explanation": "Defines a fixed set of named constant values, useful when a variable should only ever be one of a few known options.",
+    "example": "enum Color { RED, GREEN, BLUE }\nColor c = Color.GREEN;"
+  },
+  "instanceof": {
+    "explanation": "Checks whether an object is an instance of a specific class (or one of its subclasses).",
+    "example": "if (obj instanceof String) {\n    System.out.println('It is a String');\n}"
+  },
+  "null": {
+    "explanation": "Represents the intentional absence of an object reference — a variable pointing to 'nothing'.",
+    "example": "String name = null;"
+  },
+  "true": {
+    "explanation": "One of Java's two boolean literal values, representing a true condition.",
+    "example": "boolean isActive = true;"
+  },
+  "false": {
+    "explanation": "One of Java's two boolean literal values, representing a false condition.",
+    "example": "boolean isDeleted = false;"
+  },
+  "var": {
+    "explanation": "Lets the compiler infer a local variable's type from its initializer, instead of writing the type explicitly (Java 10+).",
+    "example": "var count = 0; // inferred as int"
+  },
+  "synchronized": {
+    "explanation": "Marks a method or block so only one thread can execute it at a time, preventing race conditions on shared data.",
+    "example": "synchronized void increment() {\n    count++;\n}"
+  },
+  "record": {
+    "explanation": "A concise way to declare an immutable data-holding class, automatically generating a constructor, getters, equals, hashCode, and toString (Java 16+).",
+    "example": "record Point(int x, int y) {}\nPoint p = new Point(3, 4);"
+  },
+  "generics": {
+    "explanation": "The <T> syntax lets a class or method work with any type while still keeping compile-time type safety.",
+    "example": "class Box<T> {\n    T value;\n}\nBox<String> box = new Box<>();"
+  }
+}

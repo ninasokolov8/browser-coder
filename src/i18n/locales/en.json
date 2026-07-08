@@ -40,6 +40,7 @@
   "editor.noFile": "No file open",
   "editor.createFile": "Create a new file to start coding",
   "editor.newFile": "New File",
+  "editor.explainKeyword": "💡 Explain this keyword",
   
   "panel.output": "Output",
   "panel.clear": "Clear",

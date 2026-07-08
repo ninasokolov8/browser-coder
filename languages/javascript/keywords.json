@@ -1,0 +1,174 @@
+{
+  "var": {
+    "explanation": "Declares a function-scoped (or global) variable. Its value can be reassigned, and it's hoisted to the top of its scope. Prefer let/const in modern code.",
+    "example": "var count = 0;\ncount = count + 1;"
+  },
+  "let": {
+    "explanation": "Declares a block-scoped variable whose value can be reassigned later. This is the standard way to declare a variable you plan to change.",
+    "example": "let score = 0;\nscore += 10;"
+  },
+  "const": {
+    "explanation": "Declares a block-scoped variable that cannot be reassigned after it's set. The value itself can still be mutated if it's an object or array.",
+    "example": "const PI = 3.14159;\nconst list = [1, 2];\nlist.push(3); // OK, the array contents can change"
+  },
+  "function": {
+    "explanation": "Defines a reusable block of code that can take inputs (parameters) and optionally return a value.",
+    "example": "function add(a, b) {\n  return a + b;\n}\nconsole.log(add(2, 3)); // 5"
+  },
+  "=>": {
+    "explanation": "Arrow function syntax — a shorter way to write a function. Arrow functions don't have their own 'this', they inherit it from the surrounding scope.",
+    "example": "const add = (a, b) => a + b;\nconsole.log(add(2, 3)); // 5"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "if (age >= 18) {\n  console.log('Adult');\n}"
+  },
+  "else": {
+    "explanation": "Runs a block of code when the preceding if (or else if) condition was false.",
+    "example": "if (age >= 18) {\n  console.log('Adult');\n} else {\n  console.log('Minor');\n}"
+  },
+  "else if": {
+    "explanation": "Checks another condition when the previous if was false. You can chain several of these together.",
+    "example": "if (score >= 90) {\n  console.log('A');\n} else if (score >= 80) {\n  console.log('B');\n} else {\n  console.log('C');\n}"
+  },
+  "for": {
+    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable (start; condition; step).",
+    "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
+  },
+  "for...of": {
+    "explanation": "Loops over the values of an iterable (like an array or string), one at a time.",
+    "example": "for (const item of [10, 20, 30]) {\n  console.log(item);\n}"
+  },
+  "for...in": {
+    "explanation": "Loops over the enumerable property names (keys) of an object.",
+    "example": "const obj = { a: 1, b: 2 };\nfor (const key in obj) {\n  console.log(key, obj[key]);\n}"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true. The condition is checked before each iteration.",
+    "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
+  },
+  "do...while": {
+    "explanation": "Like a while loop, but the code runs once before the condition is checked, so it always executes at least once.",
+    "example": "let n = 0;\ndo {\n  console.log(n);\n  n++;\n} while (n < 3);"
+  },
+  "switch": {
+    "explanation": "Compares a value against several possible cases and runs the matching block, instead of writing many if/else if statements.",
+    "example": "switch (day) {\n  case 'Mon':\n    console.log('Start of week');\n    break;\n  default:\n    console.log('Another day');\n}"
+  },
+  "case": {
+    "explanation": "Defines one branch inside a switch statement to match against.",
+    "example": "switch (grade) {\n  case 'A':\n    console.log('Great!');\n    break;\n}"
+  },
+  "break": {
+    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "example": "for (let i = 0; i < 10; i++) {\n  if (i === 3) break;\n  console.log(i);\n}"
+  },
+  "continue": {
+    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
+    "example": "for (let i = 0; i < 5; i++) {\n  if (i % 2 === 0) continue;\n  console.log(i); // 1, 3\n}"
+  },
+  "return": {
+    "explanation": "Exits a function and optionally sends a value back to whoever called it.",
+    "example": "function square(x) {\n  return x * x;\n}"
+  },
+  "try": {
+    "explanation": "Marks a block of code to 'try' running, so that if it throws an error, you can catch and handle it instead of crashing.",
+    "example": "try {\n  JSON.parse('not json');\n} catch (err) {\n  console.log('Invalid JSON:', err.message);\n}"
+  },
+  "catch": {
+    "explanation": "Runs when the matching try block throws an error, giving you access to the error object.",
+    "example": "try {\n  risky();\n} catch (err) {\n  console.error(err.message);\n}"
+  },
+  "finally": {
+    "explanation": "Runs after the try/catch, whether or not an error occurred — useful for cleanup code.",
+    "example": "try {\n  doWork();\n} finally {\n  console.log('Always runs');\n}"
+  },
+  "throw": {
+    "explanation": "Raises an error, immediately stopping normal execution so it can be caught by a try/catch (or crash the program if uncaught).",
+    "example": "function check(age) {\n  if (age < 0) throw new Error('Age cannot be negative');\n}"
+  },
+  "class": {
+    "explanation": "Defines a blueprint for creating objects with shared properties and methods.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "extends": {
+    "explanation": "Makes one class inherit properties and methods from another (parent) class.",
+    "example": "class Animal {\n  speak() { console.log('...'); }\n}\nclass Dog extends Animal {\n  speak() { console.log('Woof!'); }\n}"
+  },
+  "constructor": {
+    "explanation": "A special method inside a class that runs automatically when a new object is created from it, used to set up initial values.",
+    "example": "class Point {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}"
+  },
+  "this": {
+    "explanation": "Refers to the current object instance a method is running on. Its value depends on how the function was called (and arrow functions inherit it from the surrounding scope).",
+    "example": "class Counter {\n  count = 0;\n  increment() { this.count++; }\n}"
+  },
+  "super": {
+    "explanation": "Calls the parent class's constructor or methods from within a subclass.",
+    "example": "class Dog extends Animal {\n  constructor(name) {\n    super(name);\n  }\n}"
+  },
+  "new": {
+    "explanation": "Creates a new instance (object) from a class or constructor function.",
+    "example": "const p = new Point(3, 4);"
+  },
+  "static": {
+    "explanation": "Defines a property or method that belongs to the class itself, not to individual instances of it.",
+    "example": "class MathUtils {\n  static square(x) { return x * x; }\n}\nMathUtils.square(4); // 16"
+  },
+  "import": {
+    "explanation": "Brings in code (functions, classes, values) exported from another file or module.",
+    "example": "import { add } from './math.js';"
+  },
+  "export": {
+    "explanation": "Makes a function, class, or value from the current file available to be imported elsewhere.",
+    "example": "export function add(a, b) {\n  return a + b;\n}"
+  },
+  "async": {
+    "explanation": "Marks a function as asynchronous, meaning it always returns a Promise and can use 'await' inside it to pause for other async operations.",
+    "example": "async function loadData() {\n  const data = await fetchData();\n  return data;\n}"
+  },
+  "await": {
+    "explanation": "Pauses an async function until a Promise settles, then gives you its resolved value (or throws if it rejected).",
+    "example": "async function run() {\n  const result = await delay(100);\n  console.log(result);\n}"
+  },
+  "typeof": {
+    "explanation": "Returns a string describing the type of a value, like 'string', 'number', 'boolean', 'object', or 'function'.",
+    "example": "console.log(typeof 42);      // 'number'\nconsole.log(typeof 'hi');    // 'string'"
+  },
+  "instanceof": {
+    "explanation": "Checks whether an object was created from a specific class (or its subclasses).",
+    "example": "class Dog {}\nconst d = new Dog();\nconsole.log(d instanceof Dog); // true"
+  },
+  "null": {
+    "explanation": "Represents the intentional absence of any value — you explicitly set something to 'nothing'.",
+    "example": "let selected = null; // no item selected yet"
+  },
+  "undefined": {
+    "explanation": "The default value of a variable that has been declared but not yet assigned a value.",
+    "example": "let x;\nconsole.log(x); // undefined"
+  },
+  "spread": {
+    "explanation": "The '...' syntax expands an array or object into individual elements — useful for copying, merging, or passing many arguments at once.",
+    "example": "const a = [1, 2];\nconst b = [...a, 3, 4]; // [1, 2, 3, 4]"
+  },
+  "destructuring": {
+    "explanation": "A shorthand syntax for pulling values out of arrays or objects into their own variables.",
+    "example": "const { name, age } = person;\nconst [first, second] = [10, 20];"
+  },
+  "template literal": {
+    "explanation": "A string written with backticks that lets you embed expressions directly using ${...}, and supports multi-line text.",
+    "example": "const name = 'Nina';\nconsole.log(`Hello, ${name}!`);"
+  },
+  "Promise": {
+    "explanation": "An object representing a value that will be available later (after an asynchronous operation finishes successfully or fails).",
+    "example": "new Promise((resolve) => {\n  setTimeout(() => resolve('done'), 100);\n});"
+  },
+  "??": {
+    "explanation": "The nullish coalescing operator — returns the right-hand value only if the left-hand value is null or undefined (unlike ||, it keeps 0 and '' as-is).",
+    "example": "const name = userName ?? 'Guest';"
+  },
+  "?.": {
+    "explanation": "Optional chaining — safely accesses a nested property without throwing if something along the way is null or undefined.",
+    "example": "console.log(user?.address?.city); // undefined instead of a crash"
+  }
+}

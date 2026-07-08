@@ -29,8 +29,14 @@ export interface LanguageConfig {
   runner: RunnerConfig;
 }
 
+export interface KeywordEntry {
+  explanation: string;
+  example: string;
+}
+
 export interface LoadedLanguage extends LanguageConfig {
   starters: Record<string, string>;
+  keywords: Record<string, KeywordEntry>;
 }
 
 export type LanguageId = string;

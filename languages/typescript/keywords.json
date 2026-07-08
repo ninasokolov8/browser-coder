@@ -1,0 +1,122 @@
+{
+  "interface": {
+    "explanation": "Describes the shape an object must have — which properties it needs and their types — without providing any implementation.",
+    "example": "interface Point {\n  x: number;\n  y: number;\n}\nconst p: Point = { x: 1, y: 2 };"
+  },
+  "type": {
+    "explanation": "Creates a reusable alias for a type, which can be an object shape, a union, a tuple, or anything else.",
+    "example": "type ID = string | number;\nlet userId: ID = 42;"
+  },
+  "enum": {
+    "explanation": "Defines a set of named constant values, useful when a variable should only ever be one of a few known options.",
+    "example": "enum Color { Red, Green, Blue }\nconst c: Color = Color.Green;"
+  },
+  "implements": {
+    "explanation": "Declares that a class must provide everything defined by an interface.",
+    "example": "interface Shape { area(): number; }\nclass Circle implements Shape {\n  constructor(public r: number) {}\n  area() { return Math.PI * this.r ** 2; }\n}"
+  },
+  "extends": {
+    "explanation": "For classes, inherits from a parent class. For interfaces/generics, extends another type or constrains a generic parameter.",
+    "example": "interface Animal { name: string; }\ninterface Dog extends Animal { breed: string; }"
+  },
+  "public": {
+    "explanation": "Marks a class member as accessible from anywhere (this is the default in TypeScript if you don't specify anything).",
+    "example": "class User {\n  public name: string;\n}"
+  },
+  "private": {
+    "explanation": "Marks a class member as only accessible from inside that same class.",
+    "example": "class Account {\n  private balance = 0;\n}"
+  },
+  "protected": {
+    "explanation": "Marks a class member as accessible from within the class and any of its subclasses, but not from outside.",
+    "example": "class Base {\n  protected id = 1;\n}\nclass Derived extends Base {\n  show() { console.log(this.id); }\n}"
+  },
+  "readonly": {
+    "explanation": "Marks a property that can only be assigned once (usually in the constructor) and can't be changed afterward.",
+    "example": "class Point {\n  readonly x: number;\n  constructor(x: number) { this.x = x; }\n}"
+  },
+  "abstract": {
+    "explanation": "Marks a class or method that can't be instantiated directly — it's meant to be extended/implemented by subclasses.",
+    "example": "abstract class Shape {\n  abstract area(): number;\n}"
+  },
+  "generics": {
+    "explanation": "The <T> syntax lets a function, class, or type work with any type while still keeping type safety, instead of writing separate versions for each type.",
+    "example": "function identity<T>(value: T): T {\n  return value;\n}\nidentity<string>('hello');"
+  },
+  "as": {
+    "explanation": "A type assertion — tells TypeScript to treat a value as a specific type when you know more about it than the compiler does.",
+    "example": "const input = document.getElementById('name') as HTMLInputElement;"
+  },
+  "keyof": {
+    "explanation": "Produces a union of all the property names (keys) of a given type, useful for writing generic, type-safe helper functions.",
+    "example": "interface Point { x: number; y: number; }\ntype PointKey = keyof Point; // 'x' | 'y'"
+  },
+  "never": {
+    "explanation": "Represents a value that should never occur — typically used for functions that always throw or never return.",
+    "example": "function fail(message: string): never {\n  throw new Error(message);\n}"
+  },
+  "unknown": {
+    "explanation": "A safer alternative to 'any' — it can hold any value, but TypeScript forces you to check/narrow its type before using it.",
+    "example": "let value: unknown = getData();\nif (typeof value === 'string') {\n  console.log(value.toUpperCase());\n}"
+  },
+  "any": {
+    "explanation": "Turns off type checking for a value entirely. Useful as an escape hatch, but it removes the safety TypeScript normally provides.",
+    "example": "let data: any = fetchLegacyApi();"
+  },
+  "void": {
+    "explanation": "Used as a return type for functions that don't return a meaningful value.",
+    "example": "function logMessage(msg: string): void {\n  console.log(msg);\n}"
+  },
+  "namespace": {
+    "explanation": "Groups related code (types, functions, classes) under a single named container to avoid naming collisions.",
+    "example": "namespace Utils {\n  export function double(x: number) { return x * 2; }\n}\nUtils.double(4);"
+  },
+  "declare": {
+    "explanation": "Tells TypeScript that something exists (defined elsewhere, e.g. in plain JavaScript) without generating any actual code for it.",
+    "example": "declare const VERSION: string;"
+  },
+  "satisfies": {
+    "explanation": "Checks that a value matches a type, while still letting TypeScript infer the value's own more specific type.",
+    "example": "const config = { mode: 'dark' } satisfies { mode: string };"
+  },
+  "union type": {
+    "explanation": "The | symbol combines multiple types into one, meaning a value can be any one of them.",
+    "example": "function printId(id: string | number) {\n  console.log(id);\n}"
+  },
+  "non-null assertion": {
+    "explanation": "The ! after an expression tells TypeScript 'trust me, this isn't null or undefined', bypassing its normal null checks.",
+    "example": "const el = document.getElementById('app')!;"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "if (age >= 18) {\n  console.log('Adult');\n}"
+  },
+  "for": {
+    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable (start; condition; step).",
+    "example": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true.",
+    "example": "let n = 3;\nwhile (n > 0) {\n  console.log(n);\n  n--;\n}"
+  },
+  "function": {
+    "explanation": "Defines a reusable, typed block of code that can take typed inputs and return a typed value.",
+    "example": "function add(a: number, b: number): number {\n  return a + b;\n}"
+  },
+  "class": {
+    "explanation": "Defines a typed blueprint for creating objects with shared, type-checked properties and methods.",
+    "example": "class Point {\n  constructor(public x: number, public y: number) {}\n}"
+  },
+  "async": {
+    "explanation": "Marks a function as asynchronous — it returns a Promise and can use 'await' inside it.",
+    "example": "async function loadData(): Promise<string> {\n  return await fetchData();\n}"
+  },
+  "await": {
+    "explanation": "Pauses an async function until a Promise settles, giving you its resolved (and typed) value.",
+    "example": "const result: string = await loadData();"
+  },
+  "try": {
+    "explanation": "Marks a block of code to attempt running, so any error it throws can be caught instead of crashing the program.",
+    "example": "try {\n  JSON.parse('bad json');\n} catch (err) {\n  console.log((err as Error).message);\n}"
+  }
+}

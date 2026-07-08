@@ -1,0 +1,166 @@
+{
+  "using": {
+    "explanation": "Imports a namespace so you can use its types without writing the full name, or (as a statement) ensures a resource is properly disposed of.",
+    "example": "using System;\n\nConsole.WriteLine('Hello!');"
+  },
+  "namespace": {
+    "explanation": "Groups related classes together under a named container to organize code and avoid naming collisions.",
+    "example": "namespace MyApp.Models\n{\n    class User {}\n}"
+  },
+  "class": {
+    "explanation": "Defines a blueprint for creating objects that share fields (data) and methods (behavior).",
+    "example": "class Point {\n    public int X, Y;\n}"
+  },
+  "interface": {
+    "explanation": "Declares a set of members (methods, properties) that implementing classes are required to provide, without any implementation itself.",
+    "example": "interface IShape {\n    double Area();\n}"
+  },
+  "struct": {
+    "explanation": "Defines a lightweight value type (copied by value rather than by reference), typically used for small data groupings.",
+    "example": "struct Point {\n    public int X, Y;\n}"
+  },
+  "public": {
+    "explanation": "An access modifier that makes a class, method, or field accessible from anywhere.",
+    "example": "public class User {\n    public string Name;\n}"
+  },
+  "private": {
+    "explanation": "An access modifier that makes a member accessible only from inside the same class.",
+    "example": "class Account {\n    private double balance;\n}"
+  },
+  "protected": {
+    "explanation": "An access modifier that makes a member accessible within the same class and any subclasses.",
+    "example": "class Base {\n    protected int Id;\n}"
+  },
+  "internal": {
+    "explanation": "An access modifier that makes a member accessible only from within the same assembly (project).",
+    "example": "internal class Helper {}"
+  },
+  "static": {
+    "explanation": "Marks a member as belonging to the class itself, rather than to individual instances of it.",
+    "example": "class MathUtils {\n    public static int Square(int x) => x * x;\n}\nMathUtils.Square(4);"
+  },
+  "void": {
+    "explanation": "Used as a method's return type to indicate it doesn't return any value.",
+    "example": "public void PrintHello() {\n    Console.WriteLine('Hello');\n}"
+  },
+  "new": {
+    "explanation": "Creates a new instance (object) from a class or struct.",
+    "example": "var p = new Point(3, 4);"
+  },
+  "this": {
+    "explanation": "Refers to the current object instance a method is running on, often used to distinguish a field from a parameter of the same name.",
+    "example": "class Point {\n    int x;\n    public Point(int x) { this.x = x; }\n}"
+  },
+  "base": {
+    "explanation": "Refers to the parent class, used to call its constructor or an overridden member from a subclass.",
+    "example": "class Dog : Animal {\n    public Dog(string name) : base(name) {}\n}"
+  },
+  "virtual": {
+    "explanation": "Marks a method as able to be overridden by a subclass.",
+    "example": "class Animal {\n    public virtual void Speak() { Console.WriteLine('...'); }\n}"
+  },
+  "override": {
+    "explanation": "Provides a new implementation for a virtual (or abstract) member inherited from a base class.",
+    "example": "class Dog : Animal {\n    public override void Speak() { Console.WriteLine('Woof!'); }\n}"
+  },
+  "sealed": {
+    "explanation": "Marks a class so it can't be inherited from, or a method so it can't be overridden any further.",
+    "example": "sealed class FinalConfig {}"
+  },
+  "abstract": {
+    "explanation": "Marks a class that can't be instantiated directly, or a method with no body that subclasses must implement.",
+    "example": "abstract class Shape {\n    public abstract double Area();\n}"
+  },
+  "if": {
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "if (age >= 18) {\n    Console.WriteLine('Adult');\n}"
+  },
+  "else": {
+    "explanation": "Runs a block of code when the preceding if (or else if) condition was false.",
+    "example": "if (age >= 18) {\n    Console.WriteLine('Adult');\n} else {\n    Console.WriteLine('Minor');\n}"
+  },
+  "for": {
+    "explanation": "A loop that repeats a block of code a set number of times, using a counter variable (init; condition; step).",
+    "example": "for (int i = 0; i < 5; i++) {\n    Console.WriteLine(i);\n}"
+  },
+  "foreach": {
+    "explanation": "Loops directly over the elements of a collection or array, one at a time.",
+    "example": "int[] nums = {1, 2, 3};\nforeach (int n in nums) {\n    Console.WriteLine(n);\n}"
+  },
+  "while": {
+    "explanation": "Repeats a block of code as long as a condition stays true, checked before each iteration.",
+    "example": "int n = 3;\nwhile (n > 0) {\n    Console.WriteLine(n);\n    n--;\n}"
+  },
+  "do-while": {
+    "explanation": "Like a while loop, but the code runs once before the condition is checked, so it always executes at least once.",
+    "example": "int n = 0;\ndo {\n    Console.WriteLine(n);\n    n++;\n} while (n < 3);"
+  },
+  "switch": {
+    "explanation": "Compares a value against several possible cases and runs the matching block.",
+    "example": "switch (day) {\n    case 'M':\n        Console.WriteLine('Monday');\n        break;\n    default:\n        Console.WriteLine('Other');\n}"
+  },
+  "case": {
+    "explanation": "Defines one branch to match against inside a switch statement.",
+    "example": "switch (grade) {\n    case 'A':\n        Console.WriteLine('Great!');\n        break;\n}"
+  },
+  "break": {
+    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n    Console.WriteLine(i);\n}"
+  },
+  "continue": {
+    "explanation": "Skips the rest of the current loop iteration and moves on to the next one.",
+    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    Console.WriteLine(i);\n}"
+  },
+  "return": {
+    "explanation": "Exits a method and optionally sends a value back to whoever called it.",
+    "example": "int Square(int x) {\n    return x * x;\n}"
+  },
+  "try": {
+    "explanation": "Marks a block of code to attempt running, so that if it throws an exception, you can catch and handle it instead of crashing.",
+    "example": "try {\n    int x = 1 / int.Parse('0');\n} catch (DivideByZeroException e) {\n    Console.WriteLine(e.Message);\n}"
+  },
+  "catch": {
+    "explanation": "Runs when the matching try block throws a matching exception type, giving you access to the exception object.",
+    "example": "try {\n    Risky();\n} catch (Exception e) {\n    Console.WriteLine(e.Message);\n}"
+  },
+  "finally": {
+    "explanation": "Runs after the try/catch, whether or not an exception occurred — useful for cleanup like closing resources.",
+    "example": "try {\n    DoWork();\n} finally {\n    Console.WriteLine('Always runs');\n}"
+  },
+  "throw": {
+    "explanation": "Raises an exception on purpose, stopping normal execution unless it's caught by a matching catch block.",
+    "example": "if (age < 0) {\n    throw new ArgumentException('Age cannot be negative');\n}"
+  },
+  "async": {
+    "explanation": "Marks a method as asynchronous, meaning it can use 'await' inside it to pause for other async operations without blocking the thread.",
+    "example": "async Task<string> LoadDataAsync() {\n    return await FetchDataAsync();\n}"
+  },
+  "await": {
+    "explanation": "Pauses an async method until a Task completes, then gives you its result.",
+    "example": "var data = await LoadDataAsync();"
+  },
+  "var": {
+    "explanation": "Lets the compiler infer a local variable's type from its initializer, instead of writing the type explicitly.",
+    "example": "var count = 0; // inferred as int"
+  },
+  "null": {
+    "explanation": "Represents the intentional absence of an object reference — a variable pointing to 'nothing'.",
+    "example": "string name = null;"
+  },
+  "enum": {
+    "explanation": "Defines a fixed set of named constant values, useful when a variable should only ever be one of a few known options.",
+    "example": "enum Color { Red, Green, Blue }\nvar c = Color.Green;"
+  },
+  "delegate": {
+    "explanation": "Defines a type that represents a reference to a method with a specific signature, allowing methods to be passed around like values.",
+    "example": "delegate int MathOp(int a, int b);\nMathOp add = (a, b) => a + b;"
+  },
+  "record": {
+    "explanation": "A concise way to declare an immutable data-holding type with built-in value-based equality (C# 9+).",
+    "example": "record Point(int X, int Y);\nvar p = new Point(3, 4);"
+  },
+  "LINQ": {
+    "explanation": "Language-Integrated Query — a set of built-in methods/syntax for querying, filtering, and transforming collections directly in C#.",
+    "example": "var xs = new[] { 1, 2, 3, 4 };\nvar evens = xs.Where(x => x % 2 == 0);"
+  }
+}
