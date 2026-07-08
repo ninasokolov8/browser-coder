@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 
+MeadowPy-main
+
 # Build output
 dist/
 

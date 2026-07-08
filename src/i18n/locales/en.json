@@ -3,6 +3,7 @@
   "app.logo": "Browser Coder",
   
   "titlebar.run": "Run",
+  "titlebar.running": "Running",
   "titlebar.download": "Download",
   "titlebar.clear": "Clear",
   "titlebar.hackLab": "Hack Lab",

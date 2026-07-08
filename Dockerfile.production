@@ -14,7 +14,9 @@ RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 FROM node:20-alpine
 
 # Install language runtimes
-RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk && rm -rf /var/cache/apk/*
+# su-exec: lets the entrypoint start as root (to fix bind-mounted volume
+# permissions) and then drop down to the unprivileged "app" user
+RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk su-exec && rm -rf /var/cache/apk/*
 
 # .NET environment
 ENV DOTNET_NOLOGO=1 \
@@ -57,7 +59,14 @@ RUN chown -R app:app /app && \
 # SECURITY: Remove unnecessary packages and shells after setup
 RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
-USER app
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
+
+# NOTE: intentionally NOT switching to `USER app` here. The container starts
+# as root so the entrypoint can repair permissions on bind-mounted volumes
+# (security/reports, tests/reports) which may be owned by whatever UID
+# checked out the repo on the host - then it drops to the unprivileged
+# "app" user (via su-exec) before running the actual server process.
 
 # SECURITY: Restrict environment
 ENV NODE_ENV=production \
@@ -69,4 +78,5 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q --spider http://127.0.0.1:3001/health || exit 1
 
 EXPOSE 3001
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.mjs"]

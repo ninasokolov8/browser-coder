@@ -1109,6 +1109,7 @@ class SmartExecutor {
   
   async executeJSMulti(projectDir, mainFile) {
     return this.runProcess('node', [
+      '--no-warnings',                          // Suppress ExperimentalWarning noise
       '--experimental-permission',
       '--allow-fs-read=' + projectDir,
       '--max-old-space-size=128',
@@ -1187,6 +1188,7 @@ class SmartExecutor {
     // SECURITY: Run Node.js with restricted permissions
     // --experimental-permission restricts file system, child process, and workers
     return this.runProcess('node', [
+      '--no-warnings',                          // Suppress ExperimentalWarning noise
       '--experimental-permission',               // Enable permission model
       '--allow-fs-read=' + this.tempDir,        // Only allow reading temp dir
       '--max-old-space-size=128',               // Limit memory
@@ -1381,6 +1383,13 @@ class SmartExecutor {
         PYTHONDONTWRITEBYTECODE: '1',
         // Node.js security
         NODE_OPTIONS: '--max-old-space-size=128',
+        // .NET: suppress first-run welcome/telemetry/HTTPS-cert banner and workload checks
+        DOTNET_NOLOGO: '1',
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+        DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
+        DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false',
+        DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: '1',
+        DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1',
       };
       
       // Only add Java security manager for runtime, not compilation
@@ -1645,11 +1654,31 @@ app.use("/api", (req, res, next) => {
 });
 
 // Rate limiting (bypass for localhost/tests)
+// NOTE: the "api" service has no published port (docker-compose.yml only
+// publishes nginx on :80) - the only things that can reach it directly on
+// the "internal" bridge network are sibling containers we control
+// (nginx, security-tests, autoscaler). Real end-user traffic always comes
+// through nginx, which sets X-Forwarded-For with the true public client IP
+// (trust proxy is enabled below), so it is still rate-limited correctly.
+// Requests hitting api directly from a private/internal IP (e.g. the
+// security-tests container running `security/run.mjs` against
+// http://api:3001) are therefore safe to exempt.
+function isTrustedInternalIp(ip) {
+  if (!ip) return false;
+  const v4 = ip.replace(/^::ffff:/, '');
+  if (v4 === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
+  return (
+    /^10\./.test(v4) ||
+    /^192\.168\./.test(v4) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(v4)
+  );
+}
+
 app.use("/api", (req, res, next) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   
-  // Bypass rate limiting for localhost (tests run locally)
-  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost') {
+  // Bypass rate limiting for localhost and trusted internal/private network callers
+  if (isTrustedInternalIp(ip)) {
     return next();
   }
   

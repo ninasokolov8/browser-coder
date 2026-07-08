@@ -96,6 +96,24 @@
         border-radius: 3px; cursor: pointer; font-weight: 500;
       }
       #titlebar .btn:hover { opacity: 0.9; }
+      #titlebar .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      #titlebar .btn .btn-spinner {
+        display: inline-block;
+        width: 11px; height: 11px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        vertical-align: -1px;
+        margin-right: 5px;
+        animation: btnSpin 0.7s linear infinite;
+      }
+      @keyframes btnSpin {
+        to { transform: rotate(360deg); }
+      }
       #titlebar .btn-secondary {
         background: transparent; color: var(--text-primary);
         border: 1px solid var(--border-color);

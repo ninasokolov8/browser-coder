@@ -353,6 +353,31 @@ function appendOutput(text: string) {
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 
+// ===== Run loader (VSCode-style "busy" feedback) =====
+let runLoaderTimer: number | null = null;
+const runBtnDefaultHTML = runBtn.innerHTML;
+
+function startRunLoader() {
+  runBtn.disabled = true;
+  runBtn.innerHTML = `<span class="btn-spinner"></span>${t("titlebar.running") || "Running"}`;
+
+  let dots = 0;
+  setOutput("Running");
+  runLoaderTimer = window.setInterval(() => {
+    dots = (dots + 1) % 4; // 0 -> 1 -> 2 -> 3 -> 0 (dots gone) -> ...
+    panelContentEl.textContent = "Running" + ".".repeat(dots);
+  }, 400);
+}
+
+function stopRunLoader() {
+  if (runLoaderTimer !== null) {
+    window.clearInterval(runLoaderTimer);
+    runLoaderTimer = null;
+  }
+  runBtn.disabled = false;
+  runBtn.innerHTML = runBtnDefaultHTML;
+}
+
 function downloadFile(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -564,7 +589,7 @@ function applyTheme(theme: string) {
   const editor = monaco.editor.create(document.getElementById("editor")!, {
     theme: "vs-dark",
     automaticLayout: true,
-    minimap: { enabled: true },
+    minimap: { enabled: false },
     fontSize: 14,
     fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace",
     fontLigatures: true,
@@ -2362,9 +2387,8 @@ function applyTheme(theme: string) {
     if (!lang) return;
 
     const code = editor.getValue();
-    setOutput("");
     setStatus("Running…");
-    runBtn.disabled = true;
+    startRunLoader();
 
     try {
       const resp = await fetch("/api/run", {
@@ -2385,6 +2409,9 @@ function applyTheme(theme: string) {
       } catch {
         data = null;
       }
+
+      stopRunLoader();
+      setOutput("");
 
       if (!resp.ok) {
         appendOutput(`HTTP ${resp.status}\n${raw || "(empty response)"}`);
@@ -2413,6 +2440,8 @@ function applyTheme(theme: string) {
         });
       }
     } catch (e: any) {
+      stopRunLoader();
+      setOutput("");
       appendOutput(`ERROR: ${e?.message || String(e)}`);
       setStatus("Run failed");
       
@@ -2426,7 +2455,8 @@ function applyTheme(theme: string) {
         });
       }
     } finally {
-      runBtn.disabled = false;
+      // Safety net: guarantees the button is never left stuck in a disabled/spinning state
+      stopRunLoader();
     }
   });
 
