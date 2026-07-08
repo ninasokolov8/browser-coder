@@ -154,7 +154,7 @@ export class TabManager {
    * Resolve a language by file extension (e.g. "Hello.cs" -> csharp).
    * Returns undefined when no configured language matches.
    */
-  private detectLanguageByExtension(fileName: string): LoadedLanguage | undefined {
+  detectLanguageByExtension(fileName: string): LoadedLanguage | undefined {
     const dotIdx = fileName.lastIndexOf('.');
     if (dotIdx <= 0) return undefined;
     const ext = fileName.slice(dotIdx + 1).toLowerCase();
@@ -305,8 +305,17 @@ export class TabManager {
 
     // Ensure unique name
     const uniqueName = this.generateUniqueName(newName);
-    
-    const updated = await storage.updateFile(fileId, { name: uniqueName });
+
+    // Re-detect language from the new extension (e.g. main.js -> main.php)
+    const updates: Partial<StoredFile> = { name: uniqueName };
+    const detected = this.detectLanguageByExtension(uniqueName);
+    if (detected && detected.id !== tab.file.language) {
+      const version = detected.versions.find(v => v.default) || detected.versions[0];
+      updates.language = detected.id;
+      updates.version = version.id;
+    }
+
+    const updated = await storage.updateFile(fileId, updates);
     if (updated) {
       tab.file = updated;
       this.render();

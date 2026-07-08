@@ -830,6 +830,8 @@ function applyTheme(theme: string) {
       if (activeTab && activeTab.file.id === tab.file.id) {
         setStatus(`${tab.file.name}${tab.isDirty ? ' •' : ''}`);
       }
+      // Keep Monaco model + toolbar in sync if a rename changed the language
+      applyFileLanguage(tab.file.id);
       renderFileTree(tabManager);
       notifyWorkspaceChanged();
     },
@@ -870,6 +872,29 @@ function applyTheme(theme: string) {
   // Import storage for folder operations
   const { storage } = await import('./storage');
 
+  // Sync Monaco model + toolbar/status bar with a file's language.
+  // Called after renames that change the extension (main.js -> main.php).
+  function applyFileLanguage(fileId: string): void {
+    const tab = tabManager.getTab(fileId);
+    if (!tab) return;
+    const lang = getLanguage(tab.file.language);
+    if (!lang) return;
+
+    const model = fileModels.get(fileId);
+    if (model && !model.isDisposed() && model.getLanguageId() !== lang.monacoLanguage) {
+      monaco.editor.setModelLanguage(model, lang.monacoLanguage);
+    }
+
+    const activeTab = tabManager.getActiveTab();
+    if (activeTab && activeTab.file.id === fileId) {
+      currentLang = lang;
+      langSel.value = lang.id;
+      currentVersion = populateVersionDropdown(lang, tab.file.version);
+      configureMonacoForVersion(lang, currentVersion);
+      statusLangEl.textContent = lang.name;
+    }
+  }
+
   // ===== File Explorer Rendering =====
   async function renderFileTree(tm: TabManager) {
     const tabs = tm.getAllTabs();
@@ -883,6 +908,7 @@ function applyTheme(theme: string) {
       name: string;
       type: 'file' | 'folder';
       parentId: string | null;
+      language?: string;
       children?: TreeNode[];
       tab?: typeof tabs[0];
       folder?: typeof folders[0];
@@ -921,6 +947,7 @@ function applyTheme(theme: string) {
         name: file.name,
         type: 'file',
         parentId: file.parentId,
+        language: file.language,
         tab,
       };
 
@@ -970,7 +997,8 @@ function applyTheme(theme: string) {
           ${isExpanded ? `<div class="tree-children">${childrenHtml}</div>` : ''}
         `;
       } else {
-        const lang = getLanguage(node.tab?.file.language || '');
+        // Icon reflects the file's own language, whether or not a tab is open
+        const lang = getLanguage(node.tab?.file.language || node.language || '');
         const icon = lang?.icon || '📄';
         
         return `
@@ -1050,11 +1078,24 @@ function applyTheme(theme: string) {
           if (type === 'folder') {
             await storage.updateFolder(id, { name: newName });
           } else {
-            await storage.updateFile(id, { name: newName });
+            // Re-detect language from the new extension (e.g. "main.php")
+            const detected = tabManager.detectLanguageByExtension(newName);
+            const langUpdates = detected
+              ? {
+                  language: detected.id,
+                  version: (detected.versions.find(v => v.default) || detected.versions[0]).id,
+                }
+              : {};
+            await storage.updateFile(id, { name: newName, ...langUpdates });
             // Update tab if open
             const tab = tm.getTab(id);
             if (tab) {
               tab.file.name = newName;
+              if (detected) {
+                tab.file.language = detected.id;
+                tab.file.version = (detected.versions.find(v => v.default) || detected.versions[0]).id;
+              }
+              applyFileLanguage(id);
             }
           }
           notifyWorkspaceChanged();
@@ -2761,20 +2802,20 @@ function applyTheme(theme: string) {
     });
   });
 
-  // Panel resize - disabled in embedded mode (parent app controls sizing)
+  // Panel resize. In embedded snippet/project modes the handle is hidden by
+  // CSS (parent controls sizing); in embedded FULL mode it's visible and
+  // draggable, same as the standalone IDE.
   let isResizing = false;
   let startY = 0;
   let startHeight = 0;
 
-  if (!isEmbedded) {
-    panelResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
-      isResizing = true;
-      startY = e.clientY;
-      startHeight = panelEl.offsetHeight;
-      document.body.style.cursor = "ns-resize";
-      document.body.style.userSelect = "none";
-    });
-  }
+  panelResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
+    isResizing = true;
+    startY = e.clientY;
+    startHeight = panelEl.offsetHeight;
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+  });
 
   document.addEventListener("mousemove", (e: MouseEvent) => {
     if (!isResizing) return;
@@ -2799,29 +2840,30 @@ function applyTheme(theme: string) {
     }
   });
 
-  // Sidebar resize - disabled in embedded mode (parent app controls sizing)
+  // Sidebar resize. Hidden by CSS in embedded snippet/project modes;
+  // enabled in embedded FULL mode, same as the standalone IDE.
   let isSidebarResizing = false;
   let sidebarStartX = 0;
   let sidebarStartWidth = 0;
 
-  if (!isEmbedded) {
-    sidebarResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
-      isSidebarResizing = true;
-      sidebarStartX = e.clientX;
-      sidebarStartWidth = sidebarEl.offsetWidth;
-      document.body.style.cursor = "ew-resize";
-      document.body.style.userSelect = "none";
-      e.preventDefault();
-    });
-  }
+  sidebarResizeEl.addEventListener("mousedown", (e: MouseEvent) => {
+    isSidebarResizing = true;
+    sidebarStartX = e.clientX;
+    sidebarStartWidth = sidebarEl.offsetWidth;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
 
   document.addEventListener("mousemove", (e: MouseEvent) => {
     if (isSidebarResizing) {
       const delta = e.clientX - sidebarStartX;
       const newWidth = Math.max(150, Math.min(sidebarStartWidth + delta, 500));
       sidebarEl.style.width = `${newWidth}px`;
-      // Update grid template columns
+      // Update grid template columns (CSS var wins over the !important
+      // mode-full grid rules; the inline fallback covers other modes)
       const appEl = document.getElementById("app")!;
+      appEl.style.setProperty('--sidebar-width', `${newWidth}px`);
       appEl.style.gridTemplateColumns = `48px ${newWidth}px 1fr`;
     }
   });
@@ -2861,6 +2903,7 @@ function applyTheme(theme: string) {
   if (savedSettings.sidebarWidth && savedSettings.sidebarWidth >= 150) {
     sidebarEl.style.width = `${savedSettings.sidebarWidth}px`;
     const appEl = document.getElementById("app")!;
+    appEl.style.setProperty('--sidebar-width', `${savedSettings.sidebarWidth}px`);
     appEl.style.gridTemplateColumns = `48px ${savedSettings.sidebarWidth}px 1fr`;
   }
   

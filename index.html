@@ -1017,7 +1017,7 @@
         display: flex !important; 
       }
       body.mode-full #app {
-        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
         grid-template-rows: auto 1fr auto !important;
         grid-template-areas:
           "activitybar titlebar titlebar"
@@ -1025,7 +1025,7 @@
           "statusbar statusbar statusbar" !important;
       }
       body.mode-full.embedded #app {
-        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
         grid-template-rows: auto 1fr auto !important;
         grid-template-areas:
           "activitybar titlebar    titlebar"
@@ -1121,7 +1121,7 @@
           "sidebar main" !important;
       }
       body.embedded.nooutput.mode-full #app {
-        grid-template-columns: 48px 220px 1fr !important;
+        grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
         grid-template-rows: 1fr !important;
         grid-template-areas:
           "activitybar sidebar main" !important;
@@ -1134,6 +1134,34 @@
       }
       body.embedded.nooutput.mode-full #statusbar {
         display: none !important;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         FULL EMBED - behave like the standalone full IDE.
+         Restores the titlebar controls and drag-resize handles that the
+         base `.embedded` rules hide for snippet/project embeds.
+         Hack Lab and Clear Cache stay hidden: they navigate away from the
+         lesson / wipe the parent-managed workspace. */
+      body.embedded.mode-full #titlebar .logo {
+        display: flex !important;
+      }
+      body.embedded.mode-full #titlebar #download,
+      body.embedded.mode-full #titlebar #btn-download-project,
+      body.embedded.mode-full #titlebar #theme,
+      body.embedded.mode-full #titlebar #lang,
+      body.embedded.mode-full #titlebar #version {
+        display: inline-block !important;
+      }
+      body.embedded.mode-full #titlebar #lang-selector {
+        display: flex !important;
+      }
+      body.embedded.mode-full #titlebar .titlebar-separator {
+        display: block !important;
+      }
+      body.embedded.mode-full #sidebar-resize,
+      body.embedded.mode-full #panel-resize {
+        display: block !important;
+        pointer-events: auto !important;
       }
     </style>
   </head>
