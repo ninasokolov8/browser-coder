@@ -996,7 +996,7 @@ function applyTheme(theme: string) {
         return `
           <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
                draggable="true"
-               data-id="${node.id}" data-type="folder" 
+               data-id="${node.id}" data-type="folder" data-parent="${node.parentId ?? ''}"
                style="padding-left: ${8 + indent}px">
             <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
             <span class="tree-item-icon">📁</span>
@@ -1015,7 +1015,7 @@ function applyTheme(theme: string) {
         return `
           <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
                draggable="true"
-               data-id="${node.id}" data-type="file"
+               data-id="${node.id}" data-type="file" data-parent="${node.parentId ?? ''}"
                style="padding-left: ${8 + indent + 16}px">
             <span class="tree-item-icon">${icon}</span>
             ${isRenaming 
@@ -1125,28 +1125,47 @@ function applyTheme(theme: string) {
 
       itemEl.addEventListener('dragend', () => {
         draggingIds = [];
-        fileTreeEl.querySelectorAll('.drop-target').forEach(x => x.classList.remove('drop-target'));
+        clearDropHighlights();
         itemEl.classList.remove('dragging');
       });
 
-      // Only folders are valid drop targets among items
-      if (type === 'folder') {
-        itemEl.addEventListener('dragover', (e) => {
-          if (draggingIds.length === 0) return;
-          e.preventDefault();
-          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      // Every item is a drop target:
+      //  - drop on a FOLDER  -> move into that folder
+      //  - drop on a FILE    -> move into that file's parent (VS Code behaviour),
+      //                         so dropping on a root-level file lands in root
+      itemEl.addEventListener('dragover', (e) => {
+        if (draggingIds.length === 0) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        clearDropHighlights();
+        if (type === 'folder') {
           itemEl.classList.add('drop-target');
-        });
-        itemEl.addEventListener('dragleave', () => {
-          itemEl.classList.remove('drop-target');
-        });
-        itemEl.addEventListener('drop', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          itemEl.classList.remove('drop-target');
+        } else {
+          // Highlight the destination: parent folder, or the whole root zone
+          const parentId = itemEl.dataset.parent || '';
+          if (parentId) {
+            const parentEl = fileTreeEl.querySelector(`.tree-item[data-id="${parentId}"]`);
+            parentEl?.classList.add('drop-target');
+          } else {
+            fileTreeEl.classList.add('root-drop-target');
+          }
+        }
+      });
+      itemEl.addEventListener('dragleave', () => {
+        itemEl.classList.remove('drop-target');
+      });
+      itemEl.addEventListener('drop', async (e) => {
+        if (draggingIds.length === 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        clearDropHighlights();
+        if (type === 'folder') {
           await moveItemsInto(id);
-        });
-      }
+        } else {
+          const parentId = itemEl.dataset.parent || null;
+          await moveItemsInto(parentId);
+        }
+      });
     });
 
     // Handle rename input
@@ -1429,6 +1448,7 @@ function applyTheme(theme: string) {
     if (!overItem) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      clearDropHighlights();
       fileTreeEl.classList.add('root-drop-target');
     }
   });
@@ -1442,6 +1462,12 @@ function applyTheme(theme: string) {
     e.preventDefault();
     await moveItemsInto(null);
   });
+
+  // Clear every drop-target visual state (folders + root zone)
+  function clearDropHighlights() {
+    fileTreeEl.querySelectorAll('.drop-target').forEach(x => x.classList.remove('drop-target'));
+    fileTreeEl.classList.remove('root-drop-target');
+  }
 
   // Move the current drag selection into a target folder (or root when null).
   // Skips no-op moves and invalid folder-into-descendant moves (storage guards).
