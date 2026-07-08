@@ -1166,6 +1166,15 @@
         display: block !important;
         pointer-events: auto !important;
       }
+
+      /* Opt-in Hack Lab access inside embeds (?hacklab=1). Off by default so
+         existing embeds stay unchanged. Shows the button + its separator. */
+      body.embedded.hacklab-enabled #titlebar #btn-hack-lab {
+        display: inline-block !important;
+      }
+      body.embedded.hacklab-enabled #titlebar .titlebar-separator {
+        display: block !important;
+      }
     </style>
   </head>
   <body class="dark-theme">

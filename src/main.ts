@@ -17,6 +17,9 @@ const isEmbedded = urlParams.get('embed') === '1';
 const rawMode = (urlParams.get('mode') || 'snippet').toLowerCase();
 const ideMode = (rawMode === 'full' || rawMode === 'project') ? 'full' : 'snippet';
 const noOutput = urlParams.get('nooutput') === '1';
+// Opt-in: when embedded, expose the Hack Lab button + full Hack Lab access.
+// Off by default so existing embeds are unaffected (no need to rewrite them).
+const hackLabEnabled = urlParams.get('hacklab') === '1';
 const urlLanguage = urlParams.get('lang') || 'javascript';
 const urlVersion = urlParams.get('version') || '';
 const urlUiLang = urlParams.get('uilang') || 'en';
@@ -116,6 +119,7 @@ function applyModeClasses(): void {
   if (isEmbedded) document.body.classList.add('embedded');
   if (currentReadonly) document.body.classList.add('readonly');
   if (noOutput) document.body.classList.add('nooutput');
+  if (hackLabEnabled) document.body.classList.add('hacklab-enabled');
   
 }
 
