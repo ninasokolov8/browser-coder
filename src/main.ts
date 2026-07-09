@@ -1,7 +1,7 @@
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
-import JSZip from "jszip";
+import JSZip from "jszip"; 
 import { getAllLanguages, getLanguage, getKeywordExplanation, getStarterAsync, preloadDefaultStarters, preloadStarters } from "./languages";
 import type { LoadedLanguage, VersionConfig } from "./languages";
 import { TabManager, Tab } from "./tabs";

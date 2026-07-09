@@ -5,15 +5,24 @@
  * Each language file contains tests with educational explanations
  * of how hackers use each attack vector.
  *
- * Structure:
- * - javascript.mjs - JavaScript/Node.js attack vectors
- * - typescript.mjs - TypeScript-specific attack vectors
- * - python.mjs - Python attack vectors
- * - php.mjs - PHP attack vectors
- * - java.mjs - Java attack vectors
- * - csharp.mjs - C# / .NET attack vectors
+ * English files:
+ * - javascript.mjs
+ * - typescript.mjs
+ * - python.mjs
+ * - php.mjs
+ * - java.mjs
+ * - csharp.mjs
+ *
+ * Hebrew files:
+ * - javascript_he.mjs
+ * - typescript_he.mjs
+ * - python_he.mjs
+ * - php_he.mjs
+ * - java_he.mjs
+ * - csharp_he.mjs
  */
 
+// Default/backwards-compatible exports: English attack vectors
 export { javascriptTests } from './javascript.mjs';
 export { typescriptTests } from './typescript.mjs';
 export { pythonTests } from './python.mjs';
@@ -21,75 +30,109 @@ export { phpTests } from './php.mjs';
 export { javaTests } from './java.mjs';
 export { csharpTests } from './csharp.mjs';
 
-import { javascriptTests } from './javascript.mjs';
-import { typescriptTests } from './typescript.mjs';
-import { pythonTests } from './python.mjs';
-import { phpTests } from './php.mjs';
-import { javaTests } from './java.mjs';
-import { csharpTests } from './csharp.mjs';
+import { javascriptTests as javascriptTestsEn } from './javascript.mjs';
+import { typescriptTests as typescriptTestsEn } from './typescript.mjs';
+import { pythonTests as pythonTestsEn } from './python.mjs';
+import { phpTests as phpTestsEn } from './php.mjs';
+import { javaTests as javaTestsEn } from './java.mjs';
+import { csharpTests as csharpTestsEn } from './csharp.mjs';
 
-/**
- * Get all tests combined with language metadata
- */
-export function getAllTests() {
-  return [
-    ...javascriptTests.map(t => ({ ...t, language: 'javascript' })),
-    ...typescriptTests.map(t => ({ ...t, language: 'typescript' })),
-    ...pythonTests.map(t => ({ ...t, language: 'python' })),
-    ...phpTests.map(t => ({ ...t, language: 'php' })),
-    ...javaTests.map(t => ({ ...t, language: 'java' })),
-    ...csharpTests.map(t => ({ ...t, language: 'csharp' })),
-  ];
+import { javascriptTests as javascriptTestsHe } from './javascript_he.mjs';
+import { typescriptTests as typescriptTestsHe } from './typescript_he.mjs';
+import { pythonTests as pythonTestsHe } from './python_he.mjs';
+import { phpTests as phpTestsHe } from './php_he.mjs';
+import { javaTests as javaTestsHe } from './java_he.mjs';
+import { csharpTests as csharpTestsHe } from './csharp_he.mjs';
+
+export const SUPPORTED_ATTACK_LANGS = ['en', 'he'];
+
+const ENGLISH_TESTS = {
+  javascript: javascriptTestsEn,
+  typescript: typescriptTestsEn,
+  python: pythonTestsEn,
+  php: phpTestsEn,
+  java: javaTestsEn,
+  csharp: csharpTestsEn,
+};
+
+const HEBREW_TESTS = {
+  javascript: javascriptTestsHe,
+  typescript: typescriptTestsHe,
+  python: pythonTestsHe,
+  php: phpTestsHe,
+  java: javaTestsHe,
+  csharp: csharpTestsHe,
+};
+
+const TESTS_BY_REPORT_LANGUAGE = {
+  en: ENGLISH_TESTS,
+  he: HEBREW_TESTS,
+};
+
+export function normalizeAttackLanguage(lang = 'en') {
+  const normalized = String(lang || 'en').toLowerCase();
+  return normalized.startsWith('he') ? 'he' : 'en';
 }
 
 /**
- * Get tests by language
+ * Get the attack-vector map for a report language.
+ *
+ * The test code/name/category/expectBlocked stay the same.
+ * Only the explanation values differ in the Hebrew files.
  */
-export function getTestsByLanguage(language) {
-  const testMap = {
-    javascript: javascriptTests,
-    typescript: typescriptTests,
-    python: pythonTests,
-    php: phpTests,
-    java: javaTests,
-    csharp: csharpTests,
-  };
-  return testMap[language] || [];
+export function getSecurityTests(lang = 'en') {
+  return TESTS_BY_REPORT_LANGUAGE[normalizeAttackLanguage(lang)] || ENGLISH_TESTS;
 }
 
 /**
- * Get tests by category across all languages
+ * Get all tests combined with language metadata.
  */
-export function getTestsByCategory(category) {
-  return getAllTests().filter(t => t.category === category);
+export function getAllTests(lang = 'en') {
+  return Object.entries(getSecurityTests(lang)).flatMap(([language, tests]) =>
+    tests.map(test => ({ ...test, language }))
+  );
 }
 
 /**
- * Get unique categories across all tests
+ * Get tests by language.
  */
-export function getCategories() {
+export function getTestsByLanguage(language, lang = 'en') {
+  return getSecurityTests(lang)[language] || [];
+}
+
+/**
+ * Get tests by category across all languages.
+ */
+export function getTestsByCategory(category, lang = 'en') {
+  return getAllTests(lang).filter(test => test.category === category);
+}
+
+/**
+ * Get unique categories across all tests.
+ */
+export function getCategories(lang = 'en') {
   const categories = new Set();
-  getAllTests().forEach(t => categories.add(t.category));
+  getAllTests(lang).forEach(test => categories.add(test.category));
   return Array.from(categories).sort();
 }
 
 /**
- * Summary statistics
+ * Summary statistics.
  */
-export function getTestStats() {
-  return {
-    javascript: { total: javascriptTests.length, blocked: javascriptTests.filter(t => t.expectBlocked).length },
-    typescript: { total: typescriptTests.length, blocked: typescriptTests.filter(t => t.expectBlocked).length },
-    python: { total: pythonTests.length, blocked: pythonTests.filter(t => t.expectBlocked).length },
-    php: { total: phpTests.length, blocked: phpTests.filter(t => t.expectBlocked).length },
-    java: { total: javaTests.length, blocked: javaTests.filter(t => t.expectBlocked).length },
-    csharp: { total: csharpTests.length, blocked: csharpTests.filter(t => t.expectBlocked).length },
-    total:
-      javascriptTests.length +
-      typescriptTests.length +
-      pythonTests.length +
-      phpTests.length +
-      javaTests.length +
-      csharpTests.length,
-  };
+export function getTestStats(lang = 'en') {
+  const tests = getSecurityTests(lang);
+
+  const stats = Object.fromEntries(
+    Object.entries(tests).map(([language, languageTests]) => [
+      language,
+      {
+        total: languageTests.length,
+        blocked: languageTests.filter(test => test.expectBlocked).length,
+      },
+    ])
+  );
+
+  stats.total = Object.values(tests).reduce((sum, languageTests) => sum + languageTests.length, 0);
+
+  return stats;
 }

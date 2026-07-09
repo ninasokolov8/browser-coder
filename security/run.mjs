@@ -17,8 +17,41 @@ import {
   generateStatistics 
 } from './runner/index.mjs';
 import { generateEnglishReport, generateHebrewReport } from './templates/report.mjs';
+import { getAllTests } from './attacks/index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+
+/**
+ * Build a report-data copy whose attack explanations match the report language.
+ *
+ * The runner executes the English/default attack files. For localized reports we
+ * keep the actual test results exactly as-is and replace only `explanation` from
+ * the language-specific attack files, matched by language + test name.
+ */
+function localizeReportExplanations(reportData, lang = 'en') {
+  const normalizedLang = String(lang || 'en').toLowerCase().startsWith('he') ? 'he' : 'en';
+
+  if (normalizedLang === 'en') {
+    return reportData;
+  }
+
+  const localizedTests = getAllTests(normalizedLang);
+  const explanationByKey = new Map(
+    localizedTests.map(test => [`${test.language}::${test.name}`, test.explanation])
+  );
+
+  const localizeTest = (test) => {
+    const translatedExplanation = explanationByKey.get(`${test.language}::${test.name}`);
+    return translatedExplanation ? { ...test, explanation: translatedExplanation } : test;
+  };
+
+  return {
+    ...reportData,
+    tests: reportData.tests.map(localizeTest),
+    vulnerabilities: reportData.vulnerabilities.map(localizeTest),
+  };
+}
 
 /**
  * Generate and save all reports
@@ -69,7 +102,8 @@ async function generateReports(results) {
   );
   
   // Save Hebrew HTML
-  const hebrewReport = generateHebrewReport(reportData);
+  const hebrewReportData = localizeReportExplanations(reportData, 'he');
+  const hebrewReport = generateHebrewReport(hebrewReportData);
   await fs.writeFile(
     path.join(CONFIG.reportDir, hebrewHtmlFileName),
     hebrewReport

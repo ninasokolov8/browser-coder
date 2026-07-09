@@ -15,37 +15,164 @@ export function getStyles(statusColor) {
     }
     .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
     
-    /* RTL Support - Hebrew text only, code stays LTR */
-    [dir="rtl"] { direction: rtl; text-align: right; }
-    
-    /* Layout adjustments for RTL */
-    [dir="rtl"] .intro-card { flex-direction: row-reverse; }
-    [dir="rtl"] .intro-mini-card { flex-direction: row-reverse; }
-    [dir="rtl"] .test-header { flex-direction: row-reverse; }
-    [dir="rtl"] .test-meta { flex-direction: row-reverse; }
-    [dir="rtl"] .test-result { flex-direction: row-reverse; }
-    [dir="rtl"] .lang-header, [dir="rtl"] .cat-header { flex-direction: row-reverse; }
-    [dir="rtl"] .lang-title, [dir="rtl"] .cat-title { flex-direction: row-reverse; }
-    [dir="rtl"] .category-header { flex-direction: row-reverse; }
-    [dir="rtl"] .educational-hero { flex-direction: row-reverse; }
-    [dir="rtl"] .fact { flex-direction: row-reverse; }
-    
-    /* CRITICAL: Keep ALL code/programming content LTR */
-    [dir="rtl"] pre,
-    [dir="rtl"] code,
-    [dir="rtl"] .code-details,
+    /* Direction + bidi support
+       Hebrew UI should be RTL, but code/programming snippets must stay LTR.
+       Do NOT reverse flex rows in RTL: flex already follows the document direction. */
+    html[dir="rtl"],
+    html[dir="rtl"] body {
+      direction: rtl;
+      text-align: right;
+    }
+
+    html[dir="ltr"],
+    html[dir="ltr"] body {
+      direction: ltr;
+      text-align: left;
+    }
+
+    [dir="rtl"] .container,
+    [dir="rtl"] .intro-section,
+    [dir="rtl"] .tabs-container,
+    [dir="rtl"] .tab-content,
+    [dir="rtl"] .lang-section,
+    [dir="rtl"] .cat-section,
+    [dir="rtl"] .edu-sections,
+    [dir="rtl"] .edu-lang-section,
+    [dir="rtl"] .category-tip-card,
+    [dir="rtl"] .tips-box,
+    [dir="rtl"] .mindblown-box,
+    [dir="rtl"] .cheatsheet-box,
+    [dir="rtl"] .cheatsheet-section,
+    [dir="rtl"] .explain-box,
+    [dir="rtl"] .test-card,
+    [dir="rtl"] .tip,
+    [dir="rtl"] .fact,
+    [dir="rtl"] .cheat-card,
+    [dir="rtl"] .cheat-item {
+      direction: rtl;
+      text-align: right;
+    }
+
+    [dir="rtl"] .hero,
+    [dir="rtl"] .dashboard,
+    [dir="rtl"] .stat-card,
+    [dir="rtl"] .intro-cta,
+    [dir="rtl"] .footer {
+      text-align: center;
+    }
+
+    /* Flex/grid layouts: keep natural RTL flow instead of double-reversing. */
+    [dir="rtl"] .intro-card,
+    [dir="rtl"] .intro-mini-card,
+    [dir="rtl"] .test-header,
+    [dir="rtl"] .test-meta,
+    [dir="rtl"] .test-result,
+    [dir="rtl"] .lang-title,
+    [dir="rtl"] .cat-title,
+    [dir="rtl"] .category-header,
+    [dir="rtl"] .educational-hero,
+    [dir="rtl"] .fact,
+    [dir="rtl"] .main-tab,
+    [dir="rtl"] .lang-tab,
+    [dir="rtl"] .cat-tab {
+      flex-direction: row;
+    }
+
+    [dir="rtl"] .main-tabs,
+    [dir="rtl"] .lang-tabs,
+    [dir="rtl"] .cat-tabs,
+    [dir="rtl"] .intro-grid,
+    [dir="rtl"] .tests-grid,
+    [dir="rtl"] .cheat-grid,
+    [dir="rtl"] .cheatsheet-grid {
+      direction: rtl;
+    }
+
+    [dir="rtl"] .intro-content,
+    [dir="rtl"] .intro-mini-text,
+    [dir="rtl"] .edu-content,
+    [dir="rtl"] .tip-title,
+    [dir="rtl"] .tip-content,
+    [dir="rtl"] .fact-content,
+    [dir="rtl"] .explanation-content,
+    [dir="rtl"] .explain-simple,
+    [dir="rtl"] .explain-example,
+    [dir="rtl"] .cheat-why,
+    [dir="rtl"] .category-tip-card h3,
+    [dir="rtl"] .category-tip-card h4,
+    [dir="rtl"] .category-tip-card h5,
+    [dir="rtl"] .edu-lang-title,
+    [dir="rtl"] .cheatsheet-box h3,
+    [dir="rtl"] .cheatsheet-box h4,
+    [dir="rtl"] .cheatsheet-section h3,
+    [dir="rtl"] .cheat-card h4,
+    [dir="rtl"] .tips-box h3,
+    [dir="rtl"] .tips-box h4,
+    [dir="rtl"] .mindblown-box h3,
+    [dir="rtl"] .mindblown-box h4,
+    [dir="rtl"] .mindblown-box h5,
+    [dir="rtl"] summary {
+      direction: rtl;
+      text-align: right;
+      unicode-bidi: isolate;
+    }
+
+    /* Important for Hebrew lines that START with English tokens (PHP, Node.js, Vue.js, Proxy & Reflect):
+       never let the first Latin word make the whole paragraph behave as LTR. */
+    [dir="rtl"] .tip-title::before,
+    [dir="rtl"] .tip-content::before,
+    [dir="rtl"] .fact-content::before,
+    [dir="rtl"] .explanation-content::before,
+    [dir="rtl"] .explain-simple p::before,
+    [dir="rtl"] .explain-example::before,
+    [dir="rtl"] .cheat-why::before,
+    [dir="rtl"] .intro-content p::before,
+    [dir="rtl"] .intro-mini-text::before,
+    [dir="rtl"] .edu-content p::before {
+      content: '\\200F';
+    }
+
+    [dir="rtl"] .fact-content,
+    [dir="rtl"] .tip-content,
+    [dir="rtl"] .explanation-content,
+    [dir="rtl"] .explain-example,
+    [dir="rtl"] .cheat-why {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    /* CRITICAL: Keep all code/programming content LTR. */
+    pre,
+    code,
+    .code-details pre,
+    .code-details code,
+    .language-label,
+    .test-duration,
+    .lang-stats,
+    .cat-stats-badge,
+    .category-stats,
+    .numeric-value {
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+
+    pre,
+    .code-details pre {
+      text-align: left;
+    }
+
+    [dir="rtl"] .code-details {
+      direction: rtl;
+      text-align: right;
+    }
+
     [dir="rtl"] .code-details pre,
-    [dir="rtl"] .code-details code,
-    [dir="rtl"] .cheat-bad,
-    [dir="rtl"] .cheat-good,
-    [dir="rtl"] .cheat-item,
-    [dir="rtl"] .cheat-grid {
+    [dir="rtl"] .code-details code {
       direction: ltr;
       text-align: left;
       unicode-bidi: isolate;
     }
-    
-    /* Keep inline code LTR but allow it to flow in RTL text */
+
     [dir="rtl"] .tip-content code,
     [dir="rtl"] .explanation-content code,
     [dir="rtl"] .fact-content code,
@@ -53,54 +180,87 @@ export function getStyles(statusColor) {
     [dir="rtl"] li code {
       direction: ltr;
       display: inline-block;
-      unicode-bidi: embed;
+      unicode-bidi: isolate;
     }
-    
-    /* Pro tips with code should be LTR */
+    .bidi-code-token {
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    [dir="rtl"] .tip-title .bidi-code-token,
+    [dir="rtl"] .tip-content .bidi-code-token,
+    [dir="rtl"] .fact-content .bidi-code-token,
+    [dir="rtl"] .explanation-content .bidi-code-token,
+    [dir="rtl"] .test-name .bidi-code-token,
+    [dir="rtl"] .edu-lang-title .bidi-code-token {
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+
+    /* Cheat sheet: the cards and explanations are RTL; only the bad/good code lines use their own direction. */
+    [dir="rtl"] .cheat-bad,
+    [dir="rtl"] .cheat-good {
+      text-align: start;
+      unicode-bidi: plaintext;
+    }
+
+    [dir="rtl"] .cheat-why {
+      direction: rtl;
+      text-align: right;
+    }
+
+    [dir="rtl"] .cheat-pro-tips,
+    [dir="rtl"] .cheat-pro-tips ul,
     [dir="rtl"] .cheat-pro-tips li {
-      direction: ltr;
-      text-align: left;
-      padding-left: 1.25rem;
-      padding-right: 0;
-    }
-    [dir="rtl"] .cheat-pro-tips li::before {
-      left: 0;
-      right: auto;
-      content: '→';
-    }
-    
-    /* Keep cheatsheet boxes LTR - they contain code */
-    [dir="rtl"] .cheatsheet-box {
-      direction: ltr;
-      text-align: left;
-    }
-    [dir="rtl"] .cheatsheet-box h3,
-    [dir="rtl"] .cheatsheet-box h4 {
       direction: rtl;
       text-align: right;
     }
-    
-    /* Test cards - code should be LTR, descriptions RTL */
-    [dir="rtl"] .test-card .test-name { direction: rtl; }
-    [dir="rtl"] .test-card code { direction: ltr; unicode-bidi: embed; }
-    
-    /* Borders for RTL cards */
-    [dir="rtl"] .test-card.pass { border-left: none; border-right: 4px solid #4ade80; }
-    [dir="rtl"] .test-card.fail { border-left: none; border-right: 4px solid #f87171; }
-    [dir="rtl"] .intro-highlight { border-left: none; border-right: 3px solid #6366f1; }
-    
-    /* Cheat cards in general section stay RTL (no code) */
-    [dir="rtl"] .cheatsheet-section .cheat-card {
-      direction: rtl;
-      text-align: right;
-    }
-    [dir="rtl"] .cheatsheet-section .cheat-card li {
+
+    [dir="rtl"] .cheat-pro-tips li,
+    [dir="rtl"] .cheat-card li {
       padding-left: 0;
       padding-right: 1.5rem;
     }
-    [dir="rtl"] .cheatsheet-section .cheat-card li::before {
+
+    [dir="rtl"] .cheat-pro-tips li::before,
+    [dir="rtl"] .cheat-card li::before {
       left: auto;
       right: 0.5rem;
+    }
+
+    [dir="rtl"] .cheat-pro-tips li::before {
+      content: '←';
+    }
+
+    /* Progress bars and visual accents should start from the right in Hebrew. */
+    [dir="rtl"] .lang-bar {
+      direction: rtl;
+    }
+
+    [dir="rtl"] .lang-bar-fill {
+      margin-left: auto;
+      margin-right: 0;
+    }
+
+    /* Borders for RTL cards */
+    [dir="rtl"] .test-card.pass {
+      border-left: 1px solid rgba(99, 102, 241, 0.2);
+      border-right: 4px solid #4ade80;
+    }
+
+    [dir="rtl"] .test-card.fail {
+      border-left: 1px solid rgba(99, 102, 241, 0.2);
+      border-right: 4px solid #f87171;
+    }
+
+    [dir="rtl"] .intro-highlight {
+      border-left: none;
+      border-right: 3px solid #6366f1;
     }
 
     /* Hero Header */
@@ -292,9 +452,18 @@ export function getStyles(statusColor) {
     .explanation summary { cursor: pointer; color: #a5b4fc; font-size: 0.9rem; padding: 0.5rem 0; }
     .explanation summary:hover { color: #c7d2fe; }
     .explanation-content { padding: 1rem; background: rgba(99, 102, 241, 0.1); border-radius: 0.5rem; margin-top: 0.5rem; font-size: 0.9rem; color: #cbd5e1; line-height: 1.7; }
+    .explanation-content p { margin: 0 0 0.8rem 0; }
+    .explanation-content p:last-child { margin-bottom: 0; }
+    .explanation-content .explanation-heading { color: #e2e8f0; font-weight: 700; margin-bottom: 0.45rem; }
+    .explanation-content ul,
+    .explanation-content ol { margin: 0.35rem 0 0.8rem 0; padding-inline-start: 1.35rem; }
+    .explanation-content li { margin: 0.25rem 0; line-height: 1.65; }
+    [dir="rtl"] .explanation-content ul,
+    [dir="rtl"] .explanation-content ol { padding-inline-start: 0; padding-inline-end: 1.35rem; }
+    [dir="rtl"] .explanation-content li { text-align: right; }
     .explanation-content strong { color: #e2e8f0; }
     .explanation-content em { color: #fbbf24; font-style: normal; }
-    .explanation-content code { background: rgba(0, 0, 0, 0.3); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85em; color: #f472b6; }
+    .explanation-content code { background: rgba(0, 0, 0, 0.3); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85em; color: #f472b6; white-space: nowrap; }
     
     /* Code Details */
     .code-details { margin-top: 0.75rem; }

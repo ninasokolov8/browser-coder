@@ -5,23 +5,12 @@
 
 import { CONFIG, colors, log } from '../config.mjs';
 
-// Import attack vectors
-import { javascriptTests } from '../attacks/javascript.mjs';
-import { typescriptTests } from '../attacks/typescript.mjs';
-import { pythonTests } from '../attacks/python.mjs';
-import { phpTests } from '../attacks/php.mjs';
-import { javaTests } from '../attacks/java.mjs';
-import { csharpTests } from '../attacks/csharp.mjs';
+// Import attack vectors through the central index.
+// The runner always executes the English/default files; localized files are used only by reports.
+import { getSecurityTests } from '../attacks/index.mjs';
 
 // All security tests by language
-export const SECURITY_TESTS = {
-  javascript: javascriptTests,
-  typescript: typescriptTests,
-  python: pythonTests,
-  php: phpTests,
-  java: javaTests,
-  csharp: csharpTests,
-};
+export const SECURITY_TESTS = getSecurityTests('en');
 
 // Test result tracking
 export function createResultsTracker() {
