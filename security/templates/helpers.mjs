@@ -101,7 +101,7 @@ function isExplanationHeading(line) {
 }
 
 function isBulletLine(line) {
-  return /^[-–—•]\s+/.test(line);
+  return /^[-–-•]\s+/.test(line);
 }
 
 function isNumberedLine(line) {
@@ -129,7 +129,7 @@ function renderExplanationBlock(lines) {
     if (isBulletLine(line)) {
       const items = [];
       while (i < lines.length && isBulletLine(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^[-–—•]\s+/, ''));
+        items.push(lines[i].trim().replace(/^[-–-•]\s+/, ''));
         i += 1;
       }
       html.push(`<ul>${items.map(item => `<li>${formatInlineMarkdown(item)}</li>`).join('')}</ul>`);

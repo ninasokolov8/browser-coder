@@ -2134,7 +2134,7 @@ function getLanguageTips(language) {
         <div class="tip">
           <div class="tip-title">⚡ Source Generators</div>
           <div class="tip-content">
-            Roslyn source generators inspect your code at compile time and add new code — zero runtime cost!
+            Roslyn source generators inspect your code at compile time and add new code - zero runtime cost!
             System.Text.Json, ASP.NET Core minimal APIs, and MediatR all use them for blazing performance.
           </div>
         </div>
@@ -2165,14 +2165,14 @@ function getLanguageTips(language) {
         <div class="fact">
           <span class="fact-emoji">🪄</span>
           <span class="fact-content">
-            <strong>Native AOT:</strong> Compile C# to a single native binary that boots in milliseconds with no JIT —
+            <strong>Native AOT:</strong> Compile C# to a single native binary that boots in milliseconds with no JIT -
             perfect for serverless, CLIs, and tiny containers.
           </span>
         </div>
         <div class="fact">
           <span class="fact-emoji">🧬</span>
           <span class="fact-content">
-            <strong>F# &amp; Other .NET Languages:</strong> The CLR runs C#, F#, VB.NET, IronPython, and more —
+            <strong>F# &amp; Other .NET Languages:</strong> The CLR runs C#, F#, VB.NET, IronPython, and more -
             interop is effortless, so you can sprinkle F# into a C# codebase for type-safe domain logic.
           </span>
         </div>
@@ -2218,7 +2218,7 @@ function getLanguageTips(language) {
             <li><code>nullable</code> reference types catch null bugs at compile time</li>
             <li><code>record</code> and <code>readonly struct</code> for immutable-by-default models</li>
             <li>NuGet: run <code>dotnet list package --vulnerable</code> regularly</li>
-            <li>Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — Microsoft has marked them dangerous</li>
+            <li>Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> - Microsoft has marked them dangerous</li>
             <li>Sandbox untrusted code in containers / WASM, not AppDomains (which are .NET Framework only)</li>
           </ul>
         </div>

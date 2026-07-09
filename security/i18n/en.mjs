@@ -16,7 +16,7 @@ export const en = {
   
   // Intro section
   introTitle: 'Welcome to the Hacker\'s Classroom',
-  introP1: 'This isn\'t just a test report — it\'s your <strong>interactive security education hub</strong>. Every test below represents a <em>real attack technique</em> that hackers use in the wild.',
+  introP1: 'This isn\'t just a test report - it\'s your <strong>interactive security education hub</strong>. Every test below represents a <em>real attack technique</em> that hackers use in the wild.',
   introP2: 'We\'ve <strong>safely executed these attacks</strong> against our sandbox to show you exactly what gets blocked and why. Understanding these patterns is the first step to becoming a security-conscious developer.',
   introHighlight: '💡 <strong>Pro Tip:</strong> Click on any test to see the actual malicious code and learn how the attack works. Knowledge is your best defense!',
   
@@ -24,7 +24,7 @@ export const en = {
   miniCard1Title: 'Real Attack Patterns',
   miniCard1Text: 'Every test is based on actual vulnerabilities found in production systems',
   miniCard2Title: 'Safe Learning Environment',
-  miniCard2Text: 'All attacks are contained in our isolated sandbox — learn without risk',
+  miniCard2Text: 'All attacks are contained in our isolated sandbox - learn without risk',
   miniCard3Title: 'Practical Knowledge',
   miniCard3Text: 'Take these insights to secure your own applications',
   
@@ -347,7 +347,7 @@ export const en = {
       tips: [
         {
           title: '⚡ Source Generators',
-          content: 'Roslyn source generators inspect your code at compile time and add new code — zero runtime cost! System.Text.Json, ASP.NET Core minimal APIs, and MediatR all use them for blazing performance.',
+          content: 'Roslyn source generators inspect your code at compile time and add new code - zero runtime cost! System.Text.Json, ASP.NET Core minimal APIs, and MediatR all use them for blazing performance.',
         },
         {
           title: '🪞 Reflection + Attributes',
@@ -367,12 +367,12 @@ export const en = {
         {
           emoji: '🪄',
           title: 'Native AOT',
-          content: 'Compile C# to a single native binary that boots in milliseconds with no JIT — perfect for serverless, CLIs, and tiny containers.',
+          content: 'Compile C# to a single native binary that boots in milliseconds with no JIT - perfect for serverless, CLIs, and tiny containers.',
         },
         {
           emoji: '🧬',
           title: 'F# & Other .NET Languages',
-          content: 'The CLR runs C#, F#, VB.NET, IronPython, and more — interop is effortless, so you can sprinkle F# into a C# codebase for type-safe domain logic.',
+          content: 'The CLR runs C#, F#, VB.NET, IronPython, and more - interop is effortless, so you can sprinkle F# into a C# codebase for type-safe domain logic.',
         },
       ],
       cheatSheet: [
@@ -388,7 +388,7 @@ export const en = {
         '<code>nullable</code> reference types catch null bugs at compile time',
         '<code>record</code> and <code>readonly struct</code> for immutable-by-default models',
         'NuGet: run <code>dotnet list package --vulnerable</code> regularly',
-        'Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — Microsoft has marked them dangerous',
+        'Avoid <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> - Microsoft has marked them dangerous',
         'Sandbox untrusted code in containers / WASM, not AppDomains (which are .NET Framework only)',
       ],
     },

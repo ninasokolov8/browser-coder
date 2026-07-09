@@ -34,7 +34,7 @@ class Program {
       🎯 התקפה: הרצת פקודת Shell ישירה
 
       איך תוקפים משתמשים בזה:
-      Process.Start הוא המקביל של ‎Runtime.exec‎ ב־.NET —
+      Process.Start הוא המקביל של ‎Runtime.exec‎ ב־.NET -
       הוא מפעיל תהליכים מקוריים, כולל shells, עם גישה מלאה
       למערכת ההפעלה של השרת.
 
@@ -61,7 +61,7 @@ class Program {
       איך תוקפים משתמשים בזה:
       ProcessStartInfo מאפשר לשלוט בניתוב פלט/קלט, משתני
       סביבה והרשאות. כאשר UseShellExecute=true, ה־Shell של
-      מערכת ההפעלה מפרש את מחרוזת הארגומנטים — מה שעלול לאפשר
+      מערכת ההפעלה מפרש את מחרוזת הארגומנטים - מה שעלול לאפשר
       command injection.
     `,
   },
@@ -163,7 +163,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       FileStream היא מחלקת הבסיס לפעולות קלט/פלט על קבצים ב־.NET.
-      תוקפים משתמשים בה לגישה ברמת bytes — שימושי לקריאת סודות
+      תוקפים משתמשים בה לגישה ברמת bytes - שימושי לקריאת סודות
       בינאריים או לכתיבת payloads בנויים במיוחד.
     `,
   },
@@ -183,7 +183,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       StreamReader היא אחת הדרכים הנפוצות ביותר שבה מפתחי C#
-      קוראים קבצי טקסט — ולכן גם אחת הדרכים הנפוצות שבה תוקפים
+      קוראים קבצי טקסט - ולכן גם אחת הדרכים הנפוצות שבה תוקפים
       עושים זאת.
     `,
   },
@@ -360,7 +360,7 @@ class Program {
       🎯 התקפה: בדיקת פורטים עם Socket גולמי
 
       איך תוקפים משתמשים בזה:
-      Socket הוא הפרימיטיב ברמה הנמוכה ביותר — מושלם לסריקת
+      Socket הוא הפרימיטיב ברמה הנמוכה ביותר - מושלם לסריקת
       פורטים ברשת הפנימית מתוך אפליקציה שכבר נפרצה.
     `,
   },
@@ -437,7 +437,7 @@ class Program {
       🎯 התקפה: בניית אובייקטים דינמית
 
       איך תוקפים משתמשים בזה:
-      Activator.CreateInstance בונה אובייקטים מתוך Type reference —
+      Activator.CreateInstance בונה אובייקטים מתוך Type reference -
       כך תוקפים יכולים ליצור WebClient, Process או כל מחלקה אחרת
       בלי להזכיר אותה ישירות בקוד המקור.
     `,
@@ -514,7 +514,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       Reflection.Emit / ILGenerator בונים bytecode מסוג CIL
-      בזמן ריצה — המקביל ב־C# לכתיבת payload דרך JIT, וזה
+      בזמן ריצה - המקביל ב־C# לכתיבת payload דרך JIT, וזה
       מנגנון נפוץ שבו obfuscators מסתירים payloads.
     `,
   },
@@ -532,7 +532,7 @@ class Program {
       🎯 התקפה: מיפוי AppDomain
 
       איך תוקפים משתמשים בזה:
-      AppDomain חושף כל assembly שנטען — שלב reconnaissance
+      AppDomain חושף כל assembly שנטען - שלב reconnaissance
       מצוין למציאת types מעניינים שאפשר לתקוף באמצעות Reflection.
     `,
   },
@@ -620,7 +620,7 @@ class Program {
       🎯 התקפה: Deserialization עם BinaryFormatter ‏(RCE)
 
       איך תוקפים משתמשים בזה:
-      BinaryFormatter הוא המקביל של ObjectInputStream ב־Java —
+      BinaryFormatter הוא המקביל של ObjectInputStream ב־Java -
       מקור להמון חולשות RCE. Microsoft סימנה אותו רשמית
       כ"מסוכן", ו־YSoSerial.NET מייצר payloads מוכנים למחלקה הזו.
     `,
@@ -661,7 +661,7 @@ class Program {
       איך תוקפים משתמשים בזה:
       ObjectStateFormatter מנתח ASP.NET ViewState. כאשר
       machine key דולף או חלש, תוקפים יכולים לבנות payloads
-      של ViewState ל־RCE מלא — ראו CVE-2017-9248 ורבים נוספים.
+      של ViewState ל־RCE מלא - ראו CVE-2017-9248 ורבים נוספים.
     `,
   },
   {
@@ -699,14 +699,14 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       כאשר Json.NET מוגדר עם TypeNameHandling שאינו None,
-      מאפיין "$type" בתוך JSON יכול ליצור types שרירותיים —
+      מאפיין "$type" בתוך JSON יכול ליצור types שרירותיים -
       שרשרת gadget קלאסית ל־Process או למחלקות מסוכנות אחרות.
       הרבה CVEs אמיתיים, למשל CVE-2019-18935, פגעו בדיוק בתבנית הזו.
     `,
   },
 
   // ════════════════════════════════════════════════════════════════
-  // BINARY / UNSAFE / NATIVE — the hacker's playground
+  // BINARY / UNSAFE / NATIVE - the hacker's playground
   // ════════════════════════════════════════════════════════════════
   {
     name: 'C#: unsafe pointer write',
@@ -725,7 +725,7 @@ class Program {
       איך תוקפים משתמשים בזה:
       בלוקים של unsafe מאפשרים ל־C# לעבוד עם מצביעים גולמיים
       כמו ב־C. בשילוב עם stackalloc / fixed זה מאפשר stack
-      smashing, ניצול בסגנון ROP וקריאה/כתיבה שרירותית לזיכרון —
+      smashing, ניצול בסגנון ROP וקריאה/כתיבה שרירותית לזיכרון -
       הליבה של binary exploitation.
     `,
   },
@@ -744,7 +744,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       stackalloc מקצה זיכרון על ה־stack בלי בדיקות גבולות.
-      כתיבה מעבר לסוף ה־buffer דורסת return addresses —
+      כתיבה מעבר לסוף ה־buffer דורסת return addresses -
       stack smashing קלאסי להרצת קוד native.
     `,
   },
@@ -765,7 +765,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       fixed מקבע זיכרון managed וחושף אותו כמצביע גולמי.
-      המרה ל־(long*) היא type punning — דרך לעקוף type safety
+      המרה ל־(long*) היא type punning - דרך לעקוף type safety
       ולבנות payloads בינאריים.
     `,
   },
@@ -785,8 +785,8 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       Marshal.AllocHGlobal מקצה זיכרון unmanaged, ו־Marshal.Copy
-      מעתיק אליו bytes. שתי שורות נוספות — VirtualProtect
-      ו־GetDelegateForFunctionPointer — וכבר אפשר להריץ shellcode
+      מעתיק אליו bytes. שתי שורות נוספות - VirtualProtect
+      ו־GetDelegateForFunctionPointer - וכבר אפשר להריץ shellcode
       בתוך תהליך .NET. זה המתכון הקלאסי של execute-shellcode-from-C#.
     `,
   },
@@ -806,7 +806,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       GCHandle.Alloc(Pinned) מונע מה־GC להזיז אובייקט, כך שאפשר
-      לקבל מצביע native יציב — תנאי מקדים להעברת buffers ל־P/Invoke
+      לקבל מצביע native יציב - תנאי מקדים להעברת buffers ל־P/Invoke
       או ל־shellcode.
     `,
   },
@@ -826,7 +826,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       GetDelegateForFunctionPointer הופך כל IntPtr ל־delegate
-      שניתן לקרוא לו — מכוונים אותו ל־shellcode בזיכרון שהוקצה
+      שניתן לקרוא לו - מכוונים אותו ל־shellcode בזיכרון שהוקצה
       עם AllocHGlobal ומפעילים. הרצת shellcode ישירה ב־.NET טהור.
     `,
   },
@@ -846,7 +846,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       Span<byte> מעל stackalloc הוא המקביל המודרני ל־buffer
-      של C. הוא נפוץ בקוד עתיר ביצועים — וגם בניצולי memory
+      של C. הוא נפוץ בקוד עתיר ביצועים - וגם בניצולי memory
       corruption.
     `,
   },
@@ -866,7 +866,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       System.Runtime.CompilerServices.Unsafe.As מפרש reference
-      managed כ־type אחר — ועוקף לחלוטין את מערכת הטיפוסים.
+      managed כ־type אחר - ועוקף לחלוטין את מערכת הטיפוסים.
     `,
   },
 
@@ -887,7 +887,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       DllImport מגדיר binding של P/Invoke ל־API native.
-      LoadLibrary טוען DLLs של התוקף לתוך התהליך — הצעד הראשון
+      LoadLibrary טוען DLLs של התוקף לתוך התהליך - הצעד הראשון
       במתקפות DLL hijacking ו־side-loading.
     `,
   },
@@ -942,7 +942,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       NativeLibrary.Load, שנוסף ב־.NET Core 3, טוען ספרייה native
-      לפי path בכל מערכת הפעלה — תחליף מודרני ל־LoadLibrary/dlopen
+      לפי path בכל מערכת הפעלה - תחליף מודרני ל־LoadLibrary/dlopen
       דרך P/Invoke.
     `,
   },
@@ -1004,7 +1004,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       Environment.Exit הורג את תהליך השרת מיד, ומפיל את השירות
-      עבור כל המשתמשים האחרים — denial of service בשורה אחת.
+      עבור כל המשתמשים האחרים - denial of service בשורה אחת.
     `,
   },
   {
@@ -1059,7 +1059,7 @@ class Program {
 
       איך תוקפים משתמשים בזה:
       שינוי PATH גורם להרצות תהליכים בהמשך לבחור בינארי זדוני
-      שהתוקף שתל — תבנית privilege escalation קלאסית של
+      שהתוקף שתל - תבנית privilege escalation קלאסית של
       PATH injection.
     `,
   },
@@ -1084,7 +1084,7 @@ class Program {
       איך תוקפים משתמשים בזה:
       קידוד assembly זדוני כ־base64 מסתיר אותו מסורקי byte-pattern
       נאיביים. בזמן הריצה הוא מפוענח ונטען עם Assembly.Load מתוך
-      הזיכרון — RCE ללא קובץ.
+      הזיכרון - RCE ללא קובץ.
     `,
   },
   {
@@ -1159,7 +1159,7 @@ class Program {
     expectedOutput: '7',
     category: 'safe_code',
     explanation: `
-      ✅ בטוח: OOP — מחלקה + constructor + מתודה
+      ✅ בטוח: OOP - מחלקה + constructor + מתודה
 
       קוד מונחה־עצמים סטנדרטי בלי APIs מסוכנים.
     `,
@@ -1179,7 +1179,7 @@ class Program {
     explanation: `
       ✅ בטוח: Aggregation עם LINQ
 
-      System.Linq הוא כלי לטרנספורמציה של נתונים בלבד — ללא I/O,
+      System.Linq הוא כלי לטרנספורמציה של נתונים בלבד - ללא I/O,
       ללא reflection וללא קוד native.
     `,
   },
@@ -1192,7 +1192,7 @@ class Program {
     explanation: `
       ✅ בטוח: Top-Level Statements ב־C# 9
 
-      צורת entry point מודרנית של C# — חייבת להיות נתמכת.
+      צורת entry point מודרנית של C# - חייבת להיות נתמכת.
     `,
   },
 ];

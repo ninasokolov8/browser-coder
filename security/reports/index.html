@@ -271,6 +271,61 @@
       opacity: 1;
     }
 
+    .report-card.report-card-new {
+      border-color: var(--danger);
+      box-shadow:
+        0 0 0 2px rgba(239, 68, 68, 0.75),
+        0 0 30px rgba(239, 68, 68, 0.25);
+      animation: newReportPulse 1.2s ease-in-out 0s 3;
+    }
+
+    .report-card.report-card-new::before {
+      height: 4px;
+      background: linear-gradient(90deg, var(--danger), #fb7185);
+      opacity: 1;
+    }
+
+    .report-card.report-card-new:hover {
+      border-color: var(--danger);
+      box-shadow:
+        0 0 0 2px rgba(239, 68, 68, 0.9),
+        0 12px 44px rgba(239, 68, 68, 0.32);
+    }
+
+    .report-card-new-badge {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.75);
+      color: #fecaca;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    @keyframes newReportPulse {
+      0%, 100% {
+        box-shadow:
+          0 0 0 2px rgba(239, 68, 68, 0.75),
+          0 0 30px rgba(239, 68, 68, 0.25);
+      }
+      50% {
+        box-shadow:
+          0 0 0 4px rgba(239, 68, 68, 0.95),
+          0 0 42px rgba(239, 68, 68, 0.42);
+      }
+    }
+
+    [dir="rtl"] .report-card-new-badge {
+      right: auto;
+      left: 0.75rem;
+    }
+
     .report-header {
       display: flex;
       justify-content: space-between;
@@ -849,6 +904,7 @@
         runningTests: 'Running Tests...',
         testsComplete: 'Tests completed! Refreshing...',
         testsFailed: 'Tests failed to run',
+        newReport: 'New report',
         cooldownMsg: 'Next test available in',
         hours: 'hours',
         footerReturn: 'Return to Editor',
@@ -878,6 +934,7 @@
         runningTests: 'מריץ בדיקות...',
         testsComplete: 'הבדיקות הושלמו! מרענן...',
         testsFailed: 'הבדיקות נכשלו',
+        newReport: 'דוח חדש',
         cooldownMsg: 'הבדיקה הבאה זמינה בעוד',
         hours: 'שעות',
         footerReturn: 'חזרה לעורך',
@@ -891,6 +948,12 @@
     };
 
     let currentLang = localStorage.getItem('hacklab-lang') || 'en';
+
+    // Runtime-only highlight state.
+    // This is intentionally NOT saved to localStorage/sessionStorage, so a normal page
+    // refresh clears the red border exactly as requested.
+    let newReportHighlightKey = null;
+    let highlightNewestReportOnNextLoad = false;
 
     function setLanguage(lang) {
       currentLang = lang;
@@ -1022,6 +1085,12 @@
         const sortedGroups = Object.values(reportGroups)
           .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+        if (highlightNewestReportOnNextLoad && sortedGroups.length > 0) {
+          const newestGroup = sortedGroups[0];
+          newReportHighlightKey = `${newestGroup.date}_${newestGroup.time}`;
+          highlightNewestReportOnNextLoad = false;
+        }
+
         // Update stats
         const statsBar = document.getElementById('stats-bar');
         const latestSummary = sortedGroups[0]?.summary;
@@ -1047,9 +1116,12 @@
           const summary = group.summary || {};
           const passRate = parseFloat(summary.passRate) || 0;
           const badgeClass = passRate === 100 ? 'badge-success' : passRate >= 90 ? 'badge-warning' : 'badge-danger';
-          
+                    const groupKey = `${group.date}_${group.time}`;
+          const isNewReport = newReportHighlightKey === groupKey;
+
           return `
-            <div class="report-card">
+            <div class="report-card${isNewReport ? ' report-card-new' : ''}" data-report-key="${groupKey}">
+              ${isNewReport ? `<div class="report-card-new-badge">${i18n[currentLang].newReport}</div>` : ''}
               <div class="report-header">
                 <div>
                   <div class="report-date">📅 ${formatDate(group.date)}</div>
@@ -1291,8 +1363,10 @@
               banner.className = 'test-status-banner visible success';
               statusText.textContent = i18n[currentLang].testsComplete;
               
-              // Reload reports after a short delay
+              // Reload reports after a short delay and highlight the newly-created report.
+              // The highlight lives only in this JS runtime and disappears on page refresh.
               setTimeout(() => {
+                highlightNewestReportOnNextLoad = true;
                 loadReports();
                 checkCanRunTests();
                 banner.classList.remove('visible');

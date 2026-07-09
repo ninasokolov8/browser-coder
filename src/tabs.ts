@@ -218,6 +218,102 @@ export class TabManager {
     return newName;
   }
 
+
+  /**
+   * Generate a unique file name within a specific folder using all persisted
+   * files, not only currently open tabs. This prevents template-created files
+   * from colliding with files that are visible in the explorer but not open.
+   */
+  private async generateUniqueNameForParent(baseName: string, parentId: string | null): Promise<string> {
+    const files = await storage.getChildFiles(parentId);
+    const existing = new Set(files.map(f => f.name));
+
+    // Include live tabs too, so an unsaved/newly-opened tab cannot collide.
+    for (const tab of this.tabs) {
+      if (tab.file.parentId === parentId) {
+        existing.add(tab.file.name);
+      }
+    }
+
+    if (!existing.has(baseName)) return baseName;
+
+    const dotIdx = baseName.lastIndexOf('.');
+    const nameWithoutExt = dotIdx > 0 ? baseName.slice(0, dotIdx) : baseName;
+    const ext = dotIdx > 0 ? baseName.slice(dotIdx) : '';
+
+    let counter = 1;
+    let newName = `${nameWithoutExt}_${counter}${ext}`;
+    while (existing.has(newName)) {
+      counter++;
+      newName = `${nameWithoutExt}_${counter}${ext}`;
+    }
+    return newName;
+  }
+
+  /**
+   * Open the clean starter-template file for a language when it already exists.
+   * If every existing file for that language has been changed even by one
+   * character, create a new starter file instead. This keeps the top language
+   * selector from rewriting whatever file the user is currently viewing.
+   */
+  async openLanguageTemplateFile(
+    lang: LoadedLanguage,
+    version: VersionConfig,
+    parentId?: string | null
+  ): Promise<{ tab: Tab; created: boolean } | null> {
+    const targetParentId = parentId !== undefined
+      ? parentId
+      : (this.getActiveTab()?.file.parentId ?? null);
+    const storedFiles = await storage.getAllFiles();
+    const liveFilesById = new Map(this.tabs.map(tab => [tab.file.id, tab.file]));
+    const files = storedFiles.map(file => liveFilesById.get(file.id) || file);
+
+    const languageFiles = files.filter(file => file.language === lang.id);
+    const orderedLanguageFiles = [
+      ...languageFiles.filter(file => file.parentId === targetParentId),
+      ...languageFiles.filter(file => file.parentId !== targetParentId),
+    ];
+    const starterByVersion = new Map<string, string>();
+    const starterForVersion = async (versionId: string): Promise<string> => {
+      const cached = starterByVersion.get(versionId);
+      if (cached !== undefined) return cached;
+
+      const starter = await getStarterAsync(lang.id, versionId);
+      starterByVersion.set(versionId, starter);
+      return starter;
+    };
+
+    for (const file of orderedLanguageFiles) {
+      const fileVersion = lang.versions.find(v => v.id === file.version) || version;
+      const starterContent = await starterForVersion(fileVersion.id);
+
+      // 100% exact comparison: no trim, normalization, or modified-flag shortcut.
+      if (file.content === starterContent) {
+        const tab = await this.switchToTab(file.id);
+        return tab ? { tab, created: false } : null;
+      }
+    }
+
+    const starterContent = await starterForVersion(version.id);
+    const fileName = await this.generateUniqueNameForParent(`main.${lang.extension}`, targetParentId);
+    const file = await storage.createFile({
+      name: fileName,
+      parentId: targetParentId,
+      language: lang.id,
+      version: version.id,
+      content: starterContent,
+      isUserModified: false,
+    });
+
+    const tab = await this.switchToTab(file.id);
+    if (!tab) return null;
+
+    this.events.onTabCreate?.(tab);
+    this.events.onTabsChange?.(this.tabs);
+
+    return { tab, created: true };
+  }
+
   /**
    * Switch to a tab
    */

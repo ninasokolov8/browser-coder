@@ -6,7 +6,7 @@
   },
   "None": {
     "type": "core",
-    "explanation": "מייצג היעדר ערך או מצב שבו אין ערך — המקבילה של Python ל-null.",
+    "explanation": "מייצג היעדר ערך או מצב שבו אין ערך - המקבילה של Python ל-null.",
     "example": "selected_item = None\nif selected_item is None:\n    print('Nothing selected')"
   },
   "True": {
@@ -56,7 +56,7 @@
   },
   "def": {
     "type": "core",
-    "explanation": "מגדיר פונקציה לשימוש חוזר — בלוק קוד בעל שם שיכול לקבל קלטים ולהחזיר ערך אופציונלי.",
+    "explanation": "מגדיר פונקציה לשימוש חוזר - בלוק קוד בעל שם שיכול לקבל קלטים ולהחזיר ערך אופציונלי.",
     "example": "def add(a, b):\n    return a + b\n\nprint(add(2, 3))"
   },
   "del": {

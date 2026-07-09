@@ -170,7 +170,7 @@ window.addEventListener('message', (event) => {
   }
   
   // Store parent origin for responses (overrides referrer-derived value).
-  // Never overwrite with the IDE's own origin — same-origin messages come
+  // Never overwrite with the IDE's own origin - same-origin messages come
   // from Monaco's fallback worker and are not from the parent frame.
   if (event.origin !== window.location.origin) {
     parentOrigin = event.origin;
@@ -1229,8 +1229,89 @@ function applyTheme(theme: string) {
   }
 
   // ===== Context Menu =====
+  function getSelectedTypesFromRenderedTree(): ('file' | 'folder')[] {
+    const types: ('file' | 'folder')[] = [];
+    for (const id of selectedIds) {
+      const itemEl = fileTreeEl.querySelector(`.tree-item[data-id="${CSS.escape(id)}"]`) as HTMLElement | null;
+      const type = itemEl?.dataset.type as 'file' | 'folder' | undefined;
+      if (type === 'file' || type === 'folder') types.push(type);
+    }
+    return types;
+  }
+
+  function setContextMenuActionVisible(action: string, visible: boolean): void {
+    const item = contextMenuEl.querySelector(`.context-menu-item[data-action="${action}"]`) as HTMLElement | null;
+    if (!item) return;
+    item.style.display = visible ? '' : 'none';
+  }
+
+  function setContextMenuActionLabel(action: string, label?: string): void {
+    const item = contextMenuEl.querySelector(`.context-menu-item[data-action="${action}"]`) as HTMLElement | null;
+    if (!item) return;
+
+    if (!item.dataset.defaultHtml) {
+      item.dataset.defaultHtml = item.innerHTML;
+    }
+
+    if (!label) {
+      item.innerHTML = item.dataset.defaultHtml;
+      return;
+    }
+
+    const icons: Record<string, string> = {
+      'new-file': '📄',
+      'new-folder': '📁',
+      rename: '✏️',
+      delete: '🗑️',
+    };
+    item.textContent = `${icons[action] || ''} ${label}`.trim();
+  }
+
+  function updateContextMenuForSelection(type: 'file' | 'folder') {
+    const selectedCount = selectedIds.size;
+
+    setContextMenuActionLabel('new-file');
+    setContextMenuActionLabel('new-folder');
+    setContextMenuActionLabel('rename');
+    setContextMenuActionLabel('delete');
+
+    if (selectedCount === 0) {
+      // Empty explorer area: only creation actions are relevant.
+      setContextMenuActionVisible('new-file', true);
+      setContextMenuActionVisible('new-folder', true);
+      setContextMenuActionVisible('rename', false);
+      setContextMenuActionVisible('delete', false);
+      return;
+    }
+
+    if (selectedCount > 1) {
+      const selectedTypes = getSelectedTypesFromRenderedTree();
+      const allFiles = selectedTypes.length > 0 && selectedTypes.every(t => t === 'file');
+      const allFolders = selectedTypes.length > 0 && selectedTypes.every(t => t === 'folder');
+      const noun = allFiles ? 'file' : allFolders ? 'folder' : 'item';
+      const plural = selectedCount === 1 ? noun : `${noun}s`;
+
+      // Multi-selection menu: only batch actions should be shown.
+      setContextMenuActionVisible('new-file', false);
+      setContextMenuActionVisible('new-folder', true);
+      setContextMenuActionVisible('rename', false);
+      setContextMenuActionVisible('delete', true);
+      setContextMenuActionLabel('new-folder', 'New Folder');
+      setContextMenuActionLabel('delete', `Delete all ${selectedCount} ${plural}`);
+      return;
+    }
+
+    // Single item: keep the existing single-item behaviour.
+    setContextMenuActionVisible('new-file', true);
+    setContextMenuActionVisible('new-folder', true);
+    setContextMenuActionVisible('rename', true);
+    setContextMenuActionVisible('delete', true);
+  }
+
   function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
     if (currentLockStructure) return;
+    updateContextMenuForSelection(type);
+
     contextMenuEl.style.left = `${x}px`;
     contextMenuEl.style.top = `${y}px`;
     contextMenuEl.classList.remove('hidden');
@@ -1269,18 +1350,20 @@ function applyTheme(theme: string) {
           await createNewFileInExplorer(selectedItemType === 'folder' ? selectedItemId : null);
           break;
         case 'new-folder':
-          await createNewFolder(selectedItemType === 'folder' ? selectedItemId : null);
+          if (selectedIds.size > 1) {
+            await createFolderFromSelection();
+          } else {
+            await createNewFolder(selectedItemType === 'folder' ? selectedItemId : null);
+          }
           break;
         case 'rename':
-          if (selectedItemId) {
+          if (selectedIds.size === 1 && selectedItemId) {
             renamingItemId = selectedItemId;
             renderFileTree(tabManager);
           }
           break;
         case 'delete':
-          if (selectedItemId && selectedItemType) {
-            await deleteItem(selectedItemId, selectedItemType);
-          }
+          await deleteSelectedItems();
           break;
       }
     });
@@ -1313,24 +1396,205 @@ function applyTheme(theme: string) {
     notifyWorkspaceChanged();
   }
 
-  async function deleteItem(id: string, type: 'file' | 'folder') {
-    if (currentLockStructure) return;
-    const confirmed = confirm(`Are you sure you want to delete this ${type}?`);
-    if (!confirmed) return;
+  interface ExplorerSelectionItem {
+    id: string;
+    type: 'file' | 'folder';
+    name: string;
+    parentId: string | null;
+  }
 
-    if (type === 'folder') {
-      await storage.deleteFolder(id);
-      expandedFolders.delete(id);
-    } else {
-      // Close tab if open
-      const tab = tabManager.getTab(id);
-      if (tab) {
-        await tabManager.closeTab(id);
+  function formatSelectionNoun(items: ExplorerSelectionItem[]): string {
+    const count = items.length;
+    const allFiles = items.every(item => item.type === 'file');
+    const allFolders = items.every(item => item.type === 'folder');
+    const noun = allFiles ? 'file' : allFolders ? 'folder' : 'item';
+    return `${count} ${noun}${count === 1 ? '' : 's'}`;
+  }
+
+  async function getExplorerSelectionItems(): Promise<ExplorerSelectionItem[]> {
+    const ids = selectedIds.size > 0
+      ? Array.from(selectedIds)
+      : selectedItemId
+        ? [selectedItemId]
+        : [];
+
+    const items: ExplorerSelectionItem[] = [];
+    for (const id of ids) {
+      const file = await storage.getFile(id);
+      if (file) {
+        items.push({ id: file.id, type: 'file', name: file.name, parentId: file.parentId });
+        continue;
       }
-      await storage.deleteFile(id);
+
+      const folder = await storage.getFolder(id);
+      if (folder) {
+        items.push({ id: folder.id, type: 'folder', name: folder.name, parentId: folder.parentId });
+      }
     }
+
+    return items;
+  }
+
+  async function getTopLevelSelectionItems(items: ExplorerSelectionItem[]): Promise<ExplorerSelectionItem[]> {
+    const selectedFolderIds = new Set(items.filter(item => item.type === 'folder').map(item => item.id));
+    if (selectedFolderIds.size === 0) return items;
+
+    const allFolders = await storage.getAllFolders();
+    const folderById = new Map(allFolders.map(folder => [folder.id, folder]));
+
+    return items.filter(item => {
+      let parentId = item.parentId;
+      while (parentId) {
+        if (selectedFolderIds.has(parentId)) return false;
+        parentId = folderById.get(parentId)?.parentId ?? null;
+      }
+      return true;
+    });
+  }
+
+  async function getDescendantIdsForFolders(folderIds: Set<string>): Promise<{ folderIds: Set<string>; fileIds: Set<string> }> {
+    const allFolders = await storage.getAllFolders();
+    const allFiles = await storage.getAllFiles();
+    const foldersToInclude = new Set(folderIds);
+    const filesToInclude = new Set<string>();
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const folder of allFolders) {
+        if (folder.parentId && foldersToInclude.has(folder.parentId) && !foldersToInclude.has(folder.id)) {
+          foldersToInclude.add(folder.id);
+          changed = true;
+        }
+      }
+    }
+
+    for (const file of allFiles) {
+      if (file.parentId && foldersToInclude.has(file.parentId)) {
+        filesToInclude.add(file.id);
+      }
+    }
+
+    return { folderIds: foldersToInclude, fileIds: filesToInclude };
+  }
+
+  function uniqueFolderName(baseName: string, existingNames: string[]): string {
+    const existing = new Set(existingNames);
+    if (!existing.has(baseName)) return baseName;
+
+    let counter = 1;
+    let candidate = `${baseName}_${counter}`;
+    while (existing.has(candidate)) {
+      counter++;
+      candidate = `${baseName}_${counter}`;
+    }
+    return candidate;
+  }
+
+  async function syncOpenTabsFromStorage(): Promise<void> {
+    for (const tab of tabManager.getAllTabs()) {
+      const storedFile = await storage.getFile(tab.file.id);
+      if (!storedFile) continue;
+
+      // Preserve unsaved editor content while refreshing path/parent metadata.
+      tab.file = tab.isDirty
+        ? { ...storedFile, content: tab.file.content, isUserModified: tab.file.isUserModified }
+        : storedFile;
+    }
+  }
+
+  async function createFolderFromSelection() {
+    if (currentLockStructure) return;
+
+    const selectedItems = await getExplorerSelectionItems();
+    if (selectedItems.length <= 1) {
+      await createNewFolder(selectedItemType === 'folder' ? selectedItemId : null);
+      return;
+    }
+
+    const itemsToMove = await getTopLevelSelectionItems(selectedItems);
+    if (itemsToMove.length === 0) return;
+
+    const parentIds = new Set(itemsToMove.map(item => item.parentId));
+    const newFolderParentId = parentIds.size === 1
+      ? itemsToMove[0].parentId
+      : (itemsToMove.find(item => item.id === selectedItemId)?.parentId ?? null);
+
+    const siblingFolders = await storage.getChildFolders(newFolderParentId);
+    const folderName = uniqueFolderName('New Folder', siblingFolders.map(folder => folder.name));
+    const folder = await storage.createFolder({ name: folderName, parentId: newFolderParentId });
+
+    for (const item of itemsToMove) {
+      if (item.id === folder.id) continue;
+
+      if (item.type === 'folder') {
+        await storage.moveFolder(item.id, folder.id);
+      } else {
+        await storage.moveFile(item.id, folder.id);
+      }
+    }
+
+    await syncOpenTabsFromStorage();
+
+    if (newFolderParentId) expandedFolders.add(newFolderParentId);
+    expandedFolders.add(folder.id);
+    selectedIds = new Set([folder.id]);
+    selectedItemId = folder.id;
+    selectedItemType = 'folder';
+    renamingItemId = folder.id;
+
     renderFileTree(tabManager);
     notifyWorkspaceChanged();
+    setStatus(`Moved ${formatSelectionNoun(selectedItems)} into ${folder.name}`);
+  }
+
+  async function deleteSelectedItems() {
+    if (currentLockStructure) return;
+
+    const selectedItems = await getExplorerSelectionItems();
+    if (selectedItems.length === 0) return;
+
+    const selectedDescription = formatSelectionNoun(selectedItems);
+    const confirmed = selectedItems.length === 1
+      ? confirm(`Are you sure you want to delete this ${selectedItems[0].type}?`)
+      : confirm(`Are you sure you want to delete all ${selectedDescription}?`);
+    if (!confirmed) return;
+
+    const topLevelItems = await getTopLevelSelectionItems(selectedItems);
+    const selectedFolderIds = new Set(topLevelItems.filter(item => item.type === 'folder').map(item => item.id));
+    const descendantIds = await getDescendantIdsForFolders(selectedFolderIds);
+
+    const fileIdsToClose = new Set<string>([
+      ...topLevelItems.filter(item => item.type === 'file').map(item => item.id),
+      ...descendantIds.fileIds,
+    ]);
+
+    for (const fileId of fileIdsToClose) {
+      if (tabManager.getTab(fileId)) {
+        await tabManager.closeTab(fileId);
+      }
+    }
+
+    for (const item of topLevelItems) {
+      if (item.type === 'folder') {
+        await storage.deleteFolder(item.id);
+      } else {
+        await storage.deleteFile(item.id);
+      }
+    }
+
+    for (const folderId of descendantIds.folderIds) {
+      expandedFolders.delete(folderId);
+    }
+
+    selectedIds = new Set();
+    selectedItemId = null;
+    selectedItemType = null;
+    lastClickedId = null;
+
+    renderFileTree(tabManager);
+    notifyWorkspaceChanged();
+    setStatus(`Deleted ${selectedDescription}`);
   }
 
   // ===== Sidebar Toolbar Buttons =====
@@ -1443,6 +1707,8 @@ function applyTheme(theme: string) {
       e.preventDefault();
       selectedItemId = null;
       selectedItemType = null;
+      selectedIds = new Set();
+      lastClickedId = null;
       showContextMenu(e.clientX, e.clientY, 'folder');
     }
   });
@@ -1516,15 +1782,15 @@ function applyTheme(theme: string) {
     for (const file of files) {
       const detected = tabManager.detectLanguageByExtension(file.name);
       if (!detected) {
-        skipped.push(`${file.name} — unsupported file type`);
+        skipped.push(`${file.name} - unsupported file type`);
         continue;
       }
       if (workspaceCount >= MAX_FILES) {
-        skipped.push(`${file.name} — workspace file limit (${MAX_FILES}) reached`);
+        skipped.push(`${file.name} - workspace file limit (${MAX_FILES}) reached`);
         continue;
       }
       if (file.size > MAX_BYTES) {
-        skipped.push(`${file.name} — larger than 256 KB`);
+        skipped.push(`${file.name} - larger than 256 KB`);
         continue;
       }
 
@@ -1532,7 +1798,7 @@ function applyTheme(theme: string) {
       try {
         content = await file.text();
       } catch {
-        skipped.push(`${file.name} — could not be read`);
+        skipped.push(`${file.name} - could not be read`);
         continue;
       }
 
@@ -2718,47 +2984,53 @@ function applyTheme(theme: string) {
     saveSettings();
   });
 
-  // Language selector - change language for active tab
+  // Language selector - open/focus a template file for the selected language.
+  // Important: this must never rewrite the currently active file. If a clean
+  // starter file for the selected language already exists, focus it. If that
+  // language file exists but was changed even by one character, create a new
+  // clean starter file instead.
   langSel.addEventListener("change", async () => {
+    if (currentLockStructure) {
+      langSel.value = currentLang.id;
+      return;
+    }
+
     const newLang = getLanguage(langSel.value);
     if (!newLang) return;
 
-    currentLang = newLang;
-    currentVersion = populateVersionDropdown(currentLang);
-    configureMonacoForVersion(currentLang, currentVersion);
+    const targetVersion = populateVersionDropdown(newLang);
+    configureMonacoForVersion(newLang, targetVersion);
 
-    const activeTab = tabManager.getActiveTab();
-    if (activeTab) {
-      // Smart content update: only replace if user hasn't modified the code
-      // Uses async check that compares content against starter template
-      let newContent: string | undefined = undefined;
-      const isModified = await tabManager.isTabUserModifiedAsync(activeTab.file.id);
-      if (!isModified) {
-        // Tab has default content - replace with new language's starter
-        newContent = await getStarterAsync(currentLang.id, currentVersion.id);
+    try {
+      const result = await tabManager.openLanguageTemplateFile(newLang, targetVersion);
+      if (result) {
+        updateEmptyState(false);
+        setStatus(result.created
+          ? `Created ${result.tab.file.name}`
+          : `Opened ${result.tab.file.name}`
+        );
+        if (result.created) {
+          notifyWorkspaceChanged();
+        }
+        renderFileTree(tabManager);
       }
-
-      // Update tab language (and content if unmodified)
-      await tabManager.updateTabLanguage(activeTab.file.id, currentLang, currentVersion, newContent);
-      
-      // Recreate model with new language
-      disposeModel(activeTab.file.id);
-      const updatedTab = tabManager.getActiveTab();
-      if (updatedTab) {
-        const model = getOrCreateModel(updatedTab);
-        editor.setModel(model);
-        
-        // Show helpful status
-        if (newContent !== undefined) {
-          setStatus(`Switched to ${currentLang.name} - loaded starter template`);
-        } else {
-          setStatus(`Switched to ${currentLang.name} - your code preserved`);
+    } catch (err) {
+      console.error('Failed to open language template file:', err);
+      const activeTab = tabManager.getActiveTab();
+      if (activeTab) {
+        const activeLang = getLanguage(activeTab.file.language);
+        if (activeLang) {
+          currentLang = activeLang;
+          langSel.value = activeLang.id;
+          currentVersion = populateVersionDropdown(activeLang, activeTab.file.version);
+          configureMonacoForVersion(activeLang, currentVersion);
         }
       }
+      setStatus('Failed to open language file');
     }
 
     // Preload all versions in background for this language
-    preloadStarters(currentLang.id).catch(() => {});
+    preloadStarters(newLang.id).catch(() => {});
   });
 
   // Version selector
@@ -2926,7 +3198,7 @@ function applyTheme(theme: string) {
     editor.getAction("editor.action.formatDocument")?.run();
   });
 
-  // "Explain this keyword" — right-click a keyword to see a plain-English
+  // "Explain this keyword" - right-click a keyword to see a plain-English
   // explanation + example, backed by languages/*/keywords.json.
   //
   // The menu item only appears when the word under the cursor/selection is
@@ -2998,7 +3270,7 @@ function applyTheme(theme: string) {
     },
   });
 
-  // "Run Selected" — right-click a selection to execute just those lines.
+  // "Run Selected" - right-click a selection to execute just those lines.
   // Only appears when the selection covers at least one full line: either a
   // multi-line selection, or a single line selected in its entirety (e.g.
   // triple-click, or Home then Shift+End) - not for a plain cursor or a

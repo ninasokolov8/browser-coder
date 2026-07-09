@@ -6,7 +6,7 @@
   },
   "None": {
     "type": "core",
-    "explanation": "Represents no value or the absence of a value — Python's equivalent of null.",
+    "explanation": "Represents no value or the absence of a value - Python's equivalent of null.",
     "example": "selected_item = None\nif selected_item is None:\n    print('Nothing selected')"
   },
   "True": {
@@ -56,7 +56,7 @@
   },
   "def": {
     "type": "core",
-    "explanation": "Defines a reusable function — a named block of code that can take inputs and optionally return a value.",
+    "explanation": "Defines a reusable function - a named block of code that can take inputs and optionally return a value.",
     "example": "def add(a, b):\n    return a + b\n\nprint(add(2, 3))"
   },
   "del": {

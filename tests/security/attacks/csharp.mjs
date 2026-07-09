@@ -34,7 +34,7 @@ class Program {
       🎯 ATTACK: Direct Shell Command Execution
 
       How hackers use this:
-      Process.Start is the .NET equivalent of Runtime.exec — it
+      Process.Start is the .NET equivalent of Runtime.exec - it
       spawns native processes, including shells, with full access
       to the host operating system.
 
@@ -162,7 +162,7 @@ class Program {
 
       How hackers use this:
       FileStream is the underlying class for all file I/O in
-      .NET. Attackers use it for byte-level access — useful for
+      .NET. Attackers use it for byte-level access - useful for
       reading binary secrets or writing crafted payloads.
     `,
   },
@@ -182,7 +182,7 @@ class Program {
 
       How hackers use this:
       StreamReader is the most common way C# developers read
-      text files — and the most common way attackers do, too.
+      text files - and the most common way attackers do, too.
     `,
   },
   {
@@ -359,7 +359,7 @@ class Program {
       🎯 ATTACK: Raw Socket Probe
 
       How hackers use this:
-      Socket is the low-level primitive — perfect for port
+      Socket is the low-level primitive - perfect for port
       scanning the internal network from a compromised app.
     `,
   },
@@ -438,7 +438,7 @@ class Program {
 
       How hackers use this:
       Activator.CreateInstance constructs objects from a Type
-      reference — letting attackers instantiate WebClient,
+      reference - letting attackers instantiate WebClient,
       Process, or any other class without naming it in source.
     `,
   },
@@ -515,7 +515,7 @@ class Program {
 
       How hackers use this:
       Reflection.Emit / ILGenerator builds CIL bytecode at
-      runtime — it's the C# equivalent of writing a JIT
+      runtime - it's the C# equivalent of writing a JIT
       payload, and it's how many obfuscators hide payloads.
     `,
   },
@@ -533,7 +533,7 @@ class Program {
       🎯 ATTACK: AppDomain Enumeration
 
       How hackers use this:
-      AppDomain reveals every loaded assembly — a great
+      AppDomain reveals every loaded assembly - a great
       reconnaissance step for finding interesting types to
       reflect into.
     `,
@@ -624,7 +624,7 @@ class Program {
 
       How hackers use this:
       BinaryFormatter is the .NET equivalent of Java's
-      ObjectInputStream — it has been the source of countless
+      ObjectInputStream - it has been the source of countless
       RCE bugs (Microsoft has officially deprecated it as
       "dangerous"). YSoSerial.NET generates ready-to-use
       payloads for this very class.
@@ -666,7 +666,7 @@ class Program {
       How hackers use this:
       ObjectStateFormatter parses ASP.NET ViewState. When the
       machine key is leaked or weak, attackers craft ViewState
-      payloads for full RCE — see CVE-2017-9248 and many more.
+      payloads for full RCE - see CVE-2017-9248 and many more.
     `,
   },
   {
@@ -704,7 +704,7 @@ class Program {
 
       How hackers use this:
       When Json.NET is configured with TypeNameHandling != None,
-      a "$type" property in JSON instantiates arbitrary types —
+      a "$type" property in JSON instantiates arbitrary types -
       a classic gadget chain into Process or other dangerous
       classes. Many real-world CVEs (e.g., CVE-2019-18935) hit
       this exact pattern.
@@ -712,7 +712,7 @@ class Program {
   },
 
   // ════════════════════════════════════════════════════════════════
-  // BINARY / UNSAFE / NATIVE — the hacker's playground
+  // BINARY / UNSAFE / NATIVE - the hacker's playground
   // ════════════════════════════════════════════════════════════════
   {
     name: 'C#: unsafe pointer write',
@@ -732,7 +732,7 @@ class Program {
       'unsafe' blocks let C# manipulate raw pointers like C.
       Combined with stackalloc / fixed it enables stack
       smashing, ROP-style exploitation, and arbitrary memory
-      read/write — the core of binary exploitation.
+      read/write - the core of binary exploitation.
     `,
   },
   {
@@ -750,7 +750,7 @@ class Program {
 
       How hackers use this:
       stackalloc allocates on the stack with no bounds checks.
-      Writing past the buffer end clobbers return addresses —
+      Writing past the buffer end clobbers return addresses -
       classic stack smashing for native code execution.
     `,
   },
@@ -771,7 +771,7 @@ class Program {
 
       How hackers use this:
       'fixed' pins managed memory and exposes it as a raw
-      pointer. Casting to (long*) is type punning — used to
+      pointer. Casting to (long*) is type punning - used to
       bypass type safety and craft binary payloads.
     `,
   },
@@ -791,8 +791,8 @@ class Program {
 
       How hackers use this:
       Marshal.AllocHGlobal allocates unmanaged memory; Marshal.Copy
-      copies bytes into it. Two more lines — VirtualProtect
-      + GetDelegateForFunctionPointer — and you've executed
+      copies bytes into it. Two more lines - VirtualProtect
+      + GetDelegateForFunctionPointer - and you've executed
       shellcode in the .NET process. This is the classic
       "execute-shellcode-from-C#" recipe.
     `,
@@ -813,7 +813,7 @@ class Program {
 
       How hackers use this:
       GCHandle.Alloc(Pinned) prevents the GC from moving an
-      object so a stable native pointer can be obtained — the
+      object so a stable native pointer can be obtained - the
       precondition for passing buffers to P/Invoke shellcode.
     `,
   },
@@ -833,7 +833,7 @@ class Program {
 
       How hackers use this:
       GetDelegateForFunctionPointer turns any IntPtr into a
-      callable delegate — point it at shellcode in
+      callable delegate - point it at shellcode in
       AllocHGlobal'd memory and call it. Direct shellcode
       execution in pure .NET.
     `,
@@ -854,7 +854,7 @@ class Program {
 
       How hackers use this:
       Span<byte> over stackalloc is the modern equivalent of a
-      C buffer. Used in performance-critical code — and in
+      C buffer. Used in performance-critical code - and in
       memory-corruption exploits.
     `,
   },
@@ -874,7 +874,7 @@ class Program {
 
       How hackers use this:
       System.Runtime.CompilerServices.Unsafe.As reinterprets a
-      managed reference as a different type — bypassing the
+      managed reference as a different type - bypassing the
       type system entirely.
     `,
   },
@@ -896,7 +896,7 @@ class Program {
 
       How hackers use this:
       DllImport declares a P/Invoke binding to a native API.
-      LoadLibrary loads attacker DLLs into the process — the
+      LoadLibrary loads attacker DLLs into the process - the
       first step of DLL hijacking and side-loading attacks.
     `,
   },
@@ -952,7 +952,7 @@ class Program {
 
       How hackers use this:
       NativeLibrary.Load (added in .NET Core 3) loads a
-      native shared library by path on any OS — modern
+      native shared library by path on any OS - modern
       replacement for LoadLibrary/dlopen P/Invokes.
     `,
   },
@@ -1015,7 +1015,7 @@ class Program {
 
       How hackers use this:
       Environment.Exit kills the host process immediately,
-      taking down the service for every other user — a denial
+      taking down the service for every other user - a denial
       of service via a single line.
     `,
   },
@@ -1071,7 +1071,7 @@ class Program {
 
       How hackers use this:
       Overriding PATH causes subsequent process spawns to pick
-      up a malicious binary the attacker dropped — the classic
+      up a malicious binary the attacker dropped - the classic
       PATH-injection privilege-escalation pattern.
     `,
   },
@@ -1096,7 +1096,7 @@ class Program {
       How hackers use this:
       Encoding the malicious assembly as base64 hides it from
       naive byte-pattern scanners. The runtime decodes and
-      Assembly.Loads it from memory — fileless RCE.
+      Assembly.Loads it from memory - fileless RCE.
     `,
   },
   {
@@ -1171,7 +1171,7 @@ class Program {
     expectedOutput: '7',
     category: 'safe_code',
     explanation: `
-      ✅ SAFE: OOP — class + constructor + method
+      ✅ SAFE: OOP - class + constructor + method
 
       Standard object-oriented code with no dangerous APIs.
     `,
@@ -1191,7 +1191,7 @@ class Program {
     explanation: `
       ✅ SAFE: LINQ Aggregation
 
-      System.Linq is pure data-transformation — no I/O, no
+      System.Linq is pure data-transformation - no I/O, no
       reflection, no native code.
     `,
   },
@@ -1204,7 +1204,7 @@ class Program {
     explanation: `
       ✅ SAFE: C# 9 Top-Level Statements
 
-      Modern C# entry-point form — must be supported.
+      Modern C# entry-point form - must be supported.
     `,
   },
 ];

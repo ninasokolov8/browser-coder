@@ -11,7 +11,7 @@
 
 <p align="center">
   <strong>A Production-Ready, Auto-Scaling Web IDE</strong><br>
-  <em>Code in JavaScript, TypeScript, Python, Java, PHP &amp; C# — directly in your browser</em>
+  <em>Code in JavaScript, TypeScript, Python, Java, PHP &amp; C# - directly in your browser</em>
 </p>
 
 <p align="center">
@@ -219,10 +219,10 @@ docker compose up -d
 </details>
 
 **Search Features:**
-- 🔤 **Plain text search** — Simple string matching
-- 🔠 **Case sensitive** — Match exact casing
-- 📝 **Whole word** — Match complete words only
-- 🎯 **Regex** — Full regular expression support
+- 🔤 **Plain text search** - Simple string matching
+- 🔠 **Case sensitive** - Match exact casing
+- 📝 **Whole word** - Match complete words only
+- 🎯 **Regex** - Full regular expression support
 
 ---
 
@@ -253,12 +253,12 @@ docker compose up -d
 </details>
 
 **Run Features:**
-- ▶️ **Run Entire File** — Execute the full code
-- 🎯 **Run Function** — Execute only a specific function
-- 📝 **Function Arguments** — Enter arguments before running (for functions with parameters)
-- 🏗️ **Class Instantiation** — Pass constructor arguments when running classes
-- 🔍 **Auto-detect** — Functions, classes & arrow functions
-- ⏱️ **Timeout** — 10-second execution limit
+- ▶️ **Run Entire File** - Execute the full code
+- 🎯 **Run Function** - Execute only a specific function
+- 📝 **Function Arguments** - Enter arguments before running (for functions with parameters)
+- 🏗️ **Class Instantiation** - Pass constructor arguments when running classes
+- 🔍 **Auto-detect** - Functions, classes & arrow functions
+- ⏱️ **Timeout** - 10-second execution limit
 
 > 💡 **Tip:** Type arguments exactly as you would in code: `"hello", 42, true`
 
@@ -603,7 +603,7 @@ After each test run, detailed HTML reports are generated:
 
 ## 🏴‍☠️ Hack Hub
 
-Browser Coder includes a built-in **Hack Hub** — an educational security playground where users can learn about code injection, sandbox escapes, and security vulnerabilities.
+Browser Coder includes a built-in **Hack Hub** - an educational security playground where users can learn about code injection, sandbox escapes, and security vulnerabilities.
 
 ### Accessing Hack Hub
 
@@ -750,18 +750,18 @@ echo $result;
 </details>
 
 **Storage Features:**
-- 📁 **Hierarchical folders** — Unlimited nesting depth
-- 💾 **Auto-save** — Saves 1 second after last keystroke
-- 🔄 **Sync** — Survives browser refresh, tab close
-- 📦 **Export** — Download entire project as ZIP
-- 🗑️ **Clear** — One-click cache reset
+- 📁 **Hierarchical folders** - Unlimited nesting depth
+- 💾 **Auto-save** - Saves 1 second after last keystroke
+- 🔄 **Sync** - Survives browser refresh, tab close
+- 📦 **Export** - Download entire project as ZIP
+- 🗑️ **Clear** - One-click cache reset
 
 ---
 
 ## 🔌 API Reference
 
 <details>
-<summary><strong>GET /health</strong> — Health check endpoint</summary>
+<summary><strong>GET /health</strong> - Health check endpoint</summary>
 
 ```bash
 curl http://localhost/health
@@ -785,7 +785,7 @@ curl http://localhost/health
 </details>
 
 <details>
-<summary><strong>GET /api/languages</strong> — List supported languages</summary>
+<summary><strong>GET /api/languages</strong> - List supported languages</summary>
 
 ```bash
 curl http://localhost/api/languages
@@ -813,7 +813,7 @@ curl http://localhost/api/languages
 </details>
 
 <details>
-<summary><strong>POST /api/run</strong> — Execute code</summary>
+<summary><strong>POST /api/run</strong> - Execute code</summary>
 
 ```bash
 curl -X POST http://localhost/api/run \
@@ -847,7 +847,7 @@ curl -X POST http://localhost/api/run \
 </details>
 
 <details>
-<summary><strong>GET /api/starter/:lang/:version</strong> — Get starter code</summary>
+<summary><strong>GET /api/starter/:lang/:version</strong> - Get starter code</summary>
 
 ```bash
 curl http://localhost/api/starter/python/python3
@@ -1001,7 +1001,7 @@ browser-coder/
 
 ## 📜 License
 
-MIT License — Use freely in personal and commercial projects.
+MIT License - Use freely in personal and commercial projects.
 
 ---
 

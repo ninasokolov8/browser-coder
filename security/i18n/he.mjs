@@ -16,7 +16,7 @@ export const he = {
   
   // Intro section
   introTitle: 'ברוכים הבאים לכיתת ההאקרים',
-  introP1: 'זה לא סתם דוח בדיקות — זה <strong>מרכז הלמידה האינטראקטיבי שלך לאבטחה</strong>. כל בדיקה למטה מייצגת <em>טכניקת תקיפה אמיתית</em> שהאקרים משתמשים בה בעולם האמיתי.',
+  introP1: 'זה לא סתם דוח בדיקות - זה <strong>מרכז הלמידה האינטראקטיבי שלך לאבטחה</strong>. כל בדיקה למטה מייצגת <em>טכניקת תקיפה אמיתית</em> שהאקרים משתמשים בה בעולם האמיתי.',
   introP2: '<strong>הרצנו את ההתקפות האלה בבטחה</strong> נגד ה-sandbox שלנו כדי להראות לך בדיוק מה נחסם ולמה. הבנת הדפוסים האלה היא הצעד הראשון להפוך למפתח מודע לאבטחה.',
   introHighlight: '💡 <strong>טיפ מקצועי:</strong> לחץ על כל בדיקה כדי לראות את הקוד הזדוני האמיתי וללמוד איך ההתקפה עובדת. ידע הוא ההגנה הטובה ביותר שלך!',
   
@@ -24,7 +24,7 @@ export const he = {
   miniCard1Title: 'דפוסי תקיפה אמיתיים',
   miniCard1Text: 'כל בדיקה מבוססת על פרצות אמיתיות שנמצאו במערכות פעילות',
   miniCard2Title: 'סביבת למידה בטוחה',
-  miniCard2Text: 'כל ההתקפות מבודדות ב-sandbox שלנו — למד ללא סיכון',
+  miniCard2Text: 'כל ההתקפות מבודדות ב-sandbox שלנו - למד ללא סיכון',
   miniCard3Title: 'ידע מעשי',
   miniCard3Text: 'קח את התובנות האלה כדי לאבטח את היישומים שלך',
   
@@ -347,7 +347,7 @@ export const he = {
       tips: [
         {
           title: '⚡ Source Generators',
-          content: 'Source Generators של Roslyn מנתחים את הקוד שלך בזמן קומפילציה ומוסיפים קוד חדש — אפס עלות בזמן ריצה! System.Text.Json, ASP.NET Core ו-MediatR כולם משתמשים בזה לביצועים מסחררים.',
+          content: 'Source Generators של Roslyn מנתחים את הקוד שלך בזמן קומפילציה ומוסיפים קוד חדש - אפס עלות בזמן ריצה! System.Text.Json, ASP.NET Core ו-MediatR כולם משתמשים בזה לביצועים מסחררים.',
         },
         {
           title: '🪞 רפלקציה + Attributes',
@@ -367,12 +367,12 @@ export const he = {
         {
           emoji: '🪄',
           title: 'Native AOT',
-          content: 'קומפלציה של C# לקובץ בינארי בודד שעולה במילישניות בלי JIT — מושלם ל-serverless, CLIs וקונטיינרים זעירים.',
+          content: 'קומפלציה של C# לקובץ בינארי בודד שעולה במילישניות בלי JIT - מושלם ל-serverless, CLIs וקונטיינרים זעירים.',
         },
         {
           emoji: '🧬',
           title: 'F# ושפות נוספות ב-.NET',
-          content: 'ה-CLR מריץ C#, F#, VB.NET, IronPython ועוד — ה-interop פשוט, אז אפשר לשלב F# בקוד C# ללוגיקת דומיין מטיפוס בטוח.',
+          content: 'ה-CLR מריץ C#, F#, VB.NET, IronPython ועוד - ה-interop פשוט, אז אפשר לשלב F# בקוד C# ללוגיקת דומיין מטיפוס בטוח.',
         },
       ],
       cheatSheet: [
@@ -388,7 +388,7 @@ export const he = {
         '<code>nullable reference types</code> תופסים באגי null בזמן קומפילציה',
         '<code>record</code> ו-<code>readonly struct</code> למודלים בלתי-משתנים כברירת מחדל',
         'NuGet: הרץ <code>dotnet list package --vulnerable</code> באופן קבוע',
-        'הימנע מ-<code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> — מיקרוסופט סימנה אותם כמסוכנים',
+        'הימנע מ-<code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code> - מיקרוסופט סימנה אותם כמסוכנים',
         'הרץ קוד לא מהימן בקונטיינרים / WASM, לא ב-AppDomains (קיים רק ב-.NET Framework)',
       ],
     },
