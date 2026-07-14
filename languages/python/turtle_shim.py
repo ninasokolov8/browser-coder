@@ -500,8 +500,23 @@ def _setup_turtle():
             'speed':  _speed[0],
             'shapes': _shapes,
         }
-        enc = _b64.b64encode(_j.dumps(data, separators=(',', ':')).encode()).decode()
-        print('__TURTLE_COMMANDS__:' + enc, flush=True)
+        json_str = _j.dumps(data, separators=(',', ':'))
+
+        # Write the JSON to a temp file and print only the path to stdout.
+        # This avoids the server's stdout size limit (100 KB) for programs
+        # that produce thousands of shapes (spirographs, dense mandalas, etc).
+        # The server reads the file in parseTurtleOutput() then deletes it.
+        import os as _os
+        _tmp_dir = _os.environ.get('TMPDIR', _os.environ.get('TMP', '/tmp'))
+        _tmp_path = _os.path.join(_tmp_dir, '__turtle_%d__.json' % _os.getpid())
+        try:
+            with open(_tmp_path, 'w', encoding='utf-8') as _fh:
+                _fh.write(json_str)
+            print('__TURTLE_FILE__:' + _tmp_path, flush=True)
+        except Exception:
+            # Fallback: inline base64 (may still get truncated for huge programs)
+            _enc = _b64.b64encode(json_str.encode()).decode()
+            print('__TURTLE_COMMANDS__:' + _enc, flush=True)
 
     _ae.register(_emit)
 

@@ -673,35 +673,66 @@ function hasTurtleImport(code) {
 }
 
 /**
- * If the process stdout contains a `__TURTLE_COMMANDS__:<base64>` sentinel
- * line (emitted by the turtle shim's atexit handler), decode it, attach the
- * parsed data to result.turtleData, and strip the sentinel from result.stdout
- * so only the program's real text output is shown to the user.
+ * Parse turtle graphics output from a completed Python execution result.
+ *
+ * The shim uses two transport strategies:
+ *   1. File-based (preferred): writes JSON to a temp file, prints
+ *      __TURTLE_FILE__:<path> to stdout. No size limit — works for any
+ *      program, even multi-MB spirographs and mandalas.
+ *   2. Inline base64 fallback: prints __TURTLE_COMMANDS__:<b64> to stdout.
+ *      Used when the file write fails; may truncate for huge programs.
+ *
+ * In both cases the sentinel is stripped from result.stdout so only the
+ * program's real text output is shown in the output panel.
  */
 function parseTurtleOutput(result) {
   if (!result.stdout) return;
+
+  // Strip a sentinel line from stdout and return the cleaned string
+  function stripSentinel(str, idx, lineEnd) {
+    const before = str.slice(0, idx);
+    const after  = lineEnd === -1 ? '' : str.slice(lineEnd + 1);
+    return (before + after).trim();
+  }
+
+  // ── Strategy 1: file-based transport ───────────────────────────────────
+  const FILE_MARKER = '__TURTLE_FILE__:';
+  const fileIdx = result.stdout.indexOf(FILE_MARKER);
+  if (fileIdx !== -1) {
+    const lineEnd = result.stdout.indexOf('\n', fileIdx + FILE_MARKER.length);
+    const filePath = (lineEnd === -1
+      ? result.stdout.slice(fileIdx + FILE_MARKER.length)
+      : result.stdout.slice(fileIdx + FILE_MARKER.length, lineEnd)
+    ).trim();
+    result.stdout = stripSentinel(result.stdout, fileIdx, lineEnd);
+    try {
+      const json = fs.readFileSync(filePath, 'utf-8');
+      result.turtleData = JSON.parse(json);
+    } catch (_e) {
+      // File not found or invalid JSON — turtleData stays null
+    } finally {
+      try { fs.unlinkSync(filePath); } catch (_e) { /* already gone */ }
+    }
+    return;
+  }
+
+  // ── Strategy 2: inline base64 fallback ────────────────────────────────
   const MARKER = '__TURTLE_COMMANDS__:';
   const idx = result.stdout.indexOf(MARKER);
   if (idx === -1) return;
-  const start = idx + MARKER.length;
+  const start   = idx + MARKER.length;
   const newline = result.stdout.indexOf('\n', start);
   const encoded = (newline === -1
     ? result.stdout.slice(start)
     : result.stdout.slice(start, newline)
   ).trim();
-
-  // ALWAYS strip the sentinel from stdout — it is machine data, never
-  // human-readable, and showing truncated base64 confuses users.
-  const before = result.stdout.slice(0, idx);
-  const after  = newline === -1 ? '' : result.stdout.slice(newline + 1);
-  result.stdout = (before + after).trim();
-
+  // Always strip — machine data, never human-readable
+  result.stdout = stripSentinel(result.stdout, idx, newline);
   try {
     const json = Buffer.from(encoded, 'base64').toString('utf-8');
     result.turtleData = JSON.parse(json);
-  } catch (e) {
-    // Data was truncated (output too large) or otherwise invalid.
-    // turtleData stays null — the program still ran correctly.
+  } catch (_e) {
+    // Truncated or invalid — turtleData stays null
   }
 }
 
