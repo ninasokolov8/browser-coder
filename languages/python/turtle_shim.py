@@ -305,7 +305,7 @@ def _setup_turtle():
     def numinput(title, prompt, default=None, minval=None, maxval=None): return default
     def textinput(title, prompt): return ''
     def mode(m=None): return 'standard'
-    def colormode(cmode=None): return 255
+    def colormode(cmode=None): return cmode if cmode is not None else 255
     def shape(name=None): return 'classic'
     def resizemode(rmode=None): return 'noresize'
     def turtlesize(stretch_wid=None, stretch_len=None, outline=None): pass
@@ -320,7 +320,9 @@ def _setup_turtle():
     class _Screen:
         def bgcolor(self, color=None):    return bgcolor(color)
         def title(self, t):               pass
-        def setup(self, w=None, h=None, sx=None, sy=None): setup(w, h, sx, sy)
+        def setup(self, width=None, height=None, startx=None, starty=None):
+            if width  is not None: _cfg[0]['w'] = int(width)
+            if height is not None: _cfg[0]['h'] = int(height)
         def screensize(self, cw=None, ch=None, bg=None): screensize(cw, ch, bg)
         def window_width(self):           return _cfg[0]['w']
         def window_height(self):          return _cfg[0]['h']
@@ -341,7 +343,7 @@ def _setup_turtle():
         def numinput(self, t, p, d=None, mn=None, mx=None): return d
         def textinput(self, t, p):        return ''
         def mode(self, m=None):           return 'standard'
-        def colormode(self, c=None):      return 255
+        def colormode(self, c=None):      return c if c is not None else 255
 
     _screen = _Screen()
     def Screen(): return _screen
