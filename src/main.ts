@@ -369,10 +369,14 @@ function appendOutput(text: string) {
 }
 
 // ── Turtle graphics renderer ─────────────────────────────────────────────────
-// Decodes the JSON payload produced by the Python turtle shim and paints it
-// onto #turtle-canvas using the Canvas 2D API.
+// Animated step-by-step replay of the drawing commands captured by the Python
+// shim, with a moving turtle cursor — just like a real IDE.
 //
-// Coordinate system conversion:
+// Architecture: double-buffer
+//   offscreen canvas  — all shapes accumulated so far (never erased mid-run)
+//   visible canvas    — offscreen snapshot + cursor composited on top each frame
+//
+// Coordinate system:
 //   Python turtle: origin at centre, y increases upward
 //   HTML canvas:   origin at top-left, y increases downward
 //   → canvasX = canvasWidth/2  + turtleX
@@ -385,130 +389,264 @@ interface TurtleShape {
 }
 
 interface TurtleData {
-  bg?: string;
-  w?: number;
-  h?: number;
+  bg?:     string;
+  w?:      number;
+  h?:      number;
+  tracer?: number;
+  speed?:  number;
   shapes?: TurtleShape[];
 }
 
-function renderTurtle(data: TurtleData): void {
-  const cw = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
-  const ch = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
+// Cancel token for the running animation (setTimeout id)
+let turtleAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Draw the green turtle-arrow cursor at canvas position (cx, cy). */
+function drawTurtleCursor(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  headingDeg: number,
+): void {
+  // Canvas rotates clockwise for positive angles.
+  // Turtle heading is counter-clockwise from east, with y flipped → negate.
+  const rad = -headingDeg * Math.PI / 180;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rad);
+  ctx.beginPath();
+  ctx.moveTo(10, 0);
+  ctx.lineTo(-6, -5);
+  ctx.lineTo(-3, 0);
+  ctx.lineTo(-6, 5);
+  ctx.closePath();
+  ctx.fillStyle   = 'rgba(0, 170, 0, 0.90)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth   = 0.8;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Draw a single shape onto `sctx` (either the offscreen or main canvas). */
+function drawTurtleShape(
+  sctx: CanvasRenderingContext2D,
+  s: TurtleShape,
+  cw: number, ch: number,
+  bg: string,
+): void {
+  const tx = (x: number) => cw / 2 + x;
+  const ty = (y: number) => ch / 2 - y;
+  sctx.save();
+  sctx.lineCap  = 'round';
+  sctx.lineJoin = 'round';
+  try {
+    switch (s.k) {
+      case 'l': {
+        sctx.beginPath();
+        sctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
+        sctx.lineTo(tx(s.x2 as number), ty(s.y2 as number));
+        sctx.strokeStyle = String(s.c ?? 'black');
+        sctx.lineWidth   = Number(s.w ?? 1);
+        sctx.stroke();
+        break;
+      }
+      case 'F': {
+        const pts = s.pts as number[][];
+        if (!pts || pts.length < 2) break;
+        sctx.beginPath();
+        sctx.moveTo(tx(pts[0][0]), ty(pts[0][1]));
+        for (let i = 1; i < pts.length; i++) sctx.lineTo(tx(pts[i][0]), ty(pts[i][1]));
+        sctx.closePath();
+        sctx.fillStyle = String(s.fc ?? 'black');
+        sctx.fill();
+        if (s.pc) {
+          sctx.strokeStyle = String(s.pc);
+          sctx.lineWidth   = Number(s.pw ?? 1);
+          sctx.stroke();
+        }
+        break;
+      }
+      case 'D': {
+        sctx.beginPath();
+        sctx.arc(tx(s.x as number), ty(s.y as number), Math.max(0.5, Number(s.r ?? 5)), 0, Math.PI * 2);
+        sctx.fillStyle = String(s.c ?? 'black');
+        sctx.fill();
+        break;
+      }
+      case 'T': {
+        sctx.font         = String(s.font ?? '12px Arial');
+        sctx.fillStyle    = String(s.c ?? 'black');
+        sctx.textAlign    = (s.align ?? 'left') as CanvasTextAlign;
+        sctx.textBaseline = 'alphabetic';
+        sctx.fillText(String(s.txt ?? ''), tx(s.x as number), ty(s.y as number));
+        break;
+      }
+      case 'C': {
+        sctx.clearRect(0, 0, cw, ch);
+        sctx.fillStyle = bg;
+        sctx.fillRect(0, 0, cw, ch);
+        break;
+      }
+      case 'S': {
+        const sx  = tx(s.x as number);
+        const sy  = ty(s.y as number);
+        const rad = -(s.h as number ?? 0) * Math.PI / 180;
+        sctx.save();
+        sctx.translate(sx, sy);
+        sctx.rotate(rad);
+        sctx.beginPath();
+        sctx.moveTo(10, 0);
+        sctx.lineTo(-7, -5);
+        sctx.lineTo(-4, 0);
+        sctx.lineTo(-7, 5);
+        sctx.closePath();
+        sctx.fillStyle = String(s.c ?? 'black');
+        sctx.fill();
+        sctx.restore();
+        break;
+      }
+      // 'M' (penup move), 'HT', 'ST' → cursor-only, no drawing on canvas
+    }
+  } catch (_e) { /* skip malformed shapes */ }
+  sctx.restore();
+}
+
+function renderTurtle(data: TurtleData): void {
+  // ── Cancel any running animation ───────────────────────────────────────────
+  if (turtleAnimationTimer !== null) {
+    clearTimeout(turtleAnimationTimer);
+    turtleAnimationTimer = null;
+  }
+
+  const cw     = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
+  const ch     = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
+  const bg     = data.bg ?? 'white';
+  const shapes = data.shapes ?? [];
+
+  // ── Setup visible canvas ───────────────────────────────────────────────────
   turtleCanvasEl.width  = cw;
   turtleCanvasEl.height = ch;
-
   const ctx = turtleCanvasEl.getContext('2d');
   if (!ctx) return;
 
-  // Background
-  ctx.fillStyle = data.bg ?? 'white';
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, cw, ch);
 
-  if (!data.shapes || data.shapes.length === 0) return;
+  // ── Show panel, expand to fit ───────────────────────────────────────────────
+  turtleOutputEl.classList.remove('hidden');
+  const targetH = Math.min(ch + 80, Math.floor(window.innerHeight * 0.72));
+  if (panelEl.offsetHeight < targetH) panelEl.style.height = targetH + 'px';
 
-  // Turtle → Canvas coordinate helpers
+  if (shapes.length === 0) return;
+
+  // ── Coordinate helpers ─────────────────────────────────────────────────────
   const tx = (x: number) => cw / 2 + x;
   const ty = (y: number) => ch / 2 - y;
 
-  ctx.save();
-  ctx.lineCap  = 'round';
-  ctx.lineJoin = 'round';
+  // ── Off-screen accumulation buffer ────────────────────────────────────────
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = cw;
+  offscreen.height = ch;
+  const octx = offscreen.getContext('2d')!;
+  octx.fillStyle = bg;
+  octx.fillRect(0, 0, cw, ch);
 
-  for (const s of data.shapes) {
-    try {
-      switch (s.k) {
+  // ── Decide animation mode ──────────────────────────────────────────────────
+  // tracer=0 or speed=0: user asked for instant draw (no animation).
+  // Very large shape lists: cap animation at ~4 seconds total.
+  const tracerVal = data.tracer ?? 1;
+  const speedVal  = data.speed  ?? 6;
+  const ANIM_LIMIT = 3000; // shapes above this → instant
 
-        case 'l': { // line segment
-          ctx.beginPath();
-          ctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
-          ctx.lineTo(tx(s.x2 as number), ty(s.y2 as number));
-          ctx.strokeStyle = String(s.c ?? 'black');
-          ctx.lineWidth   = Number(s.w ?? 1);
-          ctx.stroke();
-          break;
-        }
+  const animate = tracerVal !== 0 && speedVal !== 0 && shapes.length <= ANIM_LIMIT;
 
-        case 'F': { // filled polygon
-          const pts = s.pts as number[][];
-          if (!pts || pts.length < 2) break;
-          ctx.beginPath();
-          ctx.moveTo(tx(pts[0][0]), ty(pts[0][1]));
-          for (let i = 1; i < pts.length; i++) {
-            ctx.lineTo(tx(pts[i][0]), ty(pts[i][1]));
-          }
-          ctx.closePath();
-          ctx.fillStyle = String(s.fc ?? 'black');
-          ctx.fill();
-          if (s.pc) {
-            ctx.strokeStyle = String(s.pc);
-            ctx.lineWidth   = Number(s.pw ?? 1);
-            ctx.stroke();
-          }
-          break;
-        }
+  if (!animate) {
+    // ── Instant (all shapes at once) ─────────────────────────────────────────
+    for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg);
+    ctx.drawImage(offscreen, 0, 0);
+    return;
+  }
 
-        case 'D': { // dot
-          ctx.beginPath();
-          ctx.arc(tx(s.x as number), ty(s.y as number), Math.max(0.5, Number(s.r ?? 5)), 0, Math.PI * 2);
-          ctx.fillStyle = String(s.c ?? 'black');
-          ctx.fill();
-          break;
-        }
+  // ── Animated path ─────────────────────────────────────────────────────────
+  // Delay per shape (ms).  speed 1=slow, 6=normal, 10=fast, like real turtle.
+  // Formula: speed 6 → 20ms, speed 1 → 120ms, speed 10 → 5ms.
+  // Also capped so total time ≤ 4 s for shape-heavy programs.
+  const speedDelay  = Math.max(5, Math.round(120 / Math.max(1, speedVal)));
+  const cappedDelay = Math.max(2, Math.min(speedDelay, Math.round(4000 / shapes.length)));
 
-        case 'T': { // text
-          ctx.font         = String(s.font ?? '12px Arial');
-          ctx.fillStyle    = String(s.c ?? 'black');
-          ctx.textAlign    = (s.align ?? 'left') as CanvasTextAlign;
-          ctx.textBaseline = 'alphabetic';
-          ctx.fillText(String(s.txt ?? ''), tx(s.x as number), ty(s.y as number));
-          break;
-        }
+  // Cursor state (in turtle space)
+  let curX = 0, curY = 0, curH = 0, curVisible = true;
+  let shapeIdx = 0;
 
-        case 'C': { // clear screen
-          ctx.clearRect(0, 0, cw, ch);
-          ctx.fillStyle = data.bg ?? 'white';
-          ctx.fillRect(0, 0, cw, ch);
-          break;
-        }
-
-        case 'S': { // stamp (turtle arrow shape)
-          const sx  = tx(s.x as number);
-          const sy  = ty(s.y as number);
-          // Canvas rotates CW; turtle heading is CCW with y-axis flipped → negate
-          const rad = -(s.h as number ?? 0) * Math.PI / 180;
-          ctx.save();
-          ctx.translate(sx, sy);
-          ctx.rotate(rad);
-          ctx.beginPath();
-          ctx.moveTo(10, 0);
-          ctx.lineTo(-7, -5);
-          ctx.lineTo(-4, 0);
-          ctx.lineTo(-7, 5);
-          ctx.closePath();
-          ctx.fillStyle = String(s.c ?? 'black');
-          ctx.fill();
-          ctx.restore();
-          break;
-        }
-      }
-    } catch (_e) {
-      // Skip malformed shape entries silently
+  function frame(): void {
+    if (shapeIdx >= shapes.length) {
+      // ── Done: draw final snapshot + cursor ────────────────────────────────
+      ctx.drawImage(offscreen, 0, 0);
+      if (curVisible) drawTurtleCursor(ctx, tx(curX), ty(curY), curH);
+      turtleAnimationTimer = null;
+      return;
     }
+
+    const s = shapes[shapeIdx++];
+
+    // Draw real shapes onto the offscreen buffer
+    if (s.k !== 'M' && s.k !== 'HT' && s.k !== 'ST') {
+      drawTurtleShape(octx, s, cw, ch, bg);
+    }
+
+    // ── Update cursor state from this shape ───────────────────────────────
+    switch (s.k) {
+      case 'l':
+        curX = s.x2 as number;
+        curY = s.y2 as number;
+        // Heading = direction the turtle was moving (turtle-space atan2)
+        curH = Math.atan2(
+          (s.y2 as number) - (s.y1 as number),
+          (s.x2 as number) - (s.x1 as number),
+        ) * 180 / Math.PI;
+        break;
+      case 'M': // penup teleport
+        curX = s.x as number;
+        curY = s.y as number;
+        // heading unchanged
+        break;
+      case 'F': {
+        const pts = s.pts as number[][];
+        if (pts && pts.length > 0) {
+          curX = pts[pts.length - 1][0];
+          curY = pts[pts.length - 1][1];
+        }
+        break;
+      }
+      case 'D':
+      case 'T':
+        curX = s.x as number;
+        curY = s.y as number;
+        break;
+      case 'S':
+        curX = s.x as number;
+        curY = s.y as number;
+        curH = (s.h as number) ?? curH;
+        break;
+      case 'HT': curVisible = false; break;
+      case 'ST': curVisible = true;  break;
+    }
+
+    // ── Composite: drawing + cursor ────────────────────────────────────────
+    ctx.drawImage(offscreen, 0, 0);
+    if (curVisible) drawTurtleCursor(ctx, tx(curX), ty(curY), curH);
+
+    turtleAnimationTimer = window.setTimeout(frame, cappedDelay);
   }
 
-  ctx.restore();
-
-  // Show the canvas panel and expand the output panel to fit
-  turtleOutputEl.classList.remove('hidden');
-  const targetHeight = Math.min(ch + 80, Math.floor(window.innerHeight * 0.72));
-  if (panelEl.offsetHeight < targetHeight) {
-    panelEl.style.height = targetHeight + 'px';
-  }
+  frame();
 }
 
-/** Hide the turtle canvas and reset its contents. */
+/** Cancel any running animation, hide the canvas, and clear its pixels. */
 function clearTurtleCanvas(): void {
+  if (turtleAnimationTimer !== null) {
+    clearTimeout(turtleAnimationTimer);
+    turtleAnimationTimer = null;
+  }
   turtleOutputEl.classList.add('hidden');
   const ctx = turtleCanvasEl.getContext('2d');
   if (ctx) ctx.clearRect(0, 0, turtleCanvasEl.width, turtleCanvasEl.height);

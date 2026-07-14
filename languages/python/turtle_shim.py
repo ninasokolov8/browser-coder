@@ -44,6 +44,11 @@ def _setup_turtle():
 
     _gs = _new_state()   # global / module-level turtle state
 
+    # ── Animation-support state ─────────────────────────────────────────────
+    _arc_mode = [False]  # True inside _circ so penup steps don't spam 'M' shapes
+    _tracer   = [1]      # Last tracer(n) value; 0 means "no animation"
+    _speed    = [6]      # Last speed(n) value; 0 means instant
+
     # ── Colour normaliser ─────────────────────────────────────────────────────
     def _col(c):
         if isinstance(c, str):
@@ -66,6 +71,10 @@ def _setup_turtle():
                 'x2': round(nx, 2),     'y2': round(ny, 2),
                 'c': s['pc'], 'w': s['pw'],
             })
+        elif not s['fl'] and not _arc_mode[0]:
+            # Pen up, not filling, not inside an arc → emit cursor-move marker
+            # so the frontend can animate the turtle teleporting to the new spot.
+            _shapes.append({'k': 'M', 'x': round(nx, 2), 'y': round(ny, 2)})
         if s['fl']:
             s['fp'].append([round(nx, 2), round(ny, 2)])
         s['x'], s['y'] = nx, ny
@@ -91,9 +100,14 @@ def _setup_turtle():
         cy = s['y'] + r * _m.sin(_m.radians(cd))
         # Starting angle from center → turtle
         ca = _m.degrees(_m.atan2(s['y'] - cy, s['x'] - cx))
-        for i in range(steps):
-            a = _m.radians(ca + (i + 1) * da)
-            _seg(s, cx + r * _m.cos(a), cy + r * _m.sin(a))
+        # Suppress penup-move shapes during arc steps (they'd spam the list)
+        _arc_mode[0] = True
+        try:
+            for i in range(steps):
+                a = _m.radians(ca + (i + 1) * da)
+                _seg(s, cx + r * _m.cos(a), cy + r * _m.sin(a))
+        finally:
+            _arc_mode[0] = False
         # Update heading to match real turtle
         s['h'] += extent if radius >= 0 else -extent
 
@@ -236,10 +250,16 @@ def _setup_turtle():
     clearscreen = resetscreen = reset
 
     def speed(s=None):
-        return 6   # no-op: we don't animate
+        if s is not None:
+            _speed[0] = int(s)
+        return _speed[0]
 
-    def hideturtle(): _gs['vis'] = False
-    def showturtle(): _gs['vis'] = True
+    def hideturtle():
+        _gs['vis'] = False
+        _shapes.append({'k': 'HT'})
+    def showturtle():
+        _gs['vis'] = True
+        _shapes.append({'k': 'ST'})
     def isvisible(): return _gs['vis']
     ht = hideturtle;  st = showturtle
 
@@ -266,7 +286,9 @@ def _setup_turtle():
     def window_height(): return _cfg[0]['h']
 
     # All of these are no-ops in our headless renderer
-    def tracer(n=None, delay=None): pass
+    def tracer(n=None, delay=None):
+        if n is not None:
+            _tracer[0] = int(n)
     def update(): pass
     def delay(d=None): return 10
     def listen(): pass
@@ -302,7 +324,8 @@ def _setup_turtle():
         def screensize(self, cw=None, ch=None, bg=None): screensize(cw, ch, bg)
         def window_width(self):           return _cfg[0]['w']
         def window_height(self):          return _cfg[0]['h']
-        def tracer(self, n=None, d=None): pass
+        def tracer(self, n=None, d=None):
+            if n is not None: _tracer[0] = int(n)
         def update(self):                 pass
         def delay(self, d=None):          return 10
         def listen(self):                 pass
@@ -429,11 +452,21 @@ def _setup_turtle():
         def reset(self):
             self._s.update(_new_state())
             _shapes.append({'k': 'C'})
-        def speed(self, s=None): return 6
-        def hideturtle(self):  self._s['vis'] = False
-        def ht(self):          self._s['vis'] = False
-        def showturtle(self):  self._s['vis'] = True
-        def st(self):          self._s['vis'] = True
+        def speed(self, s=None):
+            if s is not None: _speed[0] = int(s)
+            return _speed[0]
+        def hideturtle(self):
+            self._s['vis'] = False
+            _shapes.append({'k': 'HT'})
+        def ht(self):
+            self._s['vis'] = False
+            _shapes.append({'k': 'HT'})
+        def showturtle(self):
+            self._s['vis'] = True
+            _shapes.append({'k': 'ST'})
+        def st(self):
+            self._s['vis'] = True
+            _shapes.append({'k': 'ST'})
         def isvisible(self):   return self._s['vis']
         def undo(self):
             if _shapes: _shapes.pop()
@@ -456,7 +489,14 @@ def _setup_turtle():
 
     # ── atexit: emit drawing data ─────────────────────────────────────────────
     def _emit():
-        data = {'bg': _cfg[0]['bg'], 'w': _cfg[0]['w'], 'h': _cfg[0]['h'], 'shapes': _shapes}
+        data = {
+            'bg':     _cfg[0]['bg'],
+            'w':      _cfg[0]['w'],
+            'h':      _cfg[0]['h'],
+            'tracer': _tracer[0],
+            'speed':  _speed[0],
+            'shapes': _shapes,
+        }
         enc = _b64.b64encode(_j.dumps(data, separators=(',', ':')).encode()).decode()
         print('__TURTLE_COMMANDS__:' + enc, flush=True)
 
