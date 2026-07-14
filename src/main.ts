@@ -263,6 +263,9 @@ const togglePanelBtn = document.getElementById("togglePanel") as HTMLButtonEleme
 const panelEl = document.getElementById("panel")!;
 const panelContentEl = document.getElementById("panel-content")!;
 const panelResizeEl = document.getElementById("panel-resize")!;
+// Turtle graphics elements
+const turtleOutputEl = document.getElementById("turtle-output")!;
+const turtleCanvasEl = document.getElementById("turtle-canvas") as HTMLCanvasElement;
 const tabsEl = document.getElementById("tabs")!;
 const fileTreeEl = document.getElementById("file-tree")!;
 const sidebarEl = document.getElementById("sidebar")!;
@@ -363,6 +366,152 @@ function appendOutput(text: string) {
   panelContentEl.dir = "ltr";
   panelContentEl.textContent += (panelContentEl.textContent ? "\n" : "") + text;
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
+}
+
+// ── Turtle graphics renderer ─────────────────────────────────────────────────
+// Decodes the JSON payload produced by the Python turtle shim and paints it
+// onto #turtle-canvas using the Canvas 2D API.
+//
+// Coordinate system conversion:
+//   Python turtle: origin at centre, y increases upward
+//   HTML canvas:   origin at top-left, y increases downward
+//   → canvasX = canvasWidth/2  + turtleX
+//   → canvasY = canvasHeight/2 - turtleY
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TurtleShape {
+  k: string;
+  [key: string]: unknown;
+}
+
+interface TurtleData {
+  bg?: string;
+  w?: number;
+  h?: number;
+  shapes?: TurtleShape[];
+}
+
+function renderTurtle(data: TurtleData): void {
+  const cw = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
+  const ch = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
+
+  turtleCanvasEl.width  = cw;
+  turtleCanvasEl.height = ch;
+
+  const ctx = turtleCanvasEl.getContext('2d');
+  if (!ctx) return;
+
+  // Background
+  ctx.fillStyle = data.bg ?? 'white';
+  ctx.fillRect(0, 0, cw, ch);
+
+  if (!data.shapes || data.shapes.length === 0) return;
+
+  // Turtle → Canvas coordinate helpers
+  const tx = (x: number) => cw / 2 + x;
+  const ty = (y: number) => ch / 2 - y;
+
+  ctx.save();
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  for (const s of data.shapes) {
+    try {
+      switch (s.k) {
+
+        case 'l': { // line segment
+          ctx.beginPath();
+          ctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
+          ctx.lineTo(tx(s.x2 as number), ty(s.y2 as number));
+          ctx.strokeStyle = String(s.c ?? 'black');
+          ctx.lineWidth   = Number(s.w ?? 1);
+          ctx.stroke();
+          break;
+        }
+
+        case 'F': { // filled polygon
+          const pts = s.pts as number[][];
+          if (!pts || pts.length < 2) break;
+          ctx.beginPath();
+          ctx.moveTo(tx(pts[0][0]), ty(pts[0][1]));
+          for (let i = 1; i < pts.length; i++) {
+            ctx.lineTo(tx(pts[i][0]), ty(pts[i][1]));
+          }
+          ctx.closePath();
+          ctx.fillStyle = String(s.fc ?? 'black');
+          ctx.fill();
+          if (s.pc) {
+            ctx.strokeStyle = String(s.pc);
+            ctx.lineWidth   = Number(s.pw ?? 1);
+            ctx.stroke();
+          }
+          break;
+        }
+
+        case 'D': { // dot
+          ctx.beginPath();
+          ctx.arc(tx(s.x as number), ty(s.y as number), Math.max(0.5, Number(s.r ?? 5)), 0, Math.PI * 2);
+          ctx.fillStyle = String(s.c ?? 'black');
+          ctx.fill();
+          break;
+        }
+
+        case 'T': { // text
+          ctx.font         = String(s.font ?? '12px Arial');
+          ctx.fillStyle    = String(s.c ?? 'black');
+          ctx.textAlign    = (s.align ?? 'left') as CanvasTextAlign;
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(String(s.txt ?? ''), tx(s.x as number), ty(s.y as number));
+          break;
+        }
+
+        case 'C': { // clear screen
+          ctx.clearRect(0, 0, cw, ch);
+          ctx.fillStyle = data.bg ?? 'white';
+          ctx.fillRect(0, 0, cw, ch);
+          break;
+        }
+
+        case 'S': { // stamp (turtle arrow shape)
+          const sx  = tx(s.x as number);
+          const sy  = ty(s.y as number);
+          // Canvas rotates CW; turtle heading is CCW with y-axis flipped → negate
+          const rad = -(s.h as number ?? 0) * Math.PI / 180;
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(rad);
+          ctx.beginPath();
+          ctx.moveTo(10, 0);
+          ctx.lineTo(-7, -5);
+          ctx.lineTo(-4, 0);
+          ctx.lineTo(-7, 5);
+          ctx.closePath();
+          ctx.fillStyle = String(s.c ?? 'black');
+          ctx.fill();
+          ctx.restore();
+          break;
+        }
+      }
+    } catch (_e) {
+      // Skip malformed shape entries silently
+    }
+  }
+
+  ctx.restore();
+
+  // Show the canvas panel and expand the output panel to fit
+  turtleOutputEl.classList.remove('hidden');
+  const targetHeight = Math.min(ch + 80, Math.floor(window.innerHeight * 0.72));
+  if (panelEl.offsetHeight < targetHeight) {
+    panelEl.style.height = targetHeight + 'px';
+  }
+}
+
+/** Hide the turtle canvas and reset its contents. */
+function clearTurtleCanvas(): void {
+  turtleOutputEl.classList.add('hidden');
+  const ctx = turtleCanvasEl.getContext('2d');
+  if (ctx) ctx.clearRect(0, 0, turtleCanvasEl.width, turtleCanvasEl.height);
 }
 
 // ===== Keyword help popup ("Explain this keyword") =====
@@ -3111,6 +3260,7 @@ function applyTheme(theme: string) {
 
       stopRunLoader();
       setOutput("");
+      clearTurtleCanvas();
 
       if (!resp.ok) {
         appendOutput(`HTTP ${resp.status}\n${raw || "(empty response)"}`);
@@ -3122,6 +3272,15 @@ function applyTheme(theme: string) {
         appendOutput(`ERROR: Server returned no JSON.\n${raw || "(empty response)"}`);
         setStatus("Run failed");
         return;
+      }
+
+      // ── Turtle graphics output ──────────────────────────────────────────
+      if (data.turtleData && Array.isArray(data.turtleData.shapes) && data.turtleData.shapes.length > 0) {
+        try {
+          renderTurtle(data.turtleData as TurtleData);
+        } catch (renderErr) {
+          appendOutput(`[turtle render error: ${renderErr}]`);
+        }
       }
 
       if (data.stdout) appendOutput(data.stdout);
@@ -3333,7 +3492,7 @@ function applyTheme(theme: string) {
   });
 
   // Clear output
-  clearOutputBtn.addEventListener("click", () => setOutput(""));
+  clearOutputBtn.addEventListener("click", () => { setOutput(""); clearTurtleCanvas(); });
 
   // Panel tabs
   const panelTabs = document.querySelectorAll('.panel-tab');
@@ -3644,6 +3803,8 @@ function applyTheme(theme: string) {
   // Handle pre-computed output from parent (CRITICAL for fill_blanks).
   // Step-Up POSTs filled code to /api/run, then pushes result here for display.
   handleShowOutput = (data) => {
+    // Clear any previous turtle canvas first
+    clearTurtleCanvas();
     let text = '';
     if (typeof data.output === 'string') {
       text = data.output;
@@ -3653,11 +3814,17 @@ function applyTheme(theme: string) {
       if (typeof data.exitCode === 'number') text += `\n[exit code: ${data.exitCode}]`;
     }
     setOutput(text);
+    // If the parent also sent turtle graphics data, render it
+    const td = (data as any).turtleData;
+    if (td && Array.isArray(td.shapes) && td.shapes.length > 0) {
+      try { renderTurtle(td as TurtleData); } catch (_e) { /* ignore */ }
+    }
   };
   
   // Handle clear output request
   handleClearOutput = () => {
     setOutput('');
+    clearTurtleCanvas();
   };
   
   // Notify parent of code changes (throttled)

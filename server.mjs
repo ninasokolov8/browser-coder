@@ -650,6 +650,58 @@ function validateCodeSecurity(language, code) {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================
+// TURTLE SUPPORT - Python turtle module shim
+// ============================================
+
+// Load the Python turtle shim once at startup
+let TURTLE_SHIM = '';
+try {
+  TURTLE_SHIM = fs.readFileSync(
+    path.join(__dirname, 'languages', 'python', 'turtle_shim.py'),
+    'utf-8'
+  );
+} catch (e) {
+  log('warn', 'turtle_shim_not_found', { error: e.message });
+}
+
+/**
+ * Returns true when the Python source code imports the turtle module.
+ * Handles: `import turtle`, `from turtle import ...`
+ */
+function hasTurtleImport(code) {
+  return /\bimport\s+turtle\b|\bfrom\s+turtle\b/.test(code);
+}
+
+/**
+ * If the process stdout contains a `__TURTLE_COMMANDS__:<base64>` sentinel
+ * line (emitted by the turtle shim's atexit handler), decode it, attach the
+ * parsed data to result.turtleData, and strip the sentinel from result.stdout
+ * so only the program's real text output is shown to the user.
+ */
+function parseTurtleOutput(result) {
+  if (!result.stdout) return;
+  const MARKER = '__TURTLE_COMMANDS__:';
+  const idx = result.stdout.indexOf(MARKER);
+  if (idx === -1) return;
+  const start = idx + MARKER.length;
+  const newline = result.stdout.indexOf('\n', start);
+  const encoded = (newline === -1
+    ? result.stdout.slice(start)
+    : result.stdout.slice(start, newline)
+  ).trim();
+  try {
+    const json = Buffer.from(encoded, 'base64').toString('utf-8');
+    result.turtleData = JSON.parse(json);
+    // Remove the sentinel line (and any surrounding blank lines) from stdout
+    const before = result.stdout.slice(0, idx);
+    const after = newline === -1 ? '' : result.stdout.slice(newline + 1);
+    result.stdout = (before + after).trim();
+  } catch (e) {
+    // If decoding fails just leave stdout untouched
+  }
+}
+
+// ============================================
 // AUTO-CONFIGURATION (adapts to environment)
 // ============================================
 const CPU_COUNT = os.cpus().length;
@@ -1010,6 +1062,9 @@ class SmartExecutor {
       try {
         const result = await this.executeCode(language, version, code);
         
+        // Parse turtle graphics output (Python only)
+        if (language === 'python') parseTurtleOutput(result);
+        
         // Cache successful results
         if (result.exitCode === 0) {
           this.cache.set(cacheKey, result);
@@ -1048,6 +1103,9 @@ class SmartExecutor {
       
       try {
         const result = await this.executeMultiFile(language, version, files);
+        
+        // Parse turtle graphics output (Python only)
+        if (language === 'python') parseTurtleOutput(result);
         
         // Cache successful results
         if (result.exitCode === 0) {
@@ -1118,9 +1176,29 @@ class SmartExecutor {
   }
   
   async executePythonMulti(projectDir, mainFile) {
+    const mainFilePath = path.join(projectDir, mainFile);
+    // Inject turtle shim into the main file if any .py file in the project
+    // imports turtle.  sys.modules is process-wide, so one injection in the
+    // entry point is enough for all files in the same run.
+    if (TURTLE_SHIM) {
+      try {
+        const pyFiles = fs.readdirSync(projectDir).filter(f => f.endsWith('.py'));
+        const needsTurtle = pyFiles.some(f => {
+          try {
+            return hasTurtleImport(fs.readFileSync(path.join(projectDir, f), 'utf-8'));
+          } catch { return false; }
+        });
+        if (needsTurtle) {
+          const orig = fs.readFileSync(mainFilePath, 'utf-8');
+          fs.writeFileSync(mainFilePath, TURTLE_SHIM + '\n\n# ── user code ──\n' + orig);
+        }
+      } catch (e) {
+        // Non-fatal: proceed without shim if anything goes wrong
+      }
+    }
     return this.runProcess('python3', [
       '-u', '-I',
-      path.join(projectDir, mainFile)
+      mainFilePath
     ], CONFIG.execution.timeoutMs, { cwd: projectDir });
   }
   
@@ -1199,13 +1277,22 @@ class SmartExecutor {
   }
   
   async executePython(code) {
+    // Inject turtle shim before user code when turtle is imported.
+    // The shim runs first, registers sys.modules['turtle'], then the user's
+    // `import turtle` resolves from the cache and gets our shim module.
+    // Security: the shim code is server-controlled and is NOT passed through
+    // validateCodeSecurity; only the user's original code is checked.
+    let fullCode = code;
+    if (TURTLE_SHIM && hasTurtleImport(code)) {
+      fullCode = TURTLE_SHIM + '\n\n# ── user code ──\n' + code;
+    }
     // SECURITY: Run Python with restricted options
     return this.runProcess('python3', [
       '-u',                 // Unbuffered output
       '-I',                 // Isolated mode: ignore PYTHON* env vars, don't add current directory
       '-S',                 // Don't import site module (reduces available imports)
       '-c',
-      code
+      fullCode
     ]);
   }
   
@@ -1883,6 +1970,7 @@ app.post("/api/run", async (req, res) => {
       exitCode: result.exitCode,
       durationMs: result.durationMs,
       cached: result.cached || false,
+      turtleData: result.turtleData || null,
     });
   } catch (err) {
     log('error', 'execution_error', { error: err.message, language });
