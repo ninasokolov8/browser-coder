@@ -689,15 +689,19 @@ function parseTurtleOutput(result) {
     ? result.stdout.slice(start)
     : result.stdout.slice(start, newline)
   ).trim();
+
+  // ALWAYS strip the sentinel from stdout — it is machine data, never
+  // human-readable, and showing truncated base64 confuses users.
+  const before = result.stdout.slice(0, idx);
+  const after  = newline === -1 ? '' : result.stdout.slice(newline + 1);
+  result.stdout = (before + after).trim();
+
   try {
     const json = Buffer.from(encoded, 'base64').toString('utf-8');
     result.turtleData = JSON.parse(json);
-    // Remove the sentinel line (and any surrounding blank lines) from stdout
-    const before = result.stdout.slice(0, idx);
-    const after = newline === -1 ? '' : result.stdout.slice(newline + 1);
-    result.stdout = (before + after).trim();
   } catch (e) {
-    // If decoding fails just leave stdout untouched
+    // Data was truncated (output too large) or otherwise invalid.
+    // turtleData stays null — the program still ran correctly.
   }
 }
 

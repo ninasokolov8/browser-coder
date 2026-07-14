@@ -71,9 +71,10 @@ def _setup_turtle():
                 'x2': round(nx, 2),     'y2': round(ny, 2),
                 'c': s['pc'], 'w': s['pw'],
             })
-        elif not s['fl'] and not _arc_mode[0]:
-            # Pen up, not filling, not inside an arc → emit cursor-move marker
-            # so the frontend can animate the turtle teleporting to the new spot.
+        elif not s['fl'] and not _arc_mode[0] and _tracer[0] != 0:
+            # Pen up, not filling, not inside an arc, animation enabled →
+            # emit cursor-move marker so the frontend can animate the teleport.
+            # Skip when tracer=0 (instant draw) to keep JSON small.
             _shapes.append({'k': 'M', 'x': round(nx, 2), 'y': round(ny, 2)})
         if s['fl']:
             s['fp'].append([round(nx, 2), round(ny, 2)])
