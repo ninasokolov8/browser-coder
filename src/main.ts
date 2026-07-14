@@ -397,8 +397,8 @@ interface TurtleData {
   shapes?: TurtleShape[];
 }
 
-// Cancel token for the running animation (setTimeout id)
-let turtleAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+// Animation RAF id (requestAnimationFrame) — null when idle
+let turtleAnimRafId: number | null = null;
 
 /** Draw the green turtle-arrow cursor at canvas position (cx, cy). */
 function drawTurtleCursor(
@@ -406,8 +406,6 @@ function drawTurtleCursor(
   cx: number, cy: number,
   headingDeg: number,
 ): void {
-  // Canvas rotates clockwise for positive angles.
-  // Turtle heading is counter-clockwise from east, with y flipped → negate.
   const rad = -headingDeg * Math.PI / 180;
   ctx.save();
   ctx.translate(cx, cy);
@@ -426,7 +424,7 @@ function drawTurtleCursor(
   ctx.restore();
 }
 
-/** Draw a single shape onto `sctx` (either the offscreen or main canvas). */
+/** Draw a single shape onto `sctx`. */
 function drawTurtleShape(
   sctx: CanvasRenderingContext2D,
   s: TurtleShape,
@@ -504,17 +502,25 @@ function drawTurtleShape(
         sctx.restore();
         break;
       }
-      // 'M' (penup move), 'HT', 'ST' → cursor-only, no drawing on canvas
     }
   } catch (_e) { /* skip malformed shapes */ }
   sctx.restore();
 }
 
+// ── Pixel-per-second speeds for each turtle speed level (1–10) ───────────────
+// Calibrated to match real Python IDLE turtle feel.
+// speed(3) is the default (real turtle default) — feels educational and visible.
+// speed(0) / tracer(0) are handled separately as "instant".
+const TURTLE_PX_PER_SEC: Record<number, number> = {
+  1: 100, 2: 200, 3: 350, 4: 600,
+  5: 1000, 6: 1600, 7: 2500, 8: 4000, 9: 6500, 10: 10000,
+};
+
 function renderTurtle(data: TurtleData): void {
-  // ── Cancel any running animation ───────────────────────────────────────────
-  if (turtleAnimationTimer !== null) {
-    clearTimeout(turtleAnimationTimer);
-    turtleAnimationTimer = null;
+  // ── Cancel any previous animation ──────────────────────────────────────────
+  if (turtleAnimRafId !== null) {
+    cancelAnimationFrame(turtleAnimRafId);
+    turtleAnimRafId = null;
   }
 
   const cw     = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
@@ -527,22 +533,20 @@ function renderTurtle(data: TurtleData): void {
   turtleCanvasEl.height = ch;
   const ctx = turtleCanvasEl.getContext('2d');
   if (!ctx) return;
-
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, cw, ch);
 
-  // ── Show panel, expand to fit ───────────────────────────────────────────────
+  // ── Show panel + expand to fit ─────────────────────────────────────────────
   turtleOutputEl.classList.remove('hidden');
   const targetH = Math.min(ch + 80, Math.floor(window.innerHeight * 0.72));
   if (panelEl.offsetHeight < targetH) panelEl.style.height = targetH + 'px';
 
   if (shapes.length === 0) return;
 
-  // ── Coordinate helpers ─────────────────────────────────────────────────────
   const tx = (x: number) => cw / 2 + x;
   const ty = (y: number) => ch / 2 - y;
 
-  // ── Off-screen accumulation buffer ────────────────────────────────────────
+  // ── Off-screen accumulation buffer (completed shapes only) ─────────────────
   const offscreen = document.createElement('canvas');
   offscreen.width  = cw;
   offscreen.height = ch;
@@ -550,102 +554,136 @@ function renderTurtle(data: TurtleData): void {
   octx.fillStyle = bg;
   octx.fillRect(0, 0, cw, ch);
 
-  // ── Decide animation mode ──────────────────────────────────────────────────
-  // tracer=0 or speed=0: user asked for instant draw (no animation).
-  // Very large shape lists: cap animation at ~4 seconds total.
+  // ── Animation mode ─────────────────────────────────────────────────────────
   const tracerVal = data.tracer ?? 1;
-  const speedVal  = data.speed  ?? 6;
-  const ANIM_LIMIT = 3000; // shapes above this → instant
+  const speedVal  = data.speed  ?? 3;          // default matches shim default (3)
+  const INSTANT_LIMIT = 3000;                  // too many shapes → draw at once
 
-  const animate = tracerVal !== 0 && speedVal !== 0 && shapes.length <= ANIM_LIMIT;
-
-  if (!animate) {
-    // ── Instant (all shapes at once) ─────────────────────────────────────────
+  if (tracerVal === 0 || speedVal === 0 || shapes.length > INSTANT_LIMIT) {
     for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg);
     ctx.drawImage(offscreen, 0, 0);
     return;
   }
 
-  // ── Animated path ─────────────────────────────────────────────────────────
-  // Delay per shape (ms).  speed 1=slow, 6=normal, 10=fast, like real turtle.
-  // Formula: speed 6 → 20ms, speed 1 → 120ms, speed 10 → 5ms.
-  // Also capped so total time ≤ 4 s for shape-heavy programs.
-  const speedDelay  = Math.max(5, Math.round(120 / Math.max(1, speedVal)));
-  const cappedDelay = Math.max(2, Math.min(speedDelay, Math.round(4000 / shapes.length)));
+  // ── Pixels per second for this speed ──────────────────────────────────────
+  const clampedSpeed = Math.min(10, Math.max(1, Math.round(speedVal)));
+  const pxPerSec = TURTLE_PX_PER_SEC[clampedSpeed] ?? 350;
 
-  // Cursor state (in turtle space)
+  // ── Animated state ────────────────────────────────────────────────────────
   let curX = 0, curY = 0, curH = 0, curVisible = true;
-  let shapeIdx = 0;
+  let shapeIdx    = 0;
+  let lineProgress = 0; // 0..1 fractional progress within current 'l' shape
+  let lastTime: number | null = null;
 
-  function frame(): void {
-    if (shapeIdx >= shapes.length) {
-      // ── Done: draw final snapshot + cursor ────────────────────────────────
-      ctx.drawImage(offscreen, 0, 0);
-      if (curVisible) drawTurtleCursor(ctx, tx(curX), ty(curY), curH);
-      turtleAnimationTimer = null;
-      return;
-    }
+  function animFrame(time: number): void {
+    // Cap dt at 100 ms so a tab-hidden burst doesn't jump the turtle
+    const dt = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, 0.1);
+    lastTime = time;
 
-    const s = shapes[shapeIdx++];
+    // Pixel budget for this frame
+    let budget = pxPerSec * dt;
 
-    // Draw real shapes onto the offscreen buffer
-    if (s.k !== 'M' && s.k !== 'HT' && s.k !== 'ST') {
-      drawTurtleShape(octx, s, cw, ch, bg);
-    }
+    // ── Advance through shapes using the pixel budget ──────────────────────
+    while (budget >= 0 && shapeIdx < shapes.length) {
+      const s = shapes[shapeIdx];
 
-    // ── Update cursor state from this shape ───────────────────────────────
-    switch (s.k) {
-      case 'l':
-        curX = s.x2 as number;
-        curY = s.y2 as number;
-        // Heading = direction the turtle was moving (turtle-space atan2)
-        curH = Math.atan2(
-          (s.y2 as number) - (s.y1 as number),
-          (s.x2 as number) - (s.x1 as number),
-        ) * 180 / Math.PI;
-        break;
-      case 'M': // penup teleport
-        curX = s.x as number;
-        curY = s.y as number;
-        // heading unchanged
-        break;
-      case 'F': {
-        const pts = s.pts as number[][];
-        if (pts && pts.length > 0) {
-          curX = pts[pts.length - 1][0];
-          curY = pts[pts.length - 1][1];
+      if (s.k === 'l') {
+        const dx  = (s.x2 as number) - (s.x1 as number);
+        const dy  = (s.y2 as number) - (s.y1 as number);
+        const len = Math.hypot(dx, dy);
+
+        if (len < 0.5) {
+          // Zero-length line — commit and move on
+          drawTurtleShape(octx, s, cw, ch, bg);
+          curX = s.x2 as number; curY = s.y2 as number;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+          shapeIdx++; lineProgress = 0;
+          budget -= 1;
+          continue;
         }
-        break;
+
+        // How much further along this line can we move this frame?
+        const advance = budget / len;
+        const newProg = lineProgress + advance;
+
+        if (newProg >= 1) {
+          // Complete this line: commit to offscreen, consume exact cost
+          budget -= (1 - lineProgress) * len;
+          lineProgress = 0;
+          drawTurtleShape(octx, s, cw, ch, bg);
+          curX = s.x2 as number; curY = s.y2 as number;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+          shapeIdx++;
+        } else {
+          // Partial: update progress and consume the whole budget
+          budget = -1; // stop the while loop
+          lineProgress = newProg;
+          curX = (s.x1 as number) + dx * lineProgress;
+          curY = (s.y1 as number) + dy * lineProgress;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+        }
+      } else {
+        // Non-line shapes: draw instantly, cost a tiny flat amount
+        if (s.k !== 'M' && s.k !== 'HT' && s.k !== 'ST') {
+          drawTurtleShape(octx, s, cw, ch, bg);
+        }
+        switch (s.k) {
+          case 'M':  curX = s.x as number; curY = s.y as number; break;
+          case 'F': {
+            const pts = s.pts as number[][];
+            if (pts?.length) { curX = pts[pts.length-1][0]; curY = pts[pts.length-1][1]; }
+            break;
+          }
+          case 'D': case 'T': curX = s.x as number; curY = s.y as number; break;
+          case 'S':
+            curX = s.x as number; curY = s.y as number;
+            curH = (s.h as number) ?? curH;
+            break;
+          case 'HT': curVisible = false; break;
+          case 'ST': curVisible = true;  break;
+        }
+        shapeIdx++; lineProgress = 0;
+        budget -= 5; // flat cost keeps non-line shapes visible briefly
       }
-      case 'D':
-      case 'T':
-        curX = s.x as number;
-        curY = s.y as number;
-        break;
-      case 'S':
-        curX = s.x as number;
-        curY = s.y as number;
-        curH = (s.h as number) ?? curH;
-        break;
-      case 'HT': curVisible = false; break;
-      case 'ST': curVisible = true;  break;
     }
 
-    // ── Composite: drawing + cursor ────────────────────────────────────────
+    // ── Render frame ──────────────────────────────────────────────────────────
+    // 1. All completed shapes (offscreen buffer)
     ctx.drawImage(offscreen, 0, 0);
+
+    // 2. Partial current line (not yet committed to offscreen)
+    if (lineProgress > 0 && shapeIdx < shapes.length && shapes[shapeIdx].k === 'l') {
+      const s = shapes[shapeIdx];
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
+      ctx.lineTo(tx(curX), ty(curY));
+      ctx.strokeStyle = String(s.c ?? 'black');
+      ctx.lineWidth   = Number(s.w ?? 1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Cursor overlay
     if (curVisible) drawTurtleCursor(ctx, tx(curX), ty(curY), curH);
 
-    turtleAnimationTimer = window.setTimeout(frame, cappedDelay);
+    // ── Continue or finish ────────────────────────────────────────────────────
+    if (shapeIdx < shapes.length || lineProgress > 0) {
+      turtleAnimRafId = requestAnimationFrame(animFrame);
+    } else {
+      turtleAnimRafId = null;
+    }
   }
 
-  frame();
+  turtleAnimRafId = requestAnimationFrame(animFrame);
 }
 
 /** Cancel any running animation, hide the canvas, and clear its pixels. */
 function clearTurtleCanvas(): void {
-  if (turtleAnimationTimer !== null) {
-    clearTimeout(turtleAnimationTimer);
-    turtleAnimationTimer = null;
+  if (turtleAnimRafId !== null) {
+    cancelAnimationFrame(turtleAnimRafId);
+    turtleAnimRafId = null;
   }
   turtleOutputEl.classList.add('hidden');
   const ctx = turtleCanvasEl.getContext('2d');

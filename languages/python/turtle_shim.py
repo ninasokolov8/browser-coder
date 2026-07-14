@@ -47,7 +47,7 @@ def _setup_turtle():
     # ── Animation-support state ─────────────────────────────────────────────
     _arc_mode = [False]  # True inside _circ so penup steps don't spam 'M' shapes
     _tracer   = [1]      # Last tracer(n) value; 0 means "no animation"
-    _speed    = [6]      # Last speed(n) value; 0 means instant
+    _speed    = [3]      # Last speed(n) value; 0 means instant (real turtle default is 3)
 
     # ── Colour normaliser ─────────────────────────────────────────────────────
     def _col(c):
