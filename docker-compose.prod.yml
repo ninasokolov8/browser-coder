@@ -36,6 +36,36 @@ services:
       retries: 3
 
   # ============================================
+  # PREVIEW STORAGE INIT - Fix named-volume permissions
+  # ============================================
+  preview-storage-init:
+    image: busybox:1.36
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /preview-data
+        chown -R 1001:1001 /preview-data
+        chmod 770 /preview-data
+    volumes:
+      - browser_coder_previews:/preview-data
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=8M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    restart: "no"
+    networks:
+      - internal
+
+  # ============================================
   # API - Uses pre-built image from GHCR
   # ============================================
   api:
@@ -47,12 +77,23 @@ services:
       - "3001"
     volumes:
       - ./security/reports:/app/security/reports:rw
+      - browser_coder_previews:/preview-data:rw
     environment:
       - NODE_ENV=production
       - PORT=3001
       - RATE_LIMIT_MAX=200
       - RUN_TIMEOUT_MS=10000
       - MAX_SCALE=${MAX_SCALE:-8}
+      - PREVIEW_STORAGE_DIR=/preview-data
+      - PREVIEW_MAX_BYTES=524288
+      - PREVIEW_TTL_MS=604800000
+      - PREVIEW_CLEANUP_INTERVAL_MS=1800000
+      - PREVIEW_MAX_STORAGE_BYTES=1073741824
+      - PREVIEW_MAX_FILES=50000
+      - PREVIEW_PUBLISHES_PER_MINUTE=10
+    depends_on:
+      preview-storage-init:
+        condition: service_completed_successfully
     # SECURITY: Container-level sandboxing
     security_opt:
       - no-new-privileges:true
@@ -114,3 +155,6 @@ networks:
     driver: bridge
   default:
     driver: bridge
+
+volumes:
+  browser_coder_previews:

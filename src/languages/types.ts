@@ -65,4 +65,6 @@ export const LANGUAGE_ICONS: Record<string, string> = {
   java: '☕',
   php: '🐘',
   csharp: '🟦',
+  html: '🌐',
+  css: '🎨',
 };

@@ -45,7 +45,9 @@ COPY --from=builder /app/security ./security
 COPY --from=builder /app/tests ./tests
 
 # Ensure reports directories exist and are writable
-RUN mkdir -p /app/security/reports /app/tests/reports
+RUN mkdir -p /app/security/reports /app/tests/reports /preview-data && \
+    chown app:app /preview-data && \
+    chmod 770 /preview-data
 
 # SECURITY: Set proper ownership and permissions
 RUN chown -R app:app /app && \

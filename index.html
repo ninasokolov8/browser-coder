@@ -811,25 +811,6 @@
       #panel-content .success { color: #89d185; }
       #panel-content .info { color: #75beff; }
 
-      /* ===== TURTLE CANVAS OUTPUT ===== */
-      #turtle-output {
-        background: #fff;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding: 8px;
-        overflow: auto;
-        flex-shrink: 0;
-      }
-      #turtle-output.hidden { display: none !important; }
-      #turtle-canvas {
-        max-width: 100%;
-        border: 1px solid var(--border-color);
-        border-radius: 2px;
-        display: block;
-      }
-
       /* Panel resize handle */
       #panel-resize {
         height: 6px;
@@ -1430,10 +1411,6 @@
               <button id="clearOutput" class="panel-btn" data-i18n-title="panel.clear">🗑</button>
               <button id="togglePanel" class="panel-btn" data-i18n-title="panel.toggle">⌃</button>
             </div>
-          </div>
-          <!-- Turtle graphics canvas (hidden until a turtle program runs) -->
-          <div id="turtle-output" class="hidden">
-            <canvas id="turtle-canvas"></canvas>
           </div>
           <div id="panel-content" data-i18n="panel.placeholder">(Run code to see output here)</div>
         </div>

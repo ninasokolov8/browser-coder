@@ -30,6 +30,66 @@ function languageIdFromPath(path: string): string {
   return match ? match[1] : "";
 }
 
+const BUILTIN_LANGUAGES: LoadedLanguage[] = [
+  {
+    id: 'html',
+    name: 'HTML',
+    extension: 'html',
+    monacoLanguage: 'html',
+    icon: LANGUAGE_ICONS.html || '🌐',
+    versions: [{ id: 'html5', name: 'HTML5', default: true }],
+    runner: { command: 'preview' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+  {
+    id: 'css',
+    name: 'CSS',
+    extension: 'css',
+    monacoLanguage: 'css',
+    icon: LANGUAGE_ICONS.css || '🎨',
+    versions: [{ id: 'css3', name: 'CSS3', default: true }],
+    runner: { command: 'preview' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+];
+
+const BUILTIN_STARTERS: Record<string, string> = {
+  'html/html5': `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Website</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main>
+    <h1>Hello, world!</h1>
+    <p>Edit this page, then click Open Preview.</p>
+  </main>
+  <script src="./script.js"></script>
+</body>
+</html>
+`,
+  'css/css3': `:root {
+  font-family: system-ui, sans-serif;
+  color: #1f2937;
+  background: #f8fafc;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+`,
+};
+
 // Cache for loaded starters with TTL
 interface CacheEntry {
   code: string;
@@ -76,6 +136,10 @@ function loadLanguages(): Map<string, LoadedLanguage> {
     }
   }
 
+  for (const language of BUILTIN_LANGUAGES) {
+    if (!languages.has(language.id)) languages.set(language.id, language);
+  }
+
   return languages;
 }
 
@@ -104,6 +168,11 @@ function isCacheValid(entry: CacheEntry | undefined): boolean {
 // Fetch starter code from server with deduplication
 async function fetchStarter(langId: string, versionId: string, extension: string): Promise<string> {
   const cacheKey = `${langId}/${versionId}`;
+  const builtInStarter = BUILTIN_STARTERS[cacheKey];
+  if (builtInStarter !== undefined) {
+    starterCache.set(cacheKey, { code: builtInStarter, timestamp: Date.now() });
+    return builtInStarter;
+  }
   
   // Check cache first
   const cached = starterCache.get(cacheKey);

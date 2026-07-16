@@ -386,9 +386,22 @@ export class TabManager {
    * Used when clearing cache
    */
   closeAllTabs(): void {
+    // A pending debounced auto-save can otherwise run after storage.clearAll()
+    // and restore a file that the user just deleted via Clear Cache.
+    if (this.autoSaveTimer !== null) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    const closedTabs = [...this.tabs];
     this.tabs = [];
     this.activeTabId = null;
+
     this.render();
+
+    for (const tab of closedTabs) {
+      this.events.onTabClose?.(tab);
+    }
     this.events.onTabsChange?.(this.tabs);
   }
 

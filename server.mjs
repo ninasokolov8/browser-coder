@@ -791,6 +791,18 @@ const CONFIG = {
     checkIntervalMs: 10000,
     unhealthyThreshold: 3,
   },
+
+  // Immutable, shareable HTML previews.
+  preview: {
+    // 512 KiB is enough for bundled classroom websites while limiting abuse.
+    maxHtmlBytes: parseInt(process.env.PREVIEW_MAX_BYTES || String(512 * 1024), 10),
+    ttlMs: parseInt(process.env.PREVIEW_TTL_MS || String(7 * 24 * 60 * 60 * 1000), 10),
+    cleanupIntervalMs: parseInt(process.env.PREVIEW_CLEANUP_INTERVAL_MS || String(30 * 60 * 1000), 10),
+    storageDir: process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), "browser-coder-previews"),
+    maxStorageBytes: parseInt(process.env.PREVIEW_MAX_STORAGE_BYTES || String(1024 * 1024 * 1024), 10),
+    maxFiles: parseInt(process.env.PREVIEW_MAX_FILES || "50000", 10),
+    publishesPerMinute: parseInt(process.env.PREVIEW_PUBLISHES_PER_MINUTE || "10", 10),
+  },
 };
 
 // ============================================
@@ -1118,15 +1130,30 @@ class SmartExecutor {
    * @param {string} version 
    * @param {Array<{name: string, content: string, isMain?: boolean}>} files 
    */
-  async executeMulti(language, version, files) {
+  async executeMulti(language, version, files, entryPoint = null) {
     // Check capacity
     if (this.activeExecutions >= CONFIG.execution.maxConcurrent) {
       throw new Error('Server at capacity - please try again');
     }
     
     // Generate cache key from all files
-    const filesHash = files.map(f => `${f.name}:${f.content}`).join('|||');
-    const cacheKey = SmartCache.hash(language, version, filesHash);
+    const normalizedEntryPoint = String(
+      entryPoint || files.find(f => f.isMain)?.name || files[0]?.name || ''
+    ).replace(/\\/g, '/').replace(/^\/+/, '');
+
+    // The selected entry point is part of execution identity. Two runs with
+    // identical project files but different active files must never share a
+    // cached result or an in-flight deduplication promise.
+    const filesHash = files
+      .map(f => ({
+        name: String(f.name || '').replace(/\\/g, '/').replace(/^\/+/, ''),
+        content: String(f.content ?? ''),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(f => `${f.name.length}:${f.name}:${f.content.length}:${f.content}`)
+      .join('|||');
+    const projectIdentity = `entry:${normalizedEntryPoint}|||files:${filesHash}`;
+    const cacheKey = SmartCache.hash(language, version, projectIdentity);
     const cached = this.cache.get(cacheKey);
     if (cached) {
       return { ...cached, cached: true };
@@ -1137,7 +1164,7 @@ class SmartExecutor {
       this.totalExecutions++;
       
       try {
-        const result = await this.executeMultiFile(language, version, files);
+        const result = await this.executeMultiFile(language, version, files, normalizedEntryPoint);
         
         // Parse turtle graphics output (Python only)
         if (language === 'python') parseTurtleOutput(result);
@@ -1157,7 +1184,7 @@ class SmartExecutor {
   /**
    * Execute multi-file code
    */
-  async executeMultiFile(language, version, files) {
+  async executeMultiFile(language, version, files, entryPoint = null) {
     const projectDir = path.join(this.tempDir, `project_${Date.now()}_${Math.random().toString(36).slice(2)}`);
     
     try {
@@ -1175,20 +1202,28 @@ class SmartExecutor {
       }
       
       // Find main file
-      const mainFile = files.find(f => f.isMain) || files[0];
+      const normalizedEntryPoint = String(entryPoint || '').replace(/\\/g, '/').replace(/^\/+/, '');
+      const mainFile =
+        (normalizedEntryPoint && files.find(f => f.name === normalizedEntryPoint)) ||
+        files.find(f => f.isMain) ||
+        files[0];
+
+      if (!mainFile) {
+        throw new Error('No entry file was provided for project execution');
+      }
       
       switch (language) {
         case 'javascript':
         case 'typescript':
-          return this.executeJSMulti(projectDir, mainFile.name);
+          return await this.executeJSMulti(projectDir, mainFile.name);
         case 'python':
-          return this.executePythonMulti(projectDir, mainFile.name);
+          return await this.executePythonMulti(projectDir, mainFile.name);
         case 'php':
-          return this.executePHPMulti(projectDir, mainFile.name);
+          return await this.executePHPMulti(projectDir, mainFile.name);
         case 'java':
+          return await this.executeJavaMulti(projectDir, files);
         case 'csharp':
-          return this.executeCSharpMulti(projectDir, files);
-          return this.executeJavaMulti(projectDir, files);
+          return await this.executeCSharpMulti(projectDir, files);
         default:
           throw new Error(`Multi-file not supported for: ${language}`);
       }
@@ -1211,32 +1246,83 @@ class SmartExecutor {
   }
   
   async executePythonMulti(projectDir, mainFile) {
-    const mainFilePath = path.join(projectDir, mainFile);
-    // Inject turtle shim into the main file if any .py file in the project
-    // imports turtle.  sys.modules is process-wide, so one injection in the
-    // entry point is enough for all files in the same run.
+    const mainFilePath = path.resolve(projectDir, mainFile);
+    const projectRoot = path.resolve(projectDir);
+
+    if (mainFilePath !== projectRoot && !mainFilePath.startsWith(projectRoot + path.sep)) {
+      throw new Error(`Invalid Python entry point: ${mainFile}`);
+    }
+    if (!fs.existsSync(mainFilePath) || !fs.statSync(mainFilePath).isFile()) {
+      throw new Error(`Python entry point was not written: ${mainFile}`);
+    }
+
     if (TURTLE_SHIM) {
       try {
-        const pyFiles = fs.readdirSync(projectDir).filter(f => f.endsWith('.py'));
-        const needsTurtle = pyFiles.some(f => {
-          try {
-            return hasTurtleImport(fs.readFileSync(path.join(projectDir, f), 'utf-8'));
-          } catch { return false; }
+        const pythonFiles = [];
+        const walk = dir => {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (entry.isFile() && entry.name.endsWith('.py')) pythonFiles.push(full);
+          }
+        };
+        walk(projectDir);
+
+        const needsTurtle = pythonFiles.some(filePath => {
+          try { return hasTurtleImport(fs.readFileSync(filePath, 'utf-8')); }
+          catch { return false; }
         });
+
         if (needsTurtle) {
-          const orig = fs.readFileSync(mainFilePath, 'utf-8');
-          fs.writeFileSync(mainFilePath, TURTLE_SHIM + '\n\n# ── user code ──\n' + orig);
+          const original = fs.readFileSync(mainFilePath, 'utf-8');
+          fs.writeFileSync(mainFilePath, TURTLE_SHIM + '\n\n# ── user code ──\n' + original);
         }
-      } catch (e) {
-        // Non-fatal: proceed without shim if anything goes wrong
+      } catch {
+        // Non-fatal: execute normally if turtle detection/injection fails.
       }
     }
-    return this.runProcess('python3', [
-      '-u', '-I',
-      mainFilePath
-    ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+
+    const mainDir = path.dirname(mainFilePath);
+
+    // Make every workspace folder importable. Moving a Python file into a
+    // folder must not make an existing bare import fail just because the
+    // module is no longer located beside the entry file. Keep the entry
+    // directory and project root first, then append every nested directory in
+    // deterministic order. This supports both:
+    //   from room1_signal_decoder import decode_signal
+    // and:
+    //   from New_Folder.room1_signal_decoder import decode_signal
+    const importDirs = [];
+    const collectImportDirs = dir => {
+      importDirs.push(path.resolve(dir));
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory() && entry.name !== '__pycache__') {
+          collectImportDirs(path.join(dir, entry.name));
+        }
+      }
+    };
+    collectImportDirs(projectDir);
+
+    const orderedImportDirs = Array.from(new Set([
+      mainDir,
+      projectRoot,
+      ...importDirs.sort((a, b) => a.localeCompare(b)),
+    ]));
+
+    const bootstrap = [
+      'import runpy, sys',
+      `sys.path[:0] = ${JSON.stringify(orderedImportDirs)}`,
+      `runpy.run_path(${JSON.stringify(mainFilePath)}, run_name="__main__")`,
+    ].join('\n');
+
+    return await this.runProcess(
+      'python3',
+      ['-u', '-I', '-S', '-B', '-c', bootstrap],
+      CONFIG.execution.timeoutMs,
+      { cwd: projectDir }
+    );
   }
-  
+
   async executePHPMulti(projectDir, mainFile) {
     return this.runProcess('php', [
       '-d', 'open_basedir=' + projectDir,
@@ -1688,6 +1774,285 @@ class RateLimiter {
 }
 
 // ============================================
+// SHAREABLE HTML PREVIEW STORE
+// ============================================
+const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
+const PREVIEW_FILE_PATTERN = /^[A-Za-z0-9_-]{22}\.html$/;
+const PREVIEW_REQUIRED_HEADER = "x-browser-coder-preview";
+const PREVIEW_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline' data: blob:",
+  "style-src 'unsafe-inline' data: blob:",
+  "img-src data: blob:",
+  "font-src data: blob:",
+  "media-src data: blob:",
+  "connect-src 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "child-src 'none'",
+  "worker-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'",
+].join("; ");
+
+const previewPublishWindows = new Map();
+let previewWriteQueue = Promise.resolve();
+
+function ensurePreviewStorageDir() {
+  fs.mkdirSync(CONFIG.preview.storageDir, {
+    recursive: true,
+    mode: 0o700,
+  });
+
+  fs.accessSync(
+    CONFIG.preview.storageDir,
+    fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK,
+  );
+}
+
+function previewFilePath(previewId) {
+  if (!PREVIEW_ID_PATTERN.test(previewId)) return null;
+  return path.join(CONFIG.preview.storageDir, `${previewId}.html`);
+}
+
+function createPreviewId() {
+  // 128 random bits encoded as 22 URL-safe characters.
+  return crypto.randomBytes(16).toString("base64url");
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function injectPreviewCsp(html) {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${escapeHtmlAttribute(PREVIEW_CSP)}">`;
+
+  if (/<head(?:\s[^>]*)?>/i.test(html)) {
+    return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${meta}`);
+  }
+
+  if (/<html(?:\s[^>]*)?>/i.test(html)) {
+    return html.replace(
+      /<html(?:\s[^>]*)?>/i,
+      match => `${match}\n<head>${meta}</head>`,
+    );
+  }
+
+  return `<!doctype html><html><head>${meta}</head><body>${html}</body></html>`;
+}
+
+function buildPreviewShell(html) {
+  const securedHtml = injectPreviewCsp(html);
+  const escapedHtml = escapeHtmlAttribute(securedHtml);
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Browser Coder Preview</title>
+  <style>
+    html,body,iframe{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#fff}
+  </style>
+</head>
+<body>
+  <iframe
+    title="Browser Coder website preview"
+    sandbox="allow-scripts allow-modals"
+    referrerpolicy="no-referrer"
+    srcdoc="${escapedHtml}"
+  ></iframe>
+</body>
+</html>`;
+}
+
+function getPreviewPublishKey(req) {
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+function consumePreviewPublishQuota(req) {
+  const now = Date.now();
+  const key = getPreviewPublishKey(req);
+  const existing = previewPublishWindows.get(key);
+
+  if (!existing || now >= existing.resetAt) {
+    previewPublishWindows.set(key, {
+      count: 1,
+      resetAt: now + 60_000,
+    });
+    return { allowed: true, remaining: CONFIG.preview.publishesPerMinute - 1 };
+  }
+
+  existing.count += 1;
+  return {
+    allowed: existing.count <= CONFIG.preview.publishesPerMinute,
+    remaining: Math.max(0, CONFIG.preview.publishesPerMinute - existing.count),
+    retryAfter: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
+  };
+}
+
+function isTrustedPreviewPublishRequest(req) {
+  if (req.get(PREVIEW_REQUIRED_HEADER) !== "1") return false;
+
+  const fetchSite = req.get("Sec-Fetch-Site");
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    return false;
+  }
+
+  const origin = req.get("Origin");
+  if (!origin) return true;
+
+  try {
+    const parsed = new URL(origin);
+    const requestHost = String(req.get("host") || "").toLowerCase();
+    if (parsed.host.toLowerCase() === requestHost) return true;
+  } catch {
+    return false;
+  }
+
+  return isAllowedOrigin(origin);
+}
+
+async function listPreviewFiles() {
+  ensurePreviewStorageDir();
+  const entries = await fs.promises.readdir(CONFIG.preview.storageDir, {
+    withFileTypes: true,
+  });
+
+  const files = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !PREVIEW_FILE_PATTERN.test(entry.name)) continue;
+
+    const filePath = path.join(CONFIG.preview.storageDir, entry.name);
+    try {
+      const stat = await fs.promises.stat(filePath);
+      files.push({
+        name: entry.name,
+        path: filePath,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+      });
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+
+  return files;
+}
+
+async function enforcePreviewStorageLimits(requiredBytes = 0) {
+  const expiresBefore = Date.now() - CONFIG.preview.ttlMs;
+  let files = await listPreviewFiles();
+
+  await Promise.allSettled(
+    files
+      .filter(file => file.mtimeMs < expiresBefore)
+      .map(file => fs.promises.unlink(file.path)),
+  );
+
+  files = await listPreviewFiles();
+  files.sort((a, b) => a.mtimeMs - b.mtimeMs);
+
+  let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+
+  while (
+    files.length > 0 &&
+    (
+      files.length >= CONFIG.preview.maxFiles ||
+      totalBytes + requiredBytes > CONFIG.preview.maxStorageBytes
+    )
+  ) {
+    const oldest = files.shift();
+    try {
+      await fs.promises.unlink(oldest.path);
+      totalBytes -= oldest.size;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+
+  if (
+    files.length >= CONFIG.preview.maxFiles ||
+    totalBytes + requiredBytes > CONFIG.preview.maxStorageBytes
+  ) {
+    const error = new Error("Preview storage capacity reached");
+    error.code = "ENOSPC";
+    throw error;
+  }
+}
+
+function withPreviewWriteLock(operation) {
+  const queued = previewWriteQueue.then(operation, operation);
+  previewWriteQueue = queued.catch(() => {});
+  return queued;
+}
+
+async function writeImmutablePreview(html) {
+  const htmlBytes = Buffer.byteLength(html, "utf8");
+
+  return withPreviewWriteLock(async () => {
+    ensurePreviewStorageDir();
+    await enforcePreviewStorageLimits(htmlBytes);
+
+    // "wx" ensures an existing user's preview can never be overwritten.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const previewId = createPreviewId();
+      const filePath = previewFilePath(previewId);
+
+      try {
+        await fs.promises.writeFile(filePath, html, {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        });
+        return previewId;
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+      }
+    }
+
+    throw new Error("Could not allocate a unique preview ID");
+  });
+}
+
+async function cleanupExpiredPreviews() {
+  try {
+    await withPreviewWriteLock(() => enforcePreviewStorageLimits(0));
+  } catch (error) {
+    log("warn", "preview_cleanup_failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+let previewStorageReady = false;
+try {
+  ensurePreviewStorageDir();
+  previewStorageReady = true;
+} catch (error) {
+  log("error", "preview_storage_startup_failed", {
+    path: CONFIG.preview.storageDir,
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
+
+const previewCleanupTimer = setInterval(() => {
+  if (previewStorageReady) void cleanupExpiredPreviews();
+
+  const now = Date.now();
+  for (const [key, window] of previewPublishWindows) {
+    if (now >= window.resetAt) previewPublishWindows.delete(key);
+  }
+}, CONFIG.preview.cleanupIntervalMs);
+previewCleanupTimer.unref?.();
+if (previewStorageReady) void cleanupExpiredPreviews();
+
+// ============================================
 // SERVER SETUP
 // ============================================
 const app = express();
@@ -1727,6 +2092,12 @@ async function loadLanguageConfigs() {
 // Middleware
 app.set("trust proxy", true);
 app.use(compression());
+
+// Only preview publishing receives the larger request-body allowance.
+app.use(
+  "/api/previews",
+  express.json({ limit: CONFIG.preview.maxHtmlBytes }),
+);
 app.use(express.json({ limit: "100kb" }));
 
 // Request ID
@@ -1749,6 +2120,8 @@ const ALLOWED_ORIGINS = [
   'https://step-up.co.il',
   'https://www.stepup.school',
   'https://www.step-up.co.il',
+    'https://arc.co',
+     'https://www.arc.co',
   // Development / staging
   'http://stepup.local',
   'https://staging.stepup.school',
@@ -1795,7 +2168,7 @@ app.use("/api", (req, res, next) => {
   }
   
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Browser-Coder-Preview");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   
   if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -1862,6 +2235,128 @@ app.get("/health", (req, res) => {
 });
 
 // Get languages
+// Short shareable previews are published through POST /api/previews.
+// Publish an immutable shareable preview.
+app.post("/api/previews", async (req, res) => {
+  if (!previewStorageReady) {
+    return res.status(503).json({
+      error: "Preview storage is unavailable. Configure PREVIEW_STORAGE_DIR as a writable persistent volume.",
+    });
+  }
+
+  if (!isTrustedPreviewPublishRequest(req)) {
+    return res.status(403).json({
+      error: "Preview publishing request was rejected.",
+    });
+  }
+
+  const publishQuota = consumePreviewPublishQuota(req);
+  res.setHeader("X-Preview-RateLimit-Limit", CONFIG.preview.publishesPerMinute);
+  res.setHeader("X-Preview-RateLimit-Remaining", publishQuota.remaining);
+
+  if (!publishQuota.allowed) {
+    res.setHeader("Retry-After", publishQuota.retryAfter);
+    return res.status(429).json({
+      error: "Too many preview publishes. Please wait before publishing again.",
+      retryAfter: publishQuota.retryAfter,
+    });
+  }
+
+  const html = typeof req.body?.html === "string" ? req.body.html : "";
+  const entryPath =
+    typeof req.body?.entryPath === "string"
+      ? req.body.entryPath.slice(0, 500)
+      : "index.html";
+
+  if (!html.trim()) {
+    return res.status(400).json({ error: "Preview HTML is required" });
+  }
+
+  const htmlBytes = Buffer.byteLength(html, "utf8");
+  if (htmlBytes > CONFIG.preview.maxHtmlBytes) {
+    return res.status(413).json({
+      error: `Preview is too large. Maximum size is ${CONFIG.preview.maxHtmlBytes} bytes.`,
+    });
+  }
+
+  try {
+    const previewId = await writeImmutablePreview(html);
+    const previewPath = `/preview/${previewId}`;
+
+    return res.status(201).json({
+      id: previewId,
+      entryPath,
+      previewPath,
+      previewUrl: previewPath,
+      expiresAt: new Date(Date.now() + CONFIG.preview.ttlMs).toISOString(),
+    });
+  } catch (error) {
+    log("error", "Failed to publish preview", {
+      requestId: req.id,
+      error: error.message,
+    });
+
+    if (error?.code === "ENOSPC") {
+      return res.status(507).json({
+        error: "Preview storage is full. Please try again later.",
+      });
+    }
+
+    return res.status(500).json({ error: "Could not publish preview" });
+  }
+});
+
+// Serve the preview through a real URL while isolating student code.
+app.get("/preview/:previewId", async (req, res) => {
+  if (!previewStorageReady) {
+    return res.status(503).type("text/plain").send("Preview storage is unavailable");
+  }
+
+  const filePath = previewFilePath(req.params.previewId);
+  if (!filePath) {
+    return res.status(404).type("text/plain").send("Preview not found");
+  }
+
+  try {
+    const stat = await fs.promises.stat(filePath);
+
+    if (Date.now() - stat.mtimeMs > CONFIG.preview.ttlMs) {
+      await fs.promises.unlink(filePath).catch(() => {});
+      return res.status(410).type("text/plain").send("This preview has expired");
+    }
+
+    const html = await fs.promises.readFile(filePath, "utf8");
+
+    res.setHeader("Cache-Control", "public, max-age=300, immutable");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    res.setHeader(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), display-capture=(), clipboard-read=(), clipboard-write=()",
+    );
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self' data: blob:; child-src 'self' data: blob:; base-uri 'none'; form-action 'none'; frame-ancestors *",
+    );
+
+    return res.status(200).type("html").send(buildPreviewShell(html));
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return res.status(404).type("text/plain").send("Preview not found");
+    }
+
+    log("error", "Failed to load preview", {
+      requestId: req.id,
+      previewId: req.params.previewId,
+      error: error.message,
+    });
+    return res.status(500).type("text/plain").send("Could not load preview");
+  }
+});
+
 app.get("/api/languages", async (req, res) => {
   try {
     const languages = await loadLanguageConfigs();
@@ -1909,11 +2404,12 @@ app.post("/api/run", async (req, res) => {
   // Support both single-file (code) and multi-file (files) modes
   let codeToRun = code;
   let allFiles = null;
+  let selectedEntryPoint = null;
   
   if (files && Array.isArray(files) && files.length > 0) {
     // Normalize file shape: accept { path } or { name }
     const normalized = files.map(f => ({
-      name: f.path || f.name,
+      name: String(f.path || f.name || '').replace(/\\/g, '/').replace(/^\/+/, ''),
       content: typeof f.content === 'string' ? f.content : '',
       language: f.language,
       isMain: !!f.isMain,
@@ -1954,20 +2450,31 @@ app.post("/api/run", async (req, res) => {
       }
     }
     
-    // Determine entry point: explicit entryPoint > isMain flag > first file
-    let mainFile = null;
-    if (entryPoint) {
-      mainFile = normalized.find(f => f.name === entryPoint);
-      if (!mainFile) {
-        return res.status(400).json({ error: `entryPoint "${entryPoint}" not found in files` });
-      }
-      mainFile.isMain = true;
-    } else {
-      mainFile = normalized.find(f => f.isMain) || normalized[0];
-      mainFile.isMain = true;
+    // Determine entry point once and keep it in route scope. Do not keep a
+    // block-scoped `mainFile` and reference it later after this branch.
+    const requestedEntryPoint = String(entryPoint || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '');
+
+    const selectedMainFile = requestedEntryPoint
+      ? normalized.find(file => file.name === requestedEntryPoint)
+      : (normalized.find(file => file.isMain) || normalized[0]);
+
+    if (!selectedMainFile) {
+      return res.status(400).json({ error: 'No entry file was provided' });
     }
-    
-    codeToRun = mainFile.content;
+    if (requestedEntryPoint && selectedMainFile.name !== requestedEntryPoint) {
+      return res.status(400).json({ error: `entryPoint "${entryPoint}" not found in files` });
+    }
+
+    // Ensure exactly one file is marked as the entry file. This prevents a
+    // stale isMain flag from overriding the active file in Java/C# executors.
+    for (const file of normalized) {
+      file.isMain = file.name === selectedMainFile.name;
+    }
+
+    selectedEntryPoint = selectedMainFile.name;
+    codeToRun = selectedMainFile.content;
     allFiles = normalized;
   } else if (code) {
     // Single-file mode (backward compatible)
@@ -1995,8 +2502,8 @@ app.post("/api/run", async (req, res) => {
   
   try {
     // Pass allFiles to executor for multi-file support (if supported)
-    const result = allFiles 
-      ? await executor.executeMulti(language, version, allFiles)
+    const result = allFiles
+      ? await executor.executeMulti(language, version, allFiles, selectedEntryPoint)
       : await executor.execute(language, version, codeToRun);
     
     res.json({
@@ -2188,6 +2695,7 @@ if (!CONFIG.isDev) {
 // ============================================
 function gracefulShutdown(signal) {
   log('info', `Received ${signal}, shutting down gracefully...`);
+  clearInterval(previewCleanupTimer);
   
   server.close(() => {
     log('info', 'HTTP server closed');
