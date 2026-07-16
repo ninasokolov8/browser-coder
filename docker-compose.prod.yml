@@ -41,26 +41,9 @@ services:
   preview-storage-init:
     image: busybox:1.36
     user: "0:0"
-    command:
-      - sh
-      - -c
-      - |
-        mkdir -p /preview-data
-        chown -R 1001:1001 /preview-data
-        chmod 770 /preview-data
+    command: ["sh", "-c", "mkdir -p /preview-data && chown -R 1001:1001 /preview-data && chmod 770 /preview-data"]
     volumes:
       - browser_coder_previews:/preview-data
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=8M
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - FOWNER
     restart: "no"
     networks:
       - internal
@@ -70,6 +53,7 @@ services:
   # ============================================
   api:
     image: ghcr.io/ninasokolov8/browser-coder:latest
+    pull_policy: always
     build:
       context: .
       dockerfile: Dockerfile.production

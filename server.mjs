@@ -794,14 +794,10 @@ const CONFIG = {
 
   // Immutable, shareable HTML previews.
   preview: {
-    // 512 KiB is enough for bundled classroom websites while limiting abuse.
-    maxHtmlBytes: parseInt(process.env.PREVIEW_MAX_BYTES || String(512 * 1024), 10),
-    ttlMs: parseInt(process.env.PREVIEW_TTL_MS || String(7 * 24 * 60 * 60 * 1000), 10),
-    cleanupIntervalMs: parseInt(process.env.PREVIEW_CLEANUP_INTERVAL_MS || String(30 * 60 * 1000), 10),
-    storageDir: process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), "browser-coder-previews"),
-    maxStorageBytes: parseInt(process.env.PREVIEW_MAX_STORAGE_BYTES || String(1024 * 1024 * 1024), 10),
-    maxFiles: parseInt(process.env.PREVIEW_MAX_FILES || "50000", 10),
-    publishesPerMinute: parseInt(process.env.PREVIEW_PUBLISHES_PER_MINUTE || "10", 10),
+    maxHtmlBytes: parseInt(process.env.PREVIEW_MAX_BYTES || String(5 * 1024 * 1024), 10),
+    ttlMs: parseInt(process.env.PREVIEW_TTL_MS || String(30 * 24 * 60 * 60 * 1000), 10),
+    cleanupIntervalMs: parseInt(process.env.PREVIEW_CLEANUP_INTERVAL_MS || String(60 * 60 * 1000), 10),
+    storageDir:   process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), "browser-coder-previews"),
   },
 };
 
@@ -1777,37 +1773,23 @@ class RateLimiter {
 // SHAREABLE HTML PREVIEW STORE
 // ============================================
 const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
-const PREVIEW_FILE_PATTERN = /^[A-Za-z0-9_-]{22}\.html$/;
-const PREVIEW_REQUIRED_HEADER = "x-browser-coder-preview";
-const PREVIEW_CSP = [
-  "default-src 'none'",
-  "script-src 'unsafe-inline' data: blob:",
-  "style-src 'unsafe-inline' data: blob:",
-  "img-src data: blob:",
-  "font-src data: blob:",
-  "media-src data: blob:",
-  "connect-src 'none'",
-  "object-src 'none'",
-  "frame-src 'none'",
-  "child-src 'none'",
-  "worker-src 'none'",
-  "form-action 'none'",
-  "base-uri 'none'",
-].join("; ");
-
-const previewPublishWindows = new Map();
-let previewWriteQueue = Promise.resolve();
 
 function ensurePreviewStorageDir() {
-  fs.mkdirSync(CONFIG.preview.storageDir, {
-    recursive: true,
-    mode: 0o700,
-  });
+  try {
+    fs.mkdirSync(CONFIG.preview.storageDir, {
+      recursive: true,
+      mode: 0o700,
+    });
+  } catch (error) {
+    log("error", "preview_storage_unavailable", {
+      path: CONFIG.preview.storageDir,
+      error: error.message,
+    });
 
-  fs.accessSync(
-    CONFIG.preview.storageDir,
-    fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK,
-  );
+    throw new Error(
+      `Preview storage is not writable: ${CONFIG.preview.storageDir}`
+    );
+  }
 }
 
 function previewFilePath(previewId) {
@@ -1816,7 +1798,7 @@ function previewFilePath(previewId) {
 }
 
 function createPreviewId() {
-  // 128 random bits encoded as 22 URL-safe characters.
+  // 160 random bits encoded as 27 URL-safe characters.
   return crypto.randomBytes(16).toString("base64url");
 }
 
@@ -1828,26 +1810,8 @@ function escapeHtmlAttribute(value) {
     .replace(/>/g, "&gt;");
 }
 
-function injectPreviewCsp(html) {
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${escapeHtmlAttribute(PREVIEW_CSP)}">`;
-
-  if (/<head(?:\s[^>]*)?>/i.test(html)) {
-    return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${meta}`);
-  }
-
-  if (/<html(?:\s[^>]*)?>/i.test(html)) {
-    return html.replace(
-      /<html(?:\s[^>]*)?>/i,
-      match => `${match}\n<head>${meta}</head>`,
-    );
-  }
-
-  return `<!doctype html><html><head>${meta}</head><body>${html}</body></html>`;
-}
-
 function buildPreviewShell(html) {
-  const securedHtml = injectPreviewCsp(html);
-  const escapedHtml = escapeHtmlAttribute(securedHtml);
+  const escapedHtml = escapeHtmlAttribute(html);
 
   return `<!doctype html>
 <html>
@@ -1863,7 +1827,7 @@ function buildPreviewShell(html) {
 <body>
   <iframe
     title="Browser Coder website preview"
-    sandbox="allow-scripts allow-modals"
+    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads"
     referrerpolicy="no-referrer"
     srcdoc="${escapedHtml}"
   ></iframe>
@@ -1871,163 +1835,56 @@ function buildPreviewShell(html) {
 </html>`;
 }
 
-function getPreviewPublishKey(req) {
-  return req.ip || req.socket?.remoteAddress || "unknown";
-}
-
-function consumePreviewPublishQuota(req) {
-  const now = Date.now();
-  const key = getPreviewPublishKey(req);
-  const existing = previewPublishWindows.get(key);
-
-  if (!existing || now >= existing.resetAt) {
-    previewPublishWindows.set(key, {
-      count: 1,
-      resetAt: now + 60_000,
-    });
-    return { allowed: true, remaining: CONFIG.preview.publishesPerMinute - 1 };
-  }
-
-  existing.count += 1;
-  return {
-    allowed: existing.count <= CONFIG.preview.publishesPerMinute,
-    remaining: Math.max(0, CONFIG.preview.publishesPerMinute - existing.count),
-    retryAfter: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
-  };
-}
-
-function isTrustedPreviewPublishRequest(req) {
-  if (req.get(PREVIEW_REQUIRED_HEADER) !== "1") return false;
-
-  const fetchSite = req.get("Sec-Fetch-Site");
-  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
-    return false;
-  }
-
-  const origin = req.get("Origin");
-  if (!origin) return true;
-
-  try {
-    const parsed = new URL(origin);
-    const requestHost = String(req.get("host") || "").toLowerCase();
-    if (parsed.host.toLowerCase() === requestHost) return true;
-  } catch {
-    return false;
-  }
-
-  return isAllowedOrigin(origin);
-}
-
-async function listPreviewFiles() {
-  ensurePreviewStorageDir();
-  const entries = await fs.promises.readdir(CONFIG.preview.storageDir, {
-    withFileTypes: true,
-  });
-
-  const files = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !PREVIEW_FILE_PATTERN.test(entry.name)) continue;
-
-    const filePath = path.join(CONFIG.preview.storageDir, entry.name);
-    try {
-      const stat = await fs.promises.stat(filePath);
-      files.push({
-        name: entry.name,
-        path: filePath,
-        size: stat.size,
-        mtimeMs: stat.mtimeMs,
-      });
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
-    }
-  }
-
-  return files;
-}
-
-async function enforcePreviewStorageLimits(requiredBytes = 0) {
-  const expiresBefore = Date.now() - CONFIG.preview.ttlMs;
-  let files = await listPreviewFiles();
-
-  await Promise.allSettled(
-    files
-      .filter(file => file.mtimeMs < expiresBefore)
-      .map(file => fs.promises.unlink(file.path)),
-  );
-
-  files = await listPreviewFiles();
-  files.sort((a, b) => a.mtimeMs - b.mtimeMs);
-
-  let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-
-  while (
-    files.length > 0 &&
-    (
-      files.length >= CONFIG.preview.maxFiles ||
-      totalBytes + requiredBytes > CONFIG.preview.maxStorageBytes
-    )
-  ) {
-    const oldest = files.shift();
-    try {
-      await fs.promises.unlink(oldest.path);
-      totalBytes -= oldest.size;
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
-    }
-  }
-
-  if (
-    files.length >= CONFIG.preview.maxFiles ||
-    totalBytes + requiredBytes > CONFIG.preview.maxStorageBytes
-  ) {
-    const error = new Error("Preview storage capacity reached");
-    error.code = "ENOSPC";
-    throw error;
-  }
-}
-
-function withPreviewWriteLock(operation) {
-  const queued = previewWriteQueue.then(operation, operation);
-  previewWriteQueue = queued.catch(() => {});
-  return queued;
-}
-
 async function writeImmutablePreview(html) {
-  const htmlBytes = Buffer.byteLength(html, "utf8");
+  ensurePreviewStorageDir();
 
-  return withPreviewWriteLock(async () => {
-    ensurePreviewStorageDir();
-    await enforcePreviewStorageLimits(htmlBytes);
+  // "wx" guarantees that an existing preview is never overwritten.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const previewId = createPreviewId();
+    const filePath = previewFilePath(previewId);
 
-    // "wx" ensures an existing user's preview can never be overwritten.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const previewId = createPreviewId();
-      const filePath = previewFilePath(previewId);
-
-      try {
-        await fs.promises.writeFile(filePath, html, {
-          encoding: "utf8",
-          flag: "wx",
-          mode: 0o600,
-        });
-        return previewId;
-      } catch (error) {
-        if (error?.code !== "EEXIST") throw error;
-      }
+    try {
+      await fs.promises.writeFile(filePath, html, {
+        encoding: "utf8",
+        flag: "wx",
+        mode: 0o600,
+      });
+      return previewId;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
     }
+  }
 
-    throw new Error("Could not allocate a unique preview ID");
-  });
+  throw new Error("Could not allocate a unique preview ID");
 }
 
 async function cleanupExpiredPreviews() {
+  ensurePreviewStorageDir();
+  const expiresBefore = Date.now() - CONFIG.preview.ttlMs;
+
+  let entries;
   try {
-    await withPreviewWriteLock(() => enforcePreviewStorageLimits(0));
-  } catch (error) {
-    log("warn", "preview_cleanup_failed", {
-      error: error instanceof Error ? error.message : String(error),
+    entries = await fs.promises.readdir(CONFIG.preview.storageDir, {
+      withFileTypes: true,
     });
+  } catch (error) {
+    log("warn", "Preview cleanup could not read storage", {
+      error: error.message,
+    });
+    return;
   }
+
+  await Promise.allSettled(
+    entries
+      .filter(entry => entry.isFile() && /^[A-Za-z0-9_-]{22}\.html$/.test(entry.name))
+      .map(async entry => {
+        const filePath = path.join(CONFIG.preview.storageDir, entry.name);
+        const stat = await fs.promises.stat(filePath);
+        if (stat.mtimeMs < expiresBefore) {
+          await fs.promises.unlink(filePath);
+        }
+      }),
+  );
 }
 
 let previewStorageReady = false;
@@ -2043,11 +1900,6 @@ try {
 
 const previewCleanupTimer = setInterval(() => {
   if (previewStorageReady) void cleanupExpiredPreviews();
-
-  const now = Date.now();
-  for (const [key, window] of previewPublishWindows) {
-    if (now >= window.resetAt) previewPublishWindows.delete(key);
-  }
 }, CONFIG.preview.cleanupIntervalMs);
 previewCleanupTimer.unref?.();
 if (previewStorageReady) void cleanupExpiredPreviews();
@@ -2168,7 +2020,7 @@ app.use("/api", (req, res, next) => {
   }
   
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Browser-Coder-Preview");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   
   if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -2244,24 +2096,6 @@ app.post("/api/previews", async (req, res) => {
     });
   }
 
-  if (!isTrustedPreviewPublishRequest(req)) {
-    return res.status(403).json({
-      error: "Preview publishing request was rejected.",
-    });
-  }
-
-  const publishQuota = consumePreviewPublishQuota(req);
-  res.setHeader("X-Preview-RateLimit-Limit", CONFIG.preview.publishesPerMinute);
-  res.setHeader("X-Preview-RateLimit-Remaining", publishQuota.remaining);
-
-  if (!publishQuota.allowed) {
-    res.setHeader("Retry-After", publishQuota.retryAfter);
-    return res.status(429).json({
-      error: "Too many preview publishes. Please wait before publishing again.",
-      retryAfter: publishQuota.retryAfter,
-    });
-  }
-
   const html = typeof req.body?.html === "string" ? req.body.html : "";
   const entryPath =
     typeof req.body?.entryPath === "string"
@@ -2287,6 +2121,8 @@ app.post("/api/previews", async (req, res) => {
       id: previewId,
       entryPath,
       previewPath,
+      // Keep this relative. The browser resolves it against the actual public
+      // coder origin, even when nginx/reverse-proxy host headers differ.
       previewUrl: previewPath,
       expiresAt: new Date(Date.now() + CONFIG.preview.ttlMs).toISOString(),
     });
@@ -2295,13 +2131,6 @@ app.post("/api/previews", async (req, res) => {
       requestId: req.id,
       error: error.message,
     });
-
-    if (error?.code === "ENOSPC") {
-      return res.status(507).json({
-        error: "Preview storage is full. Please try again later.",
-      });
-    }
-
     return res.status(500).json({ error: "Could not publish preview" });
   }
 });
@@ -2331,12 +2160,6 @@ app.get("/preview/:previewId", async (req, res) => {
     res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
-    res.setHeader(
-      "Permissions-Policy",
-      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), display-capture=(), clipboard-read=(), clipboard-write=()",
-    );
     res.setHeader(
       "Content-Security-Policy",
       "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self' data: blob:; child-src 'self' data: blob:; base-uri 'none'; form-action 'none'; frame-ancestors *",
@@ -2679,13 +2502,68 @@ if (!fs.existsSync(reportsPath)) {
 }
 app.use("/reports", express.static(reportsPath, { index: 'index.html' }));
 
-// Serve static files in production
+// Serve static files in production.
+//
+// Important:
+// - Hashed Vite assets must either return the real file or a real 404.
+// - They must never fall through to index.html, otherwise browsers receive
+//   text/html for JavaScript/CSS and report MIME-type/preload failures.
+// - index.html is not cached so a deployment cannot leave users with an old
+//   HTML document that references assets removed by the new image.
 if (!CONFIG.isDev) {
   const distPath = path.join(__dirname, "dist");
+
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    const assetsPath = path.join(distPath, "assets");
+
+    app.use(
+      "/assets",
+      express.static(assetsPath, {
+        fallthrough: false,
+        index: false,
+        immutable: true,
+        maxAge: "1y",
+        setHeaders(res) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+        },
+      }),
+    );
+
+    app.get(["/", "/index.html"], (req, res) => {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.sendFile(path.join(distPath, "index.html"));
+    });
+
+    app.use(
+      express.static(distPath, {
+        fallthrough: true,
+        index: false,
+        maxAge: 0,
+        setHeaders(res, filePath) {
+          if (filePath.endsWith(".html")) {
+            res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+          }
+        },
+      }),
+    );
+
+    // SPA fallback is only for navigation routes. Requests that look like
+    // files receive a real 404 instead of index.html.
+    app.get("*", (req, res, next) => {
+      if (path.extname(req.path)) return next();
+
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      return res.sendFile(path.join(distPath, "index.html"));
+    });
+
+    app.use((req, res, next) => {
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      return res.status(404).type("text/plain").send("Static asset not found");
     });
   }
 }
