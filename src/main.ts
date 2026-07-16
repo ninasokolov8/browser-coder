@@ -3415,14 +3415,35 @@ function applyTheme(theme: string) {
     startRunLoader();
 
     try {
+      let requestBody: Record<string, unknown> = {
+        language: lang.id,
+        version: activeTab.file.version,
+        code,
+      };
+
+      // In full/project mode, execute the complete workspace. The API already
+      // supports files[] + entryPoint; this makes imports between local files
+      // work while keeping snippet mode fully backward compatible.
+      if (ideMode === 'full') {
+        const workspaceFiles = await collectWorkspaceSnapshot();
+        const languageFiles = workspaceFiles.filter(file =>
+          !file.language || file.language === lang.id
+        );
+
+        if (languageFiles.length > 0) {
+          requestBody = {
+            language: lang.id,
+            version: activeTab.file.version,
+            files: languageFiles,
+            entryPoint: activeTab.file.path.replace(/^\/+/, ''),
+          };
+        }
+      }
+
       const resp = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: lang.id,
-          version: activeTab.file.version,
-          code,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const raw = await resp.text();
