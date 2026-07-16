@@ -795,9 +795,11 @@ const CONFIG = {
   // Immutable, shareable HTML previews.
   preview: {
     maxHtmlBytes: parseInt(process.env.PREVIEW_MAX_BYTES || String(5 * 1024 * 1024), 10),
+    maxFileCount: parseInt(process.env.PREVIEW_MAX_FILES || "250", 10),
+    maxPathChars: parseInt(process.env.PREVIEW_MAX_PATH_CHARS || "500", 10),
     ttlMs: parseInt(process.env.PREVIEW_TTL_MS || String(30 * 24 * 60 * 60 * 1000), 10),
     cleanupIntervalMs: parseInt(process.env.PREVIEW_CLEANUP_INTERVAL_MS || String(60 * 60 * 1000), 10),
-    storageDir:   process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), "browser-coder-previews"),
+    storageDir: process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), "browser-coder-previews"),
   },
 };
 
@@ -1770,9 +1772,44 @@ class RateLimiter {
 }
 
 // ============================================
-// SHAREABLE HTML PREVIEW STORE
+// SHAREABLE MULTI-FILE WEB PREVIEW STORE
 // ============================================
 const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
+const PREVIEW_MANIFEST_NAME = ".browser-coder-preview.json";
+const PREVIEW_TEXT_MIME_TYPES = new Map([
+  [".html", "text/html; charset=utf-8"],
+  [".htm", "text/html; charset=utf-8"],
+  [".css", "text/css; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".mjs", "text/javascript; charset=utf-8"],
+  [".cjs", "text/javascript; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".map", "application/json; charset=utf-8"],
+  [".svg", "image/svg+xml; charset=utf-8"],
+  [".xml", "application/xml; charset=utf-8"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".md", "text/markdown; charset=utf-8"],
+  [".csv", "text/csv; charset=utf-8"],
+]);
+const PREVIEW_BINARY_MIME_TYPES = new Map([
+  [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".gif", "image/gif"],
+  [".webp", "image/webp"],
+  [".ico", "image/x-icon"],
+  [".avif", "image/avif"],
+  [".woff", "font/woff"],
+  [".woff2", "font/woff2"],
+  [".ttf", "font/ttf"],
+  [".otf", "font/otf"],
+  [".mp3", "audio/mpeg"],
+  [".wav", "audio/wav"],
+  [".ogg", "audio/ogg"],
+  [".mp4", "video/mp4"],
+  [".webm", "video/webm"],
+  [".pdf", "application/pdf"],
+]);
 
 function ensurePreviewStorageDir() {
   try {
@@ -1792,14 +1829,114 @@ function ensurePreviewStorageDir() {
   }
 }
 
-function previewFilePath(previewId) {
+function previewDirectoryPath(previewId) {
+  if (!PREVIEW_ID_PATTERN.test(previewId)) return null;
+  return path.join(CONFIG.preview.storageDir, previewId);
+}
+
+function previewManifestPath(previewId) {
+  const directory = previewDirectoryPath(previewId);
+  return directory ? path.join(directory, PREVIEW_MANIFEST_NAME) : null;
+}
+
+function legacyPreviewFilePath(previewId) {
   if (!PREVIEW_ID_PATTERN.test(previewId)) return null;
   return path.join(CONFIG.preview.storageDir, `${previewId}.html`);
 }
 
 function createPreviewId() {
-  // 160 random bits encoded as 27 URL-safe characters.
+  // 128 random bits encoded as 22 URL-safe characters.
   return crypto.randomBytes(16).toString("base64url");
+}
+
+function normalizePreviewProjectPath(value) {
+  if (typeof value !== "string") return null;
+
+  const slashPath = value.replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!slashPath || slashPath.length > CONFIG.preview.maxPathChars) return null;
+  if (slashPath.includes("\0")) return null;
+
+  const originalSegments = slashPath.split("/");
+  if (originalSegments.some(segment => segment === "..")) return null;
+
+  const normalized = path.posix.normalize(slashPath).replace(/^\.\//, "");
+  if (!normalized || normalized === "." || normalized.startsWith("../")) return null;
+  if (path.posix.isAbsolute(normalized)) return null;
+
+  return normalized;
+}
+
+function validatePreviewProject(rawFiles, rawEntryPath) {
+  if (!Array.isArray(rawFiles) || rawFiles.length === 0) {
+    throw new Error("Preview project files are required");
+  }
+
+  if (rawFiles.length > CONFIG.preview.maxFileCount) {
+    throw new Error(`Preview contains too many files. Maximum is ${CONFIG.preview.maxFileCount}`);
+  }
+
+  const filesByPath = new Map();
+  let totalBytes = 0;
+
+  for (const rawFile of rawFiles) {
+    const filePath = normalizePreviewProjectPath(rawFile?.path);
+    if (!filePath) {
+      throw new Error(`Invalid preview file path: ${String(rawFile?.path || "")}`);
+    }
+
+    if (filesByPath.has(filePath)) {
+      throw new Error(`Duplicate preview file path: ${filePath}`);
+    }
+
+    const content = typeof rawFile?.content === "string" ? rawFile.content : "";
+    totalBytes += Buffer.byteLength(filePath, "utf8");
+    totalBytes += Buffer.byteLength(content, "utf8");
+
+    if (totalBytes > CONFIG.preview.maxHtmlBytes) {
+      throw new Error(
+        `Preview is too large. Maximum project size is ${CONFIG.preview.maxHtmlBytes} bytes`,
+      );
+    }
+
+    filesByPath.set(filePath, {
+      path: filePath,
+      content,
+      language: typeof rawFile?.language === "string"
+        ? rawFile.language.slice(0, 100)
+        : undefined,
+    });
+  }
+
+  const entryPath = normalizePreviewProjectPath(rawEntryPath || "index.html");
+  if (!entryPath || !filesByPath.has(entryPath)) {
+    throw new Error("The preview entry HTML file was not included in the project");
+  }
+
+  if (!/\.html?$/i.test(entryPath)) {
+    throw new Error("The preview entry file must be an HTML file");
+  }
+
+  return {
+    entryPath,
+    files: [...filesByPath.values()],
+    totalBytes,
+  };
+}
+
+function safePreviewAssetPath(previewId, requestedPath) {
+  const directory = previewDirectoryPath(previewId);
+  const normalizedPath = normalizePreviewProjectPath(requestedPath);
+  if (!directory || !normalizedPath) return null;
+
+  const resolvedDirectory = path.resolve(directory);
+  const resolvedFile = path.resolve(directory, normalizedPath);
+  if (!resolvedFile.startsWith(`${resolvedDirectory}${path.sep}`)) return null;
+
+  return {
+    directory,
+    normalizedPath,
+    filePath: resolvedFile,
+  };
 }
 
 function escapeHtmlAttribute(value) {
@@ -1810,7 +1947,41 @@ function escapeHtmlAttribute(value) {
     .replace(/>/g, "&gt;");
 }
 
-function buildPreviewShell(html) {
+function encodePreviewProjectPath(filePath) {
+  return filePath
+    .split("/")
+    .map(segment => encodeURIComponent(segment))
+    .join("/");
+}
+
+function buildPreviewShell(previewId, entryPath) {
+  // The shell URL is /preview/:id. Resolving ./<id>/<entry> from that URL
+  // preserves any outer mount prefix such as Arc Academy's /coder/.
+  const iframeSrc = `./${encodeURIComponent(previewId)}/${encodePreviewProjectPath(entryPath)}`;
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Browser Coder Preview</title>
+  <style>
+    html,body,iframe{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#fff}
+  </style>
+</head>
+<body>
+  <iframe
+    title="Browser Coder website preview"
+    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
+    referrerpolicy="no-referrer"
+    src="${escapeHtmlAttribute(iframeSrc)}"
+  ></iframe>
+</body>
+</html>`;
+}
+
+function buildLegacyPreviewShell(html) {
   const escapedHtml = escapeHtmlAttribute(html);
 
   return `<!doctype html>
@@ -1827,7 +1998,7 @@ function buildPreviewShell(html) {
 <body>
   <iframe
     title="Browser Coder website preview"
-    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads"
+    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
     referrerpolicy="no-referrer"
     srcdoc="${escapedHtml}"
   ></iframe>
@@ -1835,32 +2006,190 @@ function buildPreviewShell(html) {
 </html>`;
 }
 
-async function writeImmutablePreview(html) {
+async function writeImmutablePreviewProject(files, entryPath) {
   ensurePreviewStorageDir();
 
-  // "wx" guarantees that an existing preview is never overwritten.
   for (let attempt = 0; attempt < 5; attempt++) {
     const previewId = createPreviewId();
-    const filePath = previewFilePath(previewId);
+    const finalDirectory = previewDirectoryPath(previewId);
+    const temporaryDirectory = path.join(
+      CONFIG.preview.storageDir,
+      `.${previewId}.${process.pid}.${crypto.randomBytes(4).toString("hex")}.tmp`,
+    );
 
     try {
-      await fs.promises.writeFile(filePath, html, {
-        encoding: "utf8",
-        flag: "wx",
-        mode: 0o600,
-      });
+      await fs.promises.mkdir(temporaryDirectory, { mode: 0o700 });
+
+      for (const file of files) {
+        const destination = path.resolve(temporaryDirectory, file.path);
+        const resolvedTemporaryDirectory = path.resolve(temporaryDirectory);
+        if (!destination.startsWith(`${resolvedTemporaryDirectory}${path.sep}`)) {
+          throw new Error(`Unsafe preview file path: ${file.path}`);
+        }
+
+        await fs.promises.mkdir(path.dirname(destination), {
+          recursive: true,
+          mode: 0o700,
+        });
+        await fs.promises.writeFile(destination, file.content, {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        });
+      }
+
+      const manifest = {
+        version: 2,
+        entryPath,
+        createdAt: Date.now(),
+        fileCount: files.length,
+      };
+      await fs.promises.writeFile(
+        path.join(temporaryDirectory, PREVIEW_MANIFEST_NAME),
+        JSON.stringify(manifest),
+        {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        },
+      );
+
+      await fs.promises.rename(temporaryDirectory, finalDirectory);
       return previewId;
     } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
+      await fs.promises.rm(temporaryDirectory, {
+        recursive: true,
+        force: true,
+      }).catch(() => {});
+
+      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") {
+        continue;
+      }
+      throw error;
     }
   }
 
   throw new Error("Could not allocate a unique preview ID");
 }
 
+async function readPreviewManifest(previewId) {
+  const manifestPath = previewManifestPath(previewId);
+  if (!manifestPath) return null;
+
+  try {
+    const raw = await fs.promises.readFile(manifestPath, "utf8");
+    const manifest = JSON.parse(raw);
+    const entryPath = normalizePreviewProjectPath(manifest?.entryPath);
+    const createdAt = Number(manifest?.createdAt);
+
+    if (!entryPath || !Number.isFinite(createdAt)) return null;
+    return {
+      entryPath,
+      createdAt,
+      fileCount: Number(manifest?.fileCount) || 0,
+    };
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function isPreviewExpired(createdAt) {
+  return Date.now() - createdAt > CONFIG.preview.ttlMs;
+}
+
+async function removeProjectPreview(previewId) {
+  const directory = previewDirectoryPath(previewId);
+  if (!directory) return;
+  await fs.promises.rm(directory, { recursive: true, force: true });
+}
+
+function previewMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return PREVIEW_TEXT_MIME_TYPES.get(ext)
+    || PREVIEW_BINARY_MIME_TYPES.get(ext)
+    || "application/octet-stream";
+}
+
+function setPreviewCommonHeaders(res) {
+  res.setHeader("Cache-Control", "public, max-age=300, immutable");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+}
+
+function setPreviewShellHeaders(res) {
+  setPreviewCommonHeaders(res);
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; child-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors *",
+  );
+}
+
+function setLegacyPreviewShellHeaders(res) {
+  setPreviewCommonHeaders(res);
+  // Legacy previews stored only one bundled HTML string and still use srcdoc,
+  // so the shell policy must permit the student document inherited by srcdoc.
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'none'",
+      "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:",
+      "style-src 'unsafe-inline' data: blob: http: https:",
+      "img-src data: blob: http: https:",
+      "font-src data: blob: http: https:",
+      "media-src data: blob: http: https:",
+      "connect-src data: blob: http: https: ws: wss:",
+      "worker-src data: blob: http: https:",
+      "frame-src 'self' data: blob: http: https:",
+      "child-src 'self' data: blob: http: https:",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+      "frame-ancestors *",
+    ].join("; "),
+  );
+}
+
+function setPreviewAssetHeaders(res, filePath) {
+  setPreviewCommonHeaders(res);
+  res.setHeader("Content-Type", previewMimeType(filePath));
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+  if (/\.html?$/i.test(filePath)) {
+    // Student pages run in an iframe without allow-same-origin, so they receive
+    // an opaque origin and cannot read Browser Coder/Arc Academy cookies,
+    // storage, or parent DOM. This CSP intentionally permits normal beginner
+    // web projects: inline JS/CSS, linked project files, modules, workers,
+    // images/fonts/media, and optional CDN/API resources.
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+        "default-src 'none'",
+        "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:",
+        "style-src 'unsafe-inline' data: blob: http: https:",
+        "img-src data: blob: http: https:",
+        "font-src data: blob: http: https:",
+        "media-src data: blob: http: https:",
+        "connect-src data: blob: http: https: ws: wss:",
+        "worker-src data: blob: http: https:",
+        "frame-src data: blob: http: https:",
+        "child-src data: blob: http: https:",
+        "manifest-src data: blob: http: https:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors *",
+      ].join("; "),
+    );
+  }
+}
+
 async function cleanupExpiredPreviews() {
   ensurePreviewStorageDir();
   const expiresBefore = Date.now() - CONFIG.preview.ttlMs;
+  const abandonedTemporaryBefore = Date.now() - 60 * 60 * 1000;
 
   let entries;
   try {
@@ -1874,17 +2203,32 @@ async function cleanupExpiredPreviews() {
     return;
   }
 
-  await Promise.allSettled(
-    entries
-      .filter(entry => entry.isFile() && /^[A-Za-z0-9_-]{22}\.html$/.test(entry.name))
-      .map(async entry => {
-        const filePath = path.join(CONFIG.preview.storageDir, entry.name);
-        const stat = await fs.promises.stat(filePath);
-        if (stat.mtimeMs < expiresBefore) {
-          await fs.promises.unlink(filePath);
-        }
-      }),
-  );
+  await Promise.allSettled(entries.map(async entry => {
+    const itemPath = path.join(CONFIG.preview.storageDir, entry.name);
+
+    if (entry.isFile() && /^[A-Za-z0-9_-]{22}\.html$/.test(entry.name)) {
+      const stat = await fs.promises.stat(itemPath);
+      if (stat.mtimeMs < expiresBefore) await fs.promises.unlink(itemPath);
+      return;
+    }
+
+    if (entry.isDirectory() && PREVIEW_ID_PATTERN.test(entry.name)) {
+      const manifest = await readPreviewManifest(entry.name).catch(() => null);
+      const createdAt = manifest?.createdAt
+        || (await fs.promises.stat(itemPath)).mtimeMs;
+      if (createdAt < expiresBefore) {
+        await fs.promises.rm(itemPath, { recursive: true, force: true });
+      }
+      return;
+    }
+
+    if (entry.isDirectory() && /^\.[A-Za-z0-9_-]{22}\..+\.tmp$/.test(entry.name)) {
+      const stat = await fs.promises.stat(itemPath);
+      if (stat.mtimeMs < abandonedTemporaryBefore) {
+        await fs.promises.rm(itemPath, { recursive: true, force: true });
+      }
+    }
+  }));
 }
 
 let previewStorageReady = false;
@@ -1948,7 +2292,7 @@ app.use(compression());
 // Only preview publishing receives the larger request-body allowance.
 app.use(
   "/api/previews",
-  express.json({ limit: CONFIG.preview.maxHtmlBytes }),
+  express.json({ limit: CONFIG.preview.maxHtmlBytes * 2 + 1024 * 1024 }),
 );
 app.use(express.json({ limit: "100kb" }));
 
@@ -1972,8 +2316,8 @@ const ALLOWED_ORIGINS = [
   'https://step-up.co.il',
   'https://www.stepup.school',
   'https://www.step-up.co.il',
-    'https://arcacademy.co',
-     'https://www.arcacademy.co',
+    'https://arc.co',
+     'https://www.arc.co',
   // Development / staging
   'http://stepup.local',
   'https://staging.stepup.school',
@@ -1986,7 +2330,7 @@ function isAllowedOrigin(origin) {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
   
   // Subdomain match for stepup.school and step-up.co.il
-  const allowedDomains = ['stepup.school', 'step-up.co.il','arcacademy.co'];
+  const allowedDomains = ['stepup.school', 'step-up.co.il'];
   for (const domain of allowedDomains) {
     if (origin.endsWith('.' + domain) || origin.endsWith('://' + domain)) {
       return true;
@@ -2087,8 +2431,7 @@ app.get("/health", (req, res) => {
 });
 
 // Get languages
-// Short shareable previews are published through POST /api/previews.
-// Publish an immutable shareable preview.
+// Publish an immutable, shareable multi-file web preview.
 app.post("/api/previews", async (req, res) => {
   if (!previewStorageReady) {
     return res.status(503).json({
@@ -2096,33 +2439,39 @@ app.post("/api/previews", async (req, res) => {
     });
   }
 
-  const html = typeof req.body?.html === "string" ? req.body.html : "";
-  const entryPath =
-    typeof req.body?.entryPath === "string"
-      ? req.body.entryPath.slice(0, 500)
-      : "index.html";
+  const rawEntryPath = typeof req.body?.entryPath === "string"
+    ? req.body.entryPath
+    : "index.html";
 
-  if (!html.trim()) {
-    return res.status(400).json({ error: "Preview HTML is required" });
-  }
+  // Backward compatibility for an older frontend that sent one bundled HTML
+  // string. New clients send the entire workspace in files[].
+  const rawFiles = Array.isArray(req.body?.files)
+    ? req.body.files
+    : typeof req.body?.html === "string"
+      ? [{ path: rawEntryPath, content: req.body.html, language: "html" }]
+      : [];
 
-  const htmlBytes = Buffer.byteLength(html, "utf8");
-  if (htmlBytes > CONFIG.preview.maxHtmlBytes) {
-    return res.status(413).json({
-      error: `Preview is too large. Maximum size is ${CONFIG.preview.maxHtmlBytes} bytes.`,
+  let project;
+  try {
+    project = validatePreviewProject(rawFiles, rawEntryPath);
+  } catch (error) {
+    return res.status(400).json({
+      error: error instanceof Error ? error.message : "Invalid preview project",
     });
   }
 
   try {
-    const previewId = await writeImmutablePreview(html);
+    const previewId = await writeImmutablePreviewProject(
+      project.files,
+      project.entryPath,
+    );
     const previewPath = `/preview/${previewId}`;
 
     return res.status(201).json({
       id: previewId,
-      entryPath,
+      entryPath: project.entryPath,
+      fileCount: project.files.length,
       previewPath,
-      // Keep this relative. The browser resolves it against the actual public
-      // coder origin, even when nginx/reverse-proxy host headers differ.
       previewUrl: previewPath,
       expiresAt: new Date(Date.now() + CONFIG.preview.ttlMs).toISOString(),
     });
@@ -2135,37 +2484,46 @@ app.post("/api/previews", async (req, res) => {
   }
 });
 
-// Serve the preview through a real URL while isolating student code.
+// Public shell. Student code is never executed in this top-level document;
+// it runs inside the sandboxed iframe loaded from the immutable project files.
 app.get("/preview/:previewId", async (req, res) => {
   if (!previewStorageReady) {
     return res.status(503).type("text/plain").send("Preview storage is unavailable");
   }
 
-  const filePath = previewFilePath(req.params.previewId);
-  if (!filePath) {
+  if (!PREVIEW_ID_PATTERN.test(req.params.previewId)) {
     return res.status(404).type("text/plain").send("Preview not found");
   }
 
   try {
-    const stat = await fs.promises.stat(filePath);
+    const manifest = await readPreviewManifest(req.params.previewId);
+    if (manifest) {
+      if (isPreviewExpired(manifest.createdAt)) {
+        await removeProjectPreview(req.params.previewId).catch(() => {});
+        return res.status(410).type("text/plain").send("This preview has expired");
+      }
 
+      setPreviewShellHeaders(res);
+      return res.status(200).type("html").send(
+        buildPreviewShell(req.params.previewId, manifest.entryPath),
+      );
+    }
+
+    // Preserve already-issued one-file preview URLs from the previous format.
+    const legacyPath = legacyPreviewFilePath(req.params.previewId);
+    if (!legacyPath) {
+      return res.status(404).type("text/plain").send("Preview not found");
+    }
+
+    const stat = await fs.promises.stat(legacyPath);
     if (Date.now() - stat.mtimeMs > CONFIG.preview.ttlMs) {
-      await fs.promises.unlink(filePath).catch(() => {});
+      await fs.promises.unlink(legacyPath).catch(() => {});
       return res.status(410).type("text/plain").send("This preview has expired");
     }
 
-    const html = await fs.promises.readFile(filePath, "utf8");
-
-    res.setHeader("Cache-Control", "public, max-age=300, immutable");
-    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader(
-      "Content-Security-Policy",
-      "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self' data: blob:; child-src 'self' data: blob:; base-uri 'none'; form-action 'none'; frame-ancestors *",
-    );
-
-    return res.status(200).type("html").send(buildPreviewShell(html));
+    const html = await fs.promises.readFile(legacyPath, "utf8");
+    setLegacyPreviewShellHeaders(res);
+    return res.status(200).type("html").send(buildLegacyPreviewShell(html));
   } catch (error) {
     if (error?.code === "ENOENT") {
       return res.status(404).type("text/plain").send("Preview not found");
@@ -2177,6 +2535,54 @@ app.get("/preview/:previewId", async (req, res) => {
       error: error.message,
     });
     return res.status(500).type("text/plain").send("Could not load preview");
+  }
+});
+
+// Serve every immutable workspace file below the preview ID. Relative links
+// such as style.css, ./js/app.js and ../images/logo.svg therefore behave like
+// they do in a normal website, including navigation between multiple HTML files.
+app.get("/preview/:previewId/*", async (req, res) => {
+  if (!previewStorageReady) {
+    return res.status(503).type("text/plain").send("Preview storage is unavailable");
+  }
+
+  const previewId = req.params.previewId;
+  const requestedPath = req.params[0] || "";
+  if (!PREVIEW_ID_PATTERN.test(previewId)) {
+    return res.status(404).type("text/plain").send("Preview file not found");
+  }
+
+  try {
+    const manifest = await readPreviewManifest(previewId);
+    if (!manifest) {
+      return res.status(404).type("text/plain").send("Preview file not found");
+    }
+
+    if (isPreviewExpired(manifest.createdAt)) {
+      await removeProjectPreview(previewId).catch(() => {});
+      return res.status(410).type("text/plain").send("This preview has expired");
+    }
+
+    const asset = safePreviewAssetPath(previewId, requestedPath);
+    if (!asset || asset.normalizedPath === PREVIEW_MANIFEST_NAME) {
+      return res.status(404).type("text/plain").send("Preview file not found");
+    }
+
+    const content = await fs.promises.readFile(asset.filePath);
+    setPreviewAssetHeaders(res, asset.normalizedPath);
+    return res.status(200).send(content);
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "EISDIR") {
+      return res.status(404).type("text/plain").send("Preview file not found");
+    }
+
+    log("error", "Failed to load preview file", {
+      requestId: req.id,
+      previewId,
+      requestedPath,
+      error: error.message,
+    });
+    return res.status(500).type("text/plain").send("Could not load preview file");
   }
 });
 
