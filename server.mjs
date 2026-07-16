@@ -1972,8 +1972,8 @@ const ALLOWED_ORIGINS = [
   'https://step-up.co.il',
   'https://www.stepup.school',
   'https://www.step-up.co.il',
-    'https://arc.co',
-     'https://www.arc.co',
+    'https://arcacademy.co',
+     'https://www.arcacademy.co',
   // Development / staging
   'http://stepup.local',
   'https://staging.stepup.school',
@@ -1986,7 +1986,7 @@ function isAllowedOrigin(origin) {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
   
   // Subdomain match for stepup.school and step-up.co.il
-  const allowedDomains = ['stepup.school', 'step-up.co.il'];
+  const allowedDomains = ['stepup.school', 'step-up.co.il','arcacademy.co'];
   for (const domain of allowedDomains) {
     if (origin.endsWith('.' + domain) || origin.endsWith('://' + domain)) {
       return true;

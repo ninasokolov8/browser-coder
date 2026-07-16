@@ -214,11 +214,63 @@ function findHtmlEntriesUsingCss(
   });
 }
 
+const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
+
+/**
+ * Returns the public directory from which the IDE document was loaded.
+ *
+ * In production Arc Academy mounts Browser Coder at `/coder/`. The API itself
+ * still receives `/api/...` and `/preview/...` after the outer reverse proxy
+ * strips that mount prefix. Building browser URLs from the document directory
+ * keeps requests inside `/coder/` publicly while remaining `/` in local or
+ * standalone deployments.
+ */
+function getPublicAppBaseUrl(): URL {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+
+  if (!url.pathname.endsWith('/')) {
+    const lastSegment = url.pathname.split('/').pop() || '';
+    if (lastSegment.includes('.')) {
+      url.pathname = url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1);
+    } else {
+      url.pathname += '/';
+    }
+  }
+
+  return url;
+}
+
+function readPreviewId(payload: any): string {
+  if (typeof payload?.id === 'string' && PREVIEW_ID_PATTERN.test(payload.id)) {
+    return payload.id;
+  }
+
+  // Backward compatibility with API versions that returned only a path/URL.
+  for (const value of [payload?.previewPath, payload?.previewUrl]) {
+    if (typeof value !== 'string' || !value) continue;
+
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const candidate = parsed.pathname.split('/').filter(Boolean).pop() || '';
+      if (PREVIEW_ID_PATTERN.test(candidate)) return candidate;
+    } catch {
+      // Continue to the validation error below.
+    }
+  }
+
+  throw new Error('The preview server returned an invalid short preview ID.');
+}
+
 async function publishPreview(
   html: string,
   entryPath: string,
 ): Promise<{ previewUrl: string; expiresAt?: string }> {
-  const response = await fetch('/api/previews', {
+  const publicBaseUrl = getPublicAppBaseUrl();
+  const publishUrl = new URL('./api/previews', publicBaseUrl);
+
+  const response = await fetch(publishUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -240,17 +292,8 @@ async function publishPreview(
     );
   }
 
-  const rawUrl = payload?.previewPath || payload?.previewUrl;
-  if (!rawUrl || typeof rawUrl !== 'string') {
-    throw new Error('The preview server did not return a preview URL.');
-  }
-
-  const previewUrl = new URL(rawUrl, window.location.origin);
-  previewUrl.hash = '';
-
-  if (!/^\/preview\/[A-Za-z0-9_-]{22}$/.test(previewUrl.pathname)) {
-    throw new Error('The preview server returned an invalid short preview URL.');
-  }
+  const previewId = readPreviewId(payload);
+  const previewUrl = new URL(`./preview/${previewId}`, publicBaseUrl);
 
   return {
     previewUrl: previewUrl.toString(),
