@@ -1,6 +1,13 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Build every generated URL relative to the document. The IDE is mounted
+  // behind Arc Academy at /coder/, so root URLs such as /assets/... escape
+  // the reverse-proxy location and are served by the Laravel application.
+  // Relative URLs keep the entry bundle, lazy chunks, Monaco workers, CSS and
+  // fonts under the same public mount path in every environment.
+  base: "./",
+
   server: {
     port: 5173,
     proxy: {

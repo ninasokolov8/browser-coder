@@ -9,6 +9,7 @@ import { downloadFile } from '../components/download';
 import { saveSettings } from '../components/settings';
 import { getOrCreateModel, updateEmptyState } from './editor-core';
 import { renderFileTree } from './explorer';
+import { getDbName, setDbName } from '../storage';
 
 export async function initializeWorkspace(): Promise<void> {
 const editor = runtime.editor;
@@ -23,7 +24,6 @@ if (appConfig.isEmbedded) {
   // Embedded mode: isolate this iframe's IndexedDB so multiple parts on the
   // same Step-Up page don't share/overwrite each other's files. Each iframe
   // gets a unique DB that's deleted on unload.
-  const { setDbName, getDbName } = await import('../storage');
   const isolatedDb = `BrowserCoderDB-embed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   setDbName(isolatedDb);
   const dbToDelete = getDbName();

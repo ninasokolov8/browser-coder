@@ -58,11 +58,11 @@ async function bootstrap(): Promise<void> {
   initializeGoToDefinition();
   initializeWebPreview();
 
-  // These modules register UI/editor handlers at module load time. They must be
-  // loaded only after initializeWorkspace() has completed.
+  // Execution and run-panel handlers depend on the initialized editor. Load
+  // them only after initializeWorkspace() has completed. Sidebar handlers are
+  // already part of the statically imported layout/policy modules.
   await import('./features/execution');
   const { initializeRunPanel } = await import('./features/run-panel');
-  await import('./features/sidebar');
   initializeRunPanel();
 
   initializeLayout();

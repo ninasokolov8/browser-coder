@@ -52,7 +52,7 @@ services:
   # API - Uses pre-built image from GHCR
   # ============================================
   api:
-    image: ghcr.io/ninasokolov8/browser-coder:latest
+    image: ${BROWSER_CODER_IMAGE:-ghcr.io/ninasokolov8/browser-coder:latest}
     pull_policy: always
     build:
       context: .
