@@ -3424,21 +3424,54 @@ function applyTheme(theme: string) {
       // In full/project mode, execute the complete workspace. The API already
       // supports files[] + entryPoint; this makes imports between local files
       // work while keeping snippet mode fully backward compatible.
-      if (ideMode === 'full') {
-        const workspaceFiles = await collectWorkspaceSnapshot();
-        const languageFiles = workspaceFiles.filter(file =>
-          !file.language || file.language === lang.id
-        );
+if (ideMode === 'full') {
+  const workspaceFiles = await collectWorkspaceSnapshot();
 
-        if (languageFiles.length > 0) {
-          requestBody = {
-            language: lang.id,
-            version: activeTab.file.version,
-            files: languageFiles,
-            entryPoint: activeTab.file.path.replace(/^\/+/, ''),
-          };
-        }
-      }
+  const languageFiles = workspaceFiles.filter(file =>
+    !file.language || file.language === lang.id
+  );
+
+  /*
+   * Do not trust activeTab.file.path here.
+   *
+   * The tab may contain stale path metadata after:
+   * - loading a project,
+   * - replacing all files,
+   * - moving files,
+   * - renaming folders,
+   * - restoring IndexedDB data.
+   *
+   * Read the current file record from storage, which is the same source used
+   * by collectWorkspaceSnapshot().
+   */
+  const storedActiveFile = await storage.getFile(activeTab.file.id);
+
+  const entryPoint = normalizeProjectPath(
+    storedActiveFile?.path ||
+    activeTab.file.path ||
+    activeTab.file.name
+  );
+
+  const entryPointExists = languageFiles.some(file =>
+    normalizeProjectPath(file.path) === entryPoint
+  );
+
+  if (!entryPointExists) {
+    throw new Error(
+      `Active file was not found in the project snapshot.\n` +
+      `Entry point: ${entryPoint}\n` +
+      `Available files:\n` +
+      languageFiles.map(file => `- ${file.path}`).join('\n')
+    );
+  }
+
+  requestBody = {
+    language: lang.id,
+    version: activeTab.file.version,
+    files: languageFiles,
+    entryPoint,
+  };
+}
 
       const resp = await fetch("/api/run", {
         method: "POST",
@@ -3919,14 +3952,30 @@ function applyTheme(theme: string) {
   // Build the full workspace snapshot from storage (source of truth),
   // overlaying live (possibly unsaved) content from open Monaco models.
   // Paths are relative POSIX paths that preserve the folder hierarchy.
-  async function collectWorkspaceSnapshot(): Promise<Array<{ path: string; content: string; language?: string }>> {
-    const storedFiles = await storage.getAllFiles();
-    return storedFiles.map(f => ({
-      path: f.path.replace(/^\/+/, ''),
-      content: fileModels.get(f.id)?.getValue() ?? f.content ?? '',
-      language: f.language,
-    }));
-  }
+function normalizeProjectPath(path: string): string {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter(part => part && part !== '.')
+    .join('/');
+}
+
+
+async function collectWorkspaceSnapshot(): Promise<
+  Array<{ path: string; content: string; language?: string }>
+> {
+  const storedFiles = await storage.getAllFiles();
+
+  return storedFiles.map(file => ({
+    path: normalizeProjectPath(file.path || file.name),
+    content:
+      fileModels.get(file.id)?.getValue() ??
+      file.content ??
+      '',
+    language: file.language,
+  }));
+}
   
   // Push-based sync: emit the full `ide:files` snapshot (debounced) on any
   // file create/edit/delete so the parent can persist the workspace.
