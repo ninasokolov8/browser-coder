@@ -57,17 +57,26 @@ jobs:
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd ~/browser-coder
-            
+
             # Login to GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Pull latest changes
-            git pull origin main
-            
+
+            # Force the working tree to exactly match origin/main. A plain
+            # `git pull` fails on any local change or divergence, and because
+            # this script previously had no `set -e` it continued anyway and
+            # deployed a STALE docker-compose.prod.yml / nginx.conf - so config
+            # changes (env vars, client_max_body_size) silently never applied.
+            # `reset --hard` guarantees compose + nginx config are current.
+            git fetch origin main
+            git reset --hard origin/main
+
             # Pull new images using production compose file (pre-built GHCR image)
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            # --force-recreate ensures containers restart with the updated
+            # compose env + freshly pulled image, not a cached container.
+            docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
             
             # Cleanup old images
             docker image prune -f

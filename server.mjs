@@ -765,12 +765,19 @@ const CONFIG = {
     maxQueueSize: Math.min(10000, Math.floor(TOTAL_MEMORY_MB / 10)),
     maxOutputChars: 100000,
 
-    // Project size policy enforced by POST /api/run (single-file `code` or
-    // multi-file `files[]`). These are the ONLY numbers that define "how big
-    // a project may be" - the request-body-size limit below is derived from
-    // them, so raising a project limit here automatically raises the
-    // transport allowance too. Never hardcode 100000 elsewhere for this.
-    maxCodeChars: parseInt(process.env.MAX_CODE_CHARS || "100000", 10),
+    // Project size policy enforced by POST /api/run. maxCodeChars applies to
+    // BOTH modes: single-file `code` (code.length) AND multi-file `files[]`
+    // (the SUM of every file's content across the whole project). These are
+    // the ONLY numbers that define "how big a project may be" - the
+    // request-body-size limit below is derived from them, so raising a limit
+    // here automatically raises the transport allowance too.
+    //
+    // The default is baked in (not left at 100 KB) on purpose: the prod
+    // deploy reliably pulls a fresh image via `docker compose pull`, but the
+    // compose file's env block only reaches the container if the droplet's
+    // `git pull` succeeded. Relying on the env var alone silently fell back
+    // to 100 KB when that pull was skipped. Env vars still override for tuning.
+    maxCodeChars: parseInt(process.env.MAX_CODE_CHARS || "750000", 10),
     maxProjectFiles: parseInt(process.env.MAX_PROJECT_FILES || "300", 10),
     maxPathChars: parseInt(process.env.MAX_PATH_CHARS || "300", 10),
   },
@@ -1391,17 +1398,31 @@ class SmartExecutor {
   }
   
   async executeJS(code, isTypeScript = false) {
-    // SECURITY: Run Node.js with restricted permissions
-    // --experimental-permission restricts file system, child process, and workers
-    return this.runProcess('node', [
-      '--no-warnings',                          // Suppress ExperimentalWarning noise
-      '--experimental-permission',               // Enable permission model
-      '--allow-fs-read=' + this.tempDir,        // Only allow reading temp dir
-      '--max-old-space-size=128',               // Limit memory
-      '--input-type=module',
-      '-e',
-      code
-    ]);
+    // Large programs cannot be passed via `node -e <code>`: on Linux a single
+    // argv entry is capped at 128 KB (MAX_ARG_STRLEN), so anything bigger
+    // fails with `spawn E2BIG` before Node even starts. Write the program to a
+    // temp file (a .mjs so it's still evaluated as an ES module, matching the
+    // previous --input-type=module) and execute the file path instead - the
+    // same approach executeJSMulti/PHP/Java/C# already use. tempDir is the only
+    // path the permission model allows reading, so --allow-fs-read covers it.
+    const tempFile = path.join(
+      this.tempDir,
+      `js_${Date.now()}_${Math.random().toString(36).slice(2)}.mjs`
+    );
+    try {
+      fs.writeFileSync(tempFile, code);
+      // SECURITY: Run Node.js with restricted permissions
+      // --experimental-permission restricts file system, child process, and workers
+      return await this.runProcess('node', [
+        '--no-warnings',                          // Suppress ExperimentalWarning noise
+        '--experimental-permission',               // Enable permission model
+        '--allow-fs-read=' + this.tempDir,        // Only allow reading temp dir
+        '--max-old-space-size=128',               // Limit memory
+        tempFile
+      ]);
+    } finally {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }
   }
   
   async executePython(code) {
@@ -1414,14 +1435,27 @@ class SmartExecutor {
     if (TURTLE_SHIM && hasTurtleImport(code)) {
       fullCode = TURTLE_SHIM + '\n\n# ── user code ──\n' + code;
     }
-    // SECURITY: Run Python with restricted options
-    return this.runProcess('python3', [
-      '-u',                 // Unbuffered output
-      '-I',                 // Isolated mode: ignore PYTHON* env vars, don't add current directory
-      '-S',                 // Don't import site module (reduces available imports)
-      '-c',
-      fullCode
-    ]);
+    // Large programs cannot be passed via `python3 -c <code>`: on Linux a
+    // single argv entry is capped at 128 KB (MAX_ARG_STRLEN), so anything
+    // bigger fails with `spawn E2BIG`. Write to a temp file and run it - the
+    // same file-based approach executePythonMulti/PHP/Java/C# already use.
+    const tempFile = path.join(
+      this.tempDir,
+      `py_${Date.now()}_${Math.random().toString(36).slice(2)}.py`
+    );
+    try {
+      fs.writeFileSync(tempFile, fullCode);
+      // SECURITY: Run Python with restricted options
+      return await this.runProcess('python3', [
+        '-u',                 // Unbuffered output
+        '-I',                 // Isolated mode: ignore PYTHON* env vars, don't add current directory
+        '-S',                 // Don't import site module (reduces available imports)
+        '-B',                 // Don't write .pyc bytecode next to the temp file
+        tempFile
+      ]);
+    } finally {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }
   }
   
   async executePHP(code) {
