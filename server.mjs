@@ -764,6 +764,15 @@ const CONFIG = {
     maxConcurrent: Math.min(500, Math.floor(TOTAL_MEMORY_MB / 50)),
     maxQueueSize: Math.min(10000, Math.floor(TOTAL_MEMORY_MB / 10)),
     maxOutputChars: 100000,
+
+    // Project size policy enforced by POST /api/run (single-file `code` or
+    // multi-file `files[]`). These are the ONLY numbers that define "how big
+    // a project may be" - the request-body-size limit below is derived from
+    // them, so raising a project limit here automatically raises the
+    // transport allowance too. Never hardcode 100000 elsewhere for this.
+    maxCodeChars: parseInt(process.env.MAX_CODE_CHARS || "100000", 10),
+    maxProjectFiles: parseInt(process.env.MAX_PROJECT_FILES || "300", 10),
+    maxPathChars: parseInt(process.env.MAX_PATH_CHARS || "300", 10),
   },
   
   // Cache settings
@@ -2294,6 +2303,26 @@ app.use(
   "/api/previews",
   express.json({ limit: CONFIG.preview.maxHtmlBytes * 2 + 1024 * 1024 }),
 );
+
+// /api/run carries a whole multi-file project as JSON. JSON-encoding the raw
+// code inflates its byte size well past CONFIG.execution.maxCodeChars: every
+// newline/quote/backslash in the source doubles when escaped, non-ASCII
+// comments/strings cost extra UTF-8 bytes, and each file adds JSON wrapper
+// overhead ({"name":...,"content":...,"language":...,"isMain":...}). A body
+// limit equal to maxCodeChars therefore rejects legitimate projects that are
+// well within the app's own size policy (enforced below in POST /api/run)
+// before the handler even runs - that's the previous 413. Size the transport
+// limit for the actual worst case allowed by that policy instead of copying
+// the same number:
+//   - content: up to 3x for escaping + multi-byte overhead
+//   - per file: path + ~100 bytes of JSON metadata, up to maxProjectFiles files
+//   - a few KB slack for language/version/entryPoint and JSON punctuation
+const RUN_BODY_LIMIT_BYTES =
+  CONFIG.execution.maxCodeChars * 3 +
+  CONFIG.execution.maxProjectFiles * (CONFIG.execution.maxPathChars + 100) +
+  4096;
+app.use("/api/run", express.json({ limit: RUN_BODY_LIMIT_BYTES }));
+
 app.use(express.json({ limit: "100kb" }));
 
 // Request ID
@@ -2647,17 +2676,32 @@ app.post("/api/run", async (req, res) => {
     if (normalized.length === 0) {
       return res.status(400).json({ error: "files[] must contain at least one named file" });
     }
-    
-    // Reject path traversal / absolute paths
+
+    // Cap file count independently of total byte size: a project can stay
+    // under the size limit below while still containing an enormous number
+    // of files/directories, which is its own cost (disk I/O, inode churn,
+    // JSON parsing overhead) regardless of how small each file is.
+    if (normalized.length > CONFIG.execution.maxProjectFiles) {
+      return res.status(400).json({
+        error: `Too many files (max ${CONFIG.execution.maxProjectFiles})`,
+      });
+    }
+
+    // Reject path traversal / absolute paths / unreasonably long paths
     for (const f of normalized) {
       if (f.name.includes('..') || f.name.startsWith('/') || f.name.startsWith('\\') || /^[a-zA-Z]:/.test(f.name)) {
         return res.status(400).json({ error: `Invalid file path: ${f.name}` });
       }
+      if (f.name.length > CONFIG.execution.maxPathChars) {
+        return res.status(400).json({ error: `File path too long: ${f.name}` });
+      }
     }
-    
+
     const totalSize = normalized.reduce((sum, f) => sum + f.content.length, 0);
-    if (totalSize > 100000) {
-      return res.status(400).json({ error: "Total code size too large (max 100KB)" });
+    if (totalSize > CONFIG.execution.maxCodeChars) {
+      return res.status(400).json({
+        error: `Total code size too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
+      });
     }
     
     // Security check all files
@@ -2707,8 +2751,10 @@ app.post("/api/run", async (req, res) => {
     allFiles = normalized;
   } else if (code) {
     // Single-file mode (backward compatible)
-    if (code.length > 100000) {
-      return res.status(400).json({ error: "Code too large (max 100KB)" });
+    if (code.length > CONFIG.execution.maxCodeChars) {
+      return res.status(400).json({
+        error: `Code too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
+      });
     }
     
     // SECURITY: Validate code for dangerous patterns
