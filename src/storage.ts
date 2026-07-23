@@ -147,7 +147,7 @@ class StorageManager {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       order: maxOrder + 1,
-      isExpanded: true,
+      isExpanded: false,
     };
 
     return new Promise((resolve, reject) => {
