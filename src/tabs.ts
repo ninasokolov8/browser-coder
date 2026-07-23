@@ -4,6 +4,7 @@
 
 import { storage, StoredFile, WorkspaceState } from './storage';
 import { getAllLanguages, getLanguage, getStarterAsync, LoadedLanguage, VersionConfig } from './languages';
+import { isWorkspaceEntryHidden } from './features/workspace-visibility';
 
 export interface Tab {
   file: StoredFile;
@@ -44,18 +45,30 @@ export class TabManager {
     const state = await storage.getWorkspaceState();
 
     if (files.length > 0) {
-      // Restore only the last active file as an open tab (VS Code-like).
-      // All other files stay in storage and appear in the explorer tree;
-      // clicking them lazily opens a tab via switchToTab().
-      const activeFile = files.find(f => f.id === state.activeFileId) || files[0];
-      const activeTab: Tab = { file: activeFile, isDirty: false };
-      this.tabs = [activeTab];
-      
-      this.activeTabId = activeTab.file.id;
+      // Hidden support files remain persisted but must never become the file
+      // shown automatically when the workspace opens.
+      const visibleFiles = files.filter(file => !isWorkspaceEntryHidden(file));
+      const activeFile =
+        visibleFiles.find(file => file.id === state.activeFileId) ||
+        visibleFiles[0] ||
+        null;
+
+      if (activeFile) {
+        const activeTab: Tab = { file: activeFile, isDirty: false };
+        this.tabs = [activeTab];
+        this.activeTabId = activeTab.file.id;
+        this.render();
+        this.events.onTabsChange?.(this.tabs);
+        return activeTab;
+      }
+
+      // A workspace containing only hidden support files intentionally opens
+      // with no visible tab. The files still remain available to execution.
+      this.tabs = [];
+      this.activeTabId = null;
       this.render();
       this.events.onTabsChange?.(this.tabs);
-      
-      return activeTab;
+      return null;
     } else {
       // No files - return null, let UI show empty state
       this.render();
@@ -135,11 +148,13 @@ export class TabManager {
       createdFiles.push(storedFile);
     }
 
-    // Open only ONE tab (the rest stay in the explorer tree and open lazily):
-    // previously active file by path if it still exists, else the first file.
+    // Open only ONE visible tab. Hidden support files stay fully persisted and
+    // available to imports/execution, but are never selected automatically.
+    const visibleFiles = createdFiles.filter(file => !isWorkspaceEntryHidden(file));
     const fileToOpen =
-      (previousActivePath && createdFiles.find(f => f.path === previousActivePath)) ||
-      createdFiles[0] || null;
+      (previousActivePath && visibleFiles.find(file => file.path === previousActivePath)) ||
+      visibleFiles[0] ||
+      null;
     if (fileToOpen) {
       this.tabs.push({ file: fileToOpen, isDirty: false });
       this.activeTabId = fileToOpen.id;
@@ -266,7 +281,9 @@ export class TabManager {
       : (this.getActiveTab()?.file.parentId ?? null);
     const storedFiles = await storage.getAllFiles();
     const liveFilesById = new Map(this.tabs.map(tab => [tab.file.id, tab.file]));
-    const files = storedFiles.map(file => liveFilesById.get(file.id) || file);
+    const files = storedFiles
+      .map(file => liveFilesById.get(file.id) || file)
+      .filter(file => !isWorkspaceEntryHidden(file));
 
     const languageFiles = files.filter(file => file.language === lang.id);
     const orderedLanguageFiles = [
@@ -318,17 +335,26 @@ export class TabManager {
    * Switch to a tab
    */
   async switchToTab(fileId: string): Promise<Tab | null> {
-    // Save current tab first
+    let tab = this.tabs.find(t => t.file.id === fileId);
+
+    if (tab && isWorkspaceEntryHidden(tab.file)) {
+      return null;
+    }
+
+    if (!tab) {
+      // Lazy open: file exists in storage (explorer tree) but has no tab yet.
+      const file = await storage.getFile(fileId);
+      if (!file || isWorkspaceEntryHidden(file)) return null;
+      tab = { file, isDirty: false };
+    }
+
+    // Save current tab only after confirming that the requested target is a
+    // visible student-facing file.
     if (this.activeTabId) {
       await this.saveCurrentTab();
     }
 
-    let tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) {
-      // Lazy open: file exists in storage (explorer tree) but has no tab yet
-      const file = await storage.getFile(fileId);
-      if (!file) return null;
-      tab = { file, isDirty: false };
+    if (!this.tabs.some(existing => existing.file.id === fileId)) {
       this.tabs.push(tab);
       this.events.onTabsChange?.(this.tabs);
     }
@@ -427,6 +453,44 @@ export class TabManager {
     const updated = await storage.updateFile(fileId, updates);
     if (updated) {
       tab.file = updated;
+
+      // Renaming a visible file to the hidden prefix should remove it from the
+      // student UI immediately without deleting it from storage.
+      if (isWorkspaceEntryHidden(updated)) {
+        if (this.autoSaveTimer !== null) {
+          clearTimeout(this.autoSaveTimer);
+          this.autoSaveTimer = null;
+        }
+
+        // Persist the newest in-memory contents together with the rename before
+        // removing the tab from the UI.
+        const persisted = await storage.updateFile(fileId, {
+          content: tab.file.content,
+          isUserModified: tab.file.isUserModified,
+        });
+        if (persisted) tab.file = persisted;
+        tab.isDirty = false;
+
+        const tabIndex = this.tabs.findIndex(existing => existing.file.id === fileId);
+        const wasActive = this.activeTabId === fileId;
+        if (tabIndex !== -1) this.tabs.splice(tabIndex, 1);
+
+        if (wasActive) {
+          this.activeTabId = null;
+          const nextTab = this.tabs[Math.min(tabIndex, this.tabs.length - 1)] || this.tabs[0] || null;
+          if (nextTab) {
+            await this.switchToTab(nextTab.file.id);
+          } else {
+            await this.saveWorkspaceState();
+          }
+        }
+
+        this.render();
+        this.events.onTabClose?.(tab);
+        this.events.onTabsChange?.(this.tabs);
+        return null;
+      }
+
       this.render();
       this.events.onTabUpdate?.(tab);
     }

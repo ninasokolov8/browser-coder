@@ -8,6 +8,7 @@ import {
   btnRegex, btnCase, btnWord, btnClearSearch, btnReplaceAll, btnReplaceAllFiles,
 } from '../components/dom';
 import { setOutput } from '../components/output';
+import { isWorkspaceEntryHidden } from './workspace-visibility';
 
 const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
 const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
@@ -225,6 +226,8 @@ async function performSearch() {
   currentSearchResults = [];
 
   for (const file of files) {
+    if (isWorkspaceEntryHidden(file)) continue;
+
     const content = getLiveFileContent(file.id, file.content);
     const matches = searchInFile(content, query, file.id, file.name, file.language);
     if (matches.length > 0) {
@@ -389,7 +392,7 @@ async function replaceSingleMatch(
   replaceText: string
 ) {
   const file = await storage.getFile(fileId);
-  if (!file) return;
+  if (!file || isWorkspaceEntryHidden(file)) return;
 
   const currentContent = getLiveFileContent(fileId, file.content);
   const lines = currentContent.split('\n');

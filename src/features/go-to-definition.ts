@@ -4,6 +4,7 @@ import { getAllLanguages } from '../languages';
 import { getOrCreateModel } from './editor-core';
 import type { StoredFile } from '../storage';
 import type { Tab } from '../tabs';
+import { isWorkspaceEntryHidden } from './workspace-visibility';
 
 interface SymbolDefinition {
   name: string;
@@ -265,7 +266,8 @@ async function resolveDefinitions(
   if (!word || !runtime.storage || !runtime.tabManager) return [];
 
   const activeTab = runtime.tabManager.getActiveTab();
-  const files = await runtime.storage.getAllFiles();
+  const allFiles = await runtime.storage.getAllFiles();
+  const files = allFiles.filter(file => !isWorkspaceEntryHidden(file));
   const sourceFile = activeTab?.file ?? files.find(file => runtime.fileModels.get(file.id) === model);
   if (!sourceFile) return [];
 

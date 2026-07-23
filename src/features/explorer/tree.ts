@@ -7,6 +7,7 @@ import { applyFileLanguage } from '../editor-core';
 import { explorerState } from './state';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { setOutput, setStatus } from '../../components/output';
+import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
   deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
@@ -34,11 +35,58 @@ export async function renderFileTree(tm = runtime.tabManager!) {
     folder?: typeof folders[0];
   }
 
+  const allFoldersById = new Map(folders.map(folder => [folder.id, folder]));
+  const hiddenFolderIds = new Set<string>();
+
+  // A hidden folder hides its complete subtree, even when descendants do not
+  // repeat the prefix. The path check also protects against malformed/orphaned
+  // storage records whose parent chain cannot be resolved normally.
+  const folderIsHidden = (folder: typeof folders[0]): boolean => {
+    if (hiddenFolderIds.has(folder.id)) return true;
+    if (hasHiddenWorkspacePrefix(folder.name) || isWorkspacePathHidden(folder.path)) {
+      hiddenFolderIds.add(folder.id);
+      return true;
+    }
+
+    const visited = new Set<string>();
+    let current = folder;
+
+    while (current.parentId) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+
+      const parent = allFoldersById.get(current.parentId);
+      if (!parent) break;
+
+      if (
+        hiddenFolderIds.has(parent.id) ||
+        hasHiddenWorkspacePrefix(parent.name) ||
+        isWorkspacePathHidden(parent.path)
+      ) {
+        hiddenFolderIds.add(parent.id);
+        hiddenFolderIds.add(folder.id);
+        return true;
+      }
+
+      current = parent;
+    }
+
+    return false;
+  };
+
+  for (const folder of folders) {
+    folderIsHidden(folder);
+  }
+
   const folderMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
+  const visibleIds = new Set<string>();
 
-  // Create folder nodes
+  // Create only visible folder nodes. Hidden folders and all descendants stay
+  // in storage; they are omitted only from this rendered tree.
   for (const folder of folders) {
+    if (hiddenFolderIds.has(folder.id)) continue;
+
     folderMap.set(folder.id, {
       id: folder.id,
       name: folder.name,
@@ -47,10 +95,13 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       folder,
       children: [],
     });
+    visibleIds.add(folder.id);
   }
 
-  // Assign folder children
+  // Assign visible folder children.
   for (const folder of folders) {
+    if (hiddenFolderIds.has(folder.id)) continue;
+
     const node = folderMap.get(folder.id)!;
     if (folder.parentId && folderMap.has(folder.parentId)) {
       folderMap.get(folder.parentId)!.children!.push(node);
@@ -59,8 +110,15 @@ export async function renderFileTree(tm = runtime.tabManager!) {
     }
   }
 
-  // Create file nodes and assign to folders or root
+  // Create visible file nodes and assign them to visible folders or root.
   for (const file of files) {
+    const isHidden =
+      hasHiddenWorkspacePrefix(file.name) ||
+      isWorkspacePathHidden(file.path) ||
+      (!!file.parentId && hiddenFolderIds.has(file.parentId));
+
+    if (isHidden) continue;
+
     const tab = tabs.find(t => t.file.id === file.id);
     const fileNode: TreeNode = {
       id: file.id,
@@ -71,11 +129,35 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       tab,
     };
 
+    visibleIds.add(file.id);
+
     if (file.parentId && folderMap.has(file.parentId)) {
       folderMap.get(file.parentId)!.children!.push(fileNode);
     } else {
       rootNodes.push(fileNode);
     }
+  }
+
+  // Remove stale UI state when an item becomes hidden after a rename or a
+  // workspace refresh. This prevents context-menu, range-selection, and drag
+  // actions from retaining invisible IDs.
+  explorerState.selectedIds = new Set(
+    Array.from(explorerState.selectedIds).filter(id => visibleIds.has(id))
+  );
+  explorerState.expandedFolders = new Set(
+    Array.from(explorerState.expandedFolders).filter(id => folderMap.has(id))
+  );
+  explorerState.draggingIds = explorerState.draggingIds.filter(id => visibleIds.has(id));
+
+  if (explorerState.selectedItemId && !visibleIds.has(explorerState.selectedItemId)) {
+    explorerState.selectedItemId = null;
+    explorerState.selectedItemType = null;
+  }
+  if (explorerState.lastClickedId && !visibleIds.has(explorerState.lastClickedId)) {
+    explorerState.lastClickedId = null;
+  }
+  if (explorerState.renamingItemId && !visibleIds.has(explorerState.renamingItemId)) {
+    explorerState.renamingItemId = null;
   }
 
   // Sort: folders first, then files, both alphabetically
@@ -89,6 +171,15 @@ export async function renderFileTree(tm = runtime.tabManager!) {
     }
   };
   sortNodes(rootNodes);
+
+  const escapeHtml = (value: string): string => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  const escapeAttribute = (value: string): string => escapeHtml(value);
 
   // Render HTML
   function renderNode(node: TreeNode, depth: number = 0): string {
@@ -110,13 +201,13 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
-             data-id="${node.id}" data-type="folder" data-parent="${node.parentId ?? ''}"
+             data-id="${escapeAttribute(node.id)}" data-type="folder" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent}px">
           <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
           <span class="tree-item-icon">📁</span>
           ${isRenaming 
-            ? `<input class="tree-item-input" type="text" value="${node.name}" data-id="${node.id}" data-type="folder">`
-            : `<span class="tree-item-name">${node.name}</span>`
+            ? `<input class="tree-item-input" type="text" value="${escapeAttribute(node.name)}" data-id="${escapeAttribute(node.id)}" data-type="folder">`
+            : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
         </div>
         ${isExpanded ? `<div class="tree-children">${childrenHtml}</div>` : ''}
@@ -129,12 +220,12 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
-             data-id="${node.id}" data-type="file" data-parent="${node.parentId ?? ''}"
+             data-id="${escapeAttribute(node.id)}" data-type="file" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent + 16}px">
           <span class="tree-item-icon">${icon}</span>
           ${isRenaming 
-            ? `<input class="tree-item-input" type="text" value="${node.name}" data-id="${node.id}" data-type="file">`
-            : `<span class="tree-item-name">${node.name}</span>`
+            ? `<input class="tree-item-input" type="text" value="${escapeAttribute(node.name)}" data-id="${escapeAttribute(node.id)}" data-type="file">`
+            : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
           ${isDirty ? '<span class="tree-item-badge">M</span>' : ''}
         </div>
@@ -144,7 +235,9 @@ export async function renderFileTree(tm = runtime.tabManager!) {
 
   if (rootNodes.length === 0) {
     explorerState.visibleNodeOrder = [];
-    fileTreeEl.innerHTML = '<div class="tree-empty">No files yet. Click + to create one.</div>';
+    fileTreeEl.innerHTML = files.length > 0 || folders.length > 0
+      ? '<div class="tree-empty">No files available.</div>'
+      : '<div class="tree-empty">No files yet. Click + to create one.</div>';
   } else {
     explorerState.visibleNodeOrder = [];
     fileTreeEl.innerHTML = rootNodes.map(n => renderNode(n)).join('');
@@ -332,6 +425,12 @@ function attachTreeEventHandlers(tm: TabManager) {
           if (tab && updatedFile) {
             tab.file = { ...updatedFile, content: tab.file.content };
             applyFileLanguage(id);
+
+            // A file renamed to X_HIDDEN_ disappears from every normal file
+            // navigation surface immediately, while remaining in storage.
+            if (isWorkspaceEntryHidden(tab.file)) {
+              await tm.closeTab(id);
+            }
           }
         }
         const refactorResult = await refactorWorkspaceImports(beforePaths);
