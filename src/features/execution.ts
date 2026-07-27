@@ -149,7 +149,9 @@ requestBody = {
     }
 
     // ── Turtle graphics output ──────────────────────────────────────────
-    if (data.turtleData && Array.isArray(data.turtleData.shapes) && data.turtleData.shapes.length > 0) {
+    // A run counts as turtle output when it drew something *or* left a turtle
+    // on screen (a program may only place the cursor without drawing).
+    if (data.turtleData && (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)) {
       try {
         renderTurtle(data.turtleData as TurtleData);
       } catch (renderErr) {

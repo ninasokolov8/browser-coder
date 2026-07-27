@@ -216,7 +216,7 @@ export function setupStepUpIntegration(): void {
 
         setOutput(text);
 
-        if (data.turtleData?.shapes?.length) {
+        if (data.turtleData?.shapes?.length || data.turtleData?.cursors?.length) {
           renderTurtle(data.turtleData);
         }
 

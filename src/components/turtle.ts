@@ -24,17 +24,82 @@ export interface TurtleShape {
   [key: string]: unknown;
 }
 
+/** How a turtle cursor looks: shape name, colours, stretch, outline, tilt. */
+export interface TurtleLook {
+  sh: string;   // shape name ('classic', 'turtle', … or a registered one)
+  fc: string;   // fill colour
+  pc: string;   // outline (pen) colour
+  sw: number;   // stretch across the heading  (shapesize stretch_wid)
+  sl: number;   // stretch along the heading   (shapesize stretch_len)
+  ow: number;   // outline width
+  tl: number;   // tilt angle in degrees
+}
+
+/** A turtle's final resting state, drawn once the run is complete. */
+export interface TurtleCursor extends Partial<TurtleLook> {
+  x?:   number;
+  y?:   number;
+  h?:   number;
+  vis?: boolean;
+}
+
 export interface TurtleData {
-  bg?:     string;
-  w?:      number;
-  h?:      number;
-  tracer?: number;
-  speed?:  number;
-  shapes?: TurtleShape[];
+  bg?:      string;
+  w?:       number;
+  h?:       number;
+  tracer?:  number;
+  speed?:   number;
+  shapes?:  TurtleShape[];
+  cursors?: TurtleCursor[];
+  polys?:   Record<string, number[][]>;   // shapes from register_shape()
 }
 
 // Animation RAF id (requestAnimationFrame) — null when idle
 let turtleAnimRafId: number | null = null;
+
+// ── Built-in cursor shapes ───────────────────────────────────────────────────
+// Same polygons Python's turtle module uses. They are defined pointing "up"
+// (+y); drawTurtleCursor() rotates them onto the turtle's heading.
+const TURTLE_SHAPE_POLYS: Record<string, number[][]> = {
+  classic:  [[0, 0], [-5, -9], [0, -7], [5, -9]],
+  arrow:    [[-10, 0], [10, 0], [0, 10]],
+  square:   [[10, -10], [10, 10], [-10, 10], [-10, -10]],
+  triangle: [[10, -5.77], [0, 11.55], [-10, -5.77]],
+  circle: [
+    [10, 0], [9.51, 3.09], [8.09, 5.88], [5.88, 8.09], [3.09, 9.51],
+    [0, 10], [-3.09, 9.51], [-5.88, 8.09], [-8.09, 5.88], [-9.51, 3.09],
+    [-10, 0], [-9.51, -3.09], [-8.09, -5.88], [-5.88, -8.09], [-3.09, -9.51],
+    [0, -10], [3.09, -9.51], [5.88, -8.09], [8.09, -5.88], [9.51, -3.09],
+  ],
+  turtle: [
+    [0, 16], [-2, 14], [-1, 10], [-4, 7], [-7, 9], [-9, 8], [-6, 5], [-7, 1],
+    [-5, -3], [-8, -6], [-6, -8], [-4, -5], [0, -7], [4, -5], [6, -8], [8, -6],
+    [5, -3], [7, 1], [6, 5], [9, 8], [7, 9], [4, 7], [1, 10], [2, 14],
+  ],
+};
+
+// The look a cursor has before the program changes anything. Must stay in sync
+// with the shim's defaults (_DEF_SHAPE / _DEF_CURSOR_* / _DEF_SCALE in
+// languages/python/turtle_shim.py): the shim only sends a 'SH' event once the
+// appearance actually changes, so the two ends have to start from the same one.
+const DEFAULT_LOOK: TurtleLook = {
+  sh: 'turtle', fc: 'lightgreen', pc: 'darkgreen', sw: 1.5, sl: 1.5, ow: 1, tl: 0,
+};
+
+/** Merge the look fields of a shim event/cursor over an existing look. */
+function mergeLook(base: TurtleLook, src: Record<string, unknown>): TurtleLook {
+  const num = (v: unknown, fallback: number) =>
+    (typeof v === 'number' && isFinite(v)) ? v : fallback;
+  return {
+    sh: typeof src.sh === 'string' ? src.sh : base.sh,
+    fc: typeof src.fc === 'string' ? src.fc : base.fc,
+    pc: typeof src.pc === 'string' ? src.pc : base.pc,
+    sw: num(src.sw, base.sw),
+    sl: num(src.sl, base.sl),
+    ow: num(src.ow, base.ow),
+    tl: num(src.tl, base.tl),
+  };
+}
 
 /**
  * Resolve the turtle UI lazily. Older deployments do not include the turtle
@@ -72,28 +137,75 @@ function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement }
   return { output, canvas };
 }
 
-/** Draw the green turtle-arrow cursor at canvas position (cx, cy). */
+/**
+ * Draw a turtle cursor at canvas position (cx, cy).
+ *
+ * The polygon lives in "shape space", pointing up (+y), and is mapped onto the
+ * heading exactly the way Python's turtle does it: shape +y follows the
+ * heading, shape +x points to its right. shapesize() stretch and tilt are
+ * applied first, in shape space.
+ */
 function drawTurtleCursor(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
   headingDeg: number,
+  look: TurtleLook,
+  polys?: Record<string, number[][]>,
 ): void {
-  const rad = -headingDeg * Math.PI / 180;
+  if (look.sh === 'blank') return;
+  const poly = polys?.[look.sh] ?? TURTLE_SHAPE_POLYS[look.sh] ?? TURTLE_SHAPE_POLYS.classic;
+  if (!poly || poly.length < 2) return;
+
+  const hRad = headingDeg * Math.PI / 180;
+  const sinH = Math.sin(hRad), cosH = Math.cos(hRad);
+  const tRad = look.tl * Math.PI / 180;
+  const sinT = Math.sin(tRad), cosT = Math.cos(tRad);
+
+  // Stretch + tilt matrix, matching turtle's _shapetrafo
+  const t11 =  look.sw * cosT, t12 = look.sl * sinT;
+  const t21 = -look.sw * sinT, t22 = look.sl * cosT;
+
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rad);
   ctx.beginPath();
-  ctx.moveTo(10, 0);
-  ctx.lineTo(-6, -5);
-  ctx.lineTo(-3, 0);
-  ctx.lineTo(-6, 5);
+  for (let i = 0; i < poly.length; i++) {
+    const px = poly[i][0], py = poly[i][1];
+    const sx = t11 * px + t12 * py;
+    const sy = t21 * px + t22 * py;
+    // shape space → turtle space, then → canvas (whose y grows downward)
+    const x = cx + (sinH * sx + cosH * sy);
+    const y = cy - (cosH * sx - sinH * sy);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
   ctx.closePath();
-  ctx.fillStyle   = 'rgba(0, 170, 0, 0.90)';
+  ctx.fillStyle = look.fc;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth   = 0.8;
-  ctx.stroke();
+  if (look.ow > 0) {
+    ctx.strokeStyle = look.pc;
+    ctx.lineWidth   = look.ow;
+    ctx.stroke();
+  }
   ctx.restore();
+}
+
+/** Draw the turtles where they came to rest, once the drawing is finished. */
+function drawFinalCursors(
+  ctx: CanvasRenderingContext2D,
+  cursors: TurtleCursor[] | undefined,
+  cw: number, ch: number,
+  polys?: Record<string, number[][]>,
+): void {
+  if (!cursors) return;
+  for (const c of cursors) {
+    if (c.vis === false) continue;
+    drawTurtleCursor(
+      ctx,
+      cw / 2 + (c.x ?? 0),
+      ch / 2 - (c.y ?? 0),
+      c.h ?? 0,
+      mergeLook(DEFAULT_LOOK, c as Record<string, unknown>),
+      polys,
+    );
+  }
 }
 
 /** Draw a single shape onto `sctx`. */
@@ -102,6 +214,7 @@ function drawTurtleShape(
   s: TurtleShape,
   cw: number, ch: number,
   bg: string,
+  polys?: Record<string, number[][]>,
 ): void {
   const tx = (x: number) => cw / 2 + x;
   const ty = (y: number) => ch / 2 - y;
@@ -157,21 +270,22 @@ function drawTurtleShape(
         break;
       }
       case 'S': {
-        const sx  = tx(s.x as number);
-        const sy  = ty(s.y as number);
-        const rad = -(s.h as number ?? 0) * Math.PI / 180;
-        sctx.save();
-        sctx.translate(sx, sy);
-        sctx.rotate(rad);
-        sctx.beginPath();
-        sctx.moveTo(10, 0);
-        sctx.lineTo(-7, -5);
-        sctx.lineTo(-4, 0);
-        sctx.lineTo(-7, 5);
-        sctx.closePath();
-        sctx.fillStyle = String(s.c ?? 'black');
-        sctx.fill();
-        sctx.restore();
+        // A stamp is an imprint of the cursor: same shape, colours and size.
+        // Payloads from before shape support only carry the pen colour `c`;
+        // those render the way they always did — a plain black arrowhead.
+        const legacy: TurtleLook = {
+          ...DEFAULT_LOOK,
+          sh: 'classic', sw: 1, sl: 1,
+          fc: String(s.c ?? 'black'),
+          pc: String(s.c ?? 'black'),
+        };
+        drawTurtleCursor(
+          sctx,
+          tx(s.x as number), ty(s.y as number),
+          (s.h as number) ?? 0,
+          mergeLook(legacy, s),
+          polys,
+        );
         break;
       }
     }
@@ -195,10 +309,12 @@ export function renderTurtle(data: TurtleData): void {
     turtleAnimRafId = null;
   }
 
-  const cw     = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
-  const ch     = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
-  const bg     = data.bg ?? 'white';
-  const shapes = data.shapes ?? [];
+  const cw      = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
+  const ch      = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
+  const bg      = data.bg ?? 'white';
+  const shapes  = data.shapes ?? [];
+  const polys   = data.polys;
+  const cursors = data.cursors;
 
   // ── Setup visible canvas ───────────────────────────────────────────────────
   const turtleElements = getTurtleElements();
@@ -222,7 +338,13 @@ export function renderTurtle(data: TurtleData): void {
   const targetH = Math.min(ch + 80, Math.floor(window.innerHeight * 0.72));
   if (panelEl.offsetHeight < targetH) panelEl.style.height = targetH + 'px';
 
-  if (shapes.length === 0) return;
+  // Nothing was drawn, but the turtles themselves are still worth showing —
+  // that is what a real turtle window looks like after a program that only
+  // moves the cursor around.
+  if (shapes.length === 0) {
+    drawFinalCursors(ctx, cursors, cw, ch, polys);
+    return;
+  }
 
   const tx = (x: number) => cw / 2 + x;
   const ty = (y: number) => ch / 2 - y;
@@ -240,9 +362,16 @@ export function renderTurtle(data: TurtleData): void {
   const speedVal  = data.speed  ?? 3;          // default matches shim default (3)
   const INSTANT_LIMIT = 3000;                  // too many shapes → draw at once
 
-  if (tracerVal === 0 || speedVal === 0 || shapes.length > INSTANT_LIMIT) {
-    for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg);
+  // Bookkeeping events (cursor moves, appearance changes, show/hide) put
+  // nothing on the canvas, so they must not push a drawing into instant mode.
+  const BOOKKEEPING = new Set(['M', 'SH', 'HT', 'ST']);
+  let drawCount = 0;
+  for (const s of shapes) if (!BOOKKEEPING.has(s.k)) drawCount++;
+
+  if (tracerVal === 0 || speedVal === 0 || drawCount > INSTANT_LIMIT) {
+    for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg, polys);
     ctx.drawImage(offscreen, 0, 0);
+    drawFinalCursors(ctx, cursors, cw, ch, polys);
     return;
   }
 
@@ -252,6 +381,7 @@ export function renderTurtle(data: TurtleData): void {
 
   // ── Animated state ────────────────────────────────────────────────────────
   let curX = 0, curY = 0, curH = 0, curVisible = true;
+  let curLook: TurtleLook = DEFAULT_LOOK;
   let shapeIdx    = 0;
   let lineProgress = 0; // 0..1 fractional progress within current 'l' shape
   let lastTime: number | null = null;
@@ -275,7 +405,7 @@ export function renderTurtle(data: TurtleData): void {
 
         if (len < 0.5) {
           // Zero-length line — commit and move on
-          drawTurtleShape(octx, s, cw, ch, bg);
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
           curX = s.x2 as number; curY = s.y2 as number;
           curH = Math.atan2(dy, dx) * 180 / Math.PI;
           shapeIdx++; lineProgress = 0;
@@ -291,7 +421,7 @@ export function renderTurtle(data: TurtleData): void {
           // Complete this line: commit to offscreen, consume exact cost
           budget -= (1 - lineProgress) * len;
           lineProgress = 0;
-          drawTurtleShape(octx, s, cw, ch, bg);
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
           curX = s.x2 as number; curY = s.y2 as number;
           curH = Math.atan2(dy, dx) * 180 / Math.PI;
           shapeIdx++;
@@ -305,8 +435,8 @@ export function renderTurtle(data: TurtleData): void {
         }
       } else {
         // Non-line shapes: draw instantly, cost a tiny flat amount
-        if (s.k !== 'M' && s.k !== 'HT' && s.k !== 'ST') {
-          drawTurtleShape(octx, s, cw, ch, bg);
+        if (!BOOKKEEPING.has(s.k)) {
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
         }
         switch (s.k) {
           case 'M':  curX = s.x as number; curY = s.y as number; break;
@@ -322,9 +452,12 @@ export function renderTurtle(data: TurtleData): void {
             break;
           case 'HT': curVisible = false; break;
           case 'ST': curVisible = true;  break;
+          case 'SH': curLook = mergeLook(curLook, s); break;
         }
         shapeIdx++; lineProgress = 0;
-        budget -= 5; // flat cost keeps non-line shapes visible briefly
+        // Flat cost keeps non-line shapes visible briefly; a pure appearance
+        // change draws nothing, so it must not eat into the frame budget.
+        if (s.k !== 'SH') budget -= 5;
       }
     }
 
@@ -346,11 +479,18 @@ export function renderTurtle(data: TurtleData): void {
       ctx.restore();
     }
 
-    // 3. Cursor overlay
-    if (curVisible) drawTurtleCursor(ctx, tx(curX), ty(curY), curH);
+    // 3. Cursor overlay — while drawing, the single animated cursor; once the
+    //    replay is over, every turtle at its final position (a program can use
+    //    several Turtle() objects, all of which stay on screen at the end).
+    const finished = shapeIdx >= shapes.length && lineProgress <= 0;
+    if (finished && cursors) {
+      drawFinalCursors(ctx, cursors, cw, ch, polys);
+    } else if (curVisible) {
+      drawTurtleCursor(ctx, tx(curX), ty(curY), curH, curLook, polys);
+    }
 
     // ── Continue or finish ────────────────────────────────────────────────────
-    if (shapeIdx < shapes.length || lineProgress > 0) {
+    if (!finished) {
       turtleAnimRafId = requestAnimationFrame(animFrame);
     } else {
       turtleAnimRafId = null;

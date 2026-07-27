@@ -28,6 +28,17 @@ def _setup_turtle():
     # ── Global canvas/screen config (single-element list so closures can mutate)
     _cfg = [{'bg': 'white', 'w': 600, 'h': 600}]
 
+    # ── Default cursor styling ────────────────────────────────────────────────
+    # Real Python starts with a small black arrowhead, which is easy to miss on
+    # a browser canvas. Browser Coder shows a green turtle instead, drawn a bit
+    # larger. This is purely how the cursor *looks*: pen and fill colours used
+    # for drawing stay black, and the moment the program calls shape(), color()
+    # or shapesize() its own choice takes over.
+    _DEF_SHAPE     = 'turtle'
+    _DEF_CURSOR_FC = 'lightgreen'   # body
+    _DEF_CURSOR_PC = 'darkgreen'    # outline
+    _DEF_SCALE     = 1.5            # only while shapesize() is untouched
+
     # ── Default turtle state dict ─────────────────────────────────────────────
     def _new_state():
         return {
@@ -40,6 +51,12 @@ def _setup_turtle():
             'fp': [],                           # fill path points
             'fi': 0,                            # fill insert index in _shapes
             'vis': True,                        # turtle visible?
+            'cu': False,                        # did the program set a colour?
+            'sh': _DEF_SHAPE,                   # cursor shape name
+            'sw': 1.0, 'sl': 1.0,               # shapesize() stretch (wid, len)
+            'ow': 1.0,                          # shape outline width
+            'tl': 0.0,                          # tilt angle (degrees)
+            'rm': 'noresize',                   # resizemode
         }
 
     _gs = _new_state()   # global / module-level turtle state
@@ -62,8 +79,137 @@ def _setup_turtle():
                 *[max(0, min(255, int(v))) for v in vals])
         return 'black'
 
+    # ── Cursor shape support ─────────────────────────────────────────────────
+    # The frontend knows how to draw these by name (same polygons as CPython's
+    # turtle module). Anything registered through register_shape() is shipped
+    # alongside the drawing data as an explicit polygon.
+    _BUILTIN_SHAPES = ('classic', 'arrow', 'turtle', 'circle',
+                       'square', 'triangle', 'blank')
+    _polys    = {}       # custom shapes: name -> [[x, y], ...]
+    _turtles  = []       # states of every Turtle() instance the program made
+    _gs_used  = [False]  # did the program actually use the module-level turtle?
+
+    def _eff(s):
+        """Stretch factors actually applied to the cursor polygon."""
+        if s['rm'] == 'auto':
+            l = max(1.0, s['pw'] / 5.0)
+            return l, l
+        if s['rm'] == 'user':                # shapesize() was called
+            return s['sw'], s['sl']
+        return _DEF_SCALE, _DEF_SCALE        # 'noresize' → readable default
+
+    def _look(s):
+        """Everything the renderer needs to draw this turtle's cursor."""
+        sw, sl = _eff(s)
+        # Drawing colours are black by default; the cursor is green until the
+        # program picks its own colours, and then it follows them exactly.
+        fc = s['fc'] if s['cu'] else _DEF_CURSOR_FC
+        pc = s['pc'] if s['cu'] else _DEF_CURSOR_PC
+        return {
+            'sh': s['sh'], 'fc': fc, 'pc': pc,
+            'sw': round(sw, 3), 'sl': round(sl, 3),
+            'ow': round(s['ow'], 2), 'tl': round(s['tl'] % 360.0, 2),
+        }
+
+    def _app_data(s):
+        d = _look(s)
+        d['k'] = 'SH'
+        return d
+
+    _last_app = [None]
+
+    def _app(s):
+        """Record a change to the cursor's appearance (shape/colour/size/tilt).
+
+        Only actual changes are emitted: the renderer carries one live cursor,
+        so re-stating the current look would just bloat the command list.
+        """
+        if s is _gs:
+            _gs_used[0] = True
+        if _tracer[0] == 0:
+            return           # instant draw — only the final look matters
+        d = _app_data(s)
+        if d == _last_app[0]:
+            return
+        _last_app[0] = d
+        if _shapes and _shapes[-1].get('k') == 'SH':
+            _shapes[-1] = d  # nothing was drawn since the last change
+        else:
+            _shapes.append(d)
+
+    _last_app[0] = _app_data(_gs)   # renderer starts from the default look
+
+    def _cur(s):
+        """Full cursor state, used to place turtles once drawing is finished."""
+        c = _look(s)
+        c['x']   = round(s['x'], 2)
+        c['y']   = round(s['y'], 2)
+        c['h']   = round(s['h'], 2)
+        c['vis'] = s['vis']
+        return c
+
+    # ── Shape / size / tilt setters (shared by module functions and Turtle) ──
+    def _set_shape(s, name=None):
+        if name is not None:
+            n = str(name)
+            if n in _polys:
+                s['sh'] = n
+                _app(s)
+            elif n.lower() in _BUILTIN_SHAPES:
+                s['sh'] = n.lower()
+                _app(s)
+        return s['sh']
+
+    def _set_size(s, stretch_wid=None, stretch_len=None, outline=None):
+        if stretch_wid is None and stretch_len is None and outline is None:
+            return (s['sw'], s['sl'], s['ow'])
+        if stretch_wid is not None:
+            if isinstance(stretch_wid, (list, tuple)):
+                stretch_wid, stretch_len = stretch_wid[0], stretch_wid[1]
+            s['sw'] = float(stretch_wid)
+            s['sl'] = float(stretch_len if stretch_len is not None else stretch_wid)
+        elif stretch_len is not None:
+            s['sl'] = float(stretch_len)
+        if outline is not None:
+            s['ow'] = float(outline)
+        s['rm'] = 'user'       # matches real turtle: shapesize() implies "user"
+        _app(s)
+
+    def _set_resizemode(s, rmode=None):
+        if rmode is not None and str(rmode).lower() in ('auto', 'user', 'noresize'):
+            s['rm'] = str(rmode).lower()
+            _app(s)
+        return s['rm']
+
+    def _set_tilt(s, angle, relative=False):
+        s['tl'] = (s['tl'] + float(angle)) if relative else float(angle)
+        _app(s)
+
+    def _pen(s, **kw):
+        if 'pendown'   in kw: s['pd'] = bool(kw['pendown'])
+        if 'pencolor'  in kw: s['pc'] = _col(kw['pencolor']); s['cu'] = True
+        if 'fillcolor' in kw: s['fc'] = _col(kw['fillcolor']); s['cu'] = True
+        if 'pensize'   in kw: s['pw'] = float(kw['pensize'])
+        if 'shown'     in kw: s['vis'] = bool(kw['shown'])
+        if 'outline'   in kw: s['ow'] = float(kw['outline'])
+        if 'shape'     in kw: _set_shape(s, kw['shape'])
+        if 'resizemode' in kw: _set_resizemode(s, kw['resizemode'])
+        if 'stretchfactor' in kw: _set_size(s, kw['stretchfactor'])
+        if 'tilt'      in kw: _set_tilt(s, kw['tilt'])
+        _app(s)
+
+    def _stamp(s):
+        d = {'k': 'S',
+             'x': round(s['x'], 2), 'y': round(s['y'], 2),
+             'h': round(s['h'], 2),
+             'c': s['pc']}          # legacy field, kept for older frontends
+        d.update(_look(s))
+        _shapes.append(d)
+
     # ── Core movement helper: draw segment + update position ─────────────────
     def _seg(s, nx, ny):
+        if s is _gs:
+            _gs_used[0] = True
         if s['pd']:
             _shapes.append({
                 'k': 'l',
@@ -158,18 +304,22 @@ def _setup_turtle():
     pd = down = pendown;  pu = up = penup
 
     def pensize(width=None):
-        if width is not None: _gs['pw'] = float(width)
+        if width is not None:
+            _gs['pw'] = float(width)
+            _app(_gs)          # matters when resizemode is "auto"
         return _gs['pw']
     width = pensize
 
     def pencolor(*args):
         if len(args) == 1: _gs['pc'] = _col(args[0])
         elif len(args) == 3: _gs['pc'] = _col(args)
+        if args: _gs['cu'] = True; _app(_gs)
         return _gs['pc']
 
     def fillcolor(*args):
         if len(args) == 1: _gs['fc'] = _col(args[0])
         elif len(args) == 3: _gs['fc'] = _col(args)
+        if args: _gs['cu'] = True; _app(_gs)
         return _gs['fc']
 
     def color(*args):
@@ -180,12 +330,11 @@ def _setup_turtle():
             _gs['pc'] = _col(args[0]); _gs['fc'] = _col(args[1])
         else:
             c = _col(args); _gs['pc'] = c; _gs['fc'] = c
+        _gs['cu'] = True
+        _app(_gs)
 
     def pen(**kwargs):
-        if 'pendown' in kwargs: _gs['pd'] = bool(kwargs['pendown'])
-        if 'pencolor' in kwargs: _gs['pc'] = _col(kwargs['pencolor'])
-        if 'fillcolor' in kwargs: _gs['fc'] = _col(kwargs['fillcolor'])
-        if 'pensize' in kwargs: _gs['pw'] = float(kwargs['pensize'])
+        _pen(_gs, **kwargs)
 
     # ── Fill ─────────────────────────────────────────────────────────────────
     def begin_fill():
@@ -222,11 +371,8 @@ def _setup_turtle():
         })
 
     def stamp():
-        _shapes.append({
-            'k': 'S',
-            'x': round(_gs['x'], 2), 'y': round(_gs['y'], 2),
-            'h': round(_gs['h'], 2),  'c': _gs['pc'],
-        })
+        _gs_used[0] = True
+        _stamp(_gs)
 
     def write(arg, move=False, align='left', font=('Arial', 8, 'normal')):
         fn = '{} {}px {}'.format(
@@ -256,9 +402,11 @@ def _setup_turtle():
         return _speed[0]
 
     def hideturtle():
+        _gs_used[0] = True
         _gs['vis'] = False
         _shapes.append({'k': 'HT'})
     def showturtle():
+        _gs_used[0] = True
         _gs['vis'] = True
         _shapes.append({'k': 'ST'})
     def isvisible(): return _gs['vis']
@@ -307,15 +455,45 @@ def _setup_turtle():
     def textinput(title, prompt): return ''
     def mode(m=None): return 'standard'
     def colormode(cmode=None): return cmode if cmode is not None else 255
-    def shape(name=None): return 'classic'
-    def resizemode(rmode=None): return 'noresize'
-    def turtlesize(stretch_wid=None, stretch_len=None, outline=None): pass
+
+    # ── Cursor shape ─────────────────────────────────────────────────────────
+    def shape(name=None):
+        return _set_shape(_gs, name)
+
+    def resizemode(rmode=None):
+        return _set_resizemode(_gs, rmode)
+
+    def turtlesize(stretch_wid=None, stretch_len=None, outline=None):
+        return _set_size(_gs, stretch_wid, stretch_len, outline)
     shapesize = turtlesize
-    def addshape(name, shape=None): pass
+
+    def addshape(name, shape=None):
+        """Register a polygon shape: a sequence of (x, y) pairs.
+
+        Image and compound shapes have no meaning for the canvas renderer and
+        are ignored, exactly as they were before shapes were supported.
+        """
+        try:
+            pts = [[round(float(p[0]), 3), round(float(p[1]), 3)] for p in shape]
+        except Exception:
+            return
+        if len(pts) >= 3:
+            _polys[str(name)] = pts
     register_shape = addshape
-    def tilt(angle): pass
-    def tiltangle(angle=None): return 0.0
-    def settiltangle(angle): pass
+
+    def getshapes():
+        return sorted(list(_BUILTIN_SHAPES) + list(_polys))
+
+    def tilt(angle):
+        _set_tilt(_gs, angle, relative=True)
+
+    def settiltangle(angle):
+        _set_tilt(_gs, angle)
+
+    def tiltangle(angle=None):
+        if angle is not None:
+            _set_tilt(_gs, angle)
+        return _gs['tl']
 
     # ── Screen singleton ─────────────────────────────────────────────────────
     class _Screen:
@@ -352,8 +530,15 @@ def _setup_turtle():
 
     # ── Turtle class (OOP API) ───────────────────────────────────────────────
     class _Turtle:
-        def __init__(self):
+        def __init__(self, *args, **kwargs):
             self._s = _new_state()
+            _turtles.append(self._s)
+            if 'shape' in kwargs:
+                _set_shape(self._s, kwargs['shape'])
+            elif args and isinstance(args[0], str):
+                _set_shape(self._s, args[0])
+            if kwargs.get('visible') is False:
+                self._s['vis'] = False
 
         def _seg(self, nx, ny):  _seg(self._s, nx, ny)
         def _fwd(self, d):       _fwd(self._s, d)
@@ -400,23 +585,30 @@ def _setup_turtle():
         def up(self):          self._s['pd'] = False
         def isdown(self):      return self._s['pd']
         def pensize(self, w=None):
-            if w is not None: self._s['pw'] = float(w)
+            if w is not None:
+                self._s['pw'] = float(w)
+                _app(self._s)
             return self._s['pw']
         def width(self, w=None): return self.pensize(w)
+        def pen(self, **kw):     _pen(self._s, **kw)
 
         def pencolor(self, *a):
             if len(a) == 1: self._s['pc'] = _col(a[0])
             elif len(a) == 3: self._s['pc'] = _col(a)
+            if a: self._s['cu'] = True; _app(self._s)
             return self._s['pc']
         def fillcolor(self, *a):
             if len(a) == 1: self._s['fc'] = _col(a[0])
             elif len(a) == 3: self._s['fc'] = _col(a)
+            if a: self._s['cu'] = True; _app(self._s)
             return self._s['fc']
         def color(self, *a):
             if not a: return (self._s['pc'], self._s['fc'])
             if len(a) == 1: c = _col(a[0]); self._s['pc'] = c; self._s['fc'] = c
             elif len(a) == 2: self._s['pc'] = _col(a[0]); self._s['fc'] = _col(a[1])
             else: c = _col(a); self._s['pc'] = c; self._s['fc'] = c
+            self._s['cu'] = True
+            _app(self._s)
 
         def begin_fill(self):
             self._s['fl'] = True
@@ -442,8 +634,7 @@ def _setup_turtle():
             _shapes.append({'k': 'D', 'x': round(self._s['x'], 2), 'y': round(self._s['y'], 2),
                             'r': round(size / 2, 2), 'c': _col(color) if color else self._s['pc']})
         def stamp(self):
-            _shapes.append({'k': 'S', 'x': round(self._s['x'], 2), 'y': round(self._s['y'], 2),
-                            'h': round(self._s['h'], 2), 'c': self._s['pc']})
+            _stamp(self._s)
         def write(self, arg, move=False, align='left', font=('Arial', 8, 'normal')):
             fn = '{} {}px {}'.format(
                 font[2] if len(font) > 2 else 'normal',
@@ -476,12 +667,17 @@ def _setup_turtle():
         def getscreen(self):   return _screen
         def getturtle(self):   return self
         def getpen(self):      return self
-        def shape(self, name=None): return 'classic'
-        def shapesize(self, *a): pass
-        def turtlesize(self, *a): pass
-        def resizemode(self, r=None): return 'noresize'
-        def tilt(self, a): pass
-        def tiltangle(self, a=None): return 0.0
+        def shape(self, name=None):   return _set_shape(self._s, name)
+        def shapesize(self, stretch_wid=None, stretch_len=None, outline=None):
+            return _set_size(self._s, stretch_wid, stretch_len, outline)
+        def turtlesize(self, stretch_wid=None, stretch_len=None, outline=None):
+            return _set_size(self._s, stretch_wid, stretch_len, outline)
+        def resizemode(self, r=None): return _set_resizemode(self._s, r)
+        def tilt(self, a):            _set_tilt(self._s, a, relative=True)
+        def settiltangle(self, a):    _set_tilt(self._s, a)
+        def tiltangle(self, a=None):
+            if a is not None: _set_tilt(self._s, a)
+            return self._s['tl']
         def onclick(self, fun, btn=1, add=None): pass
         def onrelease(self, fun, btn=1, add=None): pass
         def ondrag(self, fun, btn=1, add=None): pass
@@ -492,6 +688,15 @@ def _setup_turtle():
 
     # ── atexit: emit drawing data ─────────────────────────────────────────────
     def _emit():
+        # Where every turtle ended up. Used to draw the cursors once the
+        # drawing is complete (and as the only cursor source when animation
+        # is switched off, since no 'SH' events are recorded in that mode).
+        _cursors = []
+        if _gs_used[0] or _gs != _new_state():
+            _cursors.append(_cur(_gs))
+        for _ts in _turtles[:50]:
+            _cursors.append(_cur(_ts))
+
         data = {
             'bg':     _cfg[0]['bg'],
             'w':      _cfg[0]['w'],
@@ -499,7 +704,10 @@ def _setup_turtle():
             'tracer': _tracer[0],
             'speed':  _speed[0],
             'shapes': _shapes,
+            'cursors': _cursors,
         }
+        if _polys:
+            data['polys'] = _polys
         json_str = _j.dumps(data, separators=(',', ':'))
 
         # Write the JSON to a temp file and print only the path to stdout.
@@ -538,7 +746,7 @@ def _setup_turtle():
         'onkey', 'onkeypress', 'onkeyrelease', 'onclick', 'onscreenclick', 'ontimer',
         'mainloop', 'done', 'exitonclick', 'bye',
         'numinput', 'textinput', 'mode', 'colormode',
-        'shape', 'resizemode', 'turtlesize', 'shapesize',
+        'shape', 'resizemode', 'turtlesize', 'shapesize', 'getshapes',
         'tilt', 'tiltangle', 'settiltangle',
         'addshape', 'register_shape',
         'Screen', 'getscreen', 'Turtle', 'RawTurtle', 'Pen',
