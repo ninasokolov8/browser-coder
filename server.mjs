@@ -1482,12 +1482,15 @@ class SmartExecutor {
       CONFIG.execution.timeoutMs,
       { cwd: projectDir }
     );
+    // Always replace project dir paths for readable error messages.
+    if (result.exitCode !== 0 && result.stderr) {
+      result.stderr = stripTempPath(result.stderr, projectDir).trim();
+    }
     // Detect Python syntax/indentation errors (occur before any execution)
     if (result.exitCode !== 0 && result.stderr && !result.stdout) {
       if (/\n(SyntaxError|IndentationError|TabError):/m.test(result.stderr) &&
           !/^Traceback/m.test(result.stderr)) {
         result.phase = 'compile';
-        result.stderr = stripTempPath(result.stderr, projectDir).trim();
       }
     }
     return result;
@@ -1723,15 +1726,18 @@ class SmartExecutor {
         '-B',                 // Don't write .pyc bytecode next to the temp file
         tempFile
       ]);
+      // Always replace the temp file path for readable error messages.
+      if (result.exitCode !== 0 && result.stderr) {
+        result.stderr = result.stderr
+          .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.py')
+          .trim();
+      }
       // Python syntax/indentation errors occur before any code runs (no stdout).
       // Label them as compile-phase so the frontend shows a compile-error header.
       if (result.exitCode !== 0 && result.stderr && !result.stdout) {
         if (/\n(SyntaxError|IndentationError|TabError):/m.test(result.stderr) &&
             !/^Traceback/m.test(result.stderr)) {
           result.phase = 'compile';
-          result.stderr = result.stderr
-            .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.py')
-            .trim();
         }
       }
       return result;

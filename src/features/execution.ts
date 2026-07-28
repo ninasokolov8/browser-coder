@@ -72,7 +72,8 @@ function renderRunResult(
     }
     if (data.stderr) {
       if (parts.length > 0) parts.push('\n');
-      parts.push(`<span class="info">── stderr ─────────────────────────────────────────────────</span>\n`);
+      const errLabel = langId === 'python' ? 'Python Error' : langId === 'java' ? 'Java Error' : langId === 'csharp' ? 'C# Error' : langId === 'php' ? 'PHP Error' : 'Error Output';
+      parts.push(`<span class="info">── ${errLabel} ─────────────────────────────────────────────</span>\n`);
       parts.push(`<span class="error">${esc(data.stderr)}</span>`);
     }
   }
