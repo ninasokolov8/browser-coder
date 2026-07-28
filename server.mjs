@@ -737,6 +737,54 @@ function parseTurtleOutput(result) {
 }
 
 // ============================================
+// TYPESCRIPT COMPILER SUPPORT
+// ============================================
+// Loaded lazily on first TypeScript execution. Requires the `typescript`
+// package to be installed (it is now listed in production dependencies).
+// Falls back gracefully if unavailable (compilation errors won't be caught
+// server-side, but Monaco's client-side TS worker still catches them).
+let _tsCompiler = null;
+let _tsLoadAttempted = false;
+
+async function getTsCompiler() {
+  if (_tsLoadAttempted) return _tsCompiler;
+  _tsLoadAttempted = true;
+  try {
+    const mod = await import('typescript');
+    _tsCompiler = mod.default || mod;
+    log('info', 'ts_compiler_loaded', { version: _tsCompiler.version });
+  } catch (e) {
+    log('warn', 'ts_compiler_unavailable', { error: e.message });
+  }
+  return _tsCompiler;
+}
+
+/**
+ * Remove temp-dir path prefix from compiler/runtime output so users see short,
+ * actionable filenames instead of internal sandbox paths.
+ */
+function stripTempPath(text, dirToStrip) {
+  if (!text || !dirToStrip) return text || '';
+  const prefix = dirToStrip.endsWith('/') ? dirToStrip : dirToStrip + '/';
+  return text.replace(new RegExp(prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+}
+
+/**
+ * Remove dotnet temp-dir noise and csproj paths from C# compiler output.
+ * Produces a clean multi-line error list suitable for display to the user.
+ */
+function cleanCSharpErrors(text, projectDir) {
+  if (!text) return '';
+  return stripTempPath(text, projectDir)
+    .replace(/\s*\[[^\]]*\.csproj\]/g, '')                     // remove [/path/X.csproj]
+    .replace(/^Build\s+(FAILED|succeeded)\.?\s*$/gim, '')      // remove build summary
+    .replace(/^\s*\d+\s+(Error|Warning)\(s\)\s*$/gim, '')      // remove error count line
+    .replace(/^Time Elapsed\s.*$/gim, '')                      // remove timing line
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// ============================================
 // AUTO-CONFIGURATION (adapts to environment)
 // ============================================
 const CPU_COUNT = os.cpus().length;
@@ -1228,8 +1276,9 @@ class SmartExecutor {
       
       switch (language) {
         case 'javascript':
-        case 'typescript':
           return await this.executeJSMulti(projectDir, mainFile.name);
+        case 'typescript':
+          return await this.executeTSMulti(projectDir, mainFile.name);
         case 'python':
           return await this.executePythonMulti(projectDir, mainFile.name);
         case 'php':
@@ -1256,6 +1305,104 @@ class SmartExecutor {
       '--allow-fs-read=' + projectDir,
       '--max-old-space-size=128',
       path.join(projectDir, mainFile)
+    ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+  }
+
+  /**
+   * Multi-file TypeScript execution:
+   * Transpiles every .ts file in the project to a sibling .js (CommonJS),
+   * then runs the entry-point .js with Node.  Compile errors from any file
+   * are collected and returned before any execution is attempted.
+   */
+  async executeTSMulti(projectDir, mainFile) {
+    const startTime = Date.now();
+    const ts = await getTsCompiler();
+
+    if (!ts) {
+      log('warn', 'ts_compiler_missing_multi_fallback', { mainFile });
+      // Fallback: will fail for real TS syntax, but lets pure-JS code work
+      return this.runProcess('node', [
+        '--no-warnings', '--experimental-permission',
+        '--allow-fs-read=' + projectDir, '--max-old-space-size=128',
+        path.join(projectDir, mainFile),
+      ], CONFIG.execution.timeoutMs, { cwd: projectDir });
+    }
+
+    // Walk project directory and collect .ts files
+    const tsFiles = [];
+    const walkTs = (dir) => {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory() && entry.name !== 'node_modules') walkTs(full);
+          else if (entry.isFile() && entry.name.endsWith('.ts')) tsFiles.push(full);
+        }
+      } catch { /* ignore unreadable dirs */ }
+    };
+    walkTs(projectDir);
+
+    // Transpile each .ts → sibling .js (CommonJS so require() resolves correctly)
+    const compileErrors = [];
+    for (const tsFile of tsFiles) {
+      const relPath = path.relative(projectDir, tsFile).replace(/\\/g, '/');
+      let src;
+      try { src = fs.readFileSync(tsFile, 'utf-8'); } catch { continue; }
+
+      let result;
+      try {
+        result = ts.transpileModule(src, {
+          fileName: relPath,
+          compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2022,
+            strict: false,
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            experimentalDecorators: true,
+            sourceMap: false,
+          },
+          reportDiagnostics: true,
+        });
+      } catch (e) {
+        compileErrors.push(`${relPath}: ${e.message}`);
+        continue;
+      }
+
+      if (result.diagnostics && result.diagnostics.length > 0) {
+        result.diagnostics.forEach(d => {
+          const msg = ts.flattenDiagnosticMessageText(d.messageText, '\n');
+          if (d.file && d.start !== undefined) {
+            const pos = d.file.getLineAndCharacterOfPosition(d.start);
+            compileErrors.push(`${relPath}:${pos.line + 1}:${pos.character + 1} - error TS${d.code}: ${msg}`);
+          } else {
+            compileErrors.push(`error TS${d.code}: ${msg}`);
+          }
+        });
+      }
+
+      try {
+        fs.writeFileSync(tsFile.replace(/\.ts$/, '.js'), result.outputText);
+      } catch (e) {
+        compileErrors.push(`${relPath}: could not write transpiled output: ${e.message}`);
+      }
+    }
+
+    if (compileErrors.length > 0) {
+      return {
+        stdout: '',
+        stderr: compileErrors.join('\n'),
+        exitCode: 1,
+        phase: 'compile',
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    // Run transpiled entry point
+    const mainJs = path.join(projectDir, mainFile.replace(/\.ts$/, '.js'));
+    return this.runProcess('node', [
+      '--no-warnings', '--experimental-permission',
+      '--allow-fs-read=' + projectDir, '--max-old-space-size=128',
+      mainJs,
     ], CONFIG.execution.timeoutMs, { cwd: projectDir });
   }
   
@@ -1329,21 +1476,53 @@ class SmartExecutor {
       `runpy.run_path(${JSON.stringify(mainFilePath)}, run_name="__main__")`,
     ].join('\n');
 
-    return await this.runProcess(
+    const result = await this.runProcess(
       'python3',
       ['-u', '-I', '-S', '-B', '-c', bootstrap],
       CONFIG.execution.timeoutMs,
       { cwd: projectDir }
     );
+    // Detect Python syntax/indentation errors (occur before any execution)
+    if (result.exitCode !== 0 && result.stderr && !result.stdout) {
+      if (/\n(SyntaxError|IndentationError|TabError):/m.test(result.stderr) &&
+          !/^Traceback/m.test(result.stderr)) {
+        result.phase = 'compile';
+        result.stderr = stripTempPath(result.stderr, projectDir).trim();
+      }
+    }
+    return result;
   }
 
   async executePHPMulti(projectDir, mainFile) {
+    const mainFilePath = path.join(projectDir, mainFile);
+
+    // ── Syntax check ────────────────────────────────────────────────────────
+    const lintResult = await this.runProcess('php', [
+      '-d', 'open_basedir=' + projectDir,
+      '-l',
+      mainFilePath,
+    ], 10000, {});
+
+    if (lintResult.exitCode !== 0) {
+      const raw = (lintResult.stdout || lintResult.stderr || '').trim();
+      const cleaned = stripTempPath(raw, projectDir)
+        .replace(/\nErrors parsing[^\n]*$/m, '')
+        .trim();
+      return {
+        stdout: '',
+        stderr: cleaned || raw,
+        exitCode: 1,
+        phase: 'compile',
+        durationMs: lintResult.durationMs,
+      };
+    }
+
     return this.runProcess('php', [
       '-d', 'open_basedir=' + projectDir,
       '-d', 'memory_limit=64M',
       '-d', 'max_execution_time=10',
       '-d', 'disable_functions=exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec',
-      path.join(projectDir, mainFile)
+      mainFilePath,
     ], CONFIG.execution.timeoutMs, { cwd: projectDir });
   }
   
@@ -1361,6 +1540,10 @@ class SmartExecutor {
     ], javaTimeout, { skipJavaSecurityManager: true, cwd: projectDir });
     
     if (compileResult.exitCode !== 0) {
+      // Remove project dir path from javac output so filenames are short
+      if (compileResult.stderr) {
+        compileResult.stderr = stripTempPath(compileResult.stderr, projectDir);
+      }
       return { ...compileResult, phase: 'compile' };
     }
     
@@ -1382,8 +1565,9 @@ class SmartExecutor {
     
     switch (language) {
       case 'javascript':
+        return this.executeJS(code);
       case 'typescript':
-        return this.executeJS(code, language === 'typescript');
+        return this.executeTS(code);
       case 'python':
         return this.executePython(code);
       case 'php':
@@ -1424,6 +1608,92 @@ class SmartExecutor {
       try { fs.unlinkSync(tempFile); } catch {}
     }
   }
+
+  /**
+   * TypeScript execution:
+   *   1. Transpile TS → JS using the TypeScript compiler API (syntax errors
+   *      are caught here and returned with phase:'compile').
+   *   2. Run the emitted JavaScript under Node with the same security sandbox
+   *      used for plain JavaScript.
+   *
+   * Semantic / type errors are caught client-side by Monaco's TS language
+   * service and block execution before this method is ever called.
+   */
+  async executeTS(code) {
+    const startTime = Date.now();
+    const ts = await getTsCompiler();
+
+    let jsCode = code;
+
+    if (ts) {
+      // ── Step 1: transpile (catches syntax errors) ────────────────────────
+      let transpileResult;
+      try {
+        transpileResult = ts.transpileModule(code, {
+          fileName: 'user.ts',
+          compilerOptions: {
+            module: ts.ModuleKind.ESNext,
+            target: ts.ScriptTarget.ES2022,
+            strict: false,
+            isolatedModules: true,
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            experimentalDecorators: true,
+            sourceMap: false,
+            inlineSourceMap: false,
+            removeComments: false,
+          },
+          reportDiagnostics: true,
+        });
+      } catch (e) {
+        return {
+          stdout: '',
+          stderr: `TypeScript compilation failed: ${e.message}`,
+          exitCode: 1,
+          phase: 'compile',
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
+        const errors = transpileResult.diagnostics.map(d => {
+          const msg = ts.flattenDiagnosticMessageText(d.messageText, '\n');
+          if (d.file && d.start !== undefined) {
+            const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
+            return `user.ts:${line + 1}:${character + 1} - error TS${d.code}: ${msg}`;
+          }
+          return `error TS${d.code}: ${msg}`;
+        });
+        return {
+          stdout: '',
+          stderr: errors.join('\n'),
+          exitCode: 1,
+          phase: 'compile',
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      jsCode = transpileResult.outputText;
+    }
+
+    // ── Step 2: run transpiled JavaScript ───────────────────────────────────
+    const tempFile = path.join(
+      this.tempDir,
+      `ts_${Date.now()}_${Math.random().toString(36).slice(2)}.mjs`
+    );
+    try {
+      fs.writeFileSync(tempFile, jsCode);
+      return await this.runProcess('node', [
+        '--no-warnings',
+        '--experimental-permission',
+        '--allow-fs-read=' + this.tempDir,
+        '--max-old-space-size=128',
+        tempFile,
+      ]);
+    } finally {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }
+  }
   
   async executePython(code) {
     // Inject turtle shim before user code when turtle is imported.
@@ -1446,13 +1716,25 @@ class SmartExecutor {
     try {
       fs.writeFileSync(tempFile, fullCode);
       // SECURITY: Run Python with restricted options
-      return await this.runProcess('python3', [
+      const result = await this.runProcess('python3', [
         '-u',                 // Unbuffered output
         '-I',                 // Isolated mode: ignore PYTHON* env vars, don't add current directory
         '-S',                 // Don't import site module (reduces available imports)
         '-B',                 // Don't write .pyc bytecode next to the temp file
         tempFile
       ]);
+      // Python syntax/indentation errors occur before any code runs (no stdout).
+      // Label them as compile-phase so the frontend shows a compile-error header.
+      if (result.exitCode !== 0 && result.stderr && !result.stdout) {
+        if (/\n(SyntaxError|IndentationError|TabError):/m.test(result.stderr) &&
+            !/^Traceback/m.test(result.stderr)) {
+          result.phase = 'compile';
+          result.stderr = result.stderr
+            .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.py')
+            .trim();
+        }
+      }
+      return result;
     } finally {
       try { fs.unlinkSync(tempFile); } catch {}
     }
@@ -1462,11 +1744,35 @@ class SmartExecutor {
     // PHP needs to be in a file or passed carefully
     const phpCode = code.startsWith('<?php') ? code : `<?php\n${code}`;
     const tempFile = path.join(this.tempDir, `php_${Date.now()}_${Math.random().toString(36).slice(2)}.php`);
-    const securityConfig = path.join(__dirname, 'security', 'php.ini');
     
     try {
       fs.writeFileSync(tempFile, phpCode);
-      // SECURITY: Run PHP with restrictive configuration
+
+      // ── Step 1: syntax check (php -l) ──────────────────────────────────────
+      const lintResult = await this.runProcess('php', [
+        '-d', 'open_basedir=' + this.tempDir,
+        '-l',
+        tempFile,
+      ], 10000, {});
+
+      if (lintResult.exitCode !== 0) {
+        const raw = (lintResult.stdout || lintResult.stderr || '').trim();
+        const tempName = path.basename(tempFile);
+        const cleaned = raw
+          .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.php')
+          .replace(new RegExp(tempName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.php')
+          .replace(/\nErrors parsing[^\n]*$/m, '')
+          .trim();
+        return {
+          stdout: '',
+          stderr: cleaned || raw,
+          exitCode: 1,
+          phase: 'compile',
+          durationMs: lintResult.durationMs,
+        };
+      }
+
+      // ── Step 2: SECURITY: Run PHP with restrictive configuration ────────────
       const args = [
         '-d', 'open_basedir=' + this.tempDir,       // Restrict file access
         '-d', 'memory_limit=64M',                   // Limit memory
@@ -1498,6 +1804,10 @@ class SmartExecutor {
         tempFile
       ], javaTimeout, { skipJavaSecurityManager: true });
       if (compileResult.exitCode !== 0) {
+        // Remove temp dir path from javac output so filenames are clean
+        if (compileResult.stderr) {
+          compileResult.stderr = stripTempPath(compileResult.stderr, this.tempDir);
+        }
         return { ...compileResult, phase: 'compile' };
       }
       
@@ -1595,7 +1905,7 @@ class SmartExecutor {
       // Replace Program.cs with user code
       fs.writeFileSync(path.join(projectDir, 'Program.cs'), code);
       // Run with --no-restore to skip NuGet (template already restored)
-      return await this.runProcess('dotnet', [
+      const result = await this.runProcess('dotnet', [
         'run',
         '-c', 'Release',
         '--no-restore',
@@ -1603,6 +1913,17 @@ class SmartExecutor {
         '-v', 'q',
         '--project', projectDir,
       ], csTimeout, { cwd: projectDir, csharp: true });
+
+      // Detect C# compile errors: dotnet outputs them to stdout with (line,col) format
+      if (result.exitCode !== 0) {
+        const combined = (result.stdout || '') + (result.stderr || '');
+        if (/\(\d+,\d+\):\s+(?:error|warning)\s+CS\d+/i.test(combined)) {
+          result.phase = 'compile';
+          result.stderr = cleanCSharpErrors(combined, projectDir);
+          result.stdout = '';
+        }
+      }
+      return result;
     } finally {
       try { fs.rmSync(projectDir, { recursive: true, force: true }); } catch {}
     }
@@ -1620,13 +1941,23 @@ class SmartExecutor {
         fs.copyFileSync(tplCsproj, path.join(projectDir, 'UserProgram.csproj'));
       }
     }
-    return await this.runProcess('dotnet', [
+    const result = await this.runProcess('dotnet', [
       'run',
       '-c', 'Release',
       '--nologo',
       '-v', 'q',
       '--project', projectDir,
     ], csTimeout, { cwd: projectDir, csharp: true });
+
+    if (result.exitCode !== 0) {
+      const combined = (result.stdout || '') + (result.stderr || '');
+      if (/\(\d+,\d+\):\s+(?:error|warning)\s+CS\d+/i.test(combined)) {
+        result.phase = 'compile';
+        result.stderr = cleanCSharpErrors(combined, projectDir);
+        result.stdout = '';
+      }
+    }
+    return result;
   }
   
   runProcess(command, args, timeoutMs = CONFIG.execution.timeoutMs, options = {}) {
@@ -1636,9 +1967,14 @@ class SmartExecutor {
       let stderr = '';
       let killed = false;
       
-      // SECURITY: Create a minimal, sanitized environment
+      // SECURITY: Create a minimal, sanitized environment.
+      // In production (Docker/Linux) we lock PATH to the minimal Linux set.
+      // In development mode we include the host PATH so tools (node, python,
+      // javac, dotnet, …) are discoverable on macOS / Windows dev machines.
+      const devPath = CONFIG.isDev ? process.env.PATH || '' : '';
+      const prodPath = '/usr/local/bin:/usr/bin:/bin';
       const sanitizedEnv = {
-        PATH: '/usr/local/bin:/usr/bin:/bin',  // Minimal PATH
+        PATH: devPath ? `${devPath}${process.platform === 'win32' ? ';' : ':'}${prodPath}` : prodPath,
         HOME: this.tempDir,
         TMPDIR: this.tempDir,
         TEMP: this.tempDir,
@@ -2822,6 +3158,7 @@ app.post("/api/run", async (req, res) => {
       durationMs: result.durationMs,
       cached: result.cached || false,
       turtleData: result.turtleData || null,
+      phase: result.phase || 'run',
     });
   } catch (err) {
     log('error', 'execution_error', { error: err.message, language });

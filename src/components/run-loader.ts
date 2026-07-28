@@ -1,5 +1,5 @@
 import { t } from "../i18n";
-import { runBtn, panelContentEl } from "./dom";
+import { runBtn } from "./dom";
 import { setOutput } from "./output";
 
 // ===== Run loader (VSCode-style "busy" feedback) =====
@@ -18,7 +18,7 @@ export function startRunLoader() {
   setOutput("Running");
   runLoaderTimer = window.setInterval(() => {
     dots = (dots + 1) % 4; // 0 -> 1 -> 2 -> 3 -> 0 (dots gone) -> ...
-    panelContentEl.textContent = "Running" + ".".repeat(dots);
+    setOutput("Running" + ".".repeat(dots));
   }, 400);
 }
 

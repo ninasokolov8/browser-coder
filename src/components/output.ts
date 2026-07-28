@@ -3,7 +3,18 @@ import {
   panelContentEl,
 } from "./dom";
 
-// Utility functions
+/**
+ * Escape a plain string for safe insertion as HTML content.
+ * Used internally and exported so callers building HTML output can escape
+ * user-controlled strings (stdout, stderr, filenames, error messages).
+ */
+export function escHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function setStatus(s: string) {
   statusEl.textContent = s;
 }
@@ -12,14 +23,28 @@ export function setOutput(text: string) {
   // Output is always raw program stdout/stderr/exit-code text - never
   // translated - so it must stay LTR even if the element previously held a
   // translated (and possibly RTL) placeholder via data-i18n.
-  panelContentEl.dir = "ltr";
-  panelContentEl.textContent = text || "";
+  panelContentEl.dir = 'ltr';
+  // Use innerHTML so formatted output (spans with CSS classes) can coexist
+  // with plain-text output. All content is HTML-escaped to prevent injection.
+  panelContentEl.innerHTML = escHtml(text || '');
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 
 export function appendOutput(text: string) {
-  panelContentEl.dir = "ltr";
-  panelContentEl.textContent += (panelContentEl.textContent ? "\n" : "") + text;
+  panelContentEl.dir = 'ltr';
+  const existing = panelContentEl.innerHTML;
+  panelContentEl.innerHTML = existing + (existing ? '\n' : '') + escHtml(text);
+  panelContentEl.scrollTop = panelContentEl.scrollHeight;
+}
+
+/**
+ * Set pre-formatted HTML output in the panel.
+ * The CALLER is responsible for HTML-escaping every user-controlled string
+ * using escHtml() before embedding it in the html argument.
+ */
+export function setOutputHtml(html: string) {
+  panelContentEl.dir = 'ltr';
+  panelContentEl.innerHTML = html || '';
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 

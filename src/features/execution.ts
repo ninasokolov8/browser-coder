@@ -8,7 +8,7 @@ import { appConfig, policyState } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
 import { notifyRunResult } from '../integrations/stepup-bus';
-import { setStatus, setOutput, appendOutput } from '../components/output';
+import { setStatus, setOutput, appendOutput, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
 import { renderTurtle, clearTurtleCanvas } from '../components/turtle';
 import type { TurtleData } from '../components/turtle';
@@ -27,6 +27,71 @@ function requireRuntime() {
   return { editor, tabManager, storage };
 }
 
+// ── Output helpers ──────────────────────────────────────────────────────────
+
+/** Escape text for safe embedding as HTML content. */
+function esc(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getCompileLabel(langId: string): string {
+  switch (langId) {
+    case 'java':       return 'Compile Error (javac)';
+    case 'csharp':     return 'Compile Error (dotnet build)';
+    case 'typescript': return 'TypeScript Error';
+    case 'php':        return 'Parse Error (php -l)';
+    case 'python':     return 'Syntax Error';
+    default:           return 'Compile Error';
+  }
+}
+
+/**
+ * Render a /api/run result into the output panel as formatted HTML.
+ * Compile errors get a blue header and red error text.
+ * Runtime output appears as-is with an optional red stderr section and a
+ * green/red exit-code footer.
+ */
+function renderRunResult(
+  data: { stdout?: string; stderr?: string; exitCode: number; phase?: string },
+  langId: string
+): void {
+  const isCompile = data.phase === 'compile';
+  const parts: string[] = [];
+
+  if (isCompile) {
+    parts.push(`<span class="info">── ${esc(getCompileLabel(langId))} ──────────────────────────────────────</span>\n`);
+    if (data.stderr) {
+      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
+    }
+  } else {
+    if (data.stdout) {
+      parts.push(esc(data.stdout));
+    }
+    if (data.stderr) {
+      if (parts.length > 0) parts.push('\n');
+      parts.push(`<span class="info">── stderr ─────────────────────────────────────────────────</span>\n`);
+      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
+    }
+  }
+
+  // Trailing newline before footer
+  if (parts.length > 0) {
+    const last = parts[parts.length - 1];
+    if (!last.endsWith('\n')) parts.push('\n');
+  }
+
+  if (data.exitCode === 0) {
+    parts.push(`<span class="success">[exit 0 ✓]</span>`);
+  } else {
+    parts.push(`<span class="error">[exit code: ${data.exitCode}]</span>`);
+  }
+
+  setOutputHtml(parts.join(''));
+}
+
 export async function runCode(code: string) {
   const { editor, tabManager, storage } = requireRuntime();
   const activeTab = tabManager.getActiveTab();
@@ -38,6 +103,39 @@ export async function runCode(code: string) {
   if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file)) {
     await openWebPreview();
     return;
+  }
+
+  // ── Pre-run TypeScript diagnostics gate ────────────────────────────────────
+  // Monaco's TypeScript language service runs client-side and maintains an
+  // up-to-date set of error markers. Block the run when there are Error-level
+  // markers so the user gets immediate, in-IDE feedback instead of a cryptic
+  // runtime failure.
+  if (lang.id === 'typescript') {
+    const model = editor.getModel();
+    if (model) {
+      const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+      const errors = markers.filter(
+        (m: monaco.editor.IMarker) => m.severity === monaco.MarkerSeverity.Error
+      );
+      if (errors.length > 0) {
+        const errLines = errors
+          .map((m: monaco.editor.IMarker) => {
+            const file = m.resource.path.split('/').pop() ?? 'user.ts';
+            return `${file}:${m.startLineNumber}:${m.startColumn}  ${m.message}`;
+          })
+          .join('\n');
+        setOutputHtml(
+          `<span class="info">── TypeScript Error ──────────────────────────────────────────</span>\n` +
+          `<span class="error">${esc(errLines)}</span>\n` +
+          `<span class="error">[exit code: 1]</span>`
+        );
+        setStatus('Compile error ❌');
+        if (appConfig.isEmbedded) {
+          notifyRunResult({ stdout: '', stderr: errLines, exitCode: 1, durationMs: 0 });
+        }
+        return;
+      }
+    }
   }
 
   setStatus("Running…");
@@ -137,13 +235,19 @@ requestBody = {
     clearTurtleCanvas();
 
     if (!resp.ok) {
-      appendOutput(`HTTP ${resp.status}\n${raw || "(empty response)"}`);
+      setOutputHtml(
+        `<span class="error">HTTP ${resp.status}\n${esc(raw || '(empty response)')}</span>\n` +
+        `<span class="error">[exit code: 1]</span>`
+      );
       setStatus("Run failed");
       return;
     }
 
     if (!data) {
-      appendOutput(`ERROR: Server returned no JSON.\n${raw || "(empty response)"}`);
+      setOutputHtml(
+        `<span class="error">ERROR: Server returned no JSON.\n${esc(raw || '(empty response)')}</span>\n` +
+        `<span class="error">[exit code: 1]</span>`
+      );
       setStatus("Run failed");
       return;
     }
@@ -151,18 +255,25 @@ requestBody = {
     // ── Turtle graphics output ──────────────────────────────────────────
     // A run counts as turtle output when it drew something *or* left a turtle
     // on screen (a program may only place the cursor without drawing).
+    let turtleRenderErr: string | null = null;
     if (data.turtleData && (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)) {
       try {
         renderTurtle(data.turtleData as TurtleData);
       } catch (renderErr) {
-        appendOutput(`[turtle render error: ${renderErr}]`);
+        turtleRenderErr = String(renderErr);
       }
     }
 
-    if (data.stdout) appendOutput(data.stdout);
-    if (data.stderr) appendOutput(`[stderr]\n${data.stderr}`);
-    appendOutput(`\n[exit code: ${data.exitCode}]`);
-    setStatus(data.exitCode === 0 ? "Ready ✅" : "Run completed with errors");
+    renderRunResult(data, lang.id);
+    if (turtleRenderErr) appendOutput(`[turtle render error: ${turtleRenderErr}]`);
+
+    setStatus(
+      data.exitCode === 0
+        ? 'Ready ✅'
+        : data.phase === 'compile'
+          ? 'Compile error ❌'
+          : 'Runtime error ❌'
+    );
     
     // Notify parent of run result (Step-Up integration)
     if (appConfig.isEmbedded) {
@@ -175,8 +286,10 @@ requestBody = {
     }
   } catch (e: any) {
     stopRunLoader();
-    setOutput("");
-    appendOutput(`ERROR: ${e?.message || String(e)}`);
+    setOutputHtml(
+      `<span class="error">ERROR: ${esc(e?.message || String(e))}</span>\n` +
+      `<span class="error">[exit code: 1]</span>`
+    );
     setStatus("Run failed");
     
     // Notify parent of error
