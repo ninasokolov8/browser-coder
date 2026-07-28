@@ -672,6 +672,74 @@ function hasTurtleImport(code) {
   return /\bimport\s+turtle\b|\bfrom\s+turtle\b/.test(code);
 }
 
+// The exact prefix injected before user code when a turtle program runs.
+// Keep this in one place so the line-offset math below always matches what
+// executePython / executePythonMulti actually write to disk.
+const TURTLE_USER_CODE_SEP = '\n\n# ── user code ──\n';
+
+/**
+ * Number of lines the turtle shim + separator occupy before the user's first
+ * line. A Python traceback for a turtle program reports line numbers in the
+ * combined file, so we subtract this offset to recover the line the user
+ * actually wrote in the editor. Returns 0 when the shim is not prepended.
+ */
+function turtleShimLineOffset() {
+  if (!TURTLE_SHIM) return 0;
+  const prefix = TURTLE_SHIM + TURTLE_USER_CODE_SEP;
+  // Count newlines in the prefix: the char after the last one starts user line 1.
+  let n = 0;
+  for (let i = 0; i < prefix.length; i++) if (prefix[i] === '\n') n++;
+  return n;
+}
+
+/**
+ * Rewrite a Python traceback so line numbers match the user's editor when the
+ * turtle shim was prepended to their code.
+ *
+ *   • Frames for the shim-carrying file, in the user-code region (line >
+ *     offset), are shifted back by the offset so `line 769` becomes the real
+ *     `line 6`.
+ *   • Shim-internal frames (same file, line <= offset) are dropped together
+ *     with their indented source snippet — they are implementation detail the
+ *     user never wrote and would only be confusing.
+ *   • Frames for any *other* file (imported user modules) are left untouched:
+ *     their line numbers are already correct.
+ *
+ * @param {string} text     the stderr traceback
+ * @param {number} offset   turtleShimLineOffset()
+ * @param {string} fileMatch substring the File path must contain to be adjusted
+ *                            (e.g. 'user.py' or the main file's basename)
+ */
+function adjustTurtleTraceback(text, offset, fileMatch) {
+  if (!text || !offset) return text || '';
+  const lines = text.split('\n');
+  const out = [];
+  // Tolerate a trailing \r so Windows (\r\n) and Linux (\n) both parse.
+  const frameRe = /^(\s*File\s+")([^"]*)("\s*,\s+line\s+)(\d+)(.*?)\r?$/;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(frameRe);
+    if (!m) { out.push(lines[i]); continue; }
+    const filePath = m[2];
+    const lineNo = parseInt(m[4], 10);
+    const isTargetFile = !fileMatch || filePath.includes(fileMatch);
+    if (!isTargetFile) { out.push(lines[i]); continue; }
+    if (lineNo > offset) {
+      // User-code frame — shift the number, keep the frame and its snippet.
+      out.push(m[1] + m[2] + m[3] + (lineNo - offset) + m[5]);
+    } else {
+      // Shim-internal frame — drop it, plus every indented snippet line Python
+      // printed beneath it (the source line and, on 3.11+, the caret underline),
+      // so the trace stays coherent and shows only user code.
+      while (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (frameRe.test(next) || !/^\s{2,}\S/.test(next)) break;
+        i++;
+      }
+    }
+  }
+  return out.join('\n');
+}
+
 /**
  * Parse turtle graphics output from a completed Python execution result.
  *
@@ -1417,6 +1485,7 @@ class SmartExecutor {
       throw new Error(`Python entry point was not written: ${mainFile}`);
     }
 
+    let shimInjected = false;
     if (TURTLE_SHIM) {
       try {
         const pythonFiles = [];
@@ -1436,7 +1505,8 @@ class SmartExecutor {
 
         if (needsTurtle) {
           const original = fs.readFileSync(mainFilePath, 'utf-8');
-          fs.writeFileSync(mainFilePath, TURTLE_SHIM + '\n\n# ── user code ──\n' + original);
+          fs.writeFileSync(mainFilePath, TURTLE_SHIM + TURTLE_USER_CODE_SEP + original);
+          shimInjected = true;
         }
       } catch {
         // Non-fatal: execute normally if turtle detection/injection fails.
@@ -1485,6 +1555,15 @@ class SmartExecutor {
     // Always replace project dir paths for readable error messages.
     if (result.exitCode !== 0 && result.stderr) {
       result.stderr = stripTempPath(result.stderr, projectDir).trim();
+      // When the turtle shim was prepended to the entry file, shift its
+      // traceback line numbers back so they match the user's editor.
+      if (shimInjected) {
+        result.stderr = adjustTurtleTraceback(
+          result.stderr,
+          turtleShimLineOffset(),
+          path.basename(mainFile)
+        ).trim();
+      }
     }
     // Detect Python syntax/indentation errors (occur before any execution)
     if (result.exitCode !== 0 && result.stderr && !result.stdout) {
@@ -1706,8 +1785,9 @@ class SmartExecutor {
     // validateCodeSecurity; only the user's original code is checked.
     let fullCode = code;
     if (TURTLE_SHIM && hasTurtleImport(code)) {
-      fullCode = TURTLE_SHIM + '\n\n# ── user code ──\n' + code;
+      fullCode = TURTLE_SHIM + TURTLE_USER_CODE_SEP + code;
     }
+    const shimInjected = fullCode !== code;
     // Large programs cannot be passed via `python3 -c <code>`: on Linux a
     // single argv entry is capped at 128 KB (MAX_ARG_STRLEN), so anything
     // bigger fails with `spawn E2BIG`. Write to a temp file and run it - the
@@ -1731,6 +1811,11 @@ class SmartExecutor {
         result.stderr = result.stderr
           .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.py')
           .trim();
+        // When the turtle shim was prepended, traceback line numbers point at
+        // the combined file. Shift them back so they match the user's editor.
+        if (shimInjected) {
+          result.stderr = adjustTurtleTraceback(result.stderr, turtleShimLineOffset(), 'user.py').trim();
+        }
       }
       // Python syntax/indentation errors occur before any code runs (no stdout).
       // Label them as compile-phase so the frontend shows a compile-error header.

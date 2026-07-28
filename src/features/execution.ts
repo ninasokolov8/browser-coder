@@ -256,8 +256,16 @@ requestBody = {
     // ── Turtle graphics output ──────────────────────────────────────────
     // A run counts as turtle output when it drew something *or* left a turtle
     // on screen (a program may only place the cursor without drawing).
+    //
+    // Never open the turtle window for a compile/syntax error: the program
+    // never actually ran, so there is nothing to draw. This guarantees "if
+    // there is a syntax error, nothing runs and nothing is drawn".
     let turtleRenderErr: string | null = null;
-    if (data.turtleData && (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)) {
+    if (
+      data.phase !== 'compile' &&
+      data.turtleData &&
+      (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)
+    ) {
       try {
         renderTurtle(data.turtleData as TurtleData);
       } catch (renderErr) {

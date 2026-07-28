@@ -162,6 +162,75 @@ await test('renderRunResult: default compile label for unknown lang',        () 
 await test('renderRunResult: compile error with no stderr shows just header',() => { const h = renderRunResult({exitCode:1, phase:'compile'}, 'java'); assertContains(h, 'Compile Error (javac)'); assertContains(h, '[exit code: 1]'); });
 await test('renderRunResult: newline output followed by correct footer',     () => { const h = renderRunResult({stdout:'hello\nworld', exitCode:0}, 'python'); assertContains(h, 'hello\nworld'); assertContains(h, '[exit 0 ✓]'); });
 
+// ── adjustTurtleTraceback: shift shim-offset line numbers back to editor lines ──
+function adjustTurtleTraceback(text, offset, fileMatch) {
+  if (!text || !offset) return text || '';
+  const lines = text.split('\n');
+  const out = [];
+  const frameRe = /^(\s*File\s+")([^"]*)("\s*,\s+line\s+)(\d+)(.*?)\r?$/;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(frameRe);
+    if (!m) { out.push(lines[i]); continue; }
+    const filePath = m[2];
+    const lineNo = parseInt(m[4], 10);
+    const isTargetFile = !fileMatch || filePath.includes(fileMatch);
+    if (!isTargetFile) { out.push(lines[i]); continue; }
+    if (lineNo > offset) {
+      out.push(m[1] + m[2] + m[3] + (lineNo - offset) + m[5]);
+    } else {
+      while (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (frameRe.test(next) || !/^\s{2,}\S/.test(next)) break;
+        i++;
+      }
+    }
+  }
+  return out.join('\n');
+}
+
+await test('adjustTurtleTraceback: shifts user-code line back', () => {
+  const tb = 'Traceback (most recent call last):\n  File "user.py", line 771, in <module>\n    t.foward(50)\nAttributeError: no attribute';
+  const r = adjustTurtleTraceback(tb, 765, 'user.py');
+  assertContains(r, 'line 6,');
+  assertNotContains(r, 'line 771');
+});
+await test('adjustTurtleTraceback: offset 0 is a no-op', () => {
+  const tb = '  File "user.py", line 771, in <module>';
+  assertEqual(adjustTurtleTraceback(tb, 0, 'user.py'), tb);
+});
+await test('adjustTurtleTraceback: drops shim-internal frames + snippets', () => {
+  const tb = [
+    'Traceback (most recent call last):',
+    '  File "user.py", line 768, in <module>',
+    '    t.forward("abc")',
+    '    ~~~~~~~~~^^^^^^^',
+    '  File "user.py", line 546, in forward',
+    '    def forward(self, d):    _fwd(self._s, d)',
+    '                             ~~~~^^^^^^^^^^^^',
+    '  File "user.py", line 232, in _fwd',
+    '    _seg(s, s[\'x\'] + d)',
+    '                     ~~^~',
+    'TypeError: bad',
+  ].join('\n');
+  const r = adjustTurtleTraceback(tb, 765, 'user.py');
+  assertContains(r, 'line 3,');            // 768 - 765
+  assertNotContains(r, 'in forward');      // shim frame dropped
+  assertNotContains(r, 'in _fwd');         // shim frame dropped
+  assertNotContains(r, 'def forward(self');// shim source snippet removed
+  assertNotContains(r, '_seg(s');          // shim source snippet removed
+  assertContains(r, 't.forward("abc")');   // user source line kept
+  assertContains(r, 'TypeError: bad');     // exception message kept
+});
+await test('adjustTurtleTraceback: leaves other user modules untouched', () => {
+  const tb = '  File "helper.py", line 3, in foo\n    bar()';
+  assertEqual(adjustTurtleTraceback(tb, 765, 'user.py'), tb);
+});
+await test('adjustTurtleTraceback: tolerates \\r\\n line endings', () => {
+  const tb = 'Traceback:\r\n  File "user.py", line 800, in <module>\r\n    boom()\r\nError';
+  const r = adjustTurtleTraceback(tb, 765, 'user.py');
+  assertContains(r, 'line 35,');           // 800 - 765
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 2. SERVER STATIC ANALYSIS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -188,6 +257,11 @@ await test("server: dev PATH includes host PATH",                () => assertCon
 await test("server: getTsCompiler is lazy-loaded",               () => assertContains(serverSrc, 'async function getTsCompiler()'));
 await test("server: executeTSMulti method present",              () => assertContains(serverSrc, 'async executeTSMulti('));
 await test("server: cleanCSharpErrors helper present",           () => assertContains(serverSrc, 'function cleanCSharpErrors('));
+await test("server: turtleShimLineOffset helper present",        () => assertContains(serverSrc, 'function turtleShimLineOffset('));
+await test("server: adjustTurtleTraceback helper present",       () => assertContains(serverSrc, 'function adjustTurtleTraceback('));
+await test("server: executePython applies traceback shift",      () => { const b = serverSrc.slice(serverSrc.indexOf('async executePython('), serverSrc.indexOf('async executePHP(')); assertContains(b, "adjustTurtleTraceback(result.stderr, turtleShimLineOffset(), 'user.py')"); });
+await test("server: executePythonMulti applies traceback shift", () => { const b = serverSrc.slice(serverSrc.indexOf('async executePythonMulti('), serverSrc.indexOf('async executePHPMulti(')); assertContains(b, 'adjustTurtleTraceback('); assertContains(b, 'path.basename(mainFile)'); });
+await test("server: single shared turtle user-code separator",   () => assertContains(serverSrc, 'const TURTLE_USER_CODE_SEP'));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 3. FRONTEND STATIC ANALYSIS
@@ -235,6 +309,19 @@ await test('index.html: .info CSS class',               () => assertContains(idx
 await test('index.html: .warning CSS class',            () => assertContains(idxSrc, '.warning { color: #ce9178'));
 await test('index.html: white-space: pre-wrap',         () => assertContains(idxSrc, 'white-space: pre-wrap'));
 await test('index.html: direction: ltr on panel',       () => assertContains(idxSrc, 'direction: ltr'));
+
+// turtle popup window — drawing lives in its own floating window, not the panel
+const turtleSrc = readFileSync('src/components/turtle.ts', 'utf8');
+await test('index.html: #turtle-window CSS present',    () => assertContains(idxSrc, '#turtle-window {'));
+await test('index.html: #turtle-window fixed position', () => assertContains(idxSrc, 'position: fixed'));
+await test('index.html: #turtle-window has close btn CSS',() => assertContains(idxSrc, '#turtle-window-close'));
+await test('turtle.ts: creates #turtle-window popup',   () => assertContains(turtleSrc, "windowEl.id = 'turtle-window'"));
+await test('turtle.ts: window appended to body',        () => assertContains(turtleSrc, 'document.body.appendChild(windowEl)'));
+await test('turtle.ts: window is draggable',            () => assertContains(turtleSrc, 'function _makeDraggable('));
+await test('turtle.ts: close button hides window',      () => assertContains(turtleSrc, 'clearTurtleCanvas()'));
+await test('turtle.ts: clearTurtleCanvas hides window', () => { const fn = turtleSrc.slice(turtleSrc.indexOf('export function clearTurtleCanvas(')); assertContains(fn, "getElementById('turtle-window')"); assertContains(fn, "classList.add('hidden')"); });
+await test('turtle.ts: no longer appends to panelEl',   () => assertNotContains(turtleSrc, 'panelEl.appendChild'));
+await test('execution.ts: no turtle on compile error',  () => assertContains(execSrc, "data.phase !== 'compile' &&"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 4. INTEGRATION TESTS
