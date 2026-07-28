@@ -740,6 +740,35 @@ function adjustTurtleTraceback(text, offset, fileMatch) {
   return out.join('\n');
 }
 
+// Absolute path to the Python pre-run static checker (see preflight.py).
+const PYTHON_PREFLIGHT_PATH = path.join(__dirname, 'languages', 'python', 'preflight.py');
+const PYTHON_PREFLIGHT_AVAILABLE = fs.existsSync(PYTHON_PREFLIGHT_PATH);
+
+/**
+ * Format the JSON problems emitted by preflight.py into a Python-style error
+ * block the output panel can show. Each problem becomes:
+ *
+ *     File "user.py", line 2
+ *       prin("test")
+ *       ^
+ *   NameError: name 'prin' is not defined
+ *
+ * @param {Array<{line:number,col:number,msg:string,text:string}>} problems
+ * @param {string} filename  display name (e.g. 'user.py' or 'main.py')
+ */
+function formatPreflightProblems(problems, filename) {
+  return problems.map((p) => {
+    const lines = [`  File "${filename}", line ${p.line}`];
+    if (p.text) {
+      lines.push('    ' + p.text.replace(/\s+$/, ''));
+      const caretCol = Math.max(1, Number(p.col) || 1);
+      lines.push(' '.repeat(4 + caretCol - 1) + '^');
+    }
+    lines.push(p.msg);
+    return lines.join('\n');
+  }).join('\n\n');
+}
+
 /**
  * Parse turtle graphics output from a completed Python execution result.
  *
@@ -1485,6 +1514,17 @@ class SmartExecutor {
       throw new Error(`Python entry point was not written: ${mainFile}`);
     }
 
+    // Pre-run static check on the entry file: refuse to run anything if it has
+    // a syntax error or undefined name, so nothing executes half-way. Runs
+    // before shim injection so it scans the user's original source only.
+    try {
+      const entrySource = fs.readFileSync(mainFilePath, 'utf-8');
+      const preflight = await this.preflightPython(entrySource, path.basename(mainFile));
+      if (preflight) return preflight;
+    } catch {
+      // Non-fatal: fall through to normal execution.
+    }
+
     let shimInjected = false;
     if (TURTLE_SHIM) {
       try {
@@ -1777,7 +1817,61 @@ class SmartExecutor {
     }
   }
   
+  /**
+   * Run the stdlib-only pre-run checker (languages/python/preflight.py) over
+   * the given source. Returns a compile-phase error result when the code has a
+   * blocking problem (syntax error or undefined name), or null when the code
+   * is clean and should run normally.
+   *
+   * Fail-open: if the checker is unavailable, errors, or times out, this
+   * returns null so valid code is never blocked by a checker hiccup.
+   *
+   * @param {string} code       user source to scan
+   * @param {string} filename   display name used in the error block
+   * @returns {Promise<object|null>}
+   */
+  async preflightPython(code, filename) {
+    if (!PYTHON_PREFLIGHT_AVAILABLE) return null;
+    const tempFile = path.join(
+      this.tempDir,
+      `pfck_${Date.now()}_${Math.random().toString(36).slice(2)}.py`
+    );
+    try {
+      fs.writeFileSync(tempFile, code);
+      const check = await this.runProcess('python3', [
+        '-I', '-S', '-B',
+        PYTHON_PREFLIGHT_PATH,
+        tempFile,
+      ], 8000, {});
+      if (!check.stdout) return null;                 // fail-open
+      let problems;
+      try {
+        problems = JSON.parse(check.stdout.trim());
+      } catch {
+        return null;                                  // fail-open on bad JSON
+      }
+      if (!Array.isArray(problems) || problems.length === 0) return null;
+      return {
+        stdout: '',
+        stderr: formatPreflightProblems(problems, filename),
+        exitCode: 1,
+        phase: 'compile',
+        durationMs: check.durationMs || 0,
+      };
+    } catch {
+      return null;                                    // fail-open
+    } finally {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }
+  }
+
   async executePython(code) {
+    // Pre-run static check: scan the whole file first and refuse to run
+    // anything if it has a syntax error or references an undefined name, so a
+    // program never runs half-way and then fails on a broken line.
+    const preflight = await this.preflightPython(code, 'user.py');
+    if (preflight) return preflight;
+
     // Inject turtle shim before user code when turtle is imported.
     // The shim runs first, registers sys.modules['turtle'], then the user's
     // `import turtle` resolves from the cache and gets our shim module.

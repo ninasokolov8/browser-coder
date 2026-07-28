@@ -123,7 +123,7 @@ await test('cleanCSharpErrors: empty input → empty',       () => assertEqual(c
 function getCompileLabel(id) {
   return { java:'Compile Error (javac)', csharp:'Compile Error (dotnet build)',
            typescript:'TypeScript Error', php:'Parse Error (php -l)',
-           python:'Syntax Error' }[id] || 'Compile Error';
+           python:'Problem Detected — code was not run' }[id] || 'Compile Error';
 }
 
 function renderRunResult(data, langId) {
@@ -148,7 +148,7 @@ function renderRunResult(data, langId) {
 
 await test('renderRunResult: success shows [exit 0 ✓] in success span',     () => { const h = renderRunResult({stdout:'hi', exitCode:0}, 'python'); assertContains(h, '<span class="success">[exit 0 ✓]</span>'); assertContains(h, 'hi'); });
 await test('renderRunResult: failure shows exit code in error span',         () => assertContains(renderRunResult({stderr:'oops', exitCode:1}, 'python'), '<span class="error">[exit code: 1]</span>'));
-await test('renderRunResult: compile error shows language label (python)',   () => { const h = renderRunResult({stderr:'SyntaxError', exitCode:1, phase:'compile'}, 'python'); assertContains(h, 'Syntax Error'); assertContains(h, '<span class="info">'); });
+await test('renderRunResult: compile error shows language label (python)',   () => { const h = renderRunResult({stderr:'SyntaxError', exitCode:1, phase:'compile'}, 'python'); assertContains(h, 'Problem Detected'); assertContains(h, '<span class="info">'); });
 await test('renderRunResult: runtime stderr gets stderr section header',     () => { const h = renderRunResult({stdout:'hi', stderr:'oops', exitCode:1, phase:'run'}, 'javascript'); assertContains(h, '── stderr ─'); assertContains(h, 'hi'); assertContains(h, 'oops'); });
 await test('renderRunResult: HTML special chars escaped in stdout',          () => { const h = renderRunResult({stdout:'<script>alert(1)</script>', exitCode:0}, 'js'); assertNotContains(h, '<script>'); assertContains(h, '&lt;script&gt;'); });
 await test('renderRunResult: & in stdout escaped',                           () => assertContains(renderRunResult({stdout:'5 & 3 = 1', exitCode:0}, 'js'), '5 &amp; 3 = 1'));
@@ -262,6 +262,52 @@ await test("server: adjustTurtleTraceback helper present",       () => assertCon
 await test("server: executePython applies traceback shift",      () => { const b = serverSrc.slice(serverSrc.indexOf('async executePython('), serverSrc.indexOf('async executePHP(')); assertContains(b, "adjustTurtleTraceback(result.stderr, turtleShimLineOffset(), 'user.py')"); });
 await test("server: executePythonMulti applies traceback shift", () => { const b = serverSrc.slice(serverSrc.indexOf('async executePythonMulti('), serverSrc.indexOf('async executePHPMulti(')); assertContains(b, 'adjustTurtleTraceback('); assertContains(b, 'path.basename(mainFile)'); });
 await test("server: single shared turtle user-code separator",   () => assertContains(serverSrc, 'const TURTLE_USER_CODE_SEP'));
+
+// ── Preflight: static pre-run check refuses to run broken Python ──────────────
+await test("server: PYTHON_PREFLIGHT_PATH points at preflight.py", () => { assertContains(serverSrc, 'const PYTHON_PREFLIGHT_PATH ='); assertContains(serverSrc, "'preflight.py'"); });
+await test("server: formatPreflightProblems helper present",       () => assertContains(serverSrc, 'function formatPreflightProblems('));
+await test("server: preflightPython method present",               () => assertContains(serverSrc, 'async preflightPython('));
+await test("server: preflightPython returns phase compile",        () => { const b = serverSrc.slice(serverSrc.indexOf('async preflightPython('), serverSrc.indexOf('async executePython(')); assertContains(b, "phase: 'compile'"); assertContains(b, 'JSON.parse'); assertContains(b, 'return null'); });
+await test("server: executePython runs preflight before executing",() => { const b = serverSrc.slice(serverSrc.indexOf('async executePython('), serverSrc.indexOf('async executePHP(')); assertContains(b, "this.preflightPython(code, 'user.py')"); assert(b.indexOf('preflightPython') < b.indexOf('writeFileSync')); });
+await test("server: executePythonMulti runs preflight on entry",   () => { const b = serverSrc.slice(serverSrc.indexOf('async executePythonMulti('), serverSrc.indexOf('async executePHPMulti(')); assertContains(b, 'this.preflightPython('); assertContains(b, 'path.basename(mainFile)'); });
+
+// ── formatPreflightProblems: format JSON problems into a Python-style block ────
+function formatPreflightProblems(problems, filename) {
+  return problems.map((p) => {
+    const lines = [`  File "${filename}", line ${p.line}`];
+    if (p.text) {
+      lines.push('    ' + p.text.replace(/\s+$/, ''));
+      const caretCol = Math.max(1, Number(p.col) || 1);
+      lines.push(' '.repeat(4 + caretCol - 1) + '^');
+    }
+    lines.push(p.msg);
+    return lines.join('\n');
+  }).join('\n\n');
+}
+await test('formatPreflightProblems: renders name error block', () => {
+  const out = formatPreflightProblems([{ line: 2, col: 1, msg: "NameError: name 'prin' is not defined", text: 'prin("test")', kind: 'name' }], 'user.py');
+  assertContains(out, 'File "user.py", line 2');
+  assertContains(out, '    prin("test")');
+  assertContains(out, '    ^');
+  assertContains(out, "NameError: name 'prin' is not defined");
+});
+await test('formatPreflightProblems: caret indents by column', () => {
+  const out = formatPreflightProblems([{ line: 1, col: 5, msg: 'X', text: 'abcd = z', kind: 'name' }], 'user.py');
+  assertContains(out, '\n' + ' '.repeat(8) + '^');   // 4 + (5-1)
+});
+await test('formatPreflightProblems: no text → no caret line', () => {
+  const out = formatPreflightProblems([{ line: 3, col: 1, msg: 'SyntaxError: bad', text: '', kind: 'syntax' }], 'user.py');
+  assertContains(out, 'File "user.py", line 3');
+  assertContains(out, 'SyntaxError: bad');
+  assertNotContains(out, '^');
+});
+await test('formatPreflightProblems: joins multiple problems with blank line', () => {
+  const out = formatPreflightProblems([
+    { line: 1, col: 1, msg: 'A', text: 'x', kind: 'name' },
+    { line: 2, col: 1, msg: 'B', text: 'y', kind: 'name' },
+  ], 'user.py');
+  assertContains(out, 'A\n\n  File');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 3. FRONTEND STATIC ANALYSIS
