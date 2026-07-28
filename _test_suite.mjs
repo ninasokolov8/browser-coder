@@ -368,6 +368,7 @@ await test('turtle.ts: close button hides window',      () => assertContains(tur
 await test('turtle.ts: clearTurtleCanvas hides window', () => { const fn = turtleSrc.slice(turtleSrc.indexOf('export function clearTurtleCanvas(')); assertContains(fn, "getElementById('turtle-window')"); assertContains(fn, "classList.add('hidden')"); });
 await test('turtle.ts: no longer appends to panelEl',   () => assertNotContains(turtleSrc, 'panelEl.appendChild'));
 await test('execution.ts: no turtle on compile error',  () => assertContains(execSrc, "data.phase !== 'compile' &&"));
+await test('execution.ts: no turtle on runtime error',  () => assertContains(execSrc, "data.exitCode === 0 &&"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 4. INTEGRATION TESTS

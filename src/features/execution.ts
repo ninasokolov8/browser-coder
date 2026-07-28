@@ -257,11 +257,14 @@ requestBody = {
     // A run counts as turtle output when it drew something *or* left a turtle
     // on screen (a program may only place the cursor without drawing).
     //
-    // Never open the turtle window for a compile/syntax error: the program
-    // never actually ran, so there is nothing to draw. This guarantees "if
-    // there is a syntax error, nothing runs and nothing is drawn".
+    // Only open the turtle window when the program finished successfully
+    // (exit 0). A compile/syntax error means the program never ran, and a
+    // runtime error (e.g. a typo like `t.foward`) means it failed part-way -
+    // in both cases we show only the error and draw nothing, so a broken
+    // program never flashes a half-finished drawing.
     let turtleRenderErr: string | null = null;
     if (
+      data.exitCode === 0 &&
       data.phase !== 'compile' &&
       data.turtleData &&
       (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)
