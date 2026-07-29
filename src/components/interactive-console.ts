@@ -26,7 +26,7 @@ export interface InteractiveResult {
 
 interface ActiveSession {
   sessionId: string;
-  es: EventSource;
+  controller: AbortController;
 }
 
 let active: ActiveSession | null = null;
@@ -75,10 +75,15 @@ function compileLabel(langId: string): string {
 /** Terminate any running interactive session (kills the server-side process). */
 export function stopInteractive(): void {
   if (!active) return;
-  const { sessionId, es } = active;
+  const { sessionId, controller } = active;
   active = null;
-  try { es.close(); } catch { /* noop */ }
-  fetch(`/api/run/interactive/${sessionId}/close`, { method: 'POST' }).catch(() => {});
+  // Ask the server to kill the sandbox, then drop the stream. Aborting alone
+  // would also stop it (the request's close handler kills the process), but
+  // the explicit call makes cleanup immediate and independent of socket teardown.
+  if (sessionId) {
+    fetch(`/api/run/interactive/${sessionId}/close`, { method: 'POST' }).catch(() => {});
+  }
+  try { controller.abort(); } catch { /* noop */ }
 }
 
 /**
@@ -116,6 +121,7 @@ export function runInteractive(
     input.type = 'text';
     input.autocomplete = 'off';
     input.spellcheck = false;
+    input.placeholder = t('panel.stdinHint') || 'type your answer, then press Enter';
     input.setAttribute('aria-label', t('panel.stdinLabel') || 'Program input');
     inputLine.appendChild(caret);
     inputLine.appendChild(input);
@@ -176,96 +182,153 @@ export function runInteractive(
     runBtn.disabled = true;
     setStatus('Running…');
 
+    let sessionId = '';
+
+    // Send one line to the program. The caret is hidden again immediately:
+    // the program is now busy consuming that line, and the server will send a
+    // fresh {type:'waiting'} when (and only when) it stops for the next one.
+    const submit = () => {
+      if (!sessionId || settled) return;
+      const value = input.value;
+      append(value + '\n');
+      input.value = '';
+      inputLine.style.display = 'none';
+      setStatus('Running…');
+      fetch(`/api/run/interactive/${sessionId}/stdin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: value }),
+      }).catch(() => {});
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    });
+
     void (async () => {
-      let sessionId: string;
+      const controller = new AbortController();
+
+      // Reveal the typing caret only once the program is actually waiting for
+      // input (server sends {type:'waiting'}). Showing it immediately made the
+      // caret appear over an empty console with no prompt for context, and
+      // anything typed before the prompt arrived got echoed above it.
+      const showInput = () => {
+        if (settled) return;
+        if (inputLine.style.display !== 'none') { input.focus(); return; }
+        inputLine.style.display = '';
+        setStatus('Waiting for input ⌨️');
+        input.focus();
+        panelContentEl.scrollTop = panelContentEl.scrollHeight;
+      };
+
+      const handle = (msg: any) => {
+        switch (msg.type) {
+          case 'session':
+            sessionId = msg.sessionId;
+            active = { sessionId, controller };
+            break;
+          case 'stdout':
+            aggStdout += msg.data;
+            append(msg.data);
+            break;
+          case 'stderr':
+            aggStderr += msg.data;
+            append(msg.data, 'error');
+            break;
+          case 'waiting':
+            showInput();
+            break;
+          case 'ping':
+            break;
+          case 'exit':
+            active = null;
+            finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
+            break;
+        }
+      };
+
       try {
         const resp = await fetch('/api/run/interactive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, language: langId }),
+          signal: controller.signal,
         });
-        const data = await resp.json().catch(() => null);
 
-        if (!resp.ok) {
-          const msg = (data && data.error) || `HTTP ${resp.status}`;
-          append(msg + '\n', 'error');
-          append('[exit code: 1]', 'error');
+        // Errors and compile failures are returned as a normal JSON body
+        // BEFORE the stream starts, so they are safe to read whole.
+        const contentType = resp.headers.get('Content-Type') || '';
+        if (!resp.ok || !contentType.includes('ndjson')) {
+          const data = await resp.json().catch(() => null);
+
+          if (!resp.ok) {
+            const msg = (data && data.error) || `HTTP ${resp.status}`;
+            append(msg + '\n', 'error');
+            append('[exit code: 1]', 'error');
+            setStatus('Run failed');
+            settle({ stdout: '', stderr: String(msg), exitCode: 1, durationMs: 0 });
+            return;
+          }
+
+          // Compile / lint error: the program never started.
+          if (data && data.compile) {
+            const c = data.compile;
+            append(`── ${compileLabel(langId)} ──────────────────────────────────────\n`, 'info');
+            if (c.stderr) append(c.stderr, 'error');
+            append(`\n[exit code: ${c.exitCode ?? 1}]`, 'error');
+            setStatus('Compile error ❌');
+            settle({ stdout: '', stderr: c.stderr || '', exitCode: c.exitCode ?? 1, durationMs: c.durationMs || 0 });
+            return;
+          }
+
+          append('ERROR: unexpected response from server\n', 'error');
           setStatus('Run failed');
-          settle({ stdout: '', stderr: String(msg), exitCode: 1, durationMs: 0 });
+          settle({ stdout: '', stderr: 'unexpected response', exitCode: 1, durationMs: 0 });
           return;
         }
 
-        // Compile / lint error: the program never started.
-        if (data && data.compile) {
-          const c = data.compile;
-          append(`── ${compileLabel(langId)} ──────────────────────────────────────\n`, 'info');
-          if (c.stderr) append(c.stderr, 'error');
-          append(`\n[exit code: ${c.exitCode ?? 1}]`, 'error');
-          setStatus('Compile error ❌');
-          settle({ stdout: '', stderr: c.stderr || '', exitCode: c.exitCode ?? 1, durationMs: c.durationMs || 0 });
-          return;
+        if (!resp.body) throw new Error('streaming is not supported by this browser');
+
+        // ── Consume the NDJSON stream ──────────────────────────────────────
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+
+          let nl: number;
+          while ((nl = buf.indexOf('\n')) !== -1) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (!line) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            handle(msg);
+          }
         }
 
-        sessionId = data.sessionId;
-        if (!sessionId) {
-          append('ERROR: server did not start a session\n', 'error');
+        // Stream ended without an exit event (server died / network dropped).
+        if (!settled) {
+          active = null;
+          append('\n[connection lost]\n', 'error');
           setStatus('Run failed');
-          settle({ stdout: '', stderr: 'no session', exitCode: 1, durationMs: 0 });
-          return;
+          settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
         }
       } catch (e: any) {
-        append(String(e?.message || e) + '\n', 'error');
-        setStatus('Run failed');
-        settle({ stdout: '', stderr: String(e?.message || e), exitCode: 1, durationMs: 0 });
-        return;
-      }
-
-      // ── Attach the live output stream ──────────────────────────────────────
-      const es = new EventSource(`/api/run/interactive/${sessionId}/stream`);
-      active = { sessionId, es };
-
-      inputLine.style.display = '';
-      input.focus();
-
-      es.onmessage = (ev) => {
-        let msg: any;
-        try { msg = JSON.parse(ev.data); } catch { return; }
-        if (msg.type === 'stdout') { aggStdout += msg.data; append(msg.data); }
-        else if (msg.type === 'stderr') { aggStderr += msg.data; append(msg.data, 'error'); }
-        else if (msg.type === 'exit') {
-          active = null;
-          try { es.close(); } catch { /* noop */ }
-          finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
-        }
-      };
-
-      es.onerror = () => {
-        // CONNECTING => the browser is auto-retrying a transient blip; ignore.
-        // CLOSED     => the stream is dead and won't retry; end the run.
-        if (es.readyState !== EventSource.CLOSED) return;
-        if (settled || active === null) return;
+        if (settled) return;
         active = null;
-        append('\n[connection lost]\n', 'error');
+        // An abort is a deliberate stop (new run / clear output), not a fault.
+        if (e?.name === 'AbortError') {
+          settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
+          return;
+        }
+        append('\n' + String(e?.message || e) + '\n', 'error');
         setStatus('Run failed');
         settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
-      };
-
-      const submit = () => {
-        const value = input.value;
-        // Echo the typed line so the transcript reads like a real terminal.
-        append(value + '\n');
-        input.value = '';
-        fetch(`/api/run/interactive/${sessionId}/stdin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: value }),
-        }).catch(() => {});
-        input.focus();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); submit(); }
-      });
+      }
     })();
   });
 }

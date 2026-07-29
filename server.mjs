@@ -931,12 +931,19 @@ const CONFIG = {
     // the user to type, so they need their OWN kill-switches:
     //   - idle timeout: no output AND no keystroke for this long -> kill (a
     //     process "waiting for input forever" is a resource-hold DoS vector).
+    //     Generous by default: a beginner reading a question and typing an
+    //     answer can easily pause for a couple of minutes.
     //   - max lifetime: absolute ceiling regardless of activity.
-    //   - concurrency caps: total, and per-IP, to bound held resources.
-    interactiveIdleTimeoutMs: parseInt(process.env.INTERACTIVE_IDLE_MS || "120000", 10),
-    interactiveMaxLifetimeMs: parseInt(process.env.INTERACTIVE_MAX_MS || "600000", 10),
-    maxInteractiveSessions: parseInt(process.env.MAX_INTERACTIVE_SESSIONS || "50", 10),
-    maxInteractiveSessionsPerIp: parseInt(process.env.MAX_INTERACTIVE_PER_IP || "3", 10),
+    //   - concurrency caps: total, and per-IP.
+    //
+    // The per-IP cap must not be tight: a whole classroom (or school) sits
+    // behind a single NAT address, so every student would share one budget.
+    // It exists to stop one machine opening unbounded sessions, not to ration
+    // legitimate simultaneous use.
+    interactiveIdleTimeoutMs: parseInt(process.env.INTERACTIVE_IDLE_MS || "300000", 10),
+    interactiveMaxLifetimeMs: parseInt(process.env.INTERACTIVE_MAX_MS || "900000", 10),
+    maxInteractiveSessions: parseInt(process.env.MAX_INTERACTIVE_SESSIONS || "200", 10),
+    maxInteractiveSessionsPerIp: parseInt(process.env.MAX_INTERACTIVE_PER_IP || "50", 10),
   },
   
   // Cache settings
@@ -3941,10 +3948,19 @@ app.post("/api/run", async (req, res) => {
 // single JSON result. That model cannot support a program that PAUSES waiting
 // for keyboard input. These endpoints add a live session:
 //
-//   POST /api/run/interactive            -> validate + compile + spawn; returns { sessionId } (or { compile })
-//   GET  /api/run/interactive/:id/stream -> Server-Sent Events: stdout/stderr/exit as they happen
+//   POST /api/run/interactive            -> STREAMING NDJSON response:
+//                                           {"type":"session",...} then
+//                                           stdout/stderr/ping/exit lines
 //   POST /api/run/interactive/:id/stdin  -> write one line to the program's stdin
 //   POST /api/run/interactive/:id/close  -> terminate the program
+//
+// The output stream is the response body of the SAME request that starts the
+// program. An earlier design used a separate GET + EventSource to attach to a
+// pre-created session; when that second request failed to arrive (proxy
+// buffering, routing, or a dropped connection) the program was already running
+// with nobody reading it, so the user saw "connection lost" while the orphaned
+// session held its per-IP slot until the idle timeout - quickly exhausting the
+// concurrency cap. One request cannot desynchronise from itself.
 //
 // SECURITY: same code validation + sandbox env as /api/run, PLUS session-only
 // guards (idle timeout, absolute lifetime, total + per-IP concurrency caps)
@@ -3958,14 +3974,16 @@ function interactiveIpOf(req) {
 }
 
 function interactiveSend(session, obj) {
-  const payload = `data: ${JSON.stringify(obj)}\n\n`;
-  if (session.res && !session.res.writableEnded) {
-    session.res.write(payload);
-  } else {
-    // No client attached yet (or already gone): buffer so a late SSE attach
-    // still receives everything, including the final exit event.
-    session.buffer.push(payload);
-  }
+  const res = session.res;
+  if (!res || res.writableEnded) return;
+  try {
+    res.write(JSON.stringify(obj) + '\n');
+    // compression() is bypassed for this response via Cache-Control:
+    // no-transform, but it still decorates res with flush(); calling it (and
+    // the raw socket flush) keeps tiny writes - like a bare "Enter number: "
+    // prompt with no trailing newline - from sitting in a buffer.
+    if (typeof res.flush === 'function') res.flush();
+  } catch { /* client went away */ }
 }
 
 function interactiveResetIdle(session) {
@@ -3975,6 +3993,36 @@ function interactiveResetIdle(session) {
     session.idleTimedOut = true;
     try { session.proc.kill('SIGKILL'); } catch {}
   }, CONFIG.execution.interactiveIdleTimeoutMs);
+}
+
+// Announce "the program is now waiting for you to type".
+//
+// Without a pseudo-terminal there is no way to observe a blocked read(2)
+// directly, so we infer it: a live process that has gone quiet is either
+// waiting on stdin or doing slow work, and in both cases the user may type.
+// The delay matters for correctness of what the user SEES - revealing the
+// input box before the program has printed its prompt makes the caret appear
+// with no context, and anything typed early gets echoed above the prompt.
+//
+// Two different delays, because the two situations are not the same:
+//   - after some output: the prompt (e.g. "Enter number: ") has already been
+//     written, so a short pause is enough and feels instant.
+//   - before any output: the interpreter may still be starting up (Python
+//     cold start, turtle shim), so wait longer before assuming a bare
+//     input() with no prompt.
+const INTERACTIVE_WAIT_AFTER_OUTPUT_MS = 250;
+const INTERACTIVE_WAIT_INITIAL_MS = 1200;
+
+function interactiveArmWaiting(session) {
+  if (session.finished) return;
+  clearTimeout(session.waitTimer);
+  const delay = session.sawOutput
+    ? INTERACTIVE_WAIT_AFTER_OUTPUT_MS
+    : INTERACTIVE_WAIT_INITIAL_MS;
+  session.waitTimer = setTimeout(() => {
+    if (session.finished) return;
+    interactiveSend(session, { type: 'waiting' });
+  }, delay);
 }
 
 // Turtle programs print a machine-readable sentinel line to stdout
@@ -4045,7 +4093,9 @@ function interactiveOnOutput(session, kind, data) {
   }
   session.outputLen += text.length;
   interactiveSend(session, { type: kind, data: text });
+  session.sawOutput = true;
   interactiveResetIdle(session);
+  interactiveArmWaiting(session);
 }
 
 function interactiveFinish(session, exitCode) {
@@ -4053,6 +4103,8 @@ function interactiveFinish(session, exitCode) {
   session.finished = true;
   clearTimeout(session.idleTimer);
   clearTimeout(session.maxTimer);
+  clearTimeout(session.waitTimer);
+  clearInterval(session.pingTimer);
 
   // Flush any held-back text that never became a sentinel.
   if (session.pending) {
@@ -4092,9 +4144,7 @@ function interactiveFinish(session, exitCode) {
   if (c <= 1) interactiveIpCounts.delete(session.ip);
   else interactiveIpCounts.set(session.ip, c - 1);
   try { fs.rmSync(session.sessionDir, { recursive: true, force: true }); } catch {}
-  // Keep the (finished) session around briefly so a stream that attaches late
-  // can still flush the buffered exit event before it is discarded.
-  setTimeout(() => interactiveSessions.delete(session.id), 15000);
+  interactiveSessions.delete(session.id);
 }
 
 app.post("/api/run/interactive", async (req, res) => {
@@ -4227,14 +4277,29 @@ app.post("/api/run/interactive", async (req, res) => {
   const session = {
     id, proc, ip, sessionDir, language,
     stderrTransform: spec.stderrTransform || null,
-    buffer: [], res: null,
+    res,
     finished: false, outputLen: 0, truncated: false,
     idleTimedOut: false, maxedOut: false,
-    pending: '', turtleLines: [],
-    startTime: Date.now(), idleTimer: null, maxTimer: null,
+    pending: '', turtleLines: [], sawOutput: false,
+    startTime: Date.now(), idleTimer: null, maxTimer: null, pingTimer: null, waitTimer: null,
   };
   interactiveSessions.set(id, session);
   interactiveIpCounts.set(ip, ipCount + 1);
+
+  // Switch this response into a streaming NDJSON body. Everything from here on
+  // is written incrementally; no res.json() may be used after this point.
+  res.writeHead(200, {
+    'Content-Type': 'application/x-ndjson; charset=utf-8',
+    // no-transform tells compression() to leave the stream alone, so small
+    // writes are not held back waiting for a compression buffer to fill.
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    // Disable proxy response buffering (nginx) so output reaches the browser
+    // the instant the program prints it.
+    'X-Accel-Buffering': 'no',
+  });
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+  interactiveSend(session, { type: 'session', sessionId: id });
 
   proc.stdout.on('data', (d) => interactiveOnOutput(session, 'stdout', d));
   proc.stderr.on('data', (d) => interactiveOnOutput(session, 'stderr', d));
@@ -4249,44 +4314,35 @@ app.post("/api/run/interactive", async (req, res) => {
     interactiveFinish(session, code);
   });
 
+  // The browser holds this connection open while the user thinks about what to
+  // type, which can easily exceed a proxy's idle-read timeout (nginx defaults
+  // to 60s). A periodic keep-alive line makes the connection provably active.
+  session.pingTimer = setInterval(() => {
+    interactiveSend(session, { type: 'ping' });
+  }, 15000);
+
+  // Client navigated away / closed the tab / aborted the fetch: kill the
+  // sandbox so it does not sit waiting for input that will never come.
+  //
+  // This must listen on the RESPONSE, not the request. For a POST whose body
+  // has already been consumed, `req` emits 'close' as soon as the request is
+  // complete - long before the client goes away - so using it would either
+  // kill the program instantly or (as observed) never fire at the right time.
+  // `res` emits 'close' when the response stream is torn down, which is
+  // exactly "this client is gone". Sessions that leak here are what exhausts
+  // the concurrency cap and produce spurious "too many concurrent runs".
+  res.on('close', () => {
+    if (!session.finished) {
+      try { proc.kill('SIGKILL'); } catch {}
+    }
+  });
+
   interactiveResetIdle(session);
+  interactiveArmWaiting(session);
   session.maxTimer = setTimeout(() => {
     session.maxedOut = true;
     try { proc.kill('SIGKILL'); } catch {}
   }, CONFIG.execution.interactiveMaxLifetimeMs);
-
-  res.json({ sessionId: id });
-});
-
-app.get("/api/run/interactive/:id/stream", (req, res) => {
-  const session = interactiveSessions.get(req.params.id);
-  if (!session) return res.status(404).end();
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    // Disable proxy buffering (nginx) so events arrive immediately.
-    'X-Accel-Buffering': 'no',
-  });
-  res.write(': connected\n\n');
-
-  session.res = res;
-  // Flush anything produced before the client attached.
-  for (const chunk of session.buffer) res.write(chunk);
-  session.buffer = [];
-  if (session.finished && !res.writableEnded) {
-    try { res.end(); } catch {}
-    return;
-  }
-
-  req.on('close', () => {
-    // Client navigated away / closed the tab: kill the sandbox so it does not
-    // sit waiting on input forever.
-    if (!session.finished) {
-      try { session.proc.kill('SIGKILL'); } catch {}
-    }
-  });
 });
 
 app.post("/api/run/interactive/:id/stdin", (req, res) => {
@@ -4301,6 +4357,9 @@ app.post("/api/run/interactive/:id/stdin", (req, res) => {
     session.proc.stdin.write(line + '\n');
   } catch { /* stdin may have closed as the program exited */ }
   interactiveResetIdle(session);
+  // The program is now consuming that line. Re-arm waiting detection so a
+  // second prompt ("Enter age: ") reveals the input box again once it appears.
+  interactiveArmWaiting(session);
   res.json({ ok: true });
 });
 

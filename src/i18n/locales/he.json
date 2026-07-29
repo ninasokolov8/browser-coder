@@ -48,6 +48,8 @@
   "panel.clear": "נקה",
   "panel.toggle": "הצג/הסתר פאנל",
   "panel.placeholder": "(הפעל קוד כדי לראות פלט כאן)",
+  "panel.stdinLabel": "קלט לתוכנית",
+  "panel.stdinHint": "הקלד את התשובה ולחץ Enter",
   
   "status.line": "שורה {{line}}, עמודה {{col}}",
   "status.encoding": "UTF-8",

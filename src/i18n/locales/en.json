@@ -48,6 +48,8 @@
   "panel.clear": "Clear",
   "panel.toggle": "Toggle Panel",
   "panel.placeholder": "(Run code to see output here)",
+  "panel.stdinLabel": "Program input",
+  "panel.stdinHint": "type your answer, then press Enter",
   
   "status.line": "Ln {{line}}, Col {{col}}",
   "status.encoding": "UTF-8",
