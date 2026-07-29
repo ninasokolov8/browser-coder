@@ -28,6 +28,19 @@ function requireRuntime() {
   return { editor, tabManager, storage };
 }
 
+/**
+ * Does this run need an interactive console? True when ANY file that will be
+ * executed reads from stdin - not just the entry file, since a helper module
+ * imported by the entry point may be the one calling input().
+ */
+function payloadReadsStdin(langId: string, body: Record<string, unknown>): boolean {
+  const files = body.files as Array<{ content?: string }> | undefined;
+  if (Array.isArray(files)) {
+    return files.some(file => codeReadsStdin(langId, file?.content || ''));
+  }
+  return codeReadsStdin(langId, (body.code as string) || '');
+}
+
 // ── Output helpers ──────────────────────────────────────────────────────────
 
 /** Escape text for safe embedding as HTML content. */
@@ -144,31 +157,6 @@ export async function runCode(code: string) {
   // starting a new one (buffered or interactive).
   stopInteractive();
 
-  // ── Interactive stdin path ──────────────────────────────────────────────
-  // Programs that pause for keyboard input (input(), Scanner, readline,
-  // Console.ReadLine, fgets(STDIN), …) can't use the buffered /api/run
-  // round-trip - it returns a single result and can't wait mid-execution.
-  // In single-file (snippet) mode with a visible output panel, run them
-  // through the streaming console so the program waits for the user and
-  // continues line by line, exactly like a desktop IDE.
-  if (
-    appConfig.ideMode === 'snippet' &&
-    !appConfig.noOutput &&
-    codeReadsStdin(lang.id, code)
-  ) {
-    clearTurtleCanvas();
-    const result = await runInteractive(lang.id, code);
-    if (appConfig.isEmbedded) {
-      notifyRunResult({
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exitCode: result.exitCode,
-        durationMs: result.durationMs,
-      });
-    }
-    return;
-  }
-
   setStatus("Running…");
   startRunLoader();
 
@@ -245,6 +233,28 @@ requestBody = {
   entryPoint,
 };
 }
+
+    // ── Interactive stdin path ────────────────────────────────────────────
+    // Programs that pause for keyboard input (input(), Scanner, readline,
+    // Console.ReadLine, fgets(STDIN), …) cannot use the buffered /api/run
+    // round-trip: it returns a single result and cannot wait mid-execution,
+    // so the program would hang until the timeout and lose everything after
+    // the prompt. Route them to the streaming console instead, which works
+    // for BOTH snippet and multi-file project runs and every language.
+    if (!appConfig.noOutput && payloadReadsStdin(lang.id, requestBody)) {
+      stopRunLoader();
+      clearTurtleCanvas();
+      const result = await runInteractive(lang.id, requestBody);
+      if (appConfig.isEmbedded) {
+        notifyRunResult({
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+          durationMs: result.durationMs,
+        });
+      }
+      return;
+    }
 
     const resp = await fetch("/api/run", {
       method: "POST",

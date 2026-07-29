@@ -2282,10 +2282,22 @@ class SmartExecutor {
    *   { command, args, cwd, stderrTransform? }
    *       - ready to spawn interactively.
    *
-   * Reuses the exact tooling flags of the buffered executeX() paths so a
-   * program behaves identically whether or not it reads stdin.
+   * Handles BOTH single-file (snippet) and multi-file (project/full) runs, and
+   * reuses the exact tooling flags of the buffered executeX()/executeXMulti()
+   * paths so a program behaves identically whether or not it reads stdin.
+   *
+   * @param {string} language
+   * @param {{code?: string, files?: Array, entryPoint?: string}} payload
+   * @param {string} sessionDir
    */
-  async prepareInteractiveRun(language, code, sessionDir) {
+  async prepareInteractiveRun(language, payload, sessionDir) {
+    if (payload.files && payload.files.length > 0) {
+      return this._prepareInteractiveMulti(language, payload.files, payload.entryPoint, sessionDir);
+    }
+    return this._prepareInteractiveSingle(language, payload.code, sessionDir);
+  }
+
+  async _prepareInteractiveSingle(language, code, sessionDir) {
     switch (language) {
       case 'python': {
         // Same pre-run static check as executePython so a broken program
@@ -2502,6 +2514,318 @@ class SmartExecutor {
 
       default:
         throw new Error(`Unsupported language: ${language}`);
+    }
+  }
+
+  /**
+   * Multi-file (project/full mode) interactive preparation. Mirrors
+   * executeMultiFile()/executeXMulti() exactly, but returns a spawn spec
+   * instead of running to completion, so the program can pause for stdin.
+   */
+  async _prepareInteractiveMulti(language, files, entryPoint, sessionDir) {
+    // Write the whole project into the session directory.
+    for (const file of files) {
+      const filePath = path.join(sessionDir, file.name);
+      const fileDir = path.dirname(filePath);
+      if (!fs.existsSync(fileDir)) fs.mkdirSync(fileDir, { recursive: true });
+      fs.writeFileSync(filePath, file.content);
+    }
+
+    const normalizedEntryPoint = String(entryPoint || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const mainFile =
+      (normalizedEntryPoint && files.find(f => f.name === normalizedEntryPoint)) ||
+      files.find(f => f.isMain) ||
+      files[0];
+    if (!mainFile) throw new Error('No entry file was provided for project execution');
+
+    const projectRoot = path.resolve(sessionDir);
+
+    switch (language) {
+      case 'javascript': {
+        return {
+          command: 'node',
+          args: [
+            '--no-warnings',
+            '--experimental-permission',
+            '--allow-fs-read=' + sessionDir,
+            '--max-old-space-size=128',
+            path.join(sessionDir, mainFile.name),
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => stripTempPath(t, sessionDir),
+        };
+      }
+
+      case 'typescript': {
+        const ts = await getTsCompiler();
+        if (!ts) {
+          return {
+            command: 'node',
+            args: [
+              '--no-warnings',
+              '--experimental-permission',
+              '--allow-fs-read=' + sessionDir,
+              '--max-old-space-size=128',
+              path.join(sessionDir, mainFile.name),
+            ],
+            cwd: sessionDir,
+            stderrTransform: (t) => stripTempPath(t, sessionDir),
+          };
+        }
+
+        // Transpile every .ts in the project to a sibling .js (CommonJS).
+        const tsFiles = [];
+        const walkTs = (dir) => {
+          try {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory() && entry.name !== 'node_modules') walkTs(full);
+              else if (entry.isFile() && entry.name.endsWith('.ts')) tsFiles.push(full);
+            }
+          } catch { /* ignore unreadable dirs */ }
+        };
+        walkTs(sessionDir);
+
+        const compileErrors = [];
+        for (const tsFile of tsFiles) {
+          const relPath = path.relative(sessionDir, tsFile).replace(/\\/g, '/');
+          let src;
+          try { src = fs.readFileSync(tsFile, 'utf-8'); } catch { continue; }
+          let out;
+          try {
+            out = ts.transpileModule(src, {
+              fileName: relPath,
+              compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES2022,
+                strict: false,
+                esModuleInterop: true,
+                allowSyntheticDefaultImports: true,
+                experimentalDecorators: true,
+                sourceMap: false,
+              },
+              reportDiagnostics: true,
+            });
+          } catch (e) {
+            compileErrors.push(`${relPath}: ${e.message}`);
+            continue;
+          }
+          if (out.diagnostics && out.diagnostics.length > 0) {
+            out.diagnostics.forEach(d => {
+              const msg = ts.flattenDiagnosticMessageText(d.messageText, '\n');
+              if (d.file && d.start !== undefined) {
+                const pos = d.file.getLineAndCharacterOfPosition(d.start);
+                compileErrors.push(`${relPath}:${pos.line + 1}:${pos.character + 1} - error TS${d.code}: ${msg}`);
+              } else {
+                compileErrors.push(`error TS${d.code}: ${msg}`);
+              }
+            });
+          }
+          try {
+            fs.writeFileSync(tsFile.replace(/\.ts$/, '.js'), out.outputText);
+          } catch (e) {
+            compileErrors.push(`${relPath}: could not write transpiled output: ${e.message}`);
+          }
+        }
+
+        if (compileErrors.length > 0) {
+          return {
+            compile: {
+              stdout: '',
+              stderr: compileErrors.join('\n'),
+              exitCode: 1,
+              phase: 'compile',
+              durationMs: 0,
+            },
+          };
+        }
+
+        return {
+          command: 'node',
+          args: [
+            '--no-warnings',
+            '--experimental-permission',
+            '--allow-fs-read=' + sessionDir,
+            '--max-old-space-size=128',
+            path.join(sessionDir, mainFile.name.replace(/\.ts$/, '.js')),
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => stripTempPath(t, sessionDir),
+        };
+      }
+
+      case 'python': {
+        const mainFilePath = path.resolve(sessionDir, mainFile.name);
+        if (mainFilePath !== projectRoot && !mainFilePath.startsWith(projectRoot + path.sep)) {
+          throw new Error(`Invalid Python entry point: ${mainFile.name}`);
+        }
+        if (!fs.existsSync(mainFilePath) || !fs.statSync(mainFilePath).isFile()) {
+          throw new Error(`Python entry point was not written: ${mainFile.name}`);
+        }
+
+        // Pre-run static check on the entry file (before shim injection).
+        try {
+          const entrySource = fs.readFileSync(mainFilePath, 'utf-8');
+          const preflight = await this.preflightPython(entrySource, path.basename(mainFile.name));
+          if (preflight) return { compile: preflight };
+        } catch { /* non-fatal */ }
+
+        let shimInjected = false;
+        if (TURTLE_SHIM) {
+          try {
+            const pythonFiles = [];
+            const walk = dir => {
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) walk(full);
+                else if (entry.isFile() && entry.name.endsWith('.py')) pythonFiles.push(full);
+              }
+            };
+            walk(sessionDir);
+            const needsTurtle = pythonFiles.some(filePath => {
+              try { return hasTurtleImport(fs.readFileSync(filePath, 'utf-8')); }
+              catch { return false; }
+            });
+            if (needsTurtle) {
+              const original = fs.readFileSync(mainFilePath, 'utf-8');
+              fs.writeFileSync(mainFilePath, TURTLE_SHIM + TURTLE_USER_CODE_SEP + original);
+              shimInjected = true;
+            }
+          } catch { /* non-fatal */ }
+        }
+
+        // Make every workspace folder importable (same ordering as the
+        // buffered path) so imports keep working regardless of file moves.
+        const importDirs = [];
+        const collectImportDirs = dir => {
+          importDirs.push(path.resolve(dir));
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.isDirectory() && entry.name !== '__pycache__') {
+              collectImportDirs(path.join(dir, entry.name));
+            }
+          }
+        };
+        collectImportDirs(sessionDir);
+        const orderedImportDirs = Array.from(new Set([
+          path.dirname(mainFilePath),
+          projectRoot,
+          ...importDirs.sort((a, b) => a.localeCompare(b)),
+        ]));
+
+        const bootstrap = [
+          'import runpy, sys',
+          `sys.path[:0] = ${JSON.stringify(orderedImportDirs)}`,
+          `runpy.run_path(${JSON.stringify(mainFilePath)}, run_name="__main__")`,
+        ].join('\n');
+
+        const baseName = path.basename(mainFile.name);
+        return {
+          command: 'python3',
+          args: ['-u', '-I', '-S', '-B', '-c', bootstrap],
+          cwd: sessionDir,
+          stderrTransform: (t) => {
+            let out = stripTempPath(t, sessionDir);
+            if (shimInjected) out = adjustTurtleTraceback(out, turtleShimLineOffset(), baseName);
+            return out;
+          },
+        };
+      }
+
+      case 'php': {
+        const mainFilePath = path.join(sessionDir, mainFile.name);
+        const lint = await this.runProcess('php', [
+          '-d', 'open_basedir=' + sessionDir,
+          '-l',
+          mainFilePath,
+        ], 10000, { cwd: sessionDir });
+        if (lint.exitCode !== 0) {
+          const raw = (lint.stdout || lint.stderr || '').trim();
+          const cleaned = stripTempPath(raw, sessionDir)
+            .replace(/\nErrors parsing[^\n]*$/m, '')
+            .trim();
+          return {
+            compile: {
+              stdout: '',
+              stderr: cleaned || raw,
+              exitCode: 1,
+              phase: 'compile',
+              durationMs: lint.durationMs,
+            },
+          };
+        }
+        return {
+          command: 'php',
+          args: [
+            '-d', 'open_basedir=' + sessionDir,
+            '-d', 'memory_limit=64M',
+            // No max_execution_time: an interactive program legitimately blocks
+            // on input; the session idle/lifetime timers are the guard.
+            '-d', 'disable_functions=exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec',
+            mainFilePath,
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => stripTempPath(t, sessionDir),
+        };
+      }
+
+      case 'java': {
+        const javaFiles = files.filter(f => f.name.endsWith('.java'));
+        const javaPaths = javaFiles.map(f => path.join(sessionDir, f.name));
+        const compile = await this.runProcess('javac', [
+          '-J-Xmx128m',
+          ...javaPaths,
+        ], CONFIG.execution.javaTimeoutMs, { skipJavaSecurityManager: true, cwd: sessionDir });
+
+        if (compile.exitCode !== 0) {
+          return {
+            compile: {
+              stdout: '',
+              stderr: compile.stderr ? stripTempPath(compile.stderr, sessionDir) : compile.stderr,
+              exitCode: compile.exitCode,
+              phase: 'compile',
+              durationMs: compile.durationMs,
+            },
+          };
+        }
+
+        const javaMain = files.find(f => f.isMain) || javaFiles[0];
+        const className = javaMain.name.replace(/\.java$/, '');
+        return {
+          command: 'java',
+          args: [
+            '-Xmx128m',
+            '-Xms32m',
+            '-XX:MaxMetaspaceSize=64m',
+            '-cp', sessionDir,
+            className,
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => stripTempPath(t, sessionDir),
+        };
+      }
+
+      case 'csharp': {
+        const tplCsproj = path.join(this.csharpTemplateDir, 'UserProgram.csproj');
+        if (!fs.existsSync(tplCsproj)) this.initCSharpTemplate();
+        if (fs.existsSync(tplCsproj)) {
+          fs.copyFileSync(tplCsproj, path.join(sessionDir, 'UserProgram.csproj'));
+        }
+        return {
+          command: 'dotnet',
+          args: [
+            'run',
+            '-c', 'Release',
+            '--nologo',
+            '-v', 'q',
+            '--project', sessionDir,
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => stripTempPath(t, sessionDir),
+        };
+      }
+
+      default:
+        throw new Error(`Multi-file not supported for: ${language}`);
     }
   }
 
@@ -3653,11 +3977,61 @@ function interactiveResetIdle(session) {
   }, CONFIG.execution.interactiveIdleTimeoutMs);
 }
 
+// Turtle programs print a machine-readable sentinel line to stdout
+// (__TURTLE_FILE__:<path> or __TURTLE_COMMANDS__:<base64>). In a buffered run
+// parseTurtleOutput() strips it at the end; in a live stream we must strip it
+// as it flows past so the user never sees it, while still emitting ordinary
+// output immediately - including a prompt like "Enter number: " that has NO
+// trailing newline and therefore cannot be line-buffered.
+const TURTLE_SENTINEL_PREFIX = '__TURTLE_';
+
+function interactiveFilterTurtle(session, text) {
+  session.pending += text;
+  let emit = '';
+
+  for (;;) {
+    const idx = session.pending.indexOf(TURTLE_SENTINEL_PREFIX);
+
+    if (idx === -1) {
+      // No sentinel. Emit everything except a trailing fragment that could
+      // still turn into one once the next chunk arrives.
+      let hold = 0;
+      const max = Math.min(TURTLE_SENTINEL_PREFIX.length - 1, session.pending.length);
+      for (let n = max; n > 0; n--) {
+        if (TURTLE_SENTINEL_PREFIX.startsWith(session.pending.slice(session.pending.length - n))) {
+          hold = n;
+          break;
+        }
+      }
+      emit += session.pending.slice(0, session.pending.length - hold);
+      session.pending = session.pending.slice(session.pending.length - hold);
+      break;
+    }
+
+    emit += session.pending.slice(0, idx);
+    const rest = session.pending.slice(idx);
+    const nl = rest.indexOf('\n');
+    if (nl === -1) {
+      // Sentinel line is still incomplete - wait for the rest of it.
+      session.pending = rest;
+      break;
+    }
+    session.turtleLines.push(rest.slice(0, nl));
+    session.pending = rest.slice(nl + 1);
+  }
+
+  return emit;
+}
+
 function interactiveOnOutput(session, kind, data) {
   if (session.finished) return;
   let text = data.toString();
   if (kind === 'stderr' && session.stderrTransform) {
     try { text = session.stderrTransform(text); } catch {}
+  }
+  if (kind === 'stdout' && session.language === 'python') {
+    text = interactiveFilterTurtle(session, text);
+    if (!text) { interactiveResetIdle(session); return; }
   }
   const remaining = CONFIG.execution.maxOutputChars - session.outputLen;
   if (remaining <= 0) return;
@@ -3679,6 +4053,26 @@ function interactiveFinish(session, exitCode) {
   session.finished = true;
   clearTimeout(session.idleTimer);
   clearTimeout(session.maxTimer);
+
+  // Flush any held-back text that never became a sentinel.
+  if (session.pending) {
+    const tail = session.pending;
+    session.pending = '';
+    if (!tail.startsWith(TURTLE_SENTINEL_PREFIX)) {
+      interactiveSend(session, { type: 'stdout', data: tail });
+    }
+  }
+
+  // Decode captured turtle sentinel lines using the shared parser.
+  let turtleData = null;
+  if (session.turtleLines.length > 0) {
+    const probe = { stdout: session.turtleLines.join('\n') + '\n' };
+    try {
+      parseTurtleOutput(probe);
+      turtleData = probe.turtleData || null;
+    } catch { /* leave null */ }
+  }
+
   const note = session.idleTimedOut ? 'idle-timeout'
     : session.truncated ? 'output-limit'
     : session.maxedOut ? 'time-limit'
@@ -3688,6 +4082,7 @@ function interactiveFinish(session, exitCode) {
     exitCode,
     durationMs: Date.now() - session.startTime,
     note,
+    turtleData,
   });
   if (session.res && !session.res.writableEnded) {
     try { session.res.end(); } catch {}
@@ -3703,28 +4098,83 @@ function interactiveFinish(session, exitCode) {
 }
 
 app.post("/api/run/interactive", async (req, res) => {
-  const { language, code } = req.body || {};
+  const { language, code, files, entryPoint } = req.body || {};
 
   if (!language) return res.status(400).json({ error: "Missing language" });
   if (!INTERACTIVE_LANGS.includes(language)) {
     return res.status(400).json({ error: `Unsupported language: ${language}` });
   }
-  if (typeof code !== 'string' || !code) {
-    return res.status(400).json({ error: "Missing code" });
-  }
-  if (code.length > CONFIG.execution.maxCodeChars) {
-    return res.status(400).json({
-      error: `Code too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
-    });
-  }
 
-  // SECURITY: identical dangerous-pattern check as /api/run.
-  const security = validateCodeSecurity(language, code);
-  if (!security.safe) {
-    log('warn', 'security_block', {
-      language, reason: security.reason, matched: security.matched, ip: req.ip,
-    });
-    return res.status(403).json({ error: security.reason, blocked: true });
+  // ── Validate payload: single-file `code` or multi-file `files[]` ──────────
+  // Mirrors POST /api/run exactly so both paths enforce the same policy.
+  let payload;
+  if (files && Array.isArray(files) && files.length > 0) {
+    const normalized = files.map(f => ({
+      name: String(f.path || f.name || '').replace(/\\/g, '/').replace(/^\/+/, ''),
+      content: typeof f.content === 'string' ? f.content : '',
+      language: f.language,
+      isMain: !!f.isMain,
+    })).filter(f => f.name);
+
+    if (normalized.length === 0) {
+      return res.status(400).json({ error: "files[] must contain at least one named file" });
+    }
+    if (normalized.length > CONFIG.execution.maxProjectFiles) {
+      return res.status(400).json({ error: `Too many files (max ${CONFIG.execution.maxProjectFiles})` });
+    }
+    for (const f of normalized) {
+      if (f.name.includes('..') || f.name.startsWith('/') || f.name.startsWith('\\') || /^[a-zA-Z]:/.test(f.name)) {
+        return res.status(400).json({ error: `Invalid file path: ${f.name}` });
+      }
+      if (f.name.length > CONFIG.execution.maxPathChars) {
+        return res.status(400).json({ error: `File path too long: ${f.name}` });
+      }
+    }
+    const totalSize = normalized.reduce((sum, f) => sum + f.content.length, 0);
+    if (totalSize > CONFIG.execution.maxCodeChars) {
+      return res.status(400).json({
+        error: `Total code size too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
+      });
+    }
+    // SECURITY: dangerous-pattern check on every file.
+    for (const file of normalized) {
+      if (!file.content) continue;
+      const check = validateCodeSecurity(language, file.content);
+      if (!check.safe) {
+        log('warn', 'security_block', {
+          language, file: file.name, reason: check.reason, matched: check.matched, ip: req.ip,
+        });
+        return res.status(403).json({ error: `${file.name}: ${check.reason}`, blocked: true });
+      }
+    }
+
+    const requestedEntryPoint = String(entryPoint || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const selectedMainFile = requestedEntryPoint
+      ? normalized.find(f => f.name === requestedEntryPoint)
+      : (normalized.find(f => f.isMain) || normalized[0]);
+    if (!selectedMainFile) {
+      return res.status(400).json({ error: 'No entry file was provided' });
+    }
+    for (const file of normalized) file.isMain = file.name === selectedMainFile.name;
+
+    payload = { files: normalized, entryPoint: selectedMainFile.name };
+  } else if (typeof code === 'string' && code) {
+    if (code.length > CONFIG.execution.maxCodeChars) {
+      return res.status(400).json({
+        error: `Code too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
+      });
+    }
+    // SECURITY: identical dangerous-pattern check as /api/run.
+    const security = validateCodeSecurity(language, code);
+    if (!security.safe) {
+      log('warn', 'security_block', {
+        language, reason: security.reason, matched: security.matched, ip: req.ip,
+      });
+      return res.status(403).json({ error: security.reason, blocked: true });
+    }
+    payload = { code };
+  } else {
+    return res.status(400).json({ error: "Missing code or files" });
   }
 
   // Concurrency guards.
@@ -3748,7 +4198,7 @@ app.post("/api/run/interactive", async (req, res) => {
   // Compile / lint synchronously; a compile error never becomes a live session.
   let spec;
   try {
-    spec = await executor.prepareInteractiveRun(language, code, sessionDir);
+    spec = await executor.prepareInteractiveRun(language, payload, sessionDir);
   } catch (err) {
     try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
     log('error', 'interactive_prepare_error', { error: err.message, language });
@@ -3780,6 +4230,7 @@ app.post("/api/run/interactive", async (req, res) => {
     buffer: [], res: null,
     finished: false, outputLen: 0, truncated: false,
     idleTimedOut: false, maxedOut: false,
+    pending: '', turtleLines: [],
     startTime: Date.now(), idleTimer: null, maxTimer: null,
   };
   interactiveSessions.set(id, session);

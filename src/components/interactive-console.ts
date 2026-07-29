@@ -14,6 +14,7 @@
 //   POST /api/run/interactive/:id/close  -> stop
 import { panelContentEl, runBtn } from './dom';
 import { setStatus } from './output';
+import { renderTurtle } from './turtle';
 import { t } from '../i18n';
 
 export interface InteractiveResult {
@@ -84,8 +85,16 @@ export function stopInteractive(): void {
  * Run code interactively. Renders a live console into the output panel and
  * resolves with the aggregated result once the program exits (matching the
  * shape used by the buffered path so Step-Up notifications stay consistent).
+ *
+ * @param langId  language id
+ * @param payload the same request body the buffered /api/run path builds -
+ *                either { code } (snippet mode) or { files, entryPoint }
+ *                (project/full mode), so every mode is supported.
  */
-export function runInteractive(langId: string, code: string): Promise<InteractiveResult> {
+export function runInteractive(
+  langId: string,
+  payload: Record<string, unknown>
+): Promise<InteractiveResult> {
   stopInteractive();
 
   return new Promise<InteractiveResult>((resolve) => {
@@ -134,10 +143,30 @@ export function runInteractive(langId: string, code: string): Promise<Interactiv
       resolve(result);
     };
 
-    const finishRun = (exitCode: number, durationMs: number, note?: string | null) => {
+    const finishRun = (
+      exitCode: number,
+      durationMs: number,
+      note?: string | null,
+      turtleData?: any
+    ) => {
       inputLine.remove();
       if (note === 'idle-timeout') append('\n[stopped: no input received in time]\n', 'error');
       else if (note === 'time-limit') append('\n[stopped: time limit reached]\n', 'error');
+
+      // Turtle drawings only open on a clean finish, matching the buffered
+      // path: a program that crashed part-way must not flash a half drawing.
+      if (
+        exitCode === 0 &&
+        turtleData &&
+        ((turtleData.shapes?.length ?? 0) > 0 || (turtleData.cursors?.length ?? 0) > 0)
+      ) {
+        try {
+          renderTurtle(turtleData);
+        } catch (renderErr) {
+          append(`\n[turtle render error: ${String(renderErr)}]\n`, 'error');
+        }
+      }
+
       const footer = exitCode === 0 ? '[exit 0 ✓]' : `[exit code: ${exitCode}]`;
       append('\n' + footer, exitCode === 0 ? 'success' : 'error');
       setStatus(exitCode === 0 ? 'Ready ✅' : 'Runtime error ❌');
@@ -153,7 +182,7 @@ export function runInteractive(langId: string, code: string): Promise<Interactiv
         const resp = await fetch('/api/run/interactive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language: langId, code }),
+          body: JSON.stringify({ ...payload, language: langId }),
         });
         const data = await resp.json().catch(() => null);
 
@@ -206,7 +235,7 @@ export function runInteractive(langId: string, code: string): Promise<Interactiv
         else if (msg.type === 'exit') {
           active = null;
           try { es.close(); } catch { /* noop */ }
-          finishRun(msg.exitCode, msg.durationMs, msg.note);
+          finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
         }
       };
 
