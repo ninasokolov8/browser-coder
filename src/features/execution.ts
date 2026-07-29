@@ -10,6 +10,7 @@ import { collectWorkspaceSnapshot } from './workspace';
 import { notifyRunResult } from '../integrations/stepup-bus';
 import { setStatus, setOutput, appendOutput, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
+import { runInteractive, codeReadsStdin, stopInteractive } from '../components/interactive-console';
 import { renderTurtle, clearTurtleCanvas } from '../components/turtle';
 import type { TurtleData } from '../components/turtle';
 import { showKeywordHelpPopup } from '../components/keyword-help';
@@ -137,6 +138,35 @@ export async function runCode(code: string) {
         return;
       }
     }
+  }
+
+  // Kill any still-running interactive session from a previous run before
+  // starting a new one (buffered or interactive).
+  stopInteractive();
+
+  // ── Interactive stdin path ──────────────────────────────────────────────
+  // Programs that pause for keyboard input (input(), Scanner, readline,
+  // Console.ReadLine, fgets(STDIN), …) can't use the buffered /api/run
+  // round-trip - it returns a single result and can't wait mid-execution.
+  // In single-file (snippet) mode with a visible output panel, run them
+  // through the streaming console so the program waits for the user and
+  // continues line by line, exactly like a desktop IDE.
+  if (
+    appConfig.ideMode === 'snippet' &&
+    !appConfig.noOutput &&
+    codeReadsStdin(lang.id, code)
+  ) {
+    clearTurtleCanvas();
+    const result = await runInteractive(lang.id, code);
+    if (appConfig.isEmbedded) {
+      notifyRunResult({
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs,
+      });
+    }
+    return;
   }
 
   setStatus("Running…");

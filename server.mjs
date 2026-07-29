@@ -925,6 +925,18 @@ const CONFIG = {
     maxCodeChars: parseInt(process.env.MAX_CODE_CHARS || "750000", 10),
     maxProjectFiles: parseInt(process.env.MAX_PROJECT_FILES || "300", 10),
     maxPathChars: parseInt(process.env.MAX_PATH_CHARS || "300", 10),
+
+    // Interactive stdin sessions (programs that call input()/Scanner/readline).
+    // Unlike a normal fire-and-forget run, these stay alive while waiting for
+    // the user to type, so they need their OWN kill-switches:
+    //   - idle timeout: no output AND no keystroke for this long -> kill (a
+    //     process "waiting for input forever" is a resource-hold DoS vector).
+    //   - max lifetime: absolute ceiling regardless of activity.
+    //   - concurrency caps: total, and per-IP, to bound held resources.
+    interactiveIdleTimeoutMs: parseInt(process.env.INTERACTIVE_IDLE_MS || "120000", 10),
+    interactiveMaxLifetimeMs: parseInt(process.env.INTERACTIVE_MAX_MS || "600000", 10),
+    maxInteractiveSessions: parseInt(process.env.MAX_INTERACTIVE_SESSIONS || "50", 10),
+    maxInteractiveSessionsPerIp: parseInt(process.env.MAX_INTERACTIVE_PER_IP || "3", 10),
   },
   
   // Cache settings
@@ -2145,59 +2157,64 @@ class SmartExecutor {
     return result;
   }
   
+  /**
+   * Build the minimal, sanitized environment used for every sandboxed child
+   * process. Extracted so both runProcess() (buffered runs) and the
+   * interactive-stdin spawner share the exact same security posture.
+   */
+  _sandboxEnv(options = {}) {
+    // SECURITY: Create a minimal, sanitized environment.
+    // In production (Docker/Linux) we lock PATH to the minimal Linux set.
+    // In development mode we include the host PATH so tools (node, python,
+    // javac, dotnet, …) are discoverable on macOS / Windows dev machines.
+    const devPath = CONFIG.isDev ? process.env.PATH || '' : '';
+    const prodPath = '/usr/local/bin:/usr/bin:/bin';
+    const sanitizedEnv = {
+      PATH: devPath ? `${devPath}${process.platform === 'win32' ? ';' : ':'}${prodPath}` : prodPath,
+      HOME: this.tempDir,
+      TMPDIR: this.tempDir,
+      TEMP: this.tempDir,
+      TMP: this.tempDir,
+      LANG: 'en_US.UTF-8',
+      LC_ALL: 'en_US.UTF-8',
+      PYTHONUNBUFFERED: '1',
+      PYTHONDONTWRITEBYTECODE: '1',
+      // Node.js security
+      NODE_OPTIONS: '--max-old-space-size=128',
+      // .NET: suppress first-run welcome/telemetry/HTTPS-cert banner and workload checks
+      DOTNET_NOLOGO: '1',
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false',
+      DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: '1',
+      DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1',
+      // .NET CLI writes its first-run sentinel/lock files under DOTNET_CLI_HOME
+      // (NOT the generic HOME env var, and NOT skipped by DOTNET_NOLOGO/
+      // DOTNET_SKIP_FIRST_TIME_EXPERIENCE above - those only silence the banner
+      // text). Without this, it defaults to the OS home directory of the
+      // container's user (e.g. /home/app), which is read-only in production
+      // (docker-compose.prod.yml sets `read_only: true` on the api service),
+      // so the "first time use" configurer throws an unhandled IOException and
+      // the whole `dotnet build`/`dotnet run` invocation fails - surfacing as a
+      // seemingly unrelated NETSDK1004 "assets file not found" error.
+      DOTNET_CLI_HOME: this.tempDir,
+      // Java: memory limit for both compiler and runtime. We rely on
+      // pattern-based validation instead of Java SecurityManager because the
+      // default SecurityManager blocks even System.out.println().
+      JAVA_TOOL_OPTIONS: '-Xmx128m',
+    };
+    return sanitizedEnv;
+  }
+
   runProcess(command, args, timeoutMs = CONFIG.execution.timeoutMs, options = {}) {
     return new Promise((resolve) => {
       const startTime = Date.now();
       let stdout = '';
       let stderr = '';
       let killed = false;
-      
-      // SECURITY: Create a minimal, sanitized environment.
-      // In production (Docker/Linux) we lock PATH to the minimal Linux set.
-      // In development mode we include the host PATH so tools (node, python,
-      // javac, dotnet, …) are discoverable on macOS / Windows dev machines.
-      const devPath = CONFIG.isDev ? process.env.PATH || '' : '';
-      const prodPath = '/usr/local/bin:/usr/bin:/bin';
-      const sanitizedEnv = {
-        PATH: devPath ? `${devPath}${process.platform === 'win32' ? ';' : ':'}${prodPath}` : prodPath,
-        HOME: this.tempDir,
-        TMPDIR: this.tempDir,
-        TEMP: this.tempDir,
-        TMP: this.tempDir,
-        LANG: 'en_US.UTF-8',
-        LC_ALL: 'en_US.UTF-8',
-        PYTHONUNBUFFERED: '1',
-        PYTHONDONTWRITEBYTECODE: '1',
-        // Node.js security
-        NODE_OPTIONS: '--max-old-space-size=128',
-        // .NET: suppress first-run welcome/telemetry/HTTPS-cert banner and workload checks
-        DOTNET_NOLOGO: '1',
-        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
-        DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
-        DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false',
-        DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: '1',
-        DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1',
-        // .NET CLI writes its first-run sentinel/lock files under DOTNET_CLI_HOME
-        // (NOT the generic HOME env var, and NOT skipped by DOTNET_NOLOGO/
-        // DOTNET_SKIP_FIRST_TIME_EXPERIENCE above - those only silence the banner
-        // text). Without this, it defaults to the OS home directory of the
-        // container's user (e.g. /home/app), which is read-only in production
-        // (docker-compose.prod.yml sets `read_only: true` on the api service),
-        // so the "first time use" configurer throws an unhandled IOException and
-        // the whole `dotnet build`/`dotnet run` invocation fails - surfacing as a
-        // seemingly unrelated NETSDK1004 "assets file not found" error.
-        DOTNET_CLI_HOME: this.tempDir,
-      };
-      
-      // Only add Java security manager for runtime, not compilation
-      if (!options.skipJavaSecurityManager) {
-        // Note: We rely on pattern-based validation instead of Java SecurityManager
-        // because the default SecurityManager blocks even System.out.println()
-        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Xmx128m';
-      } else {
-        sanitizedEnv.JAVA_TOOL_OPTIONS = '-Xmx128m';  // Just memory limit for compiler
-      }
-      
+
+      const sanitizedEnv = this._sandboxEnv(options);
+
       const proc = spawn(command, args, {
         cwd: options.cwd || this.tempDir,
         timeout: timeoutMs,
@@ -2254,6 +2271,240 @@ class SmartExecutor {
     });
   }
   
+  /**
+   * Prepare (but do not stream) an interactive run: create the per-session
+   * work directory contents, run any synchronous compile/lint step, and return
+   * the command/args needed to launch the program with a live stdin pipe.
+   *
+   * Returns one of:
+   *   { compile: {stdout, stderr, exitCode, phase:'compile', durationMs} }
+   *       - the program could not even start (syntax/compile/lint error);
+   *   { command, args, cwd, stderrTransform? }
+   *       - ready to spawn interactively.
+   *
+   * Reuses the exact tooling flags of the buffered executeX() paths so a
+   * program behaves identically whether or not it reads stdin.
+   */
+  async prepareInteractiveRun(language, code, sessionDir) {
+    switch (language) {
+      case 'python': {
+        // Same pre-run static check as executePython so a broken program
+        // never starts half-way.
+        const preflight = await this.preflightPython(code, 'user.py');
+        if (preflight) return { compile: preflight };
+
+        let fullCode = code;
+        if (TURTLE_SHIM && hasTurtleImport(code)) {
+          fullCode = TURTLE_SHIM + TURTLE_USER_CODE_SEP + code;
+        }
+        const shimInjected = fullCode !== code;
+        const tempFile = path.join(sessionDir, 'user.py');
+        fs.writeFileSync(tempFile, fullCode);
+        const escaped = tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return {
+          command: 'python3',
+          args: ['-u', '-I', '-S', '-B', tempFile],
+          cwd: sessionDir,
+          stderrTransform: (t) => {
+            let out = t.replace(new RegExp(escaped, 'g'), 'user.py');
+            if (shimInjected) out = adjustTurtleTraceback(out, turtleShimLineOffset(), 'user.py');
+            return out;
+          },
+        };
+      }
+
+      case 'javascript': {
+        const tempFile = path.join(sessionDir, 'main.mjs');
+        fs.writeFileSync(tempFile, code);
+        return {
+          command: 'node',
+          args: [
+            '--no-warnings',
+            '--experimental-permission',
+            '--allow-fs-read=' + this.tempDir,
+            '--max-old-space-size=128',
+            tempFile,
+          ],
+          cwd: sessionDir,
+        };
+      }
+
+      case 'typescript': {
+        const ts = await getTsCompiler();
+        let jsCode = code;
+        if (ts) {
+          let transpileResult;
+          try {
+            transpileResult = ts.transpileModule(code, {
+              fileName: 'user.ts',
+              compilerOptions: {
+                module: ts.ModuleKind.ESNext,
+                target: ts.ScriptTarget.ES2022,
+                strict: false,
+                isolatedModules: true,
+                esModuleInterop: true,
+                allowSyntheticDefaultImports: true,
+                experimentalDecorators: true,
+                sourceMap: false,
+                inlineSourceMap: false,
+                removeComments: false,
+              },
+              reportDiagnostics: true,
+            });
+          } catch (e) {
+            return {
+              compile: {
+                stdout: '',
+                stderr: `TypeScript compilation failed: ${e.message}`,
+                exitCode: 1,
+                phase: 'compile',
+                durationMs: 0,
+              },
+            };
+          }
+          if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
+            const errors = transpileResult.diagnostics.map(d => {
+              const msg = ts.flattenDiagnosticMessageText(d.messageText, '\n');
+              if (d.file && d.start !== undefined) {
+                const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
+                return `user.ts:${line + 1}:${character + 1} - error TS${d.code}: ${msg}`;
+              }
+              return `error TS${d.code}: ${msg}`;
+            });
+            return {
+              compile: {
+                stdout: '',
+                stderr: errors.join('\n'),
+                exitCode: 1,
+                phase: 'compile',
+                durationMs: 0,
+              },
+            };
+          }
+          jsCode = transpileResult.outputText;
+        }
+        const tempFile = path.join(sessionDir, 'main.mjs');
+        fs.writeFileSync(tempFile, jsCode);
+        return {
+          command: 'node',
+          args: [
+            '--no-warnings',
+            '--experimental-permission',
+            '--allow-fs-read=' + this.tempDir,
+            '--max-old-space-size=128',
+            tempFile,
+          ],
+          cwd: sessionDir,
+        };
+      }
+
+      case 'php': {
+        const phpCode = code.startsWith('<?php') ? code : `<?php\n${code}`;
+        const tempFile = path.join(sessionDir, 'main.php');
+        fs.writeFileSync(tempFile, phpCode);
+
+        // Syntax check first (php -l), same as executePHP.
+        const lint = await this.runProcess('php', [
+          '-d', 'open_basedir=' + sessionDir,
+          '-l',
+          tempFile,
+        ], 10000, { cwd: sessionDir });
+        if (lint.exitCode !== 0) {
+          const raw = (lint.stdout || lint.stderr || '').trim();
+          const tempName = path.basename(tempFile);
+          const cleaned = raw
+            .replace(new RegExp(tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.php')
+            .replace(new RegExp(tempName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'user.php')
+            .replace(/\nErrors parsing[^\n]*$/m, '')
+            .trim();
+          return {
+            compile: {
+              stdout: '',
+              stderr: cleaned || raw,
+              exitCode: 1,
+              phase: 'compile',
+              durationMs: lint.durationMs,
+            },
+          };
+        }
+
+        const escaped = tempFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return {
+          command: 'php',
+          args: [
+            '-d', 'open_basedir=' + sessionDir,
+            '-d', 'memory_limit=64M',
+            // No max_execution_time cap here: an interactive program legitimately
+            // blocks on input; the session idle/lifetime timers are the guard.
+            '-d', 'disable_functions=exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec,pcntl_fork,curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,mail,dl,putenv,getenv,phpinfo,eval,assert,create_function,file_get_contents,file_put_contents,fopen,fwrite,readfile,unlink,rmdir,mkdir,chmod,chown',
+            '-d', 'allow_url_fopen=Off',
+            '-d', 'allow_url_include=Off',
+            tempFile,
+          ],
+          cwd: sessionDir,
+          stderrTransform: (t) => t.replace(new RegExp(escaped, 'g'), 'user.php'),
+        };
+      }
+
+      case 'java': {
+        const classMatch = code.match(/public\s+class\s+(\w+)/);
+        const className = classMatch ? classMatch[1] : 'Main';
+        const srcFile = path.join(sessionDir, `${className}.java`);
+        fs.writeFileSync(srcFile, code);
+
+        const compile = await this.runProcess('javac', [
+          '-J-Xmx128m',
+          srcFile,
+        ], CONFIG.execution.javaTimeoutMs, { cwd: sessionDir, skipJavaSecurityManager: true });
+        if (compile.exitCode !== 0) {
+          const stderr = compile.stderr ? stripTempPath(compile.stderr, sessionDir) : compile.stderr;
+          return {
+            compile: {
+              stdout: '',
+              stderr,
+              exitCode: compile.exitCode,
+              phase: 'compile',
+              durationMs: compile.durationMs,
+            },
+          };
+        }
+        return {
+          command: 'java',
+          args: [
+            '-Xmx128m',
+            '-Xms32m',
+            '-XX:MaxMetaspaceSize=64m',
+            '-cp', sessionDir,
+            className,
+          ],
+          cwd: sessionDir,
+        };
+      }
+
+      case 'csharp': {
+        this.copyCSharpTemplate(sessionDir);
+        fs.writeFileSync(path.join(sessionDir, 'Program.cs'), code);
+        // Compile errors (if any) surface on stdout when `dotnet run` starts;
+        // they will stream to the console like a normal non-zero exit.
+        return {
+          command: 'dotnet',
+          args: [
+            'run',
+            '-c', 'Release',
+            '--no-restore',
+            '--nologo',
+            '-v', 'q',
+            '--project', sessionDir,
+          ],
+          cwd: sessionDir,
+        };
+      }
+
+      default:
+        throw new Error(`Unsupported language: ${language}`);
+    }
+  }
+
   autoScale() {
     const load = this.getLoad();
     // Log stats periodically
@@ -3357,6 +3608,257 @@ app.post("/api/run", async (req, res) => {
     
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================
+// INTERACTIVE STDIN RUNS (input() / Scanner / readline / Console.ReadLine)
+// ============================================
+// A normal /api/run is fire-and-forget: it buffers stdout/stderr and returns a
+// single JSON result. That model cannot support a program that PAUSES waiting
+// for keyboard input. These endpoints add a live session:
+//
+//   POST /api/run/interactive            -> validate + compile + spawn; returns { sessionId } (or { compile })
+//   GET  /api/run/interactive/:id/stream -> Server-Sent Events: stdout/stderr/exit as they happen
+//   POST /api/run/interactive/:id/stdin  -> write one line to the program's stdin
+//   POST /api/run/interactive/:id/close  -> terminate the program
+//
+// SECURITY: same code validation + sandbox env as /api/run, PLUS session-only
+// guards (idle timeout, absolute lifetime, total + per-IP concurrency caps)
+// because a process "waiting for input forever" is a resource-hold DoS vector.
+const interactiveSessions = new Map();      // id -> session
+const interactiveIpCounts = new Map();      // ip -> active count
+const INTERACTIVE_LANGS = ['python', 'javascript', 'typescript', 'php', 'java', 'csharp'];
+
+function interactiveIpOf(req) {
+  return req.ip || req.connection?.remoteAddress || 'unknown';
+}
+
+function interactiveSend(session, obj) {
+  const payload = `data: ${JSON.stringify(obj)}\n\n`;
+  if (session.res && !session.res.writableEnded) {
+    session.res.write(payload);
+  } else {
+    // No client attached yet (or already gone): buffer so a late SSE attach
+    // still receives everything, including the final exit event.
+    session.buffer.push(payload);
+  }
+}
+
+function interactiveResetIdle(session) {
+  if (session.finished) return;
+  clearTimeout(session.idleTimer);
+  session.idleTimer = setTimeout(() => {
+    session.idleTimedOut = true;
+    try { session.proc.kill('SIGKILL'); } catch {}
+  }, CONFIG.execution.interactiveIdleTimeoutMs);
+}
+
+function interactiveOnOutput(session, kind, data) {
+  if (session.finished) return;
+  let text = data.toString();
+  if (kind === 'stderr' && session.stderrTransform) {
+    try { text = session.stderrTransform(text); } catch {}
+  }
+  const remaining = CONFIG.execution.maxOutputChars - session.outputLen;
+  if (remaining <= 0) return;
+  if (text.length > remaining) {
+    interactiveSend(session, { type: kind, data: text.slice(0, remaining) });
+    session.outputLen += remaining;
+    session.truncated = true;
+    interactiveSend(session, { type: 'stderr', data: '\n... (output truncated)\n' });
+    try { session.proc.kill('SIGKILL'); } catch {}
+    return;
+  }
+  session.outputLen += text.length;
+  interactiveSend(session, { type: kind, data: text });
+  interactiveResetIdle(session);
+}
+
+function interactiveFinish(session, exitCode) {
+  if (session.finished) return;
+  session.finished = true;
+  clearTimeout(session.idleTimer);
+  clearTimeout(session.maxTimer);
+  const note = session.idleTimedOut ? 'idle-timeout'
+    : session.truncated ? 'output-limit'
+    : session.maxedOut ? 'time-limit'
+    : null;
+  interactiveSend(session, {
+    type: 'exit',
+    exitCode,
+    durationMs: Date.now() - session.startTime,
+    note,
+  });
+  if (session.res && !session.res.writableEnded) {
+    try { session.res.end(); } catch {}
+  }
+  // Release per-IP slot and wipe the session's working directory.
+  const c = interactiveIpCounts.get(session.ip) || 0;
+  if (c <= 1) interactiveIpCounts.delete(session.ip);
+  else interactiveIpCounts.set(session.ip, c - 1);
+  try { fs.rmSync(session.sessionDir, { recursive: true, force: true }); } catch {}
+  // Keep the (finished) session around briefly so a stream that attaches late
+  // can still flush the buffered exit event before it is discarded.
+  setTimeout(() => interactiveSessions.delete(session.id), 15000);
+}
+
+app.post("/api/run/interactive", async (req, res) => {
+  const { language, code } = req.body || {};
+
+  if (!language) return res.status(400).json({ error: "Missing language" });
+  if (!INTERACTIVE_LANGS.includes(language)) {
+    return res.status(400).json({ error: `Unsupported language: ${language}` });
+  }
+  if (typeof code !== 'string' || !code) {
+    return res.status(400).json({ error: "Missing code" });
+  }
+  if (code.length > CONFIG.execution.maxCodeChars) {
+    return res.status(400).json({
+      error: `Code too large (max ${CONFIG.execution.maxCodeChars / 1000}KB)`,
+    });
+  }
+
+  // SECURITY: identical dangerous-pattern check as /api/run.
+  const security = validateCodeSecurity(language, code);
+  if (!security.safe) {
+    log('warn', 'security_block', {
+      language, reason: security.reason, matched: security.matched, ip: req.ip,
+    });
+    return res.status(403).json({ error: security.reason, blocked: true });
+  }
+
+  // Concurrency guards.
+  if (interactiveSessions.size >= CONFIG.execution.maxInteractiveSessions) {
+    return res.status(503).json({ error: "Too many interactive sessions - try again shortly", retryAfter: 5 });
+  }
+  const ip = interactiveIpOf(req);
+  const ipCount = interactiveIpCounts.get(ip) || 0;
+  if (ipCount >= CONFIG.execution.maxInteractiveSessionsPerIp) {
+    return res.status(429).json({ error: "Too many concurrent interactive runs from your connection" });
+  }
+
+  const id = crypto.randomBytes(16).toString('hex');
+  const sessionDir = path.join(executor.tempDir, `isess_${id}`);
+  try {
+    fs.mkdirSync(sessionDir, { recursive: true });
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to create session: ${err.message}` });
+  }
+
+  // Compile / lint synchronously; a compile error never becomes a live session.
+  let spec;
+  try {
+    spec = await executor.prepareInteractiveRun(language, code, sessionDir);
+  } catch (err) {
+    try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+    log('error', 'interactive_prepare_error', { error: err.message, language });
+    return res.status(500).json({ error: err.message });
+  }
+
+  if (spec.compile) {
+    try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+    return res.json({ compile: spec.compile });
+  }
+
+  let proc;
+  try {
+    proc = spawn(spec.command, spec.args, {
+      cwd: spec.cwd || sessionDir,
+      env: executor._sandboxEnv({}),
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: false,
+      shell: false,
+    });
+  } catch (err) {
+    try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+    return res.status(500).json({ error: `Failed to start program: ${err.message}` });
+  }
+
+  const session = {
+    id, proc, ip, sessionDir, language,
+    stderrTransform: spec.stderrTransform || null,
+    buffer: [], res: null,
+    finished: false, outputLen: 0, truncated: false,
+    idleTimedOut: false, maxedOut: false,
+    startTime: Date.now(), idleTimer: null, maxTimer: null,
+  };
+  interactiveSessions.set(id, session);
+  interactiveIpCounts.set(ip, ipCount + 1);
+
+  proc.stdout.on('data', (d) => interactiveOnOutput(session, 'stdout', d));
+  proc.stderr.on('data', (d) => interactiveOnOutput(session, 'stderr', d));
+  proc.on('error', (err) => {
+    interactiveSend(session, { type: 'stderr', data: `\n[failed to start: ${err.message}]\n` });
+    interactiveFinish(session, -1);
+  });
+  proc.on('close', (exitCode) => {
+    const code = (session.idleTimedOut || session.truncated || session.maxedOut)
+      ? -1
+      : (exitCode ?? 0);
+    interactiveFinish(session, code);
+  });
+
+  interactiveResetIdle(session);
+  session.maxTimer = setTimeout(() => {
+    session.maxedOut = true;
+    try { proc.kill('SIGKILL'); } catch {}
+  }, CONFIG.execution.interactiveMaxLifetimeMs);
+
+  res.json({ sessionId: id });
+});
+
+app.get("/api/run/interactive/:id/stream", (req, res) => {
+  const session = interactiveSessions.get(req.params.id);
+  if (!session) return res.status(404).end();
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    // Disable proxy buffering (nginx) so events arrive immediately.
+    'X-Accel-Buffering': 'no',
+  });
+  res.write(': connected\n\n');
+
+  session.res = res;
+  // Flush anything produced before the client attached.
+  for (const chunk of session.buffer) res.write(chunk);
+  session.buffer = [];
+  if (session.finished && !res.writableEnded) {
+    try { res.end(); } catch {}
+    return;
+  }
+
+  req.on('close', () => {
+    // Client navigated away / closed the tab: kill the sandbox so it does not
+    // sit waiting on input forever.
+    if (!session.finished) {
+      try { session.proc.kill('SIGKILL'); } catch {}
+    }
+  });
+});
+
+app.post("/api/run/interactive/:id/stdin", (req, res) => {
+  const session = interactiveSessions.get(req.params.id);
+  if (!session || session.finished) {
+    return res.status(410).json({ error: "Session is not running" });
+  }
+  const raw = typeof req.body?.data === 'string' ? req.body.data : '';
+  // Cap a single input line; strip embedded newlines so one submit == one line.
+  const line = raw.replace(/[\r\n]+/g, ' ').slice(0, 10000);
+  try {
+    session.proc.stdin.write(line + '\n');
+  } catch { /* stdin may have closed as the program exited */ }
+  interactiveResetIdle(session);
+  res.json({ ok: true });
+});
+
+app.post("/api/run/interactive/:id/close", (req, res) => {
+  const session = interactiveSessions.get(req.params.id);
+  if (session && !session.finished) {
+    try { session.proc.kill('SIGKILL'); } catch {}
+  }
+  res.json({ ok: true });
 });
 
 // Stats endpoint

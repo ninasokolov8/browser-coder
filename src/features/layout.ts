@@ -5,6 +5,7 @@ import {
   requireTabManager,
 } from '../app/runtime';
 import { appConfig } from '../app/config';
+import { stopInteractive } from '../components/interactive-console';
 import {
   togglePanelBtn,
   panelEl,
@@ -55,6 +56,7 @@ export function initializeLayout(): void {
   // ===== Clear output =====
 
   clearOutputBtn.addEventListener('click', () => {
+    stopInteractive();
     setOutput('');
     clearTurtleCanvas();
   });

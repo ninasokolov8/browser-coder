@@ -812,6 +812,32 @@
       #panel-content .info { color: #75beff; }
       #panel-content .warning { color: #ce9178; }
 
+      /* Interactive stdin console (programs that call input()/Scanner/etc.) */
+      #panel-content .term-input-line {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      #panel-content .term-caret {
+        color: #89d185;
+        flex: 0 0 auto;
+        user-select: none;
+      }
+      #panel-content .term-input {
+        flex: 1 1 auto;
+        min-width: 0;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        padding: 0;
+        caret-color: #89d185;
+      }
+
       /* ===== TURTLE GRAPHICS POPUP WINDOW ===== */
       /* The turtle drawing lives in its own floating window so it never covers
          or collides with the Output panel (stdout/stderr/prints). Both stay
