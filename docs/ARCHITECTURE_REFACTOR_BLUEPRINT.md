@@ -3806,6 +3806,11 @@ Found during verification; not present in sections 1-31.
 | N-08 | The reports listing enumerates the reports directory and returns filenames plus parsed JSON summaries to anonymous callers. | `server.mjs:4310-4355` | P1 (information disclosure) |
 | N-09 | `getExtension()` hardcodes a language-to-extension map duplicating the language config files, so adding a language requires editing `server.mjs`. | `server.mjs:3708-3711` | P2 (extensibility) |
 | N-10 | The turtle stream filter withholds a trailing fragment that could still become a sentinel. A program printing a partial marker and then blocking on input never shows those bytes until exit. | `server.mjs:3976-3986` | P2 |
+| N-11 | **The `entryPoint`-not-found branch is unreachable dead code.** When a requested entry point is absent, `find()` returns undefined and the earlier "No entry file was provided" branch answers first, so the dedicated message at `server.mjs:3803` can never fire. The status is still 400, so this is a diagnosability defect rather than a contract break - a caller who mistyped an entry point is told they supplied none. | `server.mjs:3796-3805`, mirrored at `4131-4137` | P2 |
+| N-12 | **The absolute-path rejection is unreachable dead code, and absolute paths are silently relativized.** Normalization runs `.replace(/\\/g,'/')` then `.replace(/^\/+/, '')` *before* the guard tests `startsWith('/')` and `startsWith('\\')`, so both conditions are always false. `/etc/passwd.py` is quietly rewritten to `etc/passwd.py` and accepted. The direct consequence is a silent collision: `/main.py` and `main.py` in one project both become `main.py`, and one file overwrites the other on disk with no error. Only the Windows drive-letter guard still fires. | `server.mjs:3734` vs `3756`; mirrored at `4093` vs `4106` | **P1** |
+
+Both N-11 and N-12 were found by the contract harness rather than by reading, which is the
+argument for writing the harness before the refactor rather than after it.
 
 ### 32.5 Assessment of the v1.1 plan itself
 
@@ -3961,3 +3966,55 @@ and anything deliberately left open.
   needed to finish it (33.4).
 
 **No application code changed in this commit.** Documentation only.
+
+### 2026-07-30 - Executable contract harness and defect baseline
+
+**Commit:** `test: add black-box contract harness and defect gates`
+
+Built the safety net the refactor is measured against, before touching any
+application code.
+
+- `tests/contract/support/server.mjs` boots the real `server.mjs` as a child
+  process on an ephemeral port with its own temp and preview directories.
+  Deliberately black-box: the tests may not import application internals, so
+  everything they assert is by construction part of the public contract and the
+  same suite runs unchanged against the pre- and post-refactor tree.
+- `tests/contract/support/toolchain.mjs` probes the exact binaries the server
+  spawns and requires **exit status 0**. A missing compiler produces an explicit
+  SKIP naming the language, never a pass. This matters: on Windows `python3`
+  resolves to the Microsoft Store alias, which prints an install hint and exits
+  49, so a laxer probe reported Python as present and then failed every Python
+  assertion for the wrong reason.
+- `tests/contract/frozen-http-api.test.mjs` (27 tests) and
+  `frozen-interactive.test.mjs` (11 tests) freeze the consumer surface from
+  section 33.1: the result envelope field-for-field, language and version IDs,
+  compile and runtime errors as HTTP 200 with a nonzero exit code, security
+  blocks as 403, preview publish and serve, the six NDJSON event names, and the
+  stdin and close routes. Two freshness tests assert that identical source -
+  sequential and concurrent - produces different output, guarding the removed
+  result cache (C-01).
+- `tests/contract/defects.test.mjs` (25 gates) inverts the usual approach: each
+  test asserts the **correct** behaviour and is marked `todo` while the defect is
+  open. Freezing current behaviour would have made bugs like "output-limit
+  termination reports exit 0" into contracts and blocked their own fixes.
+
+**Baseline on `full_refactor` @ `d4b0cd6`:** frozen suites 31 passed / 0 failed /
+7 skipped for absent toolchains; defect gates 21 failing, 2 skipped, 1 already
+passing.
+
+**Two defects were found by the harness, not by reading** - now recorded as N-11
+and N-12 in section 32.4. N-12 is the more serious: path normalization strips a
+leading slash *before* the absolute-path guard tests for one, so the guard is
+unreachable and `/main.py` and `main.py` in one project silently collapse onto
+the same file, one overwriting the other with no error.
+
+Also promoted the wall-clock-timeout gate to a permanent (non-`todo`) test: it
+already passes, and it shares its exit-code expression with the broken
+output-cap path, so it must not regress while that is fixed.
+
+`package.json` now has real `typecheck`, `test` and `test:contract` scripts. The
+previous `test` script invoked `tests/run-tests.sh`, which printed
+"not yet implemented" for three of its four suites and still exited 0 -
+confirming the test-credibility finding in section 6.5.
+
+**No application code changed in this commit.**
