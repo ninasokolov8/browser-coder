@@ -16,7 +16,9 @@ import type { TurtleData } from '../components/turtle';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runBtn } from '../components/dom';
 import { getOrCreateModel } from './editor-core';
-import { isCssFile, isHtmlFile, openWebPreview } from './live-preview';
+import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
+import { resolveWorkspaceImageUrl } from '../components/svg-assets';
+import { hideImageWindow, showImageWindow } from '../components/image-window';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -107,6 +109,27 @@ function renderRunResult(
   setOutputHtml(parts.join(''));
 }
 
+/**
+ * "Run" an SVG file: open the picture in its own floating window — the same kind
+ * of window a turtle drawing opens in — and list the ways to import it in the
+ * Output panel.
+ */
+function showSvgPreview(filePath: string, source: string): void {
+  const fileName = normalizeProjectPath(filePath).split('/').pop() || 'image.svg';
+
+  clearTurtleCanvas();          // one graphics window on screen at a time
+  showImageWindow(fileName, source);
+
+  setOutputHtml(
+    `<span class="info">── SVG Image — ${esc(fileName)} ───────────────────────────────</span>\n` +
+    `Opened in its own window. Import this image into another file:\n\n` +
+    `  HTML     ${esc(`<img src="./${fileName}" alt="">`)}\n` +
+    `  CSS      ${esc(`background-image: url("./${fileName}");`)}\n` +
+    `  Python   ${esc(`turtle.bgpic("${fileName}")`)}\n`
+  );
+  setStatus('SVG image shown ✅');
+}
+
 export async function runCode(code: string) {
   const { editor, tabManager, storage } = requireRuntime();
   const activeTab = tabManager.getActiveTab();
@@ -117,6 +140,13 @@ export async function runCode(code: string) {
 
   if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file)) {
     await openWebPreview();
+    return;
+  }
+
+  // An SVG file is an image, not a program: Run shows what it looks like and
+  // reminds the student how to import it elsewhere.
+  if (isSvgFile(activeTab.file)) {
+    showSvgPreview(activeTab.file.path || activeTab.file.name, code);
     return;
   }
 
@@ -274,6 +304,7 @@ requestBody = {
     stopRunLoader();
     setOutput("");
     clearTurtleCanvas();
+    hideImageWindow();
 
     if (!resp.ok) {
       setOutputHtml(
@@ -303,6 +334,7 @@ requestBody = {
     // in both cases we show only the error and draw nothing, so a broken
     // program never flashes a half-finished drawing.
     let turtleRenderErr: string | null = null;
+    let missingTurtlePic: string | null = null;
     if (
       data.exitCode === 0 &&
       data.phase !== 'compile' &&
@@ -310,6 +342,18 @@ requestBody = {
       (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)
     ) {
       try {
+        // bgpic("maze.svg") names a project file. Python only reports the name;
+        // the image itself lives in the workspace, so resolve it here and hand
+        // the renderer a data URL.
+        const picName = (data.turtleData as TurtleData).pic;
+        if (picName) {
+          const picUrl = await resolveWorkspaceImageUrl(
+            picName,
+            normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+          );
+          if (picUrl) (data.turtleData as TurtleData).picData = picUrl;
+          else missingTurtlePic = picName;
+        }
         renderTurtle(data.turtleData as TurtleData);
       } catch (renderErr) {
         turtleRenderErr = String(renderErr);
@@ -317,6 +361,12 @@ requestBody = {
     }
 
     renderRunResult(data, lang.id);
+    if (missingTurtlePic) {
+      appendOutput(
+        `[turtle: background image "${missingTurtlePic}" was not found in this project. ` +
+        `Add an .svg file with that name — bgpic() reads SVG images from the workspace.]`
+      );
+    }
     if (turtleRenderErr) appendOutput(`[turtle render error: ${turtleRenderErr}]`);
 
     setStatus(

@@ -1,6 +1,10 @@
 import {
   turtleCanvasEl,
 } from "./dom";
+import { getPopupWindow, hidePopupWindow, showPopupWindow } from "./popup-window";
+
+// Id of the shared popup window the turtle drawing is rendered into.
+const TURTLE_WINDOW_ID = 'turtle-window';
 
 // ── Turtle graphics renderer ─────────────────────────────────────────────────
 // Animated step-by-step replay of the drawing commands captured by the Python
@@ -50,10 +54,23 @@ export interface TurtleData {
   shapes?:  TurtleShape[];
   cursors?: TurtleCursor[];
   polys?:   Record<string, number[][]>;   // shapes from register_shape()
+  pic?:     string;   // bgpic() argument, exactly as the program wrote it
+  picData?: string;   // that picture as a data URL, resolved by the frontend
 }
 
 // Animation RAF id (requestAnimationFrame) — null when idle
 let turtleAnimRafId: number | null = null;
+
+// Background picture (bgpic) of the drawing currently on screen. Module-level
+// because it is needed both while painting the background and later, whenever
+// the program clears the canvas — and because only one drawing is ever
+// rendered at a time.
+let turtleBgImage: HTMLImageElement | null = null;
+
+// Incremented by every renderTurtle()/clearTurtleCanvas() call so a background
+// picture that finishes loading late can tell it belongs to a run that has
+// already been replaced, and drop itself instead of painting over the new one.
+let turtleRenderSeq = 0;
 
 // ── Built-in cursor shapes ───────────────────────────────────────────────────
 // Same polygons Python's turtle module uses. They are defined pointing "up"
@@ -100,102 +117,32 @@ function mergeLook(base: TurtleLook, src: Record<string, unknown>): TurtleLook {
 }
 
 /**
- * Resolve the floating turtle window lazily. The turtle drawing lives in its
- * own popup window (not inside the Output panel) so it never covers or
- * collides with stdout/stderr/prints — both stay visible at once, exactly
- * like a real IDE where the turtle canvas opens in a separate window.
+ * Resolve the floating turtle window and its canvas, building them on demand.
  *
- * The window is created on demand so older deployments that lack the markup
- * still work, and every normal (non-turtle) run can safely call
- * clearTurtleCanvas() without crashing.
+ * The turtle drawing lives in its own popup window (not inside the Output
+ * panel) so it never covers or collides with stdout/stderr/prints - both stay
+ * visible at once, exactly like a real IDE where the turtle canvas opens in a
+ * separate window. The window shell itself is the shared one every graphics
+ * output uses; see popup-window.ts.
  */
-let _turtleDragBound = false;
-
 function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement } | null {
-  let windowEl = document.getElementById('turtle-window');
-  if (!windowEl) {
-    windowEl = document.createElement('div');
-    windowEl.id = 'turtle-window';
-    windowEl.className = 'hidden';
-    windowEl.innerHTML =
-      '<div id="turtle-window-header">' +
-        '<span id="turtle-window-title">\uD83D\uDC22 Turtle Graphics</span>' +
-        '<button id="turtle-window-close" title="Close" aria-label="Close">\u2715</button>' +
-      '</div>' +
-      '<div id="turtle-window-body"></div>';
-    document.body.appendChild(windowEl);
-  }
-
-  const bodyEl = windowEl.querySelector('#turtle-window-body') as HTMLElement | null;
-  if (!bodyEl) return null;
+  const popup = getPopupWindow(
+    TURTLE_WINDOW_ID,
+    '\uD83D\uDC22 Turtle Graphics',
+    () => clearTurtleCanvas(),   // closing also stops any running animation
+  );
+  if (!popup) return null;
 
   let canvas = document.getElementById('turtle-canvas') as HTMLCanvasElement | null;
   if (!canvas) {
     canvas = document.createElement('canvas');
     canvas.id = 'turtle-canvas';
-    bodyEl.appendChild(canvas);
-  } else if (canvas.parentElement !== bodyEl) {
-    bodyEl.appendChild(canvas);
+    popup.bodyEl.appendChild(canvas);
+  } else if (canvas.parentElement !== popup.bodyEl) {
+    popup.bodyEl.appendChild(canvas);
   }
 
-  // Close button — hide the window and stop any running animation.
-  const closeBtn = windowEl.querySelector('#turtle-window-close') as HTMLButtonElement | null;
-  if (closeBtn && !closeBtn.dataset.bound) {
-    closeBtn.dataset.bound = '1';
-    closeBtn.addEventListener('click', () => clearTurtleCanvas());
-  }
-
-  // Draggable via the header (pointer events cover mouse + touch + pen).
-  const header = windowEl.querySelector('#turtle-window-header') as HTMLElement | null;
-  if (header && !_turtleDragBound) {
-    _turtleDragBound = true;
-    _makeDraggable(windowEl, header);
-  }
-
-  return { output: windowEl, canvas };
-}
-
-/** Make `win` draggable by dragging `handle`, clamped to the viewport. */
-function _makeDraggable(win: HTMLElement, handle: HTMLElement): void {
-  let dragging = false;
-  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
-
-  handle.addEventListener('pointerdown', (e: PointerEvent) => {
-    // Never start a drag from the close button.
-    if ((e.target as HTMLElement).closest('#turtle-window-close')) return;
-    dragging = true;
-    const rect = win.getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    startLeft = rect.left; startTop = rect.top;
-    // Switch to absolute left/top positioning (drops the default right/top).
-    win.style.left = startLeft + 'px';
-    win.style.top = startTop + 'px';
-    win.style.right = 'auto';
-    win.style.bottom = 'auto';
-    try { handle.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
-    e.preventDefault();
-  });
-
-  handle.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!dragging) return;
-    let nl = startLeft + (e.clientX - startX);
-    let nt = startTop + (e.clientY - startY);
-    // Keep a grabbable strip on screen no matter how far the user drags.
-    const maxL = window.innerWidth - 120;
-    const maxT = window.innerHeight - 40;
-    nl = Math.max(120 - win.offsetWidth, Math.min(nl, maxL));
-    nt = Math.max(0, Math.min(nt, maxT));
-    win.style.left = nl + 'px';
-    win.style.top = nt + 'px';
-  });
-
-  const endDrag = (e: PointerEvent) => {
-    if (!dragging) return;
-    dragging = false;
-    try { handle.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-  };
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
+  return { output: popup.windowEl, canvas };
 }
 
 /**
@@ -269,6 +216,42 @@ function drawFinalCursors(
   }
 }
 
+/**
+ * Paint a canvas background: the background colour, then the bgpic picture on
+ * top of it.
+ *
+ * The picture is centred and scaled to fit while keeping its aspect ratio, so a
+ * maze authored for a square screen still lines up with turtle coordinates
+ * after setup() changes the window size.
+ */
+function paintTurtleBackground(
+  sctx: CanvasRenderingContext2D,
+  cw: number, ch: number,
+  bg: string,
+): void {
+  sctx.fillStyle = bg;
+  sctx.fillRect(0, 0, cw, ch);
+
+  const img = turtleBgImage;
+  if (!img) return;
+
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+
+  try {
+    if (iw > 0 && ih > 0) {
+      const scale = Math.min(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      sctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    } else {
+      // An SVG with only a viewBox (no width/height) has no intrinsic size in
+      // some browsers. Stretching it over the canvas is the useful fallback.
+      sctx.drawImage(img, 0, 0, cw, ch);
+    }
+  } catch (_e) { /* a broken picture must never break the drawing */ }
+}
+
 /** Draw a single shape onto `sctx`. */
 function drawTurtleShape(
   sctx: CanvasRenderingContext2D,
@@ -325,9 +308,10 @@ function drawTurtleShape(
         break;
       }
       case 'C': {
+        // clear() wipes the drawing but keeps the screen's background, which
+        // includes the bgpic picture — same as real turtle.
         sctx.clearRect(0, 0, cw, ch);
-        sctx.fillStyle = bg;
-        sctx.fillRect(0, 0, cw, ch);
+        paintTurtleBackground(sctx, cw, ch, bg);
         break;
       }
       case 'S': {
@@ -363,7 +347,43 @@ const TURTLE_PX_PER_SEC: Record<number, number> = {
   5: 1000, 6: 1600, 7: 2500, 8: 4000, 9: 6500, 10: 10000,
 };
 
+/**
+ * Render a finished turtle program.
+ *
+ * When the program set a background picture with bgpic(), the picture has to be
+ * decoded before anything can be painted, so the drawing starts once the image
+ * has loaded (or failed). Everything else renders immediately.
+ */
 export function renderTurtle(data: TurtleData): void {
+  // Cancel a running animation right away: even while an image is loading, the
+  // previous drawing must not keep animating onto the canvas.
+  if (turtleAnimRafId !== null) {
+    cancelAnimationFrame(turtleAnimRafId);
+    turtleAnimRafId = null;
+  }
+
+  const seq = ++turtleRenderSeq;
+  turtleBgImage = null;
+
+  if (!data.picData) {
+    drawTurtleData(data);
+    return;
+  }
+
+  const picture = new Image();
+  picture.onload = () => {
+    if (seq !== turtleRenderSeq) return;   // a newer run already took over
+    turtleBgImage = picture;
+    drawTurtleData(data);
+  };
+  picture.onerror = () => {
+    if (seq !== turtleRenderSeq) return;
+    drawTurtleData(data);                  // unusable picture → plain background
+  };
+  picture.src = data.picData;
+}
+
+function drawTurtleData(data: TurtleData): void {
   // ── Cancel any previous animation ──────────────────────────────────────────
   if (turtleAnimRafId !== null) {
     cancelAnimationFrame(turtleAnimRafId);
@@ -391,8 +411,7 @@ export function renderTurtle(data: TurtleData): void {
   // preserve null narrowing for `context` inside requestAnimationFrame callbacks.
   const ctx: CanvasRenderingContext2D = context;
 
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, cw, ch);
+  paintTurtleBackground(ctx, cw, ch, bg);
 
   // ── Scale the canvas to fit the screen while preserving aspect ratio ───────
   // The canvas keeps its full internal resolution (cw × ch); CSS max-* only
@@ -403,17 +422,7 @@ export function renderTurtle(data: TurtleData): void {
   turtleCanvas.style.maxHeight = maxCanvasH + 'px';
 
   // ── Show the popup window ───────────────────────────────────────────────────
-  // On a fresh show (it was hidden), snap it back to the default top-right spot
-  // so it is always on screen. If it is already open (a re-run), keep whatever
-  // position the user dragged it to.
-  const wasHidden = turtleWindow.classList.contains('hidden');
-  turtleWindow.classList.remove('hidden');
-  if (wasHidden) {
-    turtleWindow.style.left   = 'auto';
-    turtleWindow.style.top    = '90px';
-    turtleWindow.style.right  = '24px';
-    turtleWindow.style.bottom = 'auto';
-  }
+  showPopupWindow(turtleWindow);
 
   // Nothing was drawn, but the turtles themselves are still worth showing —
   // that is what a real turtle window looks like after a program that only
@@ -431,8 +440,7 @@ export function renderTurtle(data: TurtleData): void {
   offscreen.width  = cw;
   offscreen.height = ch;
   const octx = offscreen.getContext('2d')!;
-  octx.fillStyle = bg;
-  octx.fillRect(0, 0, cw, ch);
+  paintTurtleBackground(octx, cw, ch, bg);
 
   // ── Animation mode ─────────────────────────────────────────────────────────
   const tracerVal = data.tracer ?? 1;
@@ -584,12 +592,16 @@ export function clearTurtleCanvas(): void {
     turtleAnimRafId = null;
   }
 
+  // Also invalidate a background picture that is still loading, so a slow
+  // decode from the previous run cannot draw into the cleared canvas.
+  turtleRenderSeq++;
+  turtleBgImage = null;
+
   // Normal code execution calls this even when the page has no turtle UI.
   // Missing optional elements must therefore be a no-op, never a run failure.
-  const windowEl = document.getElementById('turtle-window');
   const canvas = turtleCanvasEl ?? document.getElementById('turtle-canvas') as HTMLCanvasElement | null;
 
-  windowEl?.classList.add('hidden');
+  hidePopupWindow(TURTLE_WINDOW_ID);
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');

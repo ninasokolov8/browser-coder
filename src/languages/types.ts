@@ -67,4 +67,5 @@ export const LANGUAGE_ICONS: Record<string, string> = {
   csharp: '🟦',
   html: '🌐',
   css: '🎨',
+  svg: '🖼️',
 };

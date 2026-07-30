@@ -42,6 +42,13 @@ export function isCssFile(
   return file.language === 'css' || /\.css$/i.test(file.path || file.name || '');
 }
 
+export function isSvgFile(
+  file: { language?: string; name?: string; path?: string } | null | undefined,
+): boolean {
+  if (!file) return false;
+  return file.language === 'svg' || /\.svg$/i.test(file.path || file.name || '');
+}
+
 function findHtmlEntriesUsingCss(
   allFiles: WorkspaceFile[],
   cssPath: string,

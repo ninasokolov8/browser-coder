@@ -41,6 +41,127 @@ _DYNAMIC_NAMES = {
 }
 
 
+# ── Security pass ───────────────────────────────────────────────────────────
+# Decided on the AST, never on the text: a blocked word in a comment, a
+# docstring, a string, an SVG file name or a variable name is not a reason to
+# refuse a program. Only real `import` statements and real calls count.
+
+# Modules a student program may not import. Everything else (math, random,
+# time, statistics, turtle, …) is allowed.
+_BLOCKED_MODULES = {
+    'os', 'sys', 'subprocess', 'socket', 'ssl', 'select', 'signal', 'shutil',
+    'pathlib', 'io', 'codecs', 'base64', 'binascii', 'pickle', 'cPickle',
+    'marshal', 'ctypes', 'mmap', 'resource', 'pty', 'tty', 'termios', 'fcntl',
+    'threading', 'multiprocessing', 'asyncio', 'importlib', 'builtins',
+    'inspect', 'gc', 'dis', 'ast', 'code', 'types', 'platform', 'tempfile',
+    'glob', 'fnmatch', 'fileinput', 'getpass', 'webbrowser', 'sqlite3',
+    'http', 'urllib', 'urllib2', 'requests', 'ftplib', 'smtplib', 'telnetlib',
+    'poplib', 'imaplib', 'nntplib', 'xmlrpc', 'commands',
+    'shelve', 'dbm', 'anydbm', 'whichdb', 'zipfile', 'tarfile', 'gzip', 'bz2',
+    'lzma', 'runpy', 'pdb', 'site', 'sysconfig', 'venv', 'distutils',
+    'setuptools', 'posix', 'nt', 'pwd', 'grp', 'spwd', 'crypt', 'curses',
+    'pipes', 'popen2', '_thread', '_socket', '_posixsubprocess',
+}
+
+# Builtins that hand out code execution, the file system or the interpreter's
+# internals. Only flagged as a *direct* call: `door.open()` on the student's own
+# object is a method call and stays legal, and so does a function they defined
+# themselves called open() or compile().
+_BLOCKED_BUILTIN_CALLS = {
+    'eval', 'exec', 'compile', '__import__', 'open', 'breakpoint',
+    'getattr', 'setattr', 'delattr', 'globals', 'locals', 'vars',
+}
+
+# Attribute names that only exist to walk out of the sandbox.
+_BLOCKED_ATTRIBUTES = {
+    '__builtins__', '__class__', '__subclasses__', '__globals__', '__code__',
+    '__bases__', '__mro__', '_getframe',
+}
+
+# The turtle API. Calling any of these - on the module, on a Screen, or on a
+# Turtle - is drawing, never operating-system access. Listed explicitly so
+# screen.update(), screen.delay() and screen.ontimer() can never be mistaken
+# for something dangerous, whatever the object is named.
+_TURTLE_API = {
+    'Screen', 'Turtle', 'RawTurtle', 'Pen', 'getscreen',
+    'setup', 'title', 'bgcolor', 'bgpic', 'screensize',
+    'window_width', 'window_height', 'mode', 'colormode',
+    'register_shape', 'addshape', 'getshapes', 'shape', 'resizemode',
+    'shapesize', 'turtlesize', 'tilt', 'tiltangle', 'settiltangle',
+    'color', 'pencolor', 'fillcolor', 'pensize', 'width', 'pen',
+    'speed', 'delay', 'tracer', 'update', 'ontimer', 'mainloop', 'done',
+    'bye', 'exitonclick', 'listen', 'onkey', 'onkeypress', 'onkeyrelease',
+    'onclick', 'onscreenclick', 'numinput', 'textinput',
+    'forward', 'fd', 'backward', 'bk', 'back', 'left', 'lt', 'right', 'rt',
+    'goto', 'setpos', 'setposition', 'setx', 'sety', 'setheading', 'seth',
+    'heading', 'xcor', 'ycor', 'position', 'pos', 'towards', 'distance',
+    'home', 'penup', 'pu', 'up', 'pendown', 'pd', 'down', 'isdown',
+    'showturtle', 'st', 'hideturtle', 'ht', 'isvisible',
+    'clear', 'reset', 'clearscreen', 'resetscreen', 'undo',
+    'write', 'begin_fill', 'end_fill', 'filling', 'circle', 'dot',
+    'stamp', 'clearstamp', 'clearstamps',
+}
+
+_SECURITY_HINT = (
+    'SecurityError: %s is disabled in Browser Coder. '
+    'Drawing, math, random, time and strings are all available.'
+)
+
+
+def _security_problems(tree, lines):
+    """Report real imports of blocked modules and real dangerous calls.
+
+    Walks the AST, so comments, docstrings, strings and variable names are
+    invisible to this check by construction.
+    """
+    problems = []
+
+    def report(node, what):
+        problems.append({
+            'line': getattr(node, 'lineno', 1),
+            'col': getattr(node, 'col_offset', 0) + 1,
+            'msg': _SECURITY_HINT % what,
+            'text': _source_line(lines, getattr(node, 'lineno', 0)),
+            'kind': 'security',
+        })
+
+    for node in ast.walk(tree):
+        # ── Real import statements ──────────────────────────────────────────
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split('.')[0]
+                if root in _BLOCKED_MODULES:
+                    report(node, "importing '%s'" % root)
+        elif isinstance(node, ast.ImportFrom):
+            root = (node.module or '').split('.')[0]
+            if root in _BLOCKED_MODULES:
+                report(node, "importing from '%s'" % root)
+
+        # ── Real calls ──────────────────────────────────────────────────────
+        elif isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id in _BLOCKED_BUILTIN_CALLS:
+                report(node, "calling %s()" % func.id)
+            elif isinstance(func, ast.Attribute) and func.attr not in _TURTLE_API:
+                # A method call is only dangerous when it hangs off a blocked
+                # module, e.g. os.system(...) - which needs `import os` anyway.
+                target = func.value
+                if isinstance(target, ast.Name) and target.id in _BLOCKED_MODULES:
+                    report(node, "calling %s.%s()" % (target.id, func.attr))
+
+        # ── Interpreter internals ───────────────────────────────────────────
+        elif isinstance(node, ast.Attribute) and node.attr in _BLOCKED_ATTRIBUTES:
+            report(node, "using %s" % node.attr)
+        elif isinstance(node, ast.Name) and node.id in _BLOCKED_ATTRIBUTES:
+            report(node, "using %s" % node.id)
+
+        if len(problems) >= MAX_ERRORS:
+            break
+
+    problems.sort(key=lambda p: (p['line'], p['col']))
+    return problems
+
+
 def _source_line(lines, lineno):
     if lineno and 1 <= lineno <= len(lines):
         return lines[lineno - 1].rstrip('\n')
@@ -132,7 +253,18 @@ def main():
         print('[]')
         return 0
 
-    # ── 2. Undefined-name check (skipped for dynamic/ambiguous code) ────────
+    # ── 2. Security check (AST only: imports and calls that really happen) ──
+    # Runs before the name check so a blocked program reports why it was
+    # refused, instead of a confusing NameError further down the file.
+    try:
+        blocked = _security_problems(tree, lines)
+    except Exception:
+        blocked = []          # fail-open: the regex gate in server.mjs still ran
+    if blocked:
+        print(json.dumps(blocked))
+        return 1
+
+    # ── 3. Undefined-name check (skipped for dynamic/ambiguous code) ────────
     try:
         if _should_bail(tree):
             print('[]')

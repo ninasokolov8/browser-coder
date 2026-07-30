@@ -812,56 +812,57 @@
       #panel-content .info { color: #75beff; }
       #panel-content .warning { color: #ce9178; }
 
-      /* Interactive stdin console (programs that call input()/Scanner/etc.) */
-      #panel-content .term-input-line {
-        display: flex;
-        align-items: baseline;
-        gap: 6px;
-        margin-top: 2px;
-      }
-      #panel-content .term-caret {
-        color: #89d185;
-        flex: 0 0 auto;
-        user-select: none;
-      }
-      #panel-content .term-input {
-        flex: 1 1 auto;
-        min-width: 0;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: var(--text-primary);
-        font-family: inherit;
-        font-size: inherit;
-        line-height: inherit;
-        padding: 0;
-        caret-color: #89d185;
-      }
+/* Interactive stdin console (programs that call input()/Scanner/etc.) */
+#panel-content .term-input-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
 
-      /* ===== TURTLE GRAPHICS POPUP WINDOW ===== */
-      /* The turtle drawing lives in its own floating window so it never covers
-         or collides with the Output panel (stdout/stderr/prints). Both stay
-         visible at the same time, exactly like a real IDE where the turtle
-         canvas opens in a separate window. */
-      #turtle-window {
-        position: fixed;
-        top: 90px;
-        right: 24px;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        background: var(--bg-panel, #1e1e1e);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 8px;
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
-        min-width: 160px;
-        min-height: 120px;
-        max-width: 92vw;
-        max-height: 88vh;
-      }
-      #turtle-window.hidden { display: none; }
-      #turtle-window-header {
+#panel-content .term-caret {
+  color: #89d185;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+#panel-content .term-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  caret-color: #89d185;
+}
+
+/* ===== GRAPHICS POPUP WINDOWS ===== */
+/* Graphics output, including Turtle drawings and SVG images, lives in its
+   own floating window so it does not cover the Output panel. */
+#turtle-window,
+.popup-window {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-panel, #1e1e1e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+  min-width: 160px;
+  min-height: 120px;
+  max-width: 92vw;
+  max-height: 88vh;
+}
+      .popup-window.hidden { display: none; }
+      .popup-window-header {
         height: 34px;
         flex-shrink: 0;
         display: flex;
@@ -873,7 +874,7 @@
         cursor: move;
         user-select: none;
       }
-      #turtle-window-title {
+      .popup-window-title {
         flex: 1;
         font-size: 12px;
         font-weight: 600;
@@ -883,7 +884,7 @@
         text-overflow: ellipsis;
         font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
       }
-      #turtle-window-close {
+      .popup-window-close {
         width: 26px;
         height: 26px;
         flex-shrink: 0;
@@ -898,8 +899,8 @@
         font-size: 15px;
         line-height: 1;
       }
-      #turtle-window-close:hover { background: #c0392b; color: #fff; }
-      #turtle-window-body {
+      .popup-window-close:hover { background: #c0392b; color: #fff; }
+      .popup-window-body {
         flex: 1;
         overflow: auto;
         padding: 10px;
@@ -912,6 +913,14 @@
         display: block;
         background: #fff;
         border-radius: 2px;
+      }
+      /* An SVG has no fixed pixel size, so cap it to a comfortable window. */
+      #image-window-picture {
+        display: block;
+        background: #fff;
+        border-radius: 2px;
+        max-width: min(600px, 60vw);
+        max-height: 70vh;
       }
 
       /* Panel resize handle */

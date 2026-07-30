@@ -26,7 +26,7 @@ def _setup_turtle():
     _shapes = []
 
     # ── Global canvas/screen config (single-element list so closures can mutate)
-    _cfg = [{'bg': 'white', 'w': 600, 'h': 600}]
+    _cfg = [{'bg': 'white', 'w': 600, 'h': 600, 'pic': ''}]
 
     # ── Default cursor styling ────────────────────────────────────────────────
     # Real Python starts with a small black arrowhead, which is easy to miss on
@@ -198,13 +198,36 @@ def _setup_turtle():
         if 'tilt'      in kw: _set_tilt(s, kw['tilt'])
         _app(s)
 
+    _stamp_ids = [0]
+
     def _stamp(s):
+        """Imprint the cursor and return the stamp's id, like real turtle."""
+        _stamp_ids[0] += 1
         d = {'k': 'S',
              'x': round(s['x'], 2), 'y': round(s['y'], 2),
              'h': round(s['h'], 2),
              'c': s['pc']}          # legacy field, kept for older frontends
         d.update(_look(s))
+        d['sid'] = _stamp_ids[0]
         _shapes.append(d)
+        return _stamp_ids[0]
+
+    def _clear_stamp(stampid):
+        for i in range(len(_shapes) - 1, -1, -1):
+            sh = _shapes[i]
+            if sh.get('k') == 'S' and sh.get('sid') == stampid:
+                del _shapes[i]
+
+    def _clear_stamps(n=None):
+        """Remove all stamps, or the first n (n > 0) / last n (n < 0)."""
+        stamps = [i for i, sh in enumerate(_shapes) if sh.get('k') == 'S']
+        if n is not None:
+            n = int(n)
+            if n == 0:
+                return
+            stamps = stamps[:n] if n > 0 else stamps[n:]
+        for i in reversed(stamps):
+            del _shapes[i]
 
     # ── Core movement helper: draw segment + update position ─────────────────
     def _seg(s, nx, ny):
@@ -372,7 +395,13 @@ def _setup_turtle():
 
     def stamp():
         _gs_used[0] = True
-        _stamp(_gs)
+        return _stamp(_gs)
+
+    def clearstamp(stampid):
+        _clear_stamp(stampid)
+
+    def clearstamps(n=None):
+        _clear_stamps(n)
 
     def write(arg, move=False, align='left', font=('Arial', 8, 'normal')):
         fn = '{} {}px {}'.format(
@@ -419,6 +448,22 @@ def _setup_turtle():
     def bgcolor(color=None):
         if color is not None: _cfg[0]['bg'] = _col(color)
         return _cfg[0]['bg']
+
+    def bgpic(picname=None):
+        """Set a background picture for the drawing canvas.
+
+        Browser Coder renders SVG images from the project (e.g. "maze.svg"),
+        which is what makes it possible to drive the turtle over a ready-made
+        picture such as a maze. The name is resolved by the frontend against
+        the workspace files, so relative paths like "images/maze.svg" work too.
+
+        Called without an argument it returns the current picture name, or
+        'nopic' when there is none - same as Python's turtle.
+        """
+        if picname is not None:
+            name = '' if picname in (None, '', 'nopic') else str(picname)
+            _cfg[0]['pic'] = name
+        return _cfg[0]['pic'] or 'nopic'
 
     def title(t): pass   # no-op
 
@@ -498,6 +543,57 @@ def _setup_turtle():
     # ── Screen singleton ─────────────────────────────────────────────────────
     class _Screen:
         def bgcolor(self, color=None):    return bgcolor(color)
+        def bgpic(self, picname=None):    return bgpic(picname)
+        def register_shape(self, name, shape=None): addshape(name, shape)
+        def addshape(self, name, shape=None):       addshape(name, shape)
+        def getshapes(self):              return getshapes()
+        def Screen(self):                 return _screen
+        def Turtle(self, *a, **kw):       return _Turtle(*a, **kw)
+
+        # Drawing calls, also accepted on the screen: they drive the module-level
+        # turtle, exactly as turtle.forward() does. Same reasoning as the
+        # screen-level calls accepted on a turtle above.
+        def forward(self, d):             forward(d)
+        def backward(self, d):            backward(d)
+        def left(self, a):                left(a)
+        def right(self, a):               right(a)
+        def goto(self, x, y=None):        goto(x, y)
+        def setpos(self, x, y=None):      goto(x, y)
+        def setposition(self, x, y=None): goto(x, y)
+        def setx(self, x):                setx(x)
+        def sety(self, y):                sety(y)
+        def setheading(self, a):          setheading(a)
+        def heading(self):                return heading()
+        def xcor(self):                   return xcor()
+        def ycor(self):                   return ycor()
+        def position(self):               return position()
+        def pos(self):                    return pos()
+        def distance(self, x, y=None):    return distance(x, y)
+        def towards(self, x, y=None):     return towards(x, y)
+        def home(self):                   home()
+        def penup(self):                  penup()
+        def pendown(self):                pendown()
+        def pensize(self, w=None):        return pensize(w)
+        def pencolor(self, *a):           return pencolor(*a)
+        def fillcolor(self, *a):          return fillcolor(*a)
+        def color(self, *a):              return color(*a)
+        def shape(self, name=None):       return shape(name)
+        def speed(self, s=None):          return speed(s)
+        def showturtle(self):             showturtle()
+        def hideturtle(self):             hideturtle()
+        def isvisible(self):              return isvisible()
+        def clear(self):                  clear()
+        def reset(self):                  reset()
+        def undo(self):                   undo()
+        def write(self, arg, move=False, align='left', font=('Arial', 8, 'normal')):
+            write(arg, move, align, font)
+        def begin_fill(self):             begin_fill()
+        def end_fill(self):               end_fill()
+        def circle(self, radius, extent=360, steps=None): circle(radius, extent, steps)
+        def dot(self, size=None, color=None): dot(size, color)
+        def stamp(self):                  return stamp()
+        def clearstamp(self, stampid):    _clear_stamp(stampid)
+        def clearstamps(self, n=None):    _clear_stamps(n)
         def title(self, t):               pass
         def setup(self, width=None, height=None, startx=None, starty=None):
             if width  is not None: _cfg[0]['w'] = int(width)
@@ -634,7 +730,35 @@ def _setup_turtle():
             _shapes.append({'k': 'D', 'x': round(self._s['x'], 2), 'y': round(self._s['y'], 2),
                             'r': round(size / 2, 2), 'c': _col(color) if color else self._s['pc']})
         def stamp(self):
-            _stamp(self._s)
+            return _stamp(self._s)
+        def clearstamp(self, stampid):    _clear_stamp(stampid)
+        def clearstamps(self, n=None):    _clear_stamps(n)
+
+        # Screen-level calls, also accepted on a turtle. Real Python keeps these
+        # on the screen only, but a beginner reasonably writes t.bgpic("maze.svg")
+        # or t.tracer(0), and an AttributeError there teaches nothing.
+        def Screen(self):                 return _screen
+        def Turtle(self, *a, **kw):       return _Turtle(*a, **kw)
+        def setup(self, width=None, height=None, startx=None, starty=None):
+            _screen.setup(width, height, startx, starty)
+        def title(self, t):               pass
+        def bgcolor(self, color=None):    return bgcolor(color)
+        def bgpic(self, picname=None):    return bgpic(picname)
+        def screensize(self, cw=None, ch=None, bg=None): screensize(cw, ch, bg)
+        def register_shape(self, name, shape=None): addshape(name, shape)
+        def addshape(self, name, shape=None):       addshape(name, shape)
+        def getshapes(self):              return getshapes()
+        def tracer(self, n=None, d=None):
+            if n is not None: _tracer[0] = int(n)
+            return _tracer[0]
+        def update(self):                 pass
+        def delay(self, d=None):          return 10
+        def ontimer(self, fun, t=0):      pass
+        def listen(self):                 pass
+        def mainloop(self):               pass
+        def done(self):                   pass
+        def bye(self):                    pass
+        def exitonclick(self):            pass
         def write(self, arg, move=False, align='left', font=('Arial', 8, 'normal')):
             fn = '{} {}px {}'.format(
                 font[2] if len(font) > 2 else 'normal',
@@ -708,6 +832,8 @@ def _setup_turtle():
         }
         if _polys:
             data['polys'] = _polys
+        if _cfg[0]['pic']:
+            data['pic'] = _cfg[0]['pic']
         json_str = _j.dumps(data, separators=(',', ':'))
 
         # Write the JSON to a temp file and print only the path to stdout.
@@ -738,10 +864,10 @@ def _setup_turtle():
         'pendown', 'pd', 'down', 'penup', 'pu', 'up', 'isdown',
         'pensize', 'width', 'pencolor', 'fillcolor', 'color', 'pen',
         'begin_fill', 'end_fill', 'filling',
-        'circle', 'dot', 'stamp', 'write',
+        'circle', 'dot', 'stamp', 'clearstamp', 'clearstamps', 'write',
         'clear', 'reset', 'clearscreen', 'resetscreen',
         'speed', 'hideturtle', 'ht', 'showturtle', 'st', 'isvisible', 'undo',
-        'bgcolor', 'title', 'setup', 'screensize', 'window_width', 'window_height',
+        'bgcolor', 'bgpic', 'title', 'setup', 'screensize', 'window_width', 'window_height',
         'tracer', 'update', 'delay', 'listen',
         'onkey', 'onkeypress', 'onkeyrelease', 'onclick', 'onscreenclick', 'ontimer',
         'mainloop', 'done', 'exitonclick', 'bye',

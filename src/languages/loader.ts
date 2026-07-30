@@ -55,6 +55,21 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     keywords: {},
     keywordsHe: {},
   },
+  {
+    // SVG images are XML text, so they live in the normal text file storage and
+    // can be edited like code. They are assets, not programs: other files
+    // import them (HTML <img src>, CSS url(), Python turtle bgpic()).
+    id: 'svg',
+    name: 'SVG Image',
+    extension: 'svg',
+    monacoLanguage: 'xml',
+    icon: LANGUAGE_ICONS.svg || '🖼️',
+    versions: [{ id: 'svg11', name: 'SVG 1.1', default: true }],
+    runner: { command: 'asset' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
 ];
 
 const BUILTIN_STARTERS: Record<string, string> = {
@@ -87,6 +102,31 @@ body {
   display: grid;
   place-items: center;
 }
+`,
+  'svg/svg11': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <!-- A simple maze. Import this image into other files:
+         HTML     <img src="./maze.svg" alt="Maze">
+         CSS      background-image: url("./maze.svg");
+         Python   import turtle
+                  turtle.bgpic("maze.svg")
+       Enter through the gap at the top-left, leave at the bottom-right. -->
+  <rect width="600" height="600" fill="#f8fafc" />
+
+  <g stroke="#1f2937" stroke-width="8" stroke-linecap="square" fill="none">
+    <!-- Outer walls (the two gaps are the entrance and the exit) -->
+    <line x1="100" y1="4" x2="596" y2="4" />
+    <line x1="596" y1="4" x2="596" y2="596" />
+    <line x1="4" y1="596" x2="500" y2="596" />
+    <line x1="4" y1="4" x2="4" y2="596" />
+
+    <!-- Inner walls: one gap per row, so a single corridor runs through -->
+    <line x1="4" y1="100" x2="500" y2="100" />
+    <line x1="100" y1="200" x2="596" y2="200" />
+    <line x1="4" y1="300" x2="500" y2="300" />
+    <line x1="100" y1="400" x2="596" y2="400" />
+    <line x1="4" y1="500" x2="500" y2="500" />
+  </g>
+</svg>
 `,
 };
 

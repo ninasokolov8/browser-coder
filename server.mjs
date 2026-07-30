@@ -118,126 +118,45 @@ const SECURITY = {
     
     typescript: [], // Will inherit JavaScript patterns
     
+    // Python is scanned with comments and string literals removed first (see
+    // stripPythonCommentsAndStrings), so a blocked word inside a comment, a
+    // docstring, a printed message or a file name can never refuse a program -
+    // only real code is inspected.
+    //
+    // These patterns are case-sensitive, because Python is: a student's own
+    // Path() or File() must not collide with pathlib or Python 2's file().
+    // Names that are dangerous only as *builtins* carry a (?<![.\w]) guard, so
+    // a method call on the student's own object - door.open(), maze.clear() -
+    // stays legal, and so does defining one (`def open(self):`). The AST pass in languages/python/preflight.py then makes the
+    // fine-grained decision: real imports and real calls only.
     python: [
-      // Command execution
-      /\bos\.system\s*\(/i,
-      /\bos\.popen\s*\(/i,
-      /\bos\.spawn\w*\s*\(/i,
-      /\bos\.exec\w*\s*\(/i,
-      /\bsubprocess\b/i,
-      /\bpopen\s*\(/i,
-      /\bcommands\./i,
-      // Dangerous imports
-      /\bimport\s+os\b/i,
-      /\bfrom\s+os\s+import\b/i,
-      /\bimport\s+subprocess\b/i,
-      /\bfrom\s+subprocess\s+import\b/i,
-      /\bimport\s+sys\b/i,
-      /\bfrom\s+sys\s+import\b/i,
-      /\bimport\s+socket\b/i,
-      /\bfrom\s+socket\s+import\b/i,
-      /\bimport\s+http\b/i,
-      /\bimport\s+urllib\b/i,
-      /\bfrom\s+urllib\b/i,  // Also catch "from urllib.request import"
-      /\bimport\s+requests\b/i,
-      /\bimport\s+shutil\b/i,
-      /\bfrom\s+shutil\s+import\b/i,
-      /\bimport\s+pty\b/i,
-      /\bimport\s+ctypes\b/i,
-      /\bimport\s+multiprocessing\b/i,
-      /\bimport\s+threading\b/i,
-      /\bimport\s+io\b/i,
-      /\bfrom\s+io\s+import\b/i,
-      /\bimport\s+pathlib\b/i,
-      /\bfrom\s+pathlib\s+import\b/i,
-      // Additional dangerous network modules
-      /\bimport\s+ftplib\b/i,
-      /\bfrom\s+ftplib\s+import\b/i,
-      /\bimport\s+smtplib\b/i,
-      /\bfrom\s+smtplib\s+import\b/i,
-      /\bimport\s+telnetlib\b/i,
-      /\bfrom\s+telnetlib\s+import\b/i,
-      /\bimport\s+poplib\b/i,
-      /\bimport\s+imaplib\b/i,
-      /\bimport\s+nntplib\b/i,
-      // File input module (can read files)
-      /\bimport\s+fileinput\b/i,
-      /\bfrom\s+fileinput\s+import\b/i,
-      /\bfileinput\.input\s*\(/i,
-      // Password/credential access
-      /\bimport\s+getpass\b/i,
-      /\bfrom\s+getpass\s+import\b/i,
-      /\bgetpass\.\w+\s*\(/i,
-      // File operations - BLOCK ALL FILE ACCESS (read and write)
-      /\bopen\s*\(/i, // Block ALL open() calls
-      /\bfile\s*\(/i, // Python 2 file()
-      /\bcodecs\.open\s*\(/i,
-      /\bio\.open\s*\(/i,
-      /\bPath\s*\(/i, // pathlib.Path
-      /\bos\.remove\s*\(/i,
-      /\bos\.unlink\s*\(/i,
-      /\bos\.rmdir\s*\(/i,
-      /\bos\.mkdir\s*\(/i,
-      /\bos\.makedirs\s*\(/i,
-      /\bos\.rename\s*\(/i,
-      /\bos\.chmod\s*\(/i,
-      /\bos\.chown\s*\(/i,
-      /\bos\.path\b/i,
-      /\bos\.listdir\s*\(/i,
-      /\bos\.walk\s*\(/i,
-      /\bos\.getcwd\s*\(/i,
-      /\bos\.chdir\s*\(/i,
-      /\bos\.environ\b/i,
-      /\bos\.getenv\s*\(/i,
-      // Code execution
-      /\bexec\s*\(/i,
-      /\beval\s*\(/i,
-      /\bcompile\s*\(/i,
-      /\b__import__\s*\(/i,
-      /\bimportlib\b/i,
-      // Builtins manipulation
-      /\b__builtins__\b/i,
-      /\b__class__\b/i,
-      /\b__subclasses__\b/i,
-      /\b__globals__\b/i,
-      /\b__code__\b/i,
-      /\bgetattr\s*\(/i,
-      /\bsetattr\s*\(/i,
-      /\bdelattr\s*\(/i,
-      /\bglobals\s*\(\)/i,
-      /\blocals\s*\(\)/i,
-      /\bvars\s*\(\)/i,
-      /\bdir\s*\(/i,
-      // Pickle (arbitrary code execution)
-      /\bimport\s+pickle\b/i,
-      /\bimport\s+cPickle\b/i,
-      /\bimport\s+marshal\b/i,
-      // Signal handling
-      /\bimport\s+signal\b/i,
-      // Encoding bypass
-      /\bchr\s*\(/i,
-      /\bbytes\s*\(\s*\[/i,
-      /\bbase64\b/i,
-      /\bbytes\.fromhex\s*\(/i,
-      // Frame/code manipulation
-      /\bsys\._getframe\s*\(/i,
-      /\b__code__\s*=/i,
-      /\bimport\s+types\b/i,
-      /\btypes\.FunctionType\b/i,
-      // More dangerous modules
-      /\bimport\s+inspect\b/i,
-      /\bimport\s+gc\b/i,
-      /\bimport\s+dis\b/i,
-      /\bimport\s+ast\b/i,
-      /\bimport\s+builtins\b/i,
-      /\bimport\s+code\b/i,
-      /\bimport\s+platform\b/i,
-      /\bimport\s+tempfile\b/i,
-      /\bimport\s+glob\b/i,
-      /\bimport\s+fnmatch\b/i,
-      /\bimport\s+asyncio\b/i,
+      // ── Dangerous imports ────────────────────────────────────────────────
+      /\b(?:import|from)\s+(?:os|sys|subprocess|socket|ssl|select|signal|shutil|pathlib|io|codecs|base64|binascii|pickle|cPickle|marshal|ctypes|mmap|resource|pty|tty|termios|fcntl|threading|multiprocessing|asyncio|importlib|builtins|inspect|gc|dis|ast|code|types|platform|tempfile|glob|fnmatch|fileinput|getpass|webbrowser|sqlite3|http|urllib|urllib2|requests|ftplib|smtplib|telnetlib|poplib|imaplib|nntplib|xmlrpc|commands|shelve|dbm|anydbm|whichdb|zipfile|tarfile|gzip|bz2|lzma|runpy|pdb|site|sysconfig|venv|distutils|setuptools|posix|nt|pwd|grp|spwd|crypt|curses|pipes|popen2|_thread|_socket|_posixsubprocess)\b/,
+      // ── Command / process execution ──────────────────────────────────────
+      /\bos\s*\.\s*(?:system|popen|spawn\w*|exec\w*|fork|kill|remove|unlink|rmdir|mkdir|makedirs|rename|chmod|chown|chdir|listdir|walk|environ|getenv|putenv)\b/,
+      /\bsubprocess\s*\./,
+      /(?<![.\w])(?<!\bdef\s)popen\s*\(/,
+      // ── Code execution / import machinery ────────────────────────────────
+      /(?<![.\w])(?<!\bdef\s)(?:eval|exec|compile|__import__|breakpoint)\s*\(/,
+      /(?<![.\w])(?<!\bdef\s)(?:globals|locals|vars)\s*\(/,
+      /(?<![.\w])(?<!\bdef\s)(?:getattr|setattr|delattr)\s*\(/,
+      /\bimportlib\s*\./,
+      // ── File access ──────────────────────────────────────────────────────
+      /(?<![.\w])(?<!\bdef\s)open\s*\(/,
+      /\b(?:codecs|io)\s*\.\s*open\s*\(/,
+      /\bfileinput\s*\.\s*input\s*\(/,
+      /\bgetpass\s*\./,
+      // ── Interpreter internals (classic sandbox-escape chains) ────────────
+      /\b__builtins__\b/,
+      /\b__class__\b/,
+      /\b__subclasses__\b/,
+      /\b__globals__\b/,
+      /\b__code__\b/,
+      /\b__bases__\b/,
+      /\b__mro__\b/,
+      /\bsys\s*\.\s*_getframe\b/,
     ],
-    
+
     php: [
       // Command execution
       /\bexec\s*\(/i,
@@ -624,6 +543,85 @@ const SECURITY = {
 SECURITY.patterns.typescript = [...SECURITY.patterns.javascript];
 
 /**
+ * Return `code` with every comment and string literal blanked out, keeping all
+ * other characters and every newline in place.
+ *
+ * Python security scanning runs on the result, so a blocked word in a comment, a
+ * docstring, a printed message or an SVG file name can never be the reason a
+ * program is refused - only real code is inspected.
+ *
+ * f-string replacement fields are deliberately NOT blanked: they hold real
+ * expressions, so code hidden in one must stay visible to the scanner.
+ */
+function stripPythonCommentsAndStrings(code) {
+  const src = String(code);
+  let out = '';
+  let i = 0;
+
+  // Keep newlines so reported line numbers still line up with the source.
+  const blank = (ch) => { out += ch === '\n' ? '\n' : ' '; };
+
+  while (i < src.length) {
+    const ch = src[i];
+
+    // ── Comment: blank out the rest of the line ──────────────────────────
+    if (ch === '#') {
+      while (i < src.length && src[i] !== '\n') blank(src[i++]);
+      continue;
+    }
+
+    // ── String literal, with any prefix (r, b, u, f, rb, …) ──────────────
+    const opener = /^([rRbBuUfF]{0,2})('''|"""|'|")/.exec(src.slice(i, i + 5));
+    const atTokenStart = i === 0 || !/[A-Za-z0-9_]/.test(src[i - 1]);
+    if (opener && (opener[1].length === 0 || atTokenStart)) {
+      const prefix = opener[1];
+      const quote = opener[2];
+      const isFString = /[fF]/.test(prefix);
+
+      for (const c of prefix + quote) blank(c);
+      i += prefix.length + quote.length;
+
+      while (i < src.length) {
+        // A backslash escapes the next character - in raw strings too, as far
+        // as finding the end of the literal goes.
+        if (src[i] === '\\' && i + 1 < src.length) {
+          blank(src[i]); blank(src[i + 1]);
+          i += 2;
+          continue;
+        }
+        if (src.startsWith(quote, i)) {
+          for (const c of quote) blank(c);
+          i += quote.length;
+          break;
+        }
+        // f-string replacement field: {...} is code, not text. Keep it verbatim
+        // and blank only the literal text around it.
+        if (isFString && src[i] === '{') {
+          if (src[i + 1] === '{') { blank(src[i]); blank(src[i + 1]); i += 2; continue; }
+          let depth = 0;
+          while (i < src.length) {
+            if (src[i] === '{') depth++;
+            else if (src[i] === '}') depth--;
+            out += src[i];
+            i++;
+            if (depth === 0) break;
+          }
+          continue;
+        }
+        blank(src[i]);
+        i++;
+      }
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  return out;
+}
+
+/**
  * Validates code for dangerous patterns
  * @returns {{ safe: boolean, reason?: string, matched?: string }}
  */
@@ -632,9 +630,15 @@ function validateCodeSecurity(language, code) {
   if (!patterns) {
     return { safe: true };
   }
-  
+
+  // Python patterns describe code, so comments and string literals are removed
+  // before matching. Every other language is still scanned as written.
+  const haystack = language === 'python'
+    ? stripPythonCommentsAndStrings(code)
+    : code;
+
   for (const pattern of patterns) {
-    const match = code.match(pattern);
+    const match = haystack.match(pattern);
     if (match) {
       return {
         safe: false,
@@ -1870,6 +1874,23 @@ class SmartExecutor {
         return null;                                  // fail-open on bad JSON
       }
       if (!Array.isArray(problems) || problems.length === 0) return null;
+
+      // A security problem is a refusal, not a compile error: report it with
+      // the same wording and the same `blocked` flag the request-level gate
+      // uses, plus the line that caused it.
+      const securityProblems = problems.filter((p) => p.kind === 'security');
+      if (securityProblems.length > 0) {
+        return {
+          stdout: '',
+          stderr: SECURITY.messages.python + '\n\n'
+            + formatPreflightProblems(securityProblems, filename),
+          exitCode: 1,
+          phase: 'compile',
+          blocked: true,
+          durationMs: check.durationMs || 0,
+        };
+      }
+
       return {
         stdout: '',
         stderr: formatPreflightProblems(problems, filename),
@@ -3925,6 +3946,7 @@ app.post("/api/run", async (req, res) => {
       durationMs: result.durationMs,
       cached: result.cached || false,
       turtleData: result.turtleData || null,
+      blocked: result.blocked === true,
       phase: result.phase || 'run',
     });
   } catch (err) {
