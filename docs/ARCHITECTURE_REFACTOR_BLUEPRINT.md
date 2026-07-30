@@ -4072,3 +4072,71 @@ fixed in the module rather than in the test. `npm run test:unit` added.
 **Not yet wired into `server.mjs`.** This commit is additive so the two modules
 can be reviewed on their own; the next commits route the existing routes through
 them. Contract suites therefore still show the same 21 open defect gates.
+
+### 2026-07-30 - Phase A2: config, logging and security extracted
+
+**Commit:** `refactor(server): extract config, logging and security policy modules`
+
+`server.mjs` drops from **4,563 to 3,836 lines** (-728) with no behaviour change.
+
+**`server/security/patterns.mjs`, `python-source.mjs`, `validate.mjs`** - the
+dangerous-pattern corpus, the Python comment/string stripper, and the policy
+check. These decide whether a student's program is allowed to run, so they were
+moved **by script rather than by retyping**: a single transcription slip in a
+500-line regex corpus would silently change which programs are accepted, and
+would be nearly impossible to spot in review.
+
+Equivalence was then proven rather than assumed. A differential harness
+reconstructed the original module from git, imported both, and compared:
+
+- every regex `source` and `flags`, pattern by pattern, per language;
+- every policy message string;
+- verdicts over the entire `security/attacks/` corpus x 6 languages;
+- verdicts over every shipped starter file x 6 languages (all must stay allowed);
+- `stripPythonCommentsAndStrings` output byte-for-byte over comment, docstring,
+  f-string, raw-string and triple-quote samples.
+
+**Result: 2,484 comparisons, 0 mismatches.** The harness was a one-off and is not
+retained, because keeping it would mean vendoring a second copy of the attack
+corpus - exactly the duplication section 21.1 forbids. To re-derive it, extract
+lines 33-652 of `server.mjs` at commit `1b3a683` into a module and diff verdicts.
+
+The module header records what the corpus **is not**: a security boundary.
+Principle 5 is explicit that containment comes from the sandbox. The corpus gives
+a student a fast readable refusal instead of an obscure runtime failure, and
+raises the cost of casual probing. It cannot be complete - V-06 is precisely a
+case where MSBuild XML passes the C# corpus, because the corpus models C# source
+and not project files.
+
+**`server/config.mjs`** - every tunable in one place with its rationale. All
+defaults byte-identical, so behaviour is unchanged. Two capabilities added
+without yet being used to change anything:
+
+- `detectMemoryBudgetMb()` reads the real cgroup v2 then v1 limit, handling the
+  `max` sentinel, the near-2^63 unlimited-v1 value, and any value exceeding host
+  memory. It is **not yet wired to concurrency**: on a 4 GiB droplet running a
+  512 MiB container the current `os.totalmem()` derivation over-reports by 8x, so
+  switching it changes when the service reports capacity. That is a deliberate
+  behaviour change and belongs in Phase B (V-36), not in a move commit.
+- `CONFIG.tools` makes interpreter binaries configurable (`PYTHON_BIN`,
+  `JAVAC_BIN`, ...). Defaults are the previously hardcoded names, so production is
+  unaffected - but it removes a hardcoded assumption from the execution layer and
+  lets a developer whose `python3` is the Windows Store alias point at a real
+  interpreter, which is currently the reason Python cannot be tested on the
+  authoring host.
+
+`PREVIEW_MAX_STORAGE_BYTES` and `PREVIEW_PUBLISHES_PER_MINUTE` are now parsed so
+the configured-but-ignored values (V-38) are at least visible; Phase B enforces
+them.
+
+**`server/logging.mjs`** - unchanged shape, plus a `redact()` helper. Section 17.8
+requires that source, stdin, output and tokens are not logged by default, and the
+pre-refactor code came close to breaking that twice: `security_block` logged the
+matched source fragment, and the C# warm-up logged 500 characters of build
+stderr. `redact()` makes including user data an explicit, visible choice at the
+call site instead of an accident.
+
+**Verification:** 66 unit tests pass; contract suites 32 pass / 0 fail / 9 skipped
+/ 22 todo - identical to the pre-extraction baseline. Also fixed the test scripts
+to use a glob rather than a bare directory, which `node --test` does not resolve
+on Windows.
