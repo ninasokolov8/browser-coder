@@ -16,6 +16,35 @@ import {
   sendToParent, setParentOrigin,
 } from './stepup-bus';
 
+/**
+ * Resolves once the workspace has finished initializing.
+ *
+ * The IDE used to announce `ide:ready` at the end of `setupStepUpIntegration()`,
+ * which runs BEFORE `await initializeWorkspace()`. A host that answered promptly
+ * therefore delivered its project into a workspace that was about to be emptied:
+ * embedded initialization calls `clearAll()` to avoid restoring an unrelated
+ * previous session, so the files were silently discarded and the student saw an
+ * empty editor.
+ *
+ * Step-Up has probably been getting away with it because readiness is re-announced
+ * at +100ms and +500ms and its own round trip is slower than initialization - which
+ * is luck, not a contract. Found by the embedded browser suite, which answers
+ * `ide:ready` immediately and so lost every file.
+ *
+ * Two things now guarantee it: readiness is not announced until initialization
+ * completes, and any message arriving before then is queued rather than dropped -
+ * because a host is free to post without waiting to be asked.
+ */
+let signalWorkspaceReady: () => void = () => {};
+const workspaceReady = new Promise<void>(resolve => {
+  signalWorkspaceReady = resolve;
+});
+
+/** Called by the bootstrap once the workspace is open and the editor is mounted. */
+export function markWorkspaceReady(): void {
+  signalWorkspaceReady();
+}
+
 export function setupStepUpIntegration(): void {
   const editor = runtime.editor!;
   const tabManager = runtime.tabManager!;
@@ -130,6 +159,17 @@ export function setupStepUpIntegration(): void {
     }
   }
 
+  /**
+   * Host messages are handled one at a time, in arrival order, and never before
+   * the workspace is ready.
+   *
+   * Serialising also removes a latent hazard the previous fire-and-forget
+   * `void handleInit(data)` had: two `set-files` messages arriving close together
+   * could interleave inside `replaceAll`, and the one that finished last won
+   * regardless of which the host sent last.
+   */
+  let messageQueue: Promise<void> = workspaceReady;
+
   window.addEventListener('message', event => {
     if (!isAllowedOrigin(event.origin)) return;
 
@@ -137,9 +177,21 @@ export function setupStepUpIntegration(): void {
 
     const { type, ...data } = event.data || {};
 
+    messageQueue = messageQueue
+      .then(() => handleHostMessage(type, data))
+      .catch(error => {
+        // One malformed message must not wedge the queue for every later one.
+        console.error(`[IDE] Failed to handle host message "${type}":`, error);
+      });
+  });
+
+  async function handleHostMessage(type: string, data: any): Promise<void> {
     switch (type) {
+      // Awaited, not fired and forgotten. `void handleInit(data)` returned before
+      // the project had loaded, so the next message could start against a
+      // half-replaced workspace.
       case 'stepup:init':
-        void handleInit(data);
+        await handleInit(data);
         break;
 
       case 'stepup:set-code':
@@ -157,7 +209,7 @@ export function setupStepUpIntegration(): void {
         break;
 
       case 'stepup:set-files':
-        void handleSetFilesAsync(data);
+        await handleSetFilesAsync(data);
         break;
 
       case 'stepup:get-files': {
@@ -170,17 +222,17 @@ export function setupStepUpIntegration(): void {
             }],
           });
         } else {
-          void collectWorkspaceSnapshot().then(files => {
-            if (!files.length) {
-              files.push({
-                path: 'main',
-                content: editor.getValue(),
-                language: appConfig.urlLanguage,
-              });
-            }
+          // Awaited so that a get immediately following a set observes the set.
+          const files = await collectWorkspaceSnapshot();
+          if (!files.length) {
+            files.push({
+              path: 'main',
+              content: editor.getValue(),
+              language: appConfig.urlLanguage,
+            });
+          }
 
-            sendToParent('ide:files', { files });
-          });
+          sendToParent('ide:files', { files });
         }
 
         break;
@@ -231,7 +283,7 @@ export function setupStepUpIntegration(): void {
         clearTurtleCanvas();
         break;
     }
-  });
+  }
 
   let filesSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -287,8 +339,14 @@ export function setupStepUpIntegration(): void {
       setParentOrigin(initialOrigin);
     }
 
-    notifyParentReady(policyState.readonly);
-    setTimeout(() => notifyParentReady(policyState.readonly), 100);
-    setTimeout(() => notifyParentReady(policyState.readonly), 500);
+    // Announced only once the workspace is genuinely usable. Announcing it here
+    // directly - as this did - invited the host to deliver a project that embedded
+    // initialization then wiped. The repeats stay, because a host that mounts the
+    // iframe and attaches its listener late can miss a single message.
+    void workspaceReady.then(() => {
+      notifyParentReady(policyState.readonly);
+      setTimeout(() => notifyParentReady(policyState.readonly), 100);
+      setTimeout(() => notifyParentReady(policyState.readonly), 500);
+    });
   }
 }

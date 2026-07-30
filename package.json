@@ -14,9 +14,10 @@
     "test:contract": "node --test --test-concurrency=1 --test-timeout=300000 \"tests/contract/*.test.mjs\"",
     "test:legacy": "cd tests && bash run-tests.sh all",
     "test:security": "cd tests && bash run-tests.sh security",
-    "test:browser": "node tests/browser/run.mjs workspace && node tests/browser/run.mjs app-boot",
+    "test:browser": "node tests/browser/run.mjs workspace && node tests/browser/run.mjs app-boot && node tests/browser/run.mjs embedded",
     "test:browser:workspace": "node tests/browser/run.mjs workspace",
-    "test:browser:app": "node tests/browser/run.mjs app-boot"
+    "test:browser:app": "node tests/browser/run.mjs app-boot",
+    "test:browser:embedded": "node tests/browser/run.mjs embedded"
   },
   "dependencies": {
     "compression": "^1.7.4",

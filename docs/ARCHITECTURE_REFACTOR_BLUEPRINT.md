@@ -4583,3 +4583,67 @@ One honest gap: the idempotence of the compiler-options application is reasoned 
 the code rather than asserted by a test, because the call is internal and counting it
 would mean exposing a seam purely to observe it. The user-visible consequence -
 correct diagnostics - is tested.
+
+---
+
+### C4 - The Step-Up embedding contract, and a real bug it was hiding
+
+Commit: `fix(stepup): do not announce readiness before the workspace exists`
+
+Step-Up is the only consumer of the postMessage surface, and Phase C changed the
+code behind it more than any other consumer - `replaceAllFiles` became atomic and
+identity-preserving, and `stepup.ts` stopped disposing every model on each update.
+None of that is observable from node, so `tests/browser/embedded.ts` (19 assertions)
+drives the IDE the way Step-Up does: embedded in an iframe, project delivered by
+`postMessage`, and asserts what the IDE does with it.
+
+It has to run on port 3000, and that is not a preference. `stepup-bus.ts` only
+accepts messages from an allowlisted origin, so served from anywhere else every
+message is *correctly* ignored and the suite would fail for entirely the wrong
+reason. The port is therefore part of the suite definition in the runner rather than
+an environment variable someone has to know to set.
+
+**The bug it found on its first run.** The IDE announced `ide:ready` at the end of
+`setupStepUpIntegration()`, which runs **before** `await initializeWorkspace()`. In
+embedded mode initialization calls `clearAll()`, deliberately, so a student never
+sees files from an unrelated previous task. So a host that answered `ide:ready`
+promptly delivered its project into a workspace that was about to be emptied, and
+the files were silently discarded - no error, no warning, just an empty editor.
+
+Step-Up has presumably been getting away with this because readiness is re-announced
+at +100ms and +500ms and its own round trip is slower than initialization. That is
+luck, not a contract, and it would break on a fast connection or a slower cold start.
+The suite found it immediately by answering with no delay at all.
+
+**Two fixes, doing different jobs.**
+
+1. **Host messages are queued until the workspace is ready**, then handled one at a
+   time in arrival order. This is what actually prevents the loss, and it also
+   covers a host that posts without waiting to be asked - which a host is entitled
+   to do.
+2. **Readiness is announced only once initialization has completed.** This makes the
+   signal truthful rather than merely survivable.
+
+Both were verified to matter independently. Reverting only the announcement while
+keeping the queue leaves the project loading correctly but the status still reading
+`Loading files…` when `ide:ready` arrives - so the assertion fails while the data
+survives. That is a useful distinction to have in the record: the queue is the
+safety property, the announcement is the honesty property.
+
+**A latent hazard fixed on the way past.** The handlers were dispatched with
+`void handleInit(data)` and `void handleSetFilesAsync(data)`, so two `set-files`
+messages arriving close together could interleave inside `replaceAll`, and whichever
+finished last won regardless of which the host sent last. They are now awaited
+through the queue. `stepup:get-files` is awaited for the same reason - a get
+immediately following a set now observes the set.
+
+**What the suite pins.** Beyond the readiness contract: that an embedded IDE starts
+empty rather than restoring an unrelated session; that nested paths survive delivery;
+that exactly one tab opens rather than one per file; that **document identity and the
+Monaco model survive a host update** (the C1/C2 behaviour, asserted directly by
+holding a reference to the model across a `set-files` and checking it is not
+disposed); that `ide:files` returns live content rather than the persisted copy; and
+that a file the host drops is removed rather than lingering.
+
+`npm run test:browser` now runs all three suites: workspace (24), app-boot (26),
+embedded (19).

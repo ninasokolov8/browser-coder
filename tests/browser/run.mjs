@@ -19,21 +19,30 @@ import { createServer } from 'node:http';
 import { existsSync, rmSync } from 'node:fs';
 import { once } from 'node:events';
 
-const VITE_PORT = Number(process.env.SMOKE_VITE_PORT || 5199);
+let VITE_PORT = 0; // set from the suite definition below
 const RECEIVER_PORT = Number(process.env.RECEIVER_PORT || 5200);
-// Which page to run. `node tests/browser/run.mjs app-boot` runs the app boot
-// check; with no argument it runs the workspace smoke test.
+// Which page to run, and on which port.
+//
+// The port is part of the suite definition, not a preference: stepup-bus.ts only
+// accepts postMessage from an allowlisted origin, so the embedded suite MUST be
+// served from one of them or every message is correctly ignored and the test fails
+// for entirely the wrong reason.
 const SUITES = {
-  workspace: '/tests/browser/workspace-smoke.html',
-  'app-boot': '/tests/browser/app-boot.html',
+  workspace: { page: '/tests/browser/workspace-smoke.html', port: 5199 },
+  'app-boot': { page: '/tests/browser/app-boot.html', port: 5199 },
+  embedded: { page: '/tests/browser/embedded.html?embed-host=1', port: 3000 },
 };
 const SUITE = process.argv[2] || 'workspace';
-const PAGE = SUITES[SUITE];
-if (!PAGE) {
-  process.stderr.write(`Unknown suite "${SUITE}". Known: ${Object.keys(SUITES).join(', ')}
-`);
+const selected = SUITES[SUITE];
+if (!selected) {
+  process.stderr.write(
+    `Unknown suite "${SUITE}". Known: ${Object.keys(SUITES).join(', ')}\n`,
+  );
   process.exit(1);
 }
+const PAGE = selected.page;
+VITE_PORT = Number(process.env.SMOKE_VITE_PORT || selected.port);
+
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 120000);
 
 const BROWSER_CANDIDATES = [

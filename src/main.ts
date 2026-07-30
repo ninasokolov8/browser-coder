@@ -10,7 +10,7 @@ import { renderFileTree } from './features/explorer';
 import { highlightSearchMatchesInEditor } from './features/search';
 import { initializeWorkspace } from './features/workspace-init';
 import { initializeLayout } from './features/layout';
-import { setupStepUpIntegration } from './integrations/stepup';
+import { markWorkspaceReady, setupStepUpIntegration } from './integrations/stepup';
 import { populateLanguageDropdown, populateVersionDropdown, configureMonacoForVersion } from './components/monaco-config';
 import { uiLangSel, langSel } from './components/dom';
 import { setStatus } from './components/output';
@@ -128,6 +128,12 @@ async function bootstrap(): Promise<void> {
 
   initializeLayout();
   setStatus('Ready ✅ (Ctrl+Enter to run)');
+
+  // Only now is it true. Host messages that arrived earlier were queued and are
+  // released by this call; readiness is announced to the host from here too, so a
+  // host that answers instantly cannot have its project discarded by the
+  // initialization that used to follow the announcement.
+  markWorkspaceReady();
 }
 
 bootstrap().catch(error => {
