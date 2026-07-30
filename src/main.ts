@@ -1,3 +1,4 @@
+import * as monaco from 'monaco-editor';
 import { initI18n, setLanguage, getLanguage as getUILang } from './i18n';
 import { getAllLanguages, getLanguage, preloadDefaultStarters } from './languages';
 import { setWorkspaceService, storage } from './storage';
@@ -81,7 +82,12 @@ async function bootstrap(): Promise<void> {
   // dead-code-eliminated from the production bundle rather than shipping an
   // internals handle to every page that embeds the IDE.
   if (import.meta.env.DEV) {
-    (window as unknown as { __bcRuntime: unknown }).__bcRuntime = runtime;
+    const seam = window as unknown as { __bcRuntime: unknown; __bcMonaco: unknown };
+    seam.__bcRuntime = runtime;
+    // Monaco too: cross-file diagnostics can only be checked through
+    // `getModelMarkers`, and the test page runs in a different module realm, so it
+    // cannot reach the app's Monaco instance any other way.
+    seam.__bcMonaco = monaco;
   }
 
   createEditor();
@@ -89,6 +95,21 @@ async function bootstrap(): Promise<void> {
     renderFileTree: () => { void renderFileTree(); },
     refreshSearchHighlights: highlightSearchMatchesInEditor,
   });
+
+  // Keep a model for every TypeScript and JavaScript document, opened or not.
+  // Monaco's TS worker only sees files that have models, so without this an import
+  // of a module the user has not clicked on reports "Cannot find module" even
+  // though the server compiles the project fine. Re-run on every structural change,
+  // since a new or renamed file changes what the others can resolve.
+  const COMPILED_IN_BROWSER = ['typescript', 'javascript'];
+  const syncProjectModels = () => {
+    try {
+      workspace.models.ensureModelsFor(COMPILED_IN_BROWSER);
+    } catch (error) {
+      console.error('[IDE] Could not synchronize project models:', error);
+    }
+  };
+  workspace.service.onDidChangeWorkspace(syncProjectModels);
 
   // Initialize the workspace first so the editor, TabManager, active model,
   // language selector, version selector, and autosave handlers are ready before

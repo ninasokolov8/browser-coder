@@ -4508,3 +4508,78 @@ pre-existing looseness errors - implicit `any`, `runtime.currentLang` possibly n
 existed and is already guarded with `?.`. None were regressions from this change,
 and fixing them is a separate, mechanical commit rather than something to bury in a
 refactor of the persistence model. Recorded here so it is not mistaken for done.
+
+---
+
+### C3 - Editor diagnostics that agree with the compiler (V-19), completing Phase C
+
+Commit: `fix(editor): derive TS libs from the target and stop rewriting global compiler options`
+
+**The defect as recorded.** `configureMonacoForVersion` mutated the shared
+TypeScript and JavaScript compiler defaults on *every* tab activation. Monaco has
+exactly one TypeScript language service and its options are global, so they must
+follow the active document - there is no per-model configuration to move to. What
+was actually wrong was doing it unconditionally: each `setCompilerOptions` call
+invalidates the worker and re-runs diagnostics for every open model, so clicking
+between two tabs of the same language threw away and recomputed the whole project's
+diagnostics. Now keyed per language service and applied only when the target or
+strictness actually differs.
+
+**A worse problem found while fixing it.** The lib set was hardcoded:
+
+```ts
+lib: ["ES2020", "DOM", "DOM.Iterable"],   // for every target
+```
+
+The server derives lib from the target (`libsFor` in
+`server/languages/adapters/typescript.mjs`). So a project on the `ts-es2015`
+profile was offered the entire ES2020 API in completion, reported no error for
+using it, and was then refused by the server. **Editor diagnostics that disagree
+with the compiler are worse than none, because the student trusts them.** Both
+sides now apply the same target-to-lib rule.
+
+**A correction to my own reasoning, recorded because the first version of this
+comment was wrong.** I initially wrote that the old table's `ES2021 -> ES2020` and
+`ES2022 -> ESNext` entries were "quietly downgrading or over-promising", implying
+the original author had erred. Checking `monaco.d.ts` showed the opposite: Monaco's
+`ScriptTarget` enum genuinely stops at `ES2020 = 7` and jumps to `ESNext = 99`, with
+no ES2021 or ES2022 member at all. The original fallbacks were **correct**. The
+lookup-based version is still worth having - an unknown name resolves to ESNext
+rather than `undefined`, which Monaco treats as ES3, and a future Monaco that adds
+the members starts using them without anyone noticing this table. But the reason is
+forward-compatibility, not a bug being fixed, and it is why `lib` carries the real
+weight of restricting the API.
+
+**Cross-file resolution now actually works.** Monaco's TypeScript worker only sees
+files that have models, and models were created on demand when a tab was opened. So
+`import { double } from './util'` reported *"Cannot find module"* whenever `util.ts`
+had not been clicked - for code the server compiles without complaint. Combined with
+C2's real workspace URIs, `MonacoModelRegistry.ensureModelsFor(['typescript',
+'javascript'])` runs on every structural change and gives the whole project to the
+worker. Restricted to the two languages that have an in-browser language service;
+Python, Java, PHP and C# get their diagnostics from the server, so a model per file
+would cost memory for nothing.
+
+**Verified in the browser, with the obvious cheat closed.** The app-boot suite now
+creates a real two-file TypeScript project where `main.ts` imports `util.ts` **and
+also contains a genuine type error**, then asserts three things together:
+
+- no `Cannot find module` - resolution works
+- `Argument of type 'string' is not assignable to parameter of type 'number'` is
+  still reported - so resolution was not "fixed" by turning checking off, which
+  would have satisfied the first assertion and been useless
+- no lib-definition diagnostics - an invalid lib name does not throw, it reports a
+  diagnostic and leaves the API surface undefined, which would silently make every
+  other assertion measure the wrong configuration
+
+The reported diagnostics on that file are now exactly the one intended type error.
+
+**Phase C is complete.** V-09, V-10, V-11, V-12, V-13, V-14, V-15, V-18, V-19,
+N-02, N-03, N-04 and N-06 are closed, plus four uncatalogued instances of the V-09
+shape found while wiring, and the `#private`-versus-proxy defect found by the
+app-boot suite.
+
+One honest gap: the idempotence of the compiler-options application is reasoned from
+the code rather than asserted by a test, because the call is internal and counting it
+would mean exposing a seam purely to observe it. The user-visible consequence -
+correct diagnostics - is tested.

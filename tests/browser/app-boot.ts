@@ -67,6 +67,106 @@ async function waitFor(
   return false;
 }
 
+/**
+ * Multi-file TypeScript must resolve, and the reported diagnostics must match what
+ * the server would say.
+ *
+ * Two properties are checked at once:
+ *
+ * - **Cross-file resolution (V-18 + eager models).** `main.ts` importing `./util`
+ *   must NOT report "Cannot find module". Before real workspace URIs the TS worker
+ *   was given a flat set of `file:///name_N.ts` models, so relative imports could
+ *   not resolve even in principle; and a file the user has not opened has no model
+ *   at all unless one is created eagerly.
+ *
+ * - **Diagnostics agree with the compiler (V-19).** A genuine type error must still
+ *   be reported. A configuration that resolves everything by turning checking off
+ *   would pass the first assertion and be useless.
+ */
+async function checkCrossFileTypeScript(frameWindow: Window): Promise<void> {
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') })
+    .__bcMonaco;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!monacoApi || !runtime) {
+    check('monaco and runtime are reachable for the diagnostics check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): unknown;
+  };
+  const models = runtime.models as {
+    peek(id: string): { uri: unknown } | null;
+    ensureModelsFor(languageIds: readonly string[]): void;
+  };
+
+  const util = await workspace.createDocument({
+    name: 'smoke-util.ts',
+    language: 'typescript',
+    version: 'ts5-strict',
+    content: 'export function double(value: number): number {\n  return value * 2;\n}\n',
+  });
+
+  const main = await workspace.createDocument({
+    name: 'smoke-main.ts',
+    language: 'typescript',
+    version: 'ts5-strict',
+    // The second call is a real type error, so "no errors" cannot pass by accident.
+    content:
+      'import { double } from "./smoke-util";\n' +
+      'console.log(double(21));\n' +
+      'console.log(double("not a number"));\n',
+  });
+
+  models.ensureModelsFor(['typescript', 'javascript']);
+  const mainModel = models.peek(main.id);
+  check('the importing file has a model', mainModel !== null);
+  check('the imported file has a model even though it was never opened', models.peek(util.id) !== null);
+  if (!mainModel) return;
+
+  const uri = mainModel.uri as { toString(): string };
+
+  // The worker is asynchronous, so wait for it to produce anything at all.
+  const gotMarkers = await waitFor(
+    'the TypeScript worker to report diagnostics',
+    () =>
+      monacoApi.editor
+        .getModelMarkers({})
+        .some(marker => marker.resource.toString() === uri.toString()),
+    30000,
+  );
+  check('the TypeScript worker produces diagnostics', gotMarkers);
+
+  const markers = monacoApi.editor
+    .getModelMarkers({})
+    .filter(marker => marker.resource.toString() === uri.toString());
+  const messages = markers.map(marker => marker.message);
+
+  const unresolved = messages.filter(message => /Cannot find module/i.test(message));
+  check(
+    'a cross-file import resolves',
+    unresolved.length === 0,
+    unresolved.join(' | ') || undefined,
+  );
+
+  const caughtTypeError = messages.some(message => /not assignable to parameter of type/i.test(message));
+  check(
+    'a genuine type error is still reported',
+    caughtTypeError,
+    `markers: ${messages.join(' | ') || '(none)'}`,
+  );
+
+  // The lib names passed to Monaco must be ones its bundled TypeScript recognises.
+  // An invalid name does not throw - it reports a diagnostic and silently leaves the
+  // API surface undefined, so every later assertion would be measuring the wrong
+  // configuration.
+  const libProblems = messages.filter(message => /Cannot find lib definition|File .*lib\..*\.d\.ts.* not found/i.test(message));
+  check('the configured lib set is valid', libProblems.length === 0, libProblems.join(' | ') || undefined);
+
+  lines.push(`INFO diagnostics on the importing file: ${messages.join(' | ') || '(none)'}`);
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -214,6 +314,8 @@ async function run(): Promise<void> {
       }
     }
   }
+
+  await checkCrossFileTypeScript(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

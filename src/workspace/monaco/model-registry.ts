@@ -105,6 +105,34 @@ export class MonacoModelRegistry {
     for (const id of [...this.#entries.keys()]) this.release(id);
   }
 
+  /**
+   * Make sure every document in `languageIds` has a model.
+   *
+   * Monaco's TypeScript worker only sees files that have models, so a project
+   * whose `./utils` module has never been opened cannot resolve the import - the
+   * editor reports "Cannot find module" for code the server compiles happily.
+   * Creating models eagerly for the compiled languages is what makes multi-file
+   * completion, cross-file diagnostics and go-to-definition work at all.
+   *
+   * Restricted to the languages that have a language service. Creating a model per
+   * file for every language would cost memory for no benefit, since Python, Java,
+   * PHP and C# get their diagnostics from the server.
+   */
+  ensureModelsFor(languageIds: readonly string[]): void {
+    const wanted = new Set(languageIds);
+    for (const document of this.#service.allDocuments()) {
+      if (!wanted.has(document.language)) continue;
+      if (this.peek(document.id)) continue;
+      try {
+        this.acquire(document);
+      } catch (error) {
+        // One unrepresentable path must not stop the rest of the project from
+        // being resolvable.
+        console.error(`[workspace] could not create a model for ${document.name}`, error);
+      }
+    }
+  }
+
   /** Every live model, for features that need the whole project (search, TS libs). */
   all(): Array<{ id: DocumentId; path: string; model: monaco.editor.ITextModel }> {
     const result: Array<{ id: DocumentId; path: string; model: monaco.editor.ITextModel }> = [];
