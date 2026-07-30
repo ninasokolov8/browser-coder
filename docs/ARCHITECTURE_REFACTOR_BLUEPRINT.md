@@ -4280,3 +4280,115 @@ it exercises compiler, runtime, sandbox environment and adapter together.
 `memoryBudgetMB: 1024, memoryBudgetSource: cgroup-v1` inside the container while
 `maxConcurrent` is still 500, derived from the host's 30 GiB - V-36 demonstrated
 end to end, and ready to wire.
+
+---
+
+### C1 - The workspace domain: one authoritative working copy
+
+Commit: `refactor(workspace): add the workspace domain with revision-guarded persistence`
+
+Purely additive. Nothing is wired to it yet, so this commit cannot regress the
+running IDE; the wiring is C2.
+
+**The root cause, stated plainly.** A file's text lived in three places at once:
+the Monaco model the user was typing into, `tab.file.content`, and the IndexedDB
+row. No rule said which one won. Every confirmed data-loss defect - V-09, V-10,
+V-11, V-13 - is one copy overwriting a newer one across an `await`. So the fix is
+not "add a lock", it is to make the second and third copies stop existing.
+
+`src/workspace/` (2,050 lines) now holds:
+
+| Module | Responsibility |
+|---|---|
+| `types.ts` | Metadata **without** content; `DocumentMetadataPatch` has no content field, so a rename cannot reach it |
+| `buffer.ts` | The `WorkingCopyBuffer` port and `MemoryBuffer`; `getRevision()` is the monotonic race guard |
+| `document.ts` | `WorkspaceDocument` - one working copy, `isDirty` **derived** from revisions |
+| `persistence.ts` | `PersistenceCoordinator` - per-document timer and serialized writer queue |
+| `tree.ts` | Canonical paths **derived** from the folder chain; collision keys; cycle-safe walks |
+| `service.ts` | The single owner; atomic whole-workspace commands |
+| `store.ts` | The persistence port, plus a controllable in-memory implementation |
+| `store-indexeddb.ts` | The real adapter, one transaction per operation |
+
+**Four structural changes, each removing a defect class rather than patching an
+instance.**
+
+**1. `isDirty` is derived, never assigned.** `revision !== savedRevision`. The old
+autosave did `tab.file = updated; tab.isDirty = false` after its await - discarding
+text typed during the write and *then* asserting it was saved. A boolean that is
+assigned can be assigned wrongly; a comparison cannot. A write now captures the
+revision it is persisting and may only ever mark *that* revision saved, so
+keystrokes that arrive mid-write leave the document dirty and the queue writes
+again. Closes **V-09**.
+
+**2. Path is derived, never stored.** The old schema persisted a `path` on every
+record, which created two obligations it could not keep: a folder rename had to
+rewrite every descendant (across two transactions - **V-15**), and a stale path
+could contradict the tree, which execution had to defend against with a literal
+comment reading *"Do not trust activeTab.file.path here."* A comment telling the
+next reader not to trust a field is the field admitting it should not exist. Paths
+are now computed from the parent chain on demand, so a folder rename is **one**
+write and every path mentioning it is correct on the next read. V-15 is removed
+rather than fixed.
+
+**3. Content and metadata are separate operations.** `writeDocumentContent` and
+`updateDocumentMetadata` cannot interfere, and `DocumentMetadataPatch` has no
+content field at the type level. Closes **V-10**.
+
+**4. Commands name their target.** `setDocumentLanguage(id, ...)` applies the
+starter to *that* document by identity. The version selector previously captured
+the active tab, awaited twice, then wrote to `editor.getModel()` - whatever was
+active at that later moment. Closes **V-11**.
+
+**Atomic host replacement (V-13).** `replaceAll` validates the whole project with
+the *server's* validator, builds the replacement snapshot in memory, and commits it
+in a single IndexedDB transaction. A failure leaves the previous workspace fully
+intact - asserted directly, by making the store fail on purpose and checking the
+learner's file is still there. It is also now identity-preserving: a path that
+already exists keeps its document, so a host re-sending the same project no longer
+disposes the editor model, discards undo history, or jumps the user to another tab.
+
+**One validator, not two.** `src/workspace/tree.ts` and `service.ts` import
+`server/domain/paths.mjs` - the exact module the server enforces - via a
+hand-written `paths.d.mts`. A duplicated validator is worse than none: the two
+drift, and the divergence surfaces as a project the IDE accepts and the server
+refuses. The module is pure, with no imports at all, so this costs a few kilobytes
+of bundle for exact agreement. Closes **V-14** and the case-collision half of
+**N-03**, using the same NFC-plus-lowercase key on both sides.
+
+**Also closed.** **N-04** one autosave timer per document instead of one shared by
+all tabs; **N-02** `clearAll` empties the folders store too; **N-06** the quadratic
+child scans are gone - the service holds the tree in memory, so `createDocument`
+computes its sibling set and order without touching storage.
+
+**Testability was a design constraint, not an afterthought.** The domain has no
+DOM, Monaco, or IndexedDB import; those arrive through ports. That is what lets
+timing defects be tested deterministically in node: `GatedStore` blocks a write
+exactly mid-flight, so "the user typed during the save" is an exact sequence rather
+than a sleep and a hope.
+
+**69 new unit tests (135 total, 0 fail).** Node 22.18 strips TypeScript natively,
+so the tests import the source directly with no build step between them. A separate
+`tsconfig.tests.json` gives the tests node's globals while keeping them out of
+`src/`, so browser code cannot reference a node global that will not exist in the
+bundle.
+
+**Every gate was verified to fail against the behaviour it replaces**, by
+temporarily reintroducing each bug:
+
+- `markSaved` ignoring its revision argument -> **4 tests fail**, including
+  `the revision guard forces a second write rather than claiming success`
+- a single shared autosave timer -> **1 test fails**, with the message
+  `document A's edit must survive`
+
+A test that passes against the bug proves nothing, so this check is part of the
+work rather than a formality.
+
+**Deliberate deviation from the plan.** 33.3 called for a *side-by-side IndexedDB
+migration with a verified rollback*. On inspection the schema does not need to
+change at all: `DB_VERSION` stays 2, and correctness moves into the domain. The
+legacy `/`-prefixed `path` field is still **written** on every record - and kept
+correct for descendants inside the same transaction as a folder rename - purely so
+reverting this branch leaves a workspace the previous code can still open. The new
+code never reads it. A migration that is not needed is a migration that cannot
+fail, and a schema bump would have risked an unrecoverable `onupgradeneeded` abort
+on existing duplicate data for no benefit.
