@@ -1,26 +1,24 @@
 import {
-  panelEl,
-  turtleOutputEl,
   turtleCanvasEl,
 } from "./dom";
+import { getPopupWindow, hidePopupWindow, showPopupWindow } from "./popup-window";
 
-// ── Browser Turtle renderer with native SVG cursor support ───────────────────
+// Id of the shared popup window the turtle drawing is rendered into.
+const TURTLE_WINDOW_ID = 'turtle-window';
+
+// ── Turtle graphics renderer ─────────────────────────────────────────────────
+// Animated step-by-step replay of the drawing commands captured by the Python
+// shim, with a moving turtle cursor — just like a real IDE.
 //
-// Compatible with the existing browser-coder Turtle JSON and with the extended
-// data emitted by languages/python/turtle_shim.py in this bundle.
+// Architecture: double-buffer
+//   offscreen canvas  — all shapes accumulated so far (never erased mid-run)
+//   visible canvas    — offscreen snapshot + cursor composited on top each frame
 //
-// New fields:
-//   cursorAssets: { [shapeName]: { dataUrl, width, height, rotate } }
-//   cursor:       final/default cursor state
-//   cursors:      final states for multiple turtles
-//
-// New action kinds:
-//   M  pen-up movement
-//   R  heading change
-//   V  visibility change
-//   I  cursor image/shape change
-//
-// Existing l/F/D/T/C/S actions remain supported.
+// Coordinate system:
+//   Python turtle: origin at centre, y increases upward
+//   HTML canvas:   origin at top-left, y increases downward
+//   → canvasX = canvasWidth/2  + turtleX
+//   → canvasY = canvasHeight/2 - turtleY
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TurtleShape {
@@ -28,940 +26,584 @@ export interface TurtleShape {
   [key: string]: unknown;
 }
 
-export interface TurtleCursorAsset {
-  dataUrl?: string;
-  width?: number;
-  height?: number;
-  rotate?: boolean;
+/** How a turtle cursor looks: shape name, colours, stretch, outline, tilt. */
+export interface TurtleLook {
+  sh: string;   // shape name ('classic', 'turtle', … or a registered one)
+  fc: string;   // fill colour
+  pc: string;   // outline (pen) colour
+  sw: number;   // stretch across the heading  (shapesize stretch_wid)
+  sl: number;   // stretch along the heading   (shapesize stretch_len)
+  ow: number;   // outline width
+  tl: number;   // tilt angle in degrees
 }
 
-export interface TurtleCursorState {
-  id?: number;
-  x?: number;
-  y?: number;
-  h?: number;
-  visible?: boolean;
-  shape?: string;
-  color?: string;
-  width?: number;
-  height?: number;
-  rotate?: boolean;
+/** A turtle's final resting state, drawn once the run is complete. */
+export interface TurtleCursor extends Partial<TurtleLook> {
+  x?:   number;
+  y?:   number;
+  h?:   number;
+  vis?: boolean;
 }
 
 export interface TurtleData {
-  bg?: string;
-  w?: number;
-  h?: number;
-  tracer?: number;
-  speed?: number;
-  delay?: number;
-  title?: string;
-  shapes?: TurtleShape[];
-
-  // Existing projects/server versions may use any of these names.
-  picData?: string;
-  picUrl?: string;
-  bgpic?: string;
-  backgroundImage?: string;
-
-  cursorAssets?: Record<string, TurtleCursorAsset>;
-  cursor?: TurtleCursorState;
-  cursors?: TurtleCursorState[];
+  bg?:      string;
+  w?:       number;
+  h?:       number;
+  tracer?:  number;
+  speed?:   number;
+  shapes?:  TurtleShape[];
+  cursors?: TurtleCursor[];
+  polys?:   Record<string, number[][]>;   // shapes from register_shape()
+  pic?:     string;   // bgpic() argument, exactly as the program wrote it
+  picData?: string;   // that picture as a data URL, resolved by the frontend
 }
 
-interface RuntimeCursor {
-  id: number;
-  x: number;
-  y: number;
-  h: number;
-  visible: boolean;
-  shape: string;
-  color: string;
-  width: number;
-  height: number;
-  rotate: boolean;
-}
-
-type ImageMap = Map<string, HTMLImageElement>;
-
+// Animation RAF id (requestAnimationFrame) — null when idle
 let turtleAnimRafId: number | null = null;
-let turtleRenderGeneration = 0;
 
-const BUILTIN_CURSOR_WIDTH = 22;
-const BUILTIN_CURSOR_HEIGHT = 16;
-const TURN_DURATION_MS = 90;
-const COMMAND_PAUSE_MS = 12;
+// Background picture (bgpic) of the drawing currently on screen. Module-level
+// because it is needed both while painting the background and later, whenever
+// the program clears the canvas — and because only one drawing is ever
+// rendered at a time.
+let turtleBgImage: HTMLImageElement | null = null;
 
-const TURTLE_PX_PER_SEC: Record<number, number> = {
-  1: 100,
-  2: 200,
-  3: 350,
-  4: 600,
-  5: 1000,
-  6: 1600,
-  7: 2500,
-  8: 4000,
-  9: 6500,
-  10: 10000,
+// Incremented by every renderTurtle()/clearTurtleCanvas() call so a background
+// picture that finishes loading late can tell it belongs to a run that has
+// already been replaced, and drop itself instead of painting over the new one.
+let turtleRenderSeq = 0;
+
+// ── Built-in cursor shapes ───────────────────────────────────────────────────
+// Same polygons Python's turtle module uses. They are defined pointing "up"
+// (+y); drawTurtleCursor() rotates them onto the turtle's heading.
+const TURTLE_SHAPE_POLYS: Record<string, number[][]> = {
+  classic:  [[0, 0], [-5, -9], [0, -7], [5, -9]],
+  arrow:    [[-10, 0], [10, 0], [0, 10]],
+  square:   [[10, -10], [10, 10], [-10, 10], [-10, -10]],
+  triangle: [[10, -5.77], [0, 11.55], [-10, -5.77]],
+  circle: [
+    [10, 0], [9.51, 3.09], [8.09, 5.88], [5.88, 8.09], [3.09, 9.51],
+    [0, 10], [-3.09, 9.51], [-5.88, 8.09], [-8.09, 5.88], [-9.51, 3.09],
+    [-10, 0], [-9.51, -3.09], [-8.09, -5.88], [-5.88, -8.09], [-3.09, -9.51],
+    [0, -10], [3.09, -9.51], [5.88, -8.09], [8.09, -5.88], [9.51, -3.09],
+  ],
+  turtle: [
+    [0, 16], [-2, 14], [-1, 10], [-4, 7], [-7, 9], [-9, 8], [-6, 5], [-7, 1],
+    [-5, -3], [-8, -6], [-6, -8], [-4, -5], [0, -7], [4, -5], [6, -8], [8, -6],
+    [5, -3], [7, 1], [6, 5], [9, 8], [7, 9], [4, 7], [1, 10], [2, 14],
+  ],
 };
 
-function finiteNumber(value: unknown, fallback = 0): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+// The look a cursor has before the program changes anything. Must stay in sync
+// with the shim's defaults (_DEF_SHAPE / _DEF_CURSOR_* / _DEF_SCALE in
+// languages/python/turtle_shim.py): the shim only sends a 'SH' event once the
+// appearance actually changes, so the two ends have to start from the same one.
+const DEFAULT_LOOK: TurtleLook = {
+  sh: 'turtle', fc: 'lightgreen', pc: 'darkgreen', sw: 1.5, sl: 1.5, ow: 1, tl: 0,
+};
 
-function boolValue(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
-function turtleId(shape: TurtleShape): number {
-  return Math.max(0, Math.trunc(finiteNumber(shape.tid, 0)));
-}
-
-function imageSource(data: TurtleData): string | null {
-  const candidates = [
-    data.picData,
-    data.picUrl,
-    data.bgpic,
-    data.backgroundImage,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
-    image.src = src;
-  });
-}
-
-async function preloadImages(data: TurtleData): Promise<{
-  background: HTMLImageElement | null;
-  cursors: ImageMap;
-}> {
-  const cursorImages: ImageMap = new Map();
-  const tasks: Promise<void>[] = [];
-
-  for (const [name, asset] of Object.entries(data.cursorAssets ?? {})) {
-    if (!asset || typeof asset.dataUrl !== "string" || !asset.dataUrl) continue;
-    tasks.push(
-      loadImage(asset.dataUrl).then((image) => {
-        if (image) cursorImages.set(name, image);
-      }),
-    );
-  }
-
-  let background: HTMLImageElement | null = null;
-  const source = imageSource(data);
-  if (source) {
-    tasks.push(
-      loadImage(source).then((image) => {
-        background = image;
-      }),
-    );
-  }
-
-  await Promise.all(tasks);
-  return { background, cursors: cursorImages };
-}
-
-function cloneCursor(source: TurtleCursorState | undefined, id: number): RuntimeCursor {
+/** Merge the look fields of a shim event/cursor over an existing look. */
+function mergeLook(base: TurtleLook, src: Record<string, unknown>): TurtleLook {
+  const num = (v: unknown, fallback: number) =>
+    (typeof v === 'number' && isFinite(v)) ? v : fallback;
   return {
-    id,
-    x: finiteNumber(source?.x, 0),
-    y: finiteNumber(source?.y, 0),
-    h: finiteNumber(source?.h, 0),
-    visible: boolValue(source?.visible, true),
-    shape: typeof source?.shape === "string" ? source.shape : "classic",
-    color: typeof source?.color === "string" ? source.color : "rgba(0, 170, 0, 0.90)",
-    width: Math.max(2, finiteNumber(source?.width, BUILTIN_CURSOR_WIDTH)),
-    height: Math.max(2, finiteNumber(source?.height, BUILTIN_CURSOR_HEIGHT)),
-    rotate: boolValue(source?.rotate, true),
+    sh: typeof src.sh === 'string' ? src.sh : base.sh,
+    fc: typeof src.fc === 'string' ? src.fc : base.fc,
+    pc: typeof src.pc === 'string' ? src.pc : base.pc,
+    sw: num(src.sw, base.sw),
+    sl: num(src.sl, base.sl),
+    ow: num(src.ow, base.ow),
+    tl: num(src.tl, base.tl),
   };
 }
 
-function initialCursorMap(data: TurtleData): Map<number, RuntimeCursor> {
-  const cursors = new Map<number, RuntimeCursor>();
+/**
+ * Resolve the floating turtle window and its canvas, building them on demand.
+ *
+ * The turtle drawing lives in its own popup window (not inside the Output
+ * panel) so it never covers or collides with stdout/stderr/prints - both stay
+ * visible at once, exactly like a real IDE where the turtle canvas opens in a
+ * separate window. The window shell itself is the shared one every graphics
+ * output uses; see popup-window.ts.
+ */
+function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement } | null {
+  const popup = getPopupWindow(
+    TURTLE_WINDOW_ID,
+    '\uD83D\uDC22 Turtle Graphics',
+    () => clearTurtleCanvas(),   // closing also stops any running animation
+  );
+  if (!popup) return null;
 
-  if (Array.isArray(data.cursors)) {
-    for (const cursor of data.cursors) {
-      const id = Math.max(0, Math.trunc(finiteNumber(cursor.id, cursors.size)));
-      cursors.set(id, cloneCursor(cursor, id));
-    }
+  let canvas = document.getElementById('turtle-canvas') as HTMLCanvasElement | null;
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'turtle-canvas';
+    popup.bodyEl.appendChild(canvas);
+  } else if (canvas.parentElement !== popup.bodyEl) {
+    popup.bodyEl.appendChild(canvas);
   }
 
-  if (cursors.size === 0) {
-    const id = Math.max(0, Math.trunc(finiteNumber(data.cursor?.id, 0)));
-    cursors.set(id, cloneCursor(data.cursor, id));
-  }
-
-  // Replay starts at Turtle's standard initial state. Shape-change actions will
-  // apply custom SVGs at the correct point in the command stream.
-  for (const cursor of cursors.values()) {
-    cursor.x = 0;
-    cursor.y = 0;
-    cursor.h = 0;
-    cursor.visible = true;
-    cursor.shape = "classic";
-    cursor.width = BUILTIN_CURSOR_WIDTH;
-    cursor.height = BUILTIN_CURSOR_HEIGHT;
-    cursor.rotate = true;
-  }
-
-  return cursors;
+  return { output: popup.windowEl, canvas };
 }
 
-function applyLeadingCursorEvents(
-  shapes: TurtleShape[],
-  cursors: Map<number, RuntimeCursor>,
-  data: TurtleData,
-): void {
-  // Apply setup-only cursor commands before the first visible movement. This
-  // prevents a one-frame flash of the built-in turtle before a registered SVG
-  // shape is selected. The commands remain in the replay and are idempotent.
-  for (const shape of shapes) {
-    if (shape.k === "I" || shape.k === "V" || shape.k === "R") {
-      applyCursorEvent(shape, cursors, data);
-      continue;
-    }
-    if (shape.k === "M" || shape.k === "l") break;
-  }
-}
-
-function cursorFor(cursors: Map<number, RuntimeCursor>, id: number): RuntimeCursor {
-  let cursor = cursors.get(id);
-  if (!cursor) {
-    cursor = cloneCursor(undefined, id);
-    cursors.set(id, cursor);
-  }
-  return cursor;
-}
-
-function drawBuiltinCursor(
+/**
+ * Draw a turtle cursor at canvas position (cx, cy).
+ *
+ * The polygon lives in "shape space", pointing up (+y), and is mapped onto the
+ * heading exactly the way Python's turtle does it: shape +y follows the
+ * heading, shape +x points to its right. shapesize() stretch and tilt are
+ * applied first, in shape space.
+ */
+function drawTurtleCursor(
   ctx: CanvasRenderingContext2D,
-  cursor: RuntimeCursor,
+  cx: number, cy: number,
+  headingDeg: number,
+  look: TurtleLook,
+  polys?: Record<string, number[][]>,
 ): void {
-  const shape = cursor.shape.toLowerCase();
-  const width = Math.max(4, cursor.width);
-  const height = Math.max(4, cursor.height);
+  if (look.sh === 'blank') return;
+  const poly = polys?.[look.sh] ?? TURTLE_SHAPE_POLYS[look.sh] ?? TURTLE_SHAPE_POLYS.classic;
+  if (!poly || poly.length < 2) return;
 
-  ctx.fillStyle = cursor.color;
-  ctx.strokeStyle = "rgba(255,255,255,0.82)";
-  ctx.lineWidth = 0.9;
-  ctx.beginPath();
+  const hRad = headingDeg * Math.PI / 180;
+  const sinH = Math.sin(hRad), cosH = Math.cos(hRad);
+  const tRad = look.tl * Math.PI / 180;
+  const sinT = Math.sin(tRad), cosT = Math.cos(tRad);
 
-  if (shape === "circle") {
-    ctx.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2);
-  } else if (shape === "square") {
-    ctx.rect(-width / 2, -height / 2, width, height);
-  } else if (shape === "triangle") {
-    ctx.moveTo(width / 2, 0);
-    ctx.lineTo(-width / 2, -height / 2);
-    ctx.lineTo(-width / 2, height / 2);
-    ctx.closePath();
-  } else if (shape === "turtle") {
-    // A compact turtle silhouette. It remains a fallback only; registered SVG
-    // shapes are drawn by drawCursor() below.
-    ctx.ellipse(0, 0, width * 0.34, height * 0.38, 0, 0, Math.PI * 2);
-    ctx.moveTo(width * 0.34, 0);
-    ctx.ellipse(width * 0.43, 0, width * 0.11, height * 0.13, 0, 0, Math.PI * 2);
-  } else {
-    // classic / arrow
-    ctx.moveTo(width / 2, 0);
-    ctx.lineTo(-width * 0.32, -height * 0.34);
-    ctx.lineTo(-width * 0.16, 0);
-    ctx.lineTo(-width * 0.32, height * 0.34);
-    ctx.closePath();
-  }
-
-  ctx.fill();
-  ctx.stroke();
-}
-
-function drawCursor(
-  ctx: CanvasRenderingContext2D,
-  cursor: RuntimeCursor,
-  images: ImageMap,
-  canvasWidth: number,
-  canvasHeight: number,
-): void {
-  if (!cursor.visible) return;
-
-  const cx = canvasWidth / 2 + cursor.x;
-  const cy = canvasHeight / 2 - cursor.y;
-  const image = images.get(cursor.shape);
+  // Stretch + tilt matrix, matching turtle's _shapetrafo
+  const t11 =  look.sw * cosT, t12 = look.sl * sinT;
+  const t21 = -look.sw * sinT, t22 = look.sl * cosT;
 
   ctx.save();
-  ctx.translate(cx, cy);
-  if (cursor.rotate) {
-    ctx.rotate(-cursor.h * Math.PI / 180);
+  ctx.beginPath();
+  for (let i = 0; i < poly.length; i++) {
+    const px = poly[i][0], py = poly[i][1];
+    const sx = t11 * px + t12 * py;
+    const sy = t21 * px + t22 * py;
+    // shape space → turtle space, then → canvas (whose y grows downward)
+    const x = cx + (sinH * sx + cosH * sy);
+    const y = cy - (cosH * sx - sinH * sy);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
-
-  if (image) {
-    const width = Math.max(2, cursor.width);
-    const height = Math.max(2, cursor.height);
-    ctx.drawImage(image, -width / 2, -height / 2, width, height);
-  } else {
-    ctx.rotate(cursor.rotate ? 0 : -cursor.h * Math.PI / 180);
-    drawBuiltinCursor(ctx, cursor);
+  ctx.closePath();
+  ctx.fillStyle = look.fc;
+  ctx.fill();
+  if (look.ow > 0) {
+    ctx.strokeStyle = look.pc;
+    ctx.lineWidth   = look.ow;
+    ctx.stroke();
   }
-
   ctx.restore();
 }
 
-function drawAllCursors(
+/** Draw the turtles where they came to rest, once the drawing is finished. */
+function drawFinalCursors(
   ctx: CanvasRenderingContext2D,
-  cursors: Map<number, RuntimeCursor>,
-  images: ImageMap,
-  canvasWidth: number,
-  canvasHeight: number,
+  cursors: TurtleCursor[] | undefined,
+  cw: number, ch: number,
+  polys?: Record<string, number[][]>,
 ): void {
-  for (const cursor of cursors.values()) {
-    drawCursor(ctx, cursor, images, canvasWidth, canvasHeight);
+  if (!cursors) return;
+  for (const c of cursors) {
+    if (c.vis === false) continue;
+    drawTurtleCursor(
+      ctx,
+      cw / 2 + (c.x ?? 0),
+      ch / 2 - (c.y ?? 0),
+      c.h ?? 0,
+      mergeLook(DEFAULT_LOOK, c as Record<string, unknown>),
+      polys,
+    );
   }
 }
 
-function drawStamp(
-  ctx: CanvasRenderingContext2D,
-  shape: TurtleShape,
-  images: ImageMap,
-  canvasWidth: number,
-  canvasHeight: number,
+/**
+ * Paint a canvas background: the background colour, then the bgpic picture on
+ * top of it.
+ *
+ * The picture is centred and scaled to fit while keeping its aspect ratio, so a
+ * maze authored for a square screen still lines up with turtle coordinates
+ * after setup() changes the window size.
+ */
+function paintTurtleBackground(
+  sctx: CanvasRenderingContext2D,
+  cw: number, ch: number,
+  bg: string,
 ): void {
-  const cursor = cloneCursor({
-    id: turtleId(shape),
-    x: finiteNumber(shape.x, 0),
-    y: finiteNumber(shape.y, 0),
-    h: finiteNumber(shape.h, 0),
-    visible: true,
-    shape: typeof shape.n === "string" ? shape.n : "classic",
-    color: typeof shape.c === "string" ? shape.c : "black",
-    width: finiteNumber(shape.sw, BUILTIN_CURSOR_WIDTH),
-    height: finiteNumber(shape.sh, BUILTIN_CURSOR_HEIGHT),
-    rotate: boolValue(shape.r, true),
-  }, turtleId(shape));
+  sctx.fillStyle = bg;
+  sctx.fillRect(0, 0, cw, ch);
 
-  drawCursor(ctx, cursor, images, canvasWidth, canvasHeight);
-}
+  const img = turtleBgImage;
+  if (!img) return;
 
-function paintBase(
-  ctx: CanvasRenderingContext2D,
-  canvasWidth: number,
-  canvasHeight: number,
-  backgroundColor: string,
-  backgroundImage: HTMLImageElement | null,
-): void {
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  ctx.fillStyle = backgroundColor;
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-  if (backgroundImage) {
-    ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
-  }
-}
-
-function drawTurtleShape(
-  ctx: CanvasRenderingContext2D,
-  shape: TurtleShape,
-  canvasWidth: number,
-  canvasHeight: number,
-  backgroundColor: string,
-  backgroundImage: HTMLImageElement | null,
-  images: ImageMap,
-): void {
-  const tx = (x: number) => canvasWidth / 2 + x;
-  const ty = (y: number) => canvasHeight / 2 - y;
-
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
 
   try {
-    switch (shape.k) {
-      case "l": {
-        ctx.beginPath();
-        ctx.moveTo(tx(finiteNumber(shape.x1)), ty(finiteNumber(shape.y1)));
-        ctx.lineTo(tx(finiteNumber(shape.x2)), ty(finiteNumber(shape.y2)));
-        ctx.strokeStyle = String(shape.c ?? "black");
-        ctx.lineWidth = Math.max(0.1, finiteNumber(shape.w, 1));
-        ctx.stroke();
+    if (iw > 0 && ih > 0) {
+      const scale = Math.min(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      sctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    } else {
+      // An SVG with only a viewBox (no width/height) has no intrinsic size in
+      // some browsers. Stretching it over the canvas is the useful fallback.
+      sctx.drawImage(img, 0, 0, cw, ch);
+    }
+  } catch (_e) { /* a broken picture must never break the drawing */ }
+}
+
+/** Draw a single shape onto `sctx`. */
+function drawTurtleShape(
+  sctx: CanvasRenderingContext2D,
+  s: TurtleShape,
+  cw: number, ch: number,
+  bg: string,
+  polys?: Record<string, number[][]>,
+): void {
+  const tx = (x: number) => cw / 2 + x;
+  const ty = (y: number) => ch / 2 - y;
+  sctx.save();
+  sctx.lineCap  = 'round';
+  sctx.lineJoin = 'round';
+  try {
+    switch (s.k) {
+      case 'l': {
+        sctx.beginPath();
+        sctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
+        sctx.lineTo(tx(s.x2 as number), ty(s.y2 as number));
+        sctx.strokeStyle = String(s.c ?? 'black');
+        sctx.lineWidth   = Number(s.w ?? 1);
+        sctx.stroke();
         break;
       }
-
-      case "F": {
-        const points = shape.pts as unknown;
-        if (!Array.isArray(points) || points.length < 2) break;
-        const normalized = points.filter(
-          (point): point is [number, number] =>
-            Array.isArray(point) && point.length >= 2,
-        );
-        if (normalized.length < 2) break;
-        ctx.beginPath();
-        ctx.moveTo(tx(finiteNumber(normalized[0][0])), ty(finiteNumber(normalized[0][1])));
-        for (let index = 1; index < normalized.length; index += 1) {
-          ctx.lineTo(tx(finiteNumber(normalized[index][0])), ty(finiteNumber(normalized[index][1])));
+      case 'F': {
+        const pts = s.pts as number[][];
+        if (!pts || pts.length < 2) break;
+        sctx.beginPath();
+        sctx.moveTo(tx(pts[0][0]), ty(pts[0][1]));
+        for (let i = 1; i < pts.length; i++) sctx.lineTo(tx(pts[i][0]), ty(pts[i][1]));
+        sctx.closePath();
+        sctx.fillStyle = String(s.fc ?? 'black');
+        sctx.fill();
+        if (s.pc) {
+          sctx.strokeStyle = String(s.pc);
+          sctx.lineWidth   = Number(s.pw ?? 1);
+          sctx.stroke();
         }
-        ctx.closePath();
-        ctx.fillStyle = String(shape.fc ?? "black");
-        ctx.fill();
-        if (shape.pc) {
-          ctx.strokeStyle = String(shape.pc);
-          ctx.lineWidth = Math.max(0.1, finiteNumber(shape.pw, 1));
-          ctx.stroke();
-        }
         break;
       }
-
-      case "D": {
-        ctx.beginPath();
-        ctx.arc(
-          tx(finiteNumber(shape.x)),
-          ty(finiteNumber(shape.y)),
-          Math.max(0.5, finiteNumber(shape.r, 5)),
-          0,
-          Math.PI * 2,
+      case 'D': {
+        sctx.beginPath();
+        sctx.arc(tx(s.x as number), ty(s.y as number), Math.max(0.5, Number(s.r ?? 5)), 0, Math.PI * 2);
+        sctx.fillStyle = String(s.c ?? 'black');
+        sctx.fill();
+        break;
+      }
+      case 'T': {
+        sctx.font         = String(s.font ?? '12px Arial');
+        sctx.fillStyle    = String(s.c ?? 'black');
+        sctx.textAlign    = (s.align ?? 'left') as CanvasTextAlign;
+        sctx.textBaseline = 'alphabetic';
+        sctx.fillText(String(s.txt ?? ''), tx(s.x as number), ty(s.y as number));
+        break;
+      }
+      case 'C': {
+        // clear() wipes the drawing but keeps the screen's background, which
+        // includes the bgpic picture — same as real turtle.
+        sctx.clearRect(0, 0, cw, ch);
+        paintTurtleBackground(sctx, cw, ch, bg);
+        break;
+      }
+      case 'S': {
+        // A stamp is an imprint of the cursor: same shape, colours and size.
+        // Payloads from before shape support only carry the pen colour `c`;
+        // those render the way they always did — a plain black arrowhead.
+        const legacy: TurtleLook = {
+          ...DEFAULT_LOOK,
+          sh: 'classic', sw: 1, sl: 1,
+          fc: String(s.c ?? 'black'),
+          pc: String(s.c ?? 'black'),
+        };
+        drawTurtleCursor(
+          sctx,
+          tx(s.x as number), ty(s.y as number),
+          (s.h as number) ?? 0,
+          mergeLook(legacy, s),
+          polys,
         );
-        ctx.fillStyle = String(shape.c ?? "black");
-        ctx.fill();
-        break;
-      }
-
-      case "T": {
-        ctx.font = String(shape.font ?? "12px Arial");
-        ctx.fillStyle = String(shape.c ?? "black");
-        ctx.textAlign = String(shape.align ?? "left") as CanvasTextAlign;
-        ctx.textBaseline = "alphabetic";
-        ctx.fillText(
-          String(shape.txt ?? ""),
-          tx(finiteNumber(shape.x)),
-          ty(finiteNumber(shape.y)),
-        );
-        break;
-      }
-
-      case "C": {
-        paintBase(ctx, canvasWidth, canvasHeight, backgroundColor, backgroundImage);
-        break;
-      }
-
-      case "S": {
-        drawStamp(ctx, shape, images, canvasWidth, canvasHeight);
         break;
       }
     }
-  } catch {
-    // A malformed user drawing command should not break the complete preview.
-  }
-
-  ctx.restore();
+  } catch (_e) { /* skip malformed shapes */ }
+  sctx.restore();
 }
 
-function applyCursorEvent(
-  shape: TurtleShape,
-  cursors: Map<number, RuntimeCursor>,
-  data: TurtleData,
-): void {
-  const cursor = cursorFor(cursors, turtleId(shape));
+// ── Pixel-per-second speeds for each turtle speed level (1–10) ───────────────
+// Calibrated to match real Python IDLE turtle feel.
+// speed(3) is the default (real turtle default) — feels educational and visible.
+// speed(0) / tracer(0) are handled separately as "instant".
+const TURTLE_PX_PER_SEC: Record<number, number> = {
+  1: 100, 2: 200, 3: 350, 4: 600,
+  5: 1000, 6: 1600, 7: 2500, 8: 4000, 9: 6500, 10: 10000,
+};
 
-  if (shape.k === "R") {
-    cursor.h = finiteNumber(shape.h, cursor.h);
-    cursor.x = finiteNumber(shape.x, cursor.x);
-    cursor.y = finiteNumber(shape.y, cursor.y);
-    return;
-  }
-
-  if (shape.k === "V") {
-    cursor.visible = boolValue(shape.v, cursor.visible);
-    cursor.x = finiteNumber(shape.x, cursor.x);
-    cursor.y = finiteNumber(shape.y, cursor.y);
-    cursor.h = finiteNumber(shape.h, cursor.h);
-    return;
-  }
-
-  if (shape.k === "I") {
-    const name = typeof shape.n === "string" ? shape.n : cursor.shape;
-    const asset = data.cursorAssets?.[name];
-    cursor.shape = name;
-    cursor.color = typeof shape.c === "string" ? shape.c : cursor.color;
-    cursor.width = Math.max(
-      2,
-      finiteNumber(shape.sw, finiteNumber(asset?.width, cursor.width)),
-    );
-    cursor.height = Math.max(
-      2,
-      finiteNumber(shape.sh, finiteNumber(asset?.height, cursor.height)),
-    );
-    cursor.rotate = boolValue(shape.r, boolValue(asset?.rotate, cursor.rotate));
-    cursor.x = finiteNumber(shape.x, cursor.x);
-    cursor.y = finiteNumber(shape.y, cursor.y);
-    cursor.h = finiteNumber(shape.h, cursor.h);
-  }
-}
-
-function syncCursorToShape(shape: TurtleShape, cursors: Map<number, RuntimeCursor>): void {
-  const cursor = cursorFor(cursors, turtleId(shape));
-  if (shape.k === "l" || shape.k === "M") {
-    cursor.x = finiteNumber(shape.x2, cursor.x);
-    cursor.y = finiteNumber(shape.y2, cursor.y);
-    cursor.h = finiteNumber(shape.h, cursor.h);
-  } else if (["D", "T", "S"].includes(shape.k)) {
-    cursor.x = finiteNumber(shape.x, cursor.x);
-    cursor.y = finiteNumber(shape.y, cursor.y);
-    cursor.h = finiteNumber(shape.h, cursor.h);
-  }
-}
-
-function renderSnapshot(
-  visibleContext: CanvasRenderingContext2D,
-  offscreen: HTMLCanvasElement,
-  cursors: Map<number, RuntimeCursor>,
-  images: ImageMap,
-  canvasWidth: number,
-  canvasHeight: number,
-): void {
-  visibleContext.clearRect(0, 0, canvasWidth, canvasHeight);
-  visibleContext.drawImage(offscreen, 0, 0);
-  drawAllCursors(visibleContext, cursors, images, canvasWidth, canvasHeight);
-}
-
-function renderInstant(
-  data: TurtleData,
-  context: CanvasRenderingContext2D,
-  offscreen: HTMLCanvasElement,
-  offscreenContext: CanvasRenderingContext2D,
-  cursors: Map<number, RuntimeCursor>,
-  images: ImageMap,
-  canvasWidth: number,
-  canvasHeight: number,
-  backgroundColor: string,
-  backgroundImage: HTMLImageElement | null,
-): void {
-  for (const shape of data.shapes ?? []) {
-    if (["R", "V", "I"].includes(shape.k)) {
-      applyCursorEvent(shape, cursors, data);
-      continue;
-    }
-
-    if (shape.k === "M") {
-      syncCursorToShape(shape, cursors);
-      continue;
-    }
-
-    drawTurtleShape(
-      offscreenContext,
-      shape,
-      canvasWidth,
-      canvasHeight,
-      backgroundColor,
-      backgroundImage,
-      images,
-    );
-    syncCursorToShape(shape, cursors);
-  }
-
-  renderSnapshot(context, offscreen, cursors, images, canvasWidth, canvasHeight);
-}
-
-function resolveTurtleCanvas(): HTMLCanvasElement | null {
-  return (
-    turtleCanvasEl ??
-    (document.getElementById("turtle-canvas") as HTMLCanvasElement | null)
-  );
-}
-
-function resolveTurtleOutput(): HTMLElement | null {
-  return (
-    turtleOutputEl ??
-    document.getElementById("turtle-output")
-  );
-}
-
-function resolveOutputPanel(): HTMLElement | null {
-  return (
-    panelEl ??
-    document.getElementById("panel")
-  );
-}
-
-function hasImageAssets(data: TurtleData): boolean {
-  if (imageSource(data)) return true;
-
-  return Object.values(data.cursorAssets ?? {}).some(
-    (asset) => Boolean(asset?.dataUrl),
-  );
-}
-
-export function clearTurtleCanvas(): void {
-  turtleRenderGeneration += 1;
-
-  if (turtleAnimRafId !== null) {
-    cancelAnimationFrame(turtleAnimRafId);
-    turtleAnimRafId = null;
-  }
-
-  const canvas = resolveTurtleCanvas();
-  const output = resolveTurtleOutput();
-
-  if (canvas) {
-    const context = canvas.getContext("2d");
-
-    if (context) {
-      context.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-    }
-  }
-
-  output?.classList.add("hidden");
-}
-
+/**
+ * Render a finished turtle program.
+ *
+ * When the program set a background picture with bgpic(), the picture has to be
+ * decoded before anything can be painted, so the drawing starts once the image
+ * has loaded (or failed). Everything else renders immediately.
+ */
 export function renderTurtle(data: TurtleData): void {
-  const generation = ++turtleRenderGeneration;
-
+  // Cancel a running animation right away: even while an image is loading, the
+  // previous drawing must not keep animating onto the canvas.
   if (turtleAnimRafId !== null) {
     cancelAnimationFrame(turtleAnimRafId);
     turtleAnimRafId = null;
   }
 
-  // Only the canvas is required. The output wrapper and resizable panel are
-  // optional UI helpers and must never be allowed to cancel Turtle rendering.
-  const canvas = resolveTurtleCanvas();
-  const output = resolveTurtleOutput();
-  const panel = resolveOutputPanel();
+  const seq = ++turtleRenderSeq;
+  turtleBgImage = null;
 
-  if (!canvas) {
-    console.error(
-      "Turtle renderer could not start because #turtle-canvas is missing.",
-    );
+  if (!data.picData) {
+    drawTurtleData(data);
     return;
   }
 
-  const canvasWidth =
-    data.w && data.w > 0
-      ? Math.min(data.w, 1200)
-      : 600;
-  const canvasHeight =
-    data.h && data.h > 0
-      ? Math.min(data.h, 900)
-      : 600;
-  const backgroundColor = data.bg ?? "white";
+  const picture = new Image();
+  picture.onload = () => {
+    if (seq !== turtleRenderSeq) return;   // a newer run already took over
+    turtleBgImage = picture;
+    drawTurtleData(data);
+  };
+  picture.onerror = () => {
+    if (seq !== turtleRenderSeq) return;
+    drawTurtleData(data);                  // unusable picture → plain background
+  };
+  picture.src = data.picData;
+}
 
-  // Open the preview immediately. This is deliberately done before SVG/image
-  // preloading so ordinary Turtle programs never depend on the asset loader.
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
-  output?.classList.remove("hidden");
-
-  const initialContext = canvas.getContext("2d");
-  if (!initialContext) return;
-  paintBase(
-    initialContext,
-    canvasWidth,
-    canvasHeight,
-    backgroundColor,
-    null,
-  );
-
-  if (panel) {
-    const targetHeight = Math.min(
-      canvasHeight + 80,
-      Math.floor(window.innerHeight * 0.72),
-    );
-
-    if (panel.offsetHeight < targetHeight) {
-      panel.style.height = `${targetHeight}px`;
-    }
+function drawTurtleData(data: TurtleData): void {
+  // ── Cancel any previous animation ──────────────────────────────────────────
+  if (turtleAnimRafId !== null) {
+    cancelAnimationFrame(turtleAnimRafId);
+    turtleAnimRafId = null;
   }
 
-  const renderPrepared = (
-    background: HTMLImageElement | null,
-    images: ImageMap,
-  ): void => {
-    if (generation !== turtleRenderGeneration) return;
+  const cw      = (data.w && data.w > 0) ? Math.min(data.w, 1200) : 600;
+  const ch      = (data.h && data.h > 0) ? Math.min(data.h, 900)  : 600;
+  const bg      = data.bg ?? 'white';
+  const shapes  = data.shapes ?? [];
+  const polys   = data.polys;
+  const cursors = data.cursors;
 
-    // Re-setting dimensions intentionally clears the temporary loading frame.
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+  // ── Setup visible canvas ───────────────────────────────────────────────────
+  const turtleElements = getTurtleElements();
+  if (!turtleElements) return;
+  const { output: turtleWindow, canvas: turtleCanvas } = turtleElements;
 
-    const maybeContext = canvas.getContext("2d");
-    if (!maybeContext) return;
-    const context: CanvasRenderingContext2D = maybeContext;
+  turtleCanvas.width  = cw;
+  turtleCanvas.height = ch;
+  const context = turtleCanvas.getContext('2d');
+  if (context === null) return;
 
-    const offscreen = document.createElement("canvas");
-    offscreen.width = canvasWidth;
-    offscreen.height = canvasHeight;
+  // Keep a permanently non-null, explicitly typed alias. TypeScript may not
+  // preserve null narrowing for `context` inside requestAnimationFrame callbacks.
+  const ctx: CanvasRenderingContext2D = context;
 
-    const maybeOffscreenContext = offscreen.getContext("2d");
-    if (!maybeOffscreenContext) return;
-    const offscreenContext: CanvasRenderingContext2D = maybeOffscreenContext;
+  paintTurtleBackground(ctx, cw, ch, bg);
 
-    paintBase(
-      offscreenContext,
-      canvasWidth,
-      canvasHeight,
-      backgroundColor,
-      background,
-    );
+  // ── Scale the canvas to fit the screen while preserving aspect ratio ───────
+  // The canvas keeps its full internal resolution (cw × ch); CSS max-* only
+  // shrinks the on-screen size, so drawings stay crisp on small viewports.
+  const maxCanvasW = Math.min(cw, Math.floor(window.innerWidth  * 0.6));
+  const maxCanvasH = Math.min(ch, Math.floor(window.innerHeight * 0.7));
+  turtleCanvas.style.maxWidth  = maxCanvasW + 'px';
+  turtleCanvas.style.maxHeight = maxCanvasH + 'px';
 
-    const shapes = data.shapes ?? [];
-    const runtimeCursors = initialCursorMap(data);
-    applyLeadingCursorEvents(shapes, runtimeCursors, data);
+  // ── Show the popup window ───────────────────────────────────────────────────
+  showPopupWindow(turtleWindow);
 
-    renderSnapshot(
-      context,
-      offscreen,
-      runtimeCursors,
-      images,
-      canvasWidth,
-      canvasHeight,
-    );
+  // Nothing was drawn, but the turtles themselves are still worth showing —
+  // that is what a real turtle window looks like after a program that only
+  // moves the cursor around.
+  if (shapes.length === 0) {
+    drawFinalCursors(ctx, cursors, cw, ch, polys);
+    return;
+  }
 
-    if (shapes.length === 0) return;
+  const tx = (x: number) => cw / 2 + x;
+  const ty = (y: number) => ch / 2 - y;
 
-    const tracerValue = data.tracer ?? 1;
-    const speedValue = data.speed ?? 3;
-    const instantLimit = 3000;
+  // ── Off-screen accumulation buffer (completed shapes only) ─────────────────
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = cw;
+  offscreen.height = ch;
+  const octx = offscreen.getContext('2d')!;
+  paintTurtleBackground(octx, cw, ch, bg);
 
-    if (
-      tracerValue === 0 ||
-      speedValue === 0 ||
-      shapes.length > instantLimit
-    ) {
-      renderInstant(
-        data,
-        context,
-        offscreen,
-        offscreenContext,
-        runtimeCursors,
-        images,
-        canvasWidth,
-        canvasHeight,
-        backgroundColor,
-        background,
-      );
-      return;
-    }
+  // ── Animation mode ─────────────────────────────────────────────────────────
+  const tracerVal = data.tracer ?? 1;
+  const speedVal  = data.speed  ?? 3;          // default matches shim default (3)
+  const INSTANT_LIMIT = 3000;                  // too many shapes → draw at once
 
-    const clampedSpeed = Math.min(
-      10,
-      Math.max(1, Math.round(speedValue)),
-    );
-    const pixelsPerSecond =
-      TURTLE_PX_PER_SEC[clampedSpeed] ?? 350;
+  // Bookkeeping events (cursor moves, appearance changes, show/hide) put
+  // nothing on the canvas, so they must not push a drawing into instant mode.
+  const BOOKKEEPING = new Set(['M', 'SH', 'HT', 'ST']);
+  let drawCount = 0;
+  for (const s of shapes) if (!BOOKKEEPING.has(s.k)) drawCount++;
 
-    let shapeIndex = 0;
-    let movementProgress = 0;
-    let turnProgress = 0;
-    let lastTime: number | null = null;
-    let commandPauseRemaining = 0;
+  if (tracerVal === 0 || speedVal === 0 || drawCount > INSTANT_LIMIT) {
+    for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg, polys);
+    ctx.drawImage(offscreen, 0, 0);
+    drawFinalCursors(ctx, cursors, cw, ch, polys);
+    return;
+  }
 
-    function animate(time: number): void {
-      if (generation !== turtleRenderGeneration) return;
+  // ── Pixels per second for this speed ──────────────────────────────────────
+  const clampedSpeed = Math.min(10, Math.max(1, Math.round(speedVal)));
+  const pxPerSec = TURTLE_PX_PER_SEC[clampedSpeed] ?? 350;
 
-      const deltaSeconds =
-        lastTime === null
-          ? 0
-          : Math.min((time - lastTime) / 1000, 0.1);
-      lastTime = time;
+  // ── Animated state ────────────────────────────────────────────────────────
+  let curX = 0, curY = 0, curH = 0, curVisible = true;
+  let curLook: TurtleLook = DEFAULT_LOOK;
+  let shapeIdx    = 0;
+  let lineProgress = 0; // 0..1 fractional progress within current 'l' shape
+  let lastTime: number | null = null;
 
-      let pixelBudget = pixelsPerSecond * deltaSeconds;
-      let timeBudgetMs = deltaSeconds * 1000;
+  function animFrame(time: number): void {
+    // Cap dt at 100 ms so a tab-hidden burst doesn't jump the turtle
+    const dt = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, 0.1);
+    lastTime = time;
 
-      while (shapeIndex < shapes.length) {
-        const shape = shapes[shapeIndex];
+    // Pixel budget for this frame
+    let budget = pxPerSec * dt;
 
-        if (commandPauseRemaining > 0) {
-          const used = Math.min(
-            commandPauseRemaining,
-            timeBudgetMs,
-          );
-          commandPauseRemaining -= used;
-          timeBudgetMs -= used;
+    // ── Advance through shapes using the pixel budget ──────────────────────
+    while (budget >= 0 && shapeIdx < shapes.length) {
+      const s = shapes[shapeIdx];
 
-          if (commandPauseRemaining > 0) break;
-        }
+      if (s.k === 'l') {
+        const dx  = (s.x2 as number) - (s.x1 as number);
+        const dy  = (s.y2 as number) - (s.y1 as number);
+        const len = Math.hypot(dx, dy);
 
-        if (shape.k === "l" || shape.k === "M") {
-          const cursor = cursorFor(
-            runtimeCursors,
-            turtleId(shape),
-          );
-          const startX = finiteNumber(shape.x1, cursor.x);
-          const startY = finiteNumber(shape.y1, cursor.y);
-          const endX = finiteNumber(shape.x2, startX);
-          const endY = finiteNumber(shape.y2, startY);
-          const dx = endX - startX;
-          const dy = endY - startY;
-          const length = Math.hypot(dx, dy);
-
-          if (length < 0.01) {
-            if (shape.k === "l") {
-              drawTurtleShape(
-                offscreenContext,
-                shape,
-                canvasWidth,
-                canvasHeight,
-                backgroundColor,
-                background,
-                images,
-              );
-            }
-
-            cursor.x = endX;
-            cursor.y = endY;
-            cursor.h = finiteNumber(shape.h, cursor.h);
-            shapeIndex += 1;
-            movementProgress = 0;
-            continue;
-          }
-
-          const remainingDistance =
-            (1 - movementProgress) * length;
-
-          if (pixelBudget >= remainingDistance) {
-            if (shape.k === "l") {
-              drawTurtleShape(
-                offscreenContext,
-                shape,
-                canvasWidth,
-                canvasHeight,
-                backgroundColor,
-                background,
-                images,
-              );
-            }
-
-            cursor.x = endX;
-            cursor.y = endY;
-            cursor.h = finiteNumber(
-              shape.h,
-              Math.atan2(dy, dx) * 180 / Math.PI,
-            );
-            pixelBudget -= remainingDistance;
-            shapeIndex += 1;
-            movementProgress = 0;
-            commandPauseRemaining = COMMAND_PAUSE_MS;
-            continue;
-          }
-
-          if (pixelBudget > 0) {
-            movementProgress += pixelBudget / length;
-            cursor.x = startX + dx * movementProgress;
-            cursor.y = startY + dy * movementProgress;
-            cursor.h = finiteNumber(
-              shape.h,
-              Math.atan2(dy, dx) * 180 / Math.PI,
-            );
-            pixelBudget = 0;
-          }
-
-          break;
-        }
-
-        if (shape.k === "R") {
-          const cursor = cursorFor(
-            runtimeCursors,
-            turtleId(shape),
-          );
-          const target = finiteNumber(shape.h, cursor.h);
-          const start = cursor.h;
-          const difference =
-            ((target - start + 540) % 360) - 180;
-          const progressAdvance =
-            timeBudgetMs / TURN_DURATION_MS;
-          const nextProgress = Math.min(
-            1,
-            turnProgress + progressAdvance,
-          );
-
-          cursor.h =
-            start +
-            difference *
-              (nextProgress - turnProgress) /
-              Math.max(1 - turnProgress, 0.0001);
-          turnProgress = nextProgress;
-          timeBudgetMs = 0;
-
-          if (turnProgress >= 1) {
-            cursor.h = target;
-            cursor.x = finiteNumber(shape.x, cursor.x);
-            cursor.y = finiteNumber(shape.y, cursor.y);
-            shapeIndex += 1;
-            turnProgress = 0;
-            commandPauseRemaining = COMMAND_PAUSE_MS;
-          }
-
-          break;
-        }
-
-        if (shape.k === "V" || shape.k === "I") {
-          applyCursorEvent(shape, runtimeCursors, data);
-          shapeIndex += 1;
-          commandPauseRemaining = COMMAND_PAUSE_MS;
+        if (len < 0.5) {
+          // Zero-length line — commit and move on
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
+          curX = s.x2 as number; curY = s.y2 as number;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+          shapeIdx++; lineProgress = 0;
+          budget -= 1;
           continue;
         }
 
-        drawTurtleShape(
-          offscreenContext,
-          shape,
-          canvasWidth,
-          canvasHeight,
-          backgroundColor,
-          background,
-          images,
-        );
-        syncCursorToShape(shape, runtimeCursors);
-        shapeIndex += 1;
-        commandPauseRemaining = COMMAND_PAUSE_MS;
-      }
+        // How much further along this line can we move this frame?
+        const advance = budget / len;
+        const newProg = lineProgress + advance;
 
-      renderSnapshot(
-        context,
-        offscreen,
-        runtimeCursors,
-        images,
-        canvasWidth,
-        canvasHeight,
-      );
-
-      if (shapeIndex < shapes.length) {
-        turtleAnimRafId = requestAnimationFrame(animate);
+        if (newProg >= 1) {
+          // Complete this line: commit to offscreen, consume exact cost
+          budget -= (1 - lineProgress) * len;
+          lineProgress = 0;
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
+          curX = s.x2 as number; curY = s.y2 as number;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+          shapeIdx++;
+        } else {
+          // Partial: update progress and consume the whole budget
+          budget = -1; // stop the while loop
+          lineProgress = newProg;
+          curX = (s.x1 as number) + dx * lineProgress;
+          curY = (s.y1 as number) + dy * lineProgress;
+          curH = Math.atan2(dy, dx) * 180 / Math.PI;
+        }
       } else {
-        turtleAnimRafId = null;
+        // Non-line shapes: draw instantly, cost a tiny flat amount
+        if (!BOOKKEEPING.has(s.k)) {
+          drawTurtleShape(octx, s, cw, ch, bg, polys);
+        }
+        switch (s.k) {
+          case 'M':  curX = s.x as number; curY = s.y as number; break;
+          case 'F': {
+            const pts = s.pts as number[][];
+            if (pts?.length) { curX = pts[pts.length-1][0]; curY = pts[pts.length-1][1]; }
+            break;
+          }
+          case 'D': case 'T': curX = s.x as number; curY = s.y as number; break;
+          case 'S':
+            curX = s.x as number; curY = s.y as number;
+            curH = (s.h as number) ?? curH;
+            break;
+          case 'HT': curVisible = false; break;
+          case 'ST': curVisible = true;  break;
+          case 'SH': curLook = mergeLook(curLook, s); break;
+        }
+        shapeIdx++; lineProgress = 0;
+        // Flat cost keeps non-line shapes visible briefly; a pure appearance
+        // change draws nothing, so it must not eat into the frame budget.
+        if (s.k !== 'SH') budget -= 5;
       }
     }
 
-    turtleAnimRafId = requestAnimationFrame(animate);
-  };
+    // ── Render frame ──────────────────────────────────────────────────────────
+    // 1. All completed shapes (offscreen buffer)
+    ctx.drawImage(offscreen, 0, 0);
 
-  // Ordinary Turtle drawings are rendered synchronously. SVG/background image
-  // programs use the async loader, but the panel is already open and visible.
-  if (!hasImageAssets(data)) {
-    renderPrepared(null, new Map());
-    return;
+    // 2. Partial current line (not yet committed to offscreen)
+    if (lineProgress > 0 && shapeIdx < shapes.length && shapes[shapeIdx].k === 'l') {
+      const s = shapes[shapeIdx];
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx(s.x1 as number), ty(s.y1 as number));
+      ctx.lineTo(tx(curX), ty(curY));
+      ctx.strokeStyle = String(s.c ?? 'black');
+      ctx.lineWidth   = Number(s.w ?? 1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Cursor overlay — while drawing, the single animated cursor; once the
+    //    replay is over, every turtle at its final position (a program can use
+    //    several Turtle() objects, all of which stay on screen at the end).
+    const finished = shapeIdx >= shapes.length && lineProgress <= 0;
+    if (finished && cursors) {
+      drawFinalCursors(ctx, cursors, cw, ch, polys);
+    } else if (curVisible) {
+      drawTurtleCursor(ctx, tx(curX), ty(curY), curH, curLook, polys);
+    }
+
+    // ── Continue or finish ────────────────────────────────────────────────────
+    if (!finished) {
+      turtleAnimRafId = requestAnimationFrame(animFrame);
+    } else {
+      turtleAnimRafId = null;
+    }
   }
 
-  void preloadImages(data)
-    .then(({ background, cursors: images }) => {
-      renderPrepared(background, images);
-    })
-    .catch((error: unknown) => {
-      console.error("Turtle image preload failed:", error);
+  turtleAnimRafId = requestAnimationFrame(animFrame);
+}
 
-      // Keep the Turtle preview functional with built-in cursor fallbacks even
-      // when a malformed SVG or browser image decoder rejects an asset.
-      renderPrepared(null, new Map());
-    });
+/** Cancel any running animation, hide the popup window, and clear its pixels. */
+export function clearTurtleCanvas(): void {
+  if (turtleAnimRafId !== null) {
+    cancelAnimationFrame(turtleAnimRafId);
+    turtleAnimRafId = null;
+  }
+
+  // Also invalidate a background picture that is still loading, so a slow
+  // decode from the previous run cannot draw into the cleared canvas.
+  turtleRenderSeq++;
+  turtleBgImage = null;
+
+  // Normal code execution calls this even when the page has no turtle UI.
+  // Missing optional elements must therefore be a no-op, never a run failure.
+  const canvas = turtleCanvasEl ?? document.getElementById('turtle-canvas') as HTMLCanvasElement | null;
+
+  hidePopupWindow(TURTLE_WINDOW_ID);
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  ctx?.clearRect(0, 0, canvas.width, canvas.height);
 }
