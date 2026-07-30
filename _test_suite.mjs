@@ -263,6 +263,16 @@ await test("server: executePython applies traceback shift",      () => { const b
 await test("server: executePythonMulti applies traceback shift", () => { const b = serverSrc.slice(serverSrc.indexOf('async executePythonMulti('), serverSrc.indexOf('async executePHPMulti(')); assertContains(b, 'adjustTurtleTraceback('); assertContains(b, 'path.basename(mainFile)'); });
 await test("server: single shared turtle user-code separator",   () => assertContains(serverSrc, 'const TURTLE_USER_CODE_SEP'));
 
+// ── No execution result cache ────────────────────────────────────────────────
+// Replaying stored stdout makes a program a pure function of its source text,
+// which froze random.randint()/Math.random()/time-dependent output at the first
+// value produced. execute()/executeMulti() must always reach the real executor.
+await test("server: no execution result cache class",           () => { assertNotContains(serverSrc, 'class SmartCache'); assertNotContains(serverSrc, 'new SmartCache('); });
+await test("server: no run-request deduplicator",               () => { assertNotContains(serverSrc, 'class RequestDeduplicator'); assertNotContains(serverSrc, '.dedupe('); });
+await test("server: execute() always calls executeCode",        () => { const b = serverSrc.slice(serverSrc.indexOf('async execute(language'), serverSrc.indexOf('async executeMulti(')); assertContains(b, 'await this.executeCode(language, version, code)'); assertNotContains(b, 'cached: true'); });
+await test("server: executeMulti() always calls executeMultiFile", () => { const b = serverSrc.slice(serverSrc.indexOf('async executeMulti(language'), serverSrc.indexOf('async executeMultiFile(')); assertContains(b, 'await this.executeMultiFile(language, version, files'); assertNotContains(b, 'cached: true'); });
+await test("server: /api/run never reports cached:true",        () => assertContains(serverSrc, 'cached: false'));
+
 // ── Preflight: static pre-run check refuses to run broken Python ──────────────
 await test("server: PYTHON_PREFLIGHT_PATH points at preflight.py", () => { assertContains(serverSrc, 'const PYTHON_PREFLIGHT_PATH ='); assertContains(serverSrc, "'preflight.py'"); });
 await test("server: formatPreflightProblems helper present",       () => assertContains(serverSrc, 'function formatPreflightProblems('));
@@ -450,6 +460,47 @@ if (!serverAvailable) {
         assertEqual(data.exitCode, 0);
       }
     });
+
+    // ── Randomness: identical source must NOT produce identical output ───────
+    // Regression guard for the execution result cache, which returned the first
+    // run's stdout for every later run of the same code.
+    const RAND_JS = 'console.log(Math.floor(Math.random()*1e9))';
+
+    await test('JS: repeated identical runs give different random values', async () => {
+      const out = [];
+      for (let i = 0; i < 6; i++) {
+        const { data } = await apiRun({ language: 'javascript', code: RAND_JS });
+        assertEqual(data.exitCode, 0);
+        out.push(data.stdout.trim());
+      }
+      assert(new Set(out).size >= 5, `6 runs produced ${new Set(out).size} distinct values: ${out.join(', ')}`);
+    });
+
+    await test('JS: concurrent identical runs give different random values', async () => {
+      const results = await Promise.all(Array.from({length:6}, () => apiRun({ language: 'javascript', code: RAND_JS })));
+      const out = results.map(r => r.data.stdout.trim());
+      assert(new Set(out).size >= 5, `6 concurrent runs produced ${new Set(out).size} distinct values: ${out.join(', ')}`);
+    });
+
+    await test('JS: multi-file project re-randomises every run', async () => {
+      const files = [
+        { name: 'main.js', content: 'import { pick } from "./dice.js";\nconsole.log(pick());\n', isMain: true },
+        { name: 'dice.js', content: 'export const pick = () => Math.floor(Math.random()*1e9);\n' },
+      ];
+      const out = [];
+      for (let i = 0; i < 4; i++) {
+        const { data } = await apiRun({ language: 'javascript', files, entryPoint: 'main.js' });
+        assertEqual(data.exitCode, 0);
+        out.push(data.stdout.trim());
+      }
+      assert(new Set(out).size >= 3, `4 runs produced ${new Set(out).size} distinct values: ${out.join(', ')}`);
+    });
+
+    await test('JS: response never claims cached:true', async () => {
+      await apiRun({ language: 'javascript', code: "console.log('cachecheck')" });
+      const { data } = await apiRun({ language: 'javascript', code: "console.log('cachecheck')" });
+      assertEqual(data.cached, false, 'a repeated run must not be served from a cache');
+    });
   }
 
   // ── TypeScript ────────────────────────────────────────────────────────────
@@ -518,7 +569,9 @@ if (!serverAvailable) {
 
   if (!pythonOk) {
     ['basic stdout','syntax error → phase=compile','IndentationError → phase=compile',
-     'runtime error stays phase=run','turtle data returned','temp path stripped from stderr'
+     'runtime error stays phase=run','turtle data returned','temp path stripped from stderr',
+     'random.randint differs every run','random.shuffle/choice differ every run',
+     'multi-file random differs every run'
     ].forEach(n => skipTest(`Python: ${n}`, 'python3 not available on server'));
   } else {
     await test('Python: basic stdout', async () => {
@@ -565,6 +618,51 @@ if (!serverAvailable) {
       assertEqual(data.exitCode, 0);
       assert(data.turtleData, 'turtleData must be in response');
       assert(Array.isArray(data.turtleData.shapes), 'turtleData.shapes must be an array');
+    });
+
+    // ── Randomness: the originally reported bug ───────────────────────────────
+    // "import random; print(random.randint(1,100))" printed the same number on
+    // every run because the server replayed the cached stdout instead of
+    // starting a new Python process.
+    await test('Python: random.randint differs every run', async () => {
+      const code = 'import random\nprint(random.randint(1, 1000000))';
+      const out = [];
+      for (let i = 0; i < 6; i++) {
+        const { data } = await apiRun({ language: 'python', code });
+        assertEqual(data.exitCode, 0);
+        out.push(data.stdout.trim());
+      }
+      assert(new Set(out).size >= 5, `6 runs produced ${new Set(out).size} distinct values: ${out.join(', ')}`);
+    });
+
+    await test('Python: random.shuffle/choice differ every run', async () => {
+      const code = [
+        'import random',
+        'cards = list(range(1, 15))',
+        'random.shuffle(cards)',
+        'print(cards, random.choice(cards), random.random())',
+      ].join('\n');
+      const out = [];
+      for (let i = 0; i < 5; i++) {
+        const { data } = await apiRun({ language: 'python', code });
+        assertEqual(data.exitCode, 0);
+        out.push(data.stdout.trim());
+      }
+      assert(new Set(out).size >= 4, `5 runs produced ${new Set(out).size} distinct values`);
+    });
+
+    await test('Python: multi-file random differs every run', async () => {
+      const files = [
+        { name: 'main.py', content: 'from dice import roll\nprint(roll())\n', isMain: true },
+        { name: 'dice.py', content: 'import random\n\n\ndef roll():\n    return random.randint(1, 1000000)\n' },
+      ];
+      const out = [];
+      for (let i = 0; i < 4; i++) {
+        const { data } = await apiRun({ language: 'python', files, entryPoint: 'main.py' });
+        assertEqual(data.exitCode, 0);
+        out.push(data.stdout.trim());
+      }
+      assert(new Set(out).size >= 3, `4 runs produced ${new Set(out).size} distinct values: ${out.join(', ')}`);
     });
   }
 

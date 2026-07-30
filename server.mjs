@@ -6,8 +6,8 @@
  * 
  * Features:
  * - Auto-scaling worker pool based on CPU/memory/queue load
- * - Multi-tier caching (memory + Redis)
- * - Request deduplication (coalesce identical requests)
+ * - Every run executes for real: program output is never cached or coalesced,
+ *   so random/time/input-dependent programs behave correctly on every run
  * - Circuit breaker pattern for fail-safety
  * - Graceful degradation under extreme load
  * - Health monitoring and self-healing
@@ -950,13 +950,6 @@ const CONFIG = {
     maxInteractiveSessionsPerIp: parseInt(process.env.MAX_INTERACTIVE_PER_IP || "50", 10),
   },
   
-  // Cache settings
-  cache: {
-    maxSize: Math.min(100000, Math.floor(TOTAL_MEMORY_MB / 2)),
-    ttlMs: 30 * 60 * 1000, // 30 minutes
-    cleanupIntervalMs: 60000,
-  },
-  
   // Circuit breaker
   circuitBreaker: {
     failureThreshold: 5,
@@ -1007,56 +1000,34 @@ function log(level, message, meta = {}) {
 }
 
 // ============================================
-// LRU CACHE WITH TTL
+// WHY THERE IS NO EXECUTION RESULT CACHE
 // ============================================
-class SmartCache {
-  constructor(maxSize = CONFIG.cache.maxSize, ttlMs = CONFIG.cache.ttlMs) {
-    this.maxSize = maxSize;
-    this.ttlMs = ttlMs;
-    this.cache = new Map();
-    this.stats = { hits: 0, misses: 0, size: 0 };
-    
-    setInterval(() => this.cleanup(), CONFIG.cache.cleanupIntervalMs);
-  }
-  
-  static hash(language, version, code) {
-    const normalized = code.trim().replace(/\s+/g, ' ');
-    return crypto.createHash('sha256')
-      .update(`${language}:${version}:${normalized}`)
-      .digest('hex')
-      .substring(0, 16);
-  }
-  
-  get(key) {
-    const entry = this.cache.get(key);
-    if (!entry || Date.now() > entry.expiresAt) {
-      if (entry) this.cache.delete(key);
-      this.stats.misses++;
-      return null;
-    }
-    this.stats.hits++;
-    return entry.value;
-  }
-  
-  set(key, value) {
-    if (this.cache.size >= this.maxSize) {
-      const oldest = this.cache.keys().next().value;
-      this.cache.delete(oldest);
-    }
-    this.cache.set(key, { value, expiresAt: Date.now() + this.ttlMs });
-    this.stats.size = this.cache.size;
-  }
-  
-  cleanup() {
-    const now = Date.now();
-    for (const [key, entry] of this.cache) {
-      if (now > entry.expiresAt) this.cache.delete(key);
-    }
-    this.stats.size = this.cache.size;
-  }
-  
-  getStats() { return { ...this.stats, hitRate: this.stats.hits / (this.stats.hits + this.stats.misses || 1) }; }
-}
+// Program output is never stored and replayed. A previous implementation kept an
+// LRU cache keyed by (language, version, normalized code) and returned the saved
+// stdout/stderr on a hit, which made "Run" a pure function of the source text.
+// That is wrong for a code IDE: a program is not required to be deterministic.
+//
+//   import random
+//   print(random.randint(1, 100))
+//
+// printed the same number on every run until the entry expired, because the
+// second run never started a Python process at all. The same applied to
+// random.choice/shuffle/random(), secrets, os.urandom, uuid, time/datetime,
+// Math.random(), java.util.Random, PHP rand()/mt_rand(), Guid.NewGuid(), and to
+// any program whose output depends on input or on files it writes.
+//
+// A "skip the cache when the code looks non-deterministic" heuristic was
+// rejected: it has to recognize every such API in six languages, across
+// aliases (`from random import *`), indirection (`__import__("random")`), and
+// helper modules in multi-file projects. One miss silently freezes a student's
+// output again. Correctness here is worth one process spawn per run - process
+// pools, the warm C# project template and the language-config cache all remain,
+// so a run costs exactly what a cache miss always cost.
+//
+// Run requests are not deduplicated either: two identical in-flight runs are two
+// real executions. Sharing one result would hand both callers the same "random"
+// number. Load is bounded by the rate limiter and CONFIG.execution.maxConcurrent
+// instead.
 
 // ============================================
 // CIRCUIT BREAKER (fail-safe)
@@ -1119,30 +1090,6 @@ class CircuitBreaker {
   }
   
   getState() { return { name: this.name, state: this.state, failures: this.failures }; }
-}
-
-// ============================================
-// REQUEST DEDUPLICATION
-// ============================================
-class RequestDeduplicator {
-  constructor() {
-    this.inflight = new Map();
-  }
-  
-  async dedupe(key, fn) {
-    if (this.inflight.has(key)) {
-      return this.inflight.get(key);
-    }
-    
-    const promise = fn().finally(() => {
-      this.inflight.delete(key);
-    });
-    
-    this.inflight.set(key, promise);
-    return promise;
-  }
-  
-  getInflightCount() { return this.inflight.size; }
 }
 
 // ============================================
@@ -1241,8 +1188,6 @@ class ProcessPool {
 // ============================================
 class SmartExecutor {
   constructor() {
-    this.cache = new SmartCache();
-    this.deduplicator = new RequestDeduplicator();
     this.pools = {
       node: new ProcessPool('node', 'node', ['--input-type=module', '-e']),
       python: new ProcessPool('python', 'python3', ['-u', '-c']),
@@ -1276,34 +1221,21 @@ class SmartExecutor {
       throw new Error('Server at capacity - please try again');
     }
     
-    // Cache check
-    const cacheKey = SmartCache.hash(language, version, code);
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      return { ...cached, cached: true };
+    // Every call runs the program. Results are never cached or shared between
+    // requests - see "WHY THERE IS NO EXECUTION RESULT CACHE" above.
+    this.activeExecutions++;
+    this.totalExecutions++;
+
+    try {
+      const result = await this.executeCode(language, version, code);
+
+      // Parse turtle graphics output (Python only)
+      if (language === 'python') parseTurtleOutput(result);
+
+      return result;
+    } finally {
+      this.activeExecutions--;
     }
-    
-    // Deduplicate identical requests
-    return this.deduplicator.dedupe(cacheKey, async () => {
-      this.activeExecutions++;
-      this.totalExecutions++;
-      
-      try {
-        const result = await this.executeCode(language, version, code);
-        
-        // Parse turtle graphics output (Python only)
-        if (language === 'python') parseTurtleOutput(result);
-        
-        // Cache successful results
-        if (result.exitCode === 0) {
-          this.cache.set(cacheKey, result);
-        }
-        
-        return result;
-      } finally {
-        this.activeExecutions--;
-      }
-    });
   }
   
   /**
@@ -1318,49 +1250,25 @@ class SmartExecutor {
       throw new Error('Server at capacity - please try again');
     }
     
-    // Generate cache key from all files
     const normalizedEntryPoint = String(
       entryPoint || files.find(f => f.isMain)?.name || files[0]?.name || ''
     ).replace(/\\/g, '/').replace(/^\/+/, '');
 
-    // The selected entry point is part of execution identity. Two runs with
-    // identical project files but different active files must never share a
-    // cached result or an in-flight deduplication promise.
-    const filesHash = files
-      .map(f => ({
-        name: String(f.name || '').replace(/\\/g, '/').replace(/^\/+/, ''),
-        content: String(f.content ?? ''),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map(f => `${f.name.length}:${f.name}:${f.content.length}:${f.content}`)
-      .join('|||');
-    const projectIdentity = `entry:${normalizedEntryPoint}|||files:${filesHash}`;
-    const cacheKey = SmartCache.hash(language, version, projectIdentity);
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      return { ...cached, cached: true };
+    // Every call runs the project. Results are never cached or shared between
+    // requests - see "WHY THERE IS NO EXECUTION RESULT CACHE" above.
+    this.activeExecutions++;
+    this.totalExecutions++;
+
+    try {
+      const result = await this.executeMultiFile(language, version, files, normalizedEntryPoint);
+
+      // Parse turtle graphics output (Python only)
+      if (language === 'python') parseTurtleOutput(result);
+
+      return result;
+    } finally {
+      this.activeExecutions--;
     }
-    
-    return this.deduplicator.dedupe(cacheKey, async () => {
-      this.activeExecutions++;
-      this.totalExecutions++;
-      
-      try {
-        const result = await this.executeMultiFile(language, version, files, normalizedEntryPoint);
-        
-        // Parse turtle graphics output (Python only)
-        if (language === 'python') parseTurtleOutput(result);
-        
-        // Cache successful results
-        if (result.exitCode === 0) {
-          this.cache.set(cacheKey, result);
-        }
-        
-        return result;
-      } finally {
-        this.activeExecutions--;
-      }
-    });
   }
   
   /**
@@ -2890,8 +2798,6 @@ class SmartExecutor {
       maxConcurrent: CONFIG.execution.maxConcurrent,
       load: (this.getLoad() * 100).toFixed(1) + '%',
       uptime: Math.floor((Date.now() - this.startTime) / 1000) + 's',
-      cache: this.cache.getStats(),
-      inflight: this.deduplicator.getInflightCount(),
     };
   }
 }
@@ -3944,7 +3850,9 @@ app.post("/api/run", async (req, res) => {
       stderr: result.stderr,
       exitCode: result.exitCode,
       durationMs: result.durationMs,
-      cached: result.cached || false,
+      // Kept for API compatibility with older clients. Always false: the server
+      // never replays a stored result, so nothing is ever served from a cache.
+      cached: false,
       turtleData: result.turtleData || null,
       blocked: result.blocked === true,
       phase: result.phase || 'run',
@@ -4641,7 +4549,6 @@ server.listen(CONFIG.port, '0.0.0.0', () => {
     mode: CONFIG.isDev ? 'development' : 'production',
     maxConcurrent: CONFIG.execution.maxConcurrent,
     maxQueue: CONFIG.execution.maxQueueSize,
-    cacheSize: CONFIG.cache.maxSize,
     cpuCount: CPU_COUNT,
     memoryMB: TOTAL_MEMORY_MB,
   });

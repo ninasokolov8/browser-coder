@@ -253,7 +253,7 @@ Browser Coder has three main layers.
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Returns server health, load, uptime, and cache status. |
+| `GET /health` | Returns server health, load, active/total executions, and uptime. |
 | `GET /api/languages` | Returns supported languages and versions. |
 | `GET /api/starter/:lang/:version` | Returns starter code for a language/version. |
 | `POST /api/run` | Executes a single code file or snippet. |
@@ -271,8 +271,7 @@ The execution engine is designed to be fast, limited, and resilient.
 |---|---|
 | Code validation | Blocks dangerous patterns before execution. |
 | Runtime restrictions | Runs languages with safer flags and memory limits. |
-| Request cache | Returns repeated identical successful executions quickly. |
-| Request deduplication | Prevents duplicate concurrent requests from executing multiple times. |
+| No output cache | Every run starts a real process; results are never stored and replayed, so `random`, time and input-dependent programs produce fresh output on every run. |
 | Circuit breaker | Temporarily fails fast after repeated runtime failures. |
 | Process limits | Limits active executions based on server memory. |
 | Timeout control | Stops long-running or stuck code. |
@@ -288,7 +287,6 @@ The execution engine is designed to be fast, limited, and resilient.
 | C# timeout | 45 seconds by default, because .NET build/run can take longer. |
 | Maximum output | 100,000 characters. |
 | API JSON body size | 100 KB. |
-| Cache TTL | 30 minutes. |
 | Circuit breaker threshold | Opens after 5 failures. |
 | Circuit breaker reset | Retries after 30 seconds. |
 
@@ -342,8 +340,7 @@ The system is built for production deployment and high traffic.
 | Rate limiting | nginx limits API request bursts and the API has per-IP request windows. |
 | Static caching | Static assets are cached with long-lived headers. |
 | API caching | Language and starter endpoints are cached by nginx. |
-| Execution caching | Successful identical code executions are cached in the API layer. |
-| Request deduplication | Duplicate in-flight executions share one result. |
+| Execution caching | None by design. Program output is never cached or shared between runs, so repeated runs of the same code really re-execute. |
 | Compression | HTTP responses use compression. |
 | Build optimization | Vite splits Monaco into a separate chunk and disables sourcemaps for production builds. |
 
@@ -503,7 +500,7 @@ These are not blockers, but they are important management considerations.
 | High | Define official StepUp save/submission contracts for code and project files. | Ensures student work is stored reliably outside the browser. |
 | High | Add management dashboards for usage, language mix, execution volume, failures, and security-test status. | Helps operations make decisions from real data. |
 | Medium | Add clearer product documentation for embedded modes and parent messages. | Makes integration easier for future StepUp features. |
-| Medium | Add observability around slow executions, timeout rates, cache hits, and rate-limit events. | Supports capacity planning and incident response. |
+| Medium | Add observability around slow executions, timeout rates, and rate-limit events. | Supports capacity planning and incident response. |
 | Medium | Validate accessibility and mobile behavior for student-facing embedded contexts. | Coding tasks may be used by mixed-ability learners and different devices. |
 | Low | Expand starter templates and lesson-specific templates. | Improves content creation speed and learner guidance. |
 

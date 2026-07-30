@@ -117,8 +117,7 @@ docker compose up -d
 ### 🚀 Production Ready
 - Auto-scaling (1-8 replicas)
 - Circuit breaker protection
-- LRU cache with TTL
-- Request deduplication
+- Every run really executes (no output cache)
 - Rate limiting (30/sec/IP)
 
 </td>
@@ -291,7 +290,8 @@ docker compose up -d
       ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
       │     API #1      │         │     API #2      │         │     API #N      │
       │  ┌───────────┐  │         │  ┌───────────┐  │         │  ┌───────────┐  │
-      │  │ LRU Cache │  │         │  │ LRU Cache │  │         │  │ LRU Cache │  │
+      │  │ Rate      │  │         │  │ Rate      │  │         │  │ Rate      │  │
+      │  │ Limiter   │  │         │  │ Limiter   │  │         │  │ Limiter   │  │
       │  └───────────┘  │         │  └───────────┘  │         │  └───────────┘  │
       │  ┌───────────┐  │         │  ┌───────────┐  │         │  ┌───────────┐  │
       │  │ Circuit   │  │         │  │ Circuit   │  │         │  │ Circuit   │  │
@@ -317,21 +317,29 @@ docker compose up -d
 ### Smart Server Components
 
 <details>
-<summary><strong>🗄️ LRU Cache with TTL</strong></summary>
+<summary><strong>🎲 No execution result cache (by design)</strong></summary>
 
-- **Capacity:** 100 entries per API instance
-- **TTL:** 30 minutes
-- **Key:** Hash of code + language + version
-- **Benefit:** Identical executions return instantly
+Program output is never stored and replayed — every **Run** starts a real
+process, so `"cached"` in an `/api/run` response is always `false`.
 
-```javascript
-// Cache hit example
-{
-  "stdout": "Hello, World!",
-  "cached": true,        // ← Cache hit!
-  "durationMs": 0        // ← Instant response
-}
+An earlier version cached results in an LRU keyed by code + language + version.
+That made a run a pure function of the source text and froze non-deterministic
+programs at their first result:
+
+```python
+import random
+print(random.randint(1, 100))   # printed the same number every run
 ```
+
+The same applied to `random.choice/shuffle`, `secrets`, `uuid`, `time`,
+`Math.random()`, `java.util.Random`, PHP `rand()`, `Guid.NewGuid()`, and to any
+program whose output depends on input or on files it writes. Speed comes from
+process pools and the pre-warmed C# project template instead — a run costs what
+a cache miss always cost.
+
+Do not re-introduce output caching, and do not try to gate it on a
+"looks deterministic" heuristic: one missed API silently freezes a student's
+output again.
 
 </details>
 
@@ -772,13 +780,9 @@ curl http://localhost/health
 {
   "status": "healthy",
   "active": 2,
+  "total": 178,
   "load": "45.2%",
-  "uptime": 3600,
-  "cache": {
-    "size": 42,
-    "hits": 156,
-    "misses": 23
-  }
+  "uptime": 3600
 }
 ```
 
