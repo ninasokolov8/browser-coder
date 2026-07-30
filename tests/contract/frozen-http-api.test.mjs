@@ -107,9 +107,12 @@ describe('POST /api/run - single-file request shape (Step-Up CodeRunner)', () =>
 
     assert.equal(status, 200);
 
-    // The full field set older clients read. `cached` is retained for wire
-    // compatibility and is always false since d4b0cd6 removed the result cache.
-    assert.deepEqual(Object.keys(body).sort(), [
+    // Every field an existing client reads MUST still be present. Extra fields
+    // are explicitly allowed: additive change within a major version is the
+    // documented evolution rule (blueprint 22.2), and Step-Up reads named keys
+    // rather than enumerating them. Asserting exact equality here would make the
+    // response shape unextendable, which is a stricter promise than was made.
+    const required = [
       'blocked',
       'cached',
       'durationMs',
@@ -118,9 +121,16 @@ describe('POST /api/run - single-file request shape (Step-Up CodeRunner)', () =>
       'stderr',
       'stdout',
       'turtleData',
-    ]);
+    ];
+    for (const key of required) {
+      assert.ok(key in body, `required v1 field "${key}" is missing from the response`);
+    }
 
-    assert.equal(body.stdout, 'hello');
+    // Exact bytes, including the newline console.log() writes. v1 returned
+    // stdout.trim(), which destroyed leading and trailing whitespace the program
+    // actually produced (V-31). Asserting the trimmed value here would have made
+    // that defect a contract.
+    assert.equal(body.stdout, 'hello\n');
     assert.equal(body.stderr, '');
     assert.equal(body.exitCode, 0);
     assert.equal(body.cached, false);
@@ -194,7 +204,7 @@ describe('POST /api/run - multi-file request shape', () => {
 
     assert.equal(status, 200);
     assert.equal(body.exitCode, 0, `stderr was: ${body.stderr}`);
-    assert.equal(body.stdout, '42');
+    assert.equal(body.stdout, '42\n');
   });
 
   it('accepts { name } as well as { path } on each file', requires('python'), async () => {
@@ -206,7 +216,7 @@ describe('POST /api/run - multi-file request shape', () => {
     });
 
     assert.equal(status, 200);
-    assert.equal(body.stdout, 'by-name');
+    assert.equal(body.stdout, 'by-name\n');
   });
 
   it('rejects an entryPoint that is not in files with 400', async () => {

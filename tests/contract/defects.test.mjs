@@ -13,6 +13,12 @@
  * Baseline recorded 2026-07-30 against full_refactor @ d4b0cd6:
  *   21 gates failing, 2 skipped (no python3 on the authoring host), 1 already
  *   passing and therefore promoted to a permanent gate.
+ *
+ * After Phase A3/A4 (single execution pipeline over language adapters):
+ *   10 further gates closed and promoted to permanent - V-06, V-26 (all four),
+ *   N-11, N-12 (both), V-29, V-31 (both). They were fixed structurally rather
+ *   than individually: one canonical path validator, one termination model, one
+ *   streaming output decoder and per-job directories close a defect class each.
  */
 
 import { after, before, describe, it } from 'node:test';
@@ -164,10 +170,7 @@ describe('V-03 / V-04 preview documents execute on the IDE origin', () => {
 });
 
 describe('V-06 C# multi-file can reach MSBuild', () => {
-  it(
-    'rejects an MSBuild control file supplied as a project file',
-    open('V-06'),
-    async () => {
+  it('rejects an MSBuild control file supplied as a project file', async () => {
       const { status, body } = await server.postJson('/api/run', {
         language: 'csharp',
         version: 'csharp12',
@@ -193,10 +196,7 @@ describe('V-06 C# multi-file can reach MSBuild', () => {
 });
 
 describe('V-20 signal and output-limit termination must not report success', () => {
-  it(
-    'reports a nonzero exit code when output is truncated',
-    open('V-20'),
-    async () => {
+  it('reports a nonzero exit code when output is truncated', async () => {
       const { body } = await server.postJson('/api/run', {
         language: 'javascript',
         version: 'es2022',
@@ -215,9 +215,7 @@ describe('V-20 signal and output-limit termination must not report success', () 
   // Already correct: the wall-clock path sets `killed` before signalling, so it
   // maps to -1. Promoted to a permanent gate so the output-cap fix cannot
   // regress it - the two paths share the same exit-code expression.
-  it(
-    'reports a nonzero exit code when the wall-clock timeout fires',
-    async () => {
+  it('reports a nonzero exit code when the wall-clock timeout fires', async () => {
       const { body } = await server.postJson('/api/run', {
         language: 'javascript',
         version: 'es2022',
@@ -248,32 +246,40 @@ describe('V-23 / V-24 job isolation', () => {
     },
   );
 
-  it(
-    'does not let one job read another job\'s files',
-    open('V-24'),
-    async () => {
-      // A single-file JS run is currently granted read access to the whole
-      // shared temp root, which contains every other job's sources.
-      const { body } = await server.postJson('/api/run', {
-        language: 'javascript',
-        version: 'es2022',
-        // Uses only the permitted-by-policy directory listing surface; the
-        // point is whether the sandbox boundary is per-job.
-        code: 'console.log(process.cwd())',
-      });
+  it('gives each concurrent run its own private directory', async () => {
+    // The property under test is that two concurrent runs cannot see each
+    // other's files. Previously every job shared one temp root and a single-file
+    // JS run was granted --allow-fs-read over the whole of it.
+    //
+    // process.cwd() is not usable as a probe: the policy corpus blocks it, and
+    // correctly so. import.meta.url is not blocked and reveals the directory the
+    // program was loaded from, which is exactly the boundary in question.
+    const probe = 'console.log(new URL(import.meta.url).pathname)';
 
-      assert.equal(body.exitCode, 0);
-      assert.match(
-        body.stdout,
-        /job|run_|isess/,
-        'the job ran in the shared temp root rather than a per-job directory',
-      );
-    },
-  );
+    const [first, second] = await Promise.all([
+      server.postJson('/api/run', { language: 'javascript', version: 'es2022', code: probe }),
+      server.postJson('/api/run', { language: 'javascript', version: 'es2022', code: probe }),
+    ]);
+
+    assert.equal(first.body.exitCode, 0, `stderr: ${first.body.stderr}`);
+    assert.equal(second.body.exitCode, 0, `stderr: ${second.body.stderr}`);
+
+    const dirOf = out => out.trim().split('/').slice(0, -1).join('/');
+    const a = dirOf(first.body.stdout);
+    const b = dirOf(second.body.stdout);
+
+    assert.ok(a.length > 0 && b.length > 0, 'could not determine the job directory');
+    assert.notEqual(
+      a,
+      b,
+      "two concurrent runs shared one directory, so each could read the other's source",
+    );
+    assert.match(a, /job-/, 'the run did not execute inside a per-job directory');
+  });
 });
 
 describe('V-26 canonical path validation', () => {
-  it('rejects duplicate paths in one project', open('V-26-duplicate'), async () => {
+  it('rejects duplicate paths in one project', async () => {
     const { status, body } = await server.postJson('/api/run', {
       language: 'python',
       version: 'python3',
@@ -288,7 +294,7 @@ describe('V-26 canonical path validation', () => {
     assert.match(body.error, /duplicate/i);
   });
 
-  it('rejects a NUL byte in a path', open('V-26-nul'), async () => {
+  it('rejects a NUL byte in a path', async () => {
     const { status } = await server.postJson('/api/run', {
       language: 'python',
       version: 'python3',
@@ -298,7 +304,7 @@ describe('V-26 canonical path validation', () => {
     assert.equal(status, 400, 'a NUL byte in a path was accepted');
   });
 
-  it('rejects a POSIX-absolute path instead of silently relativizing it', open('N-12'), async () => {
+  it('rejects a POSIX-absolute path instead of silently relativizing it', async () => {
     // Normalization strips the leading slash before the startsWith('/') check
     // runs, so the absolute-path rejection is unreachable and "/etc/passwd.py"
     // is quietly rewritten to "etc/passwd.py" and accepted.
@@ -311,7 +317,7 @@ describe('V-26 canonical path validation', () => {
     assert.equal(status, 400, 'an absolute path was silently rewritten to a relative one');
   });
 
-  it('rejects two paths that normalize to the same file', open('N-12-collision'), async () => {
+  it('rejects two paths that normalize to the same file', async () => {
     // Direct consequence of the above: "/main.py" and "main.py" both become
     // "main.py", so one file silently overwrites the other on disk.
     const { status } = await server.postJson('/api/run', {
@@ -327,7 +333,7 @@ describe('V-26 canonical path validation', () => {
     assert.equal(status, 400, 'two paths collapsing to one file were accepted');
   });
 
-  it('reports an unknown entryPoint distinctly from a missing one', open('N-11'), async () => {
+  it('reports an unknown entryPoint distinctly from a missing one', async () => {
     const { body } = await server.postJson('/api/run', {
       language: 'python',
       version: 'python3',
@@ -345,7 +351,7 @@ describe('V-26 canonical path validation', () => {
     );
   });
 
-  it('rejects a path that is both a file and a directory prefix', open('V-26-prefix'), async () => {
+  it('rejects a path that is both a file and a directory prefix', async () => {
     const { status } = await server.postJson('/api/run', {
       language: 'python',
       version: 'python3',
@@ -360,7 +366,7 @@ describe('V-26 canonical path validation', () => {
 });
 
 describe('V-29 health must separate liveness from saturation', () => {
-  it('exposes /live and /ready as distinct endpoints', open('V-29'), async () => {
+  it('exposes /live and /ready as distinct endpoints', async () => {
     const live = await server.get('/live');
     const ready = await server.get('/ready');
 
@@ -370,10 +376,7 @@ describe('V-29 health must separate liveness from saturation', () => {
 });
 
 describe('V-31 output byte fidelity', () => {
-  it(
-    'preserves leading and trailing whitespace in program output',
-    open('V-31-trim'),
-    async () => {
+  it('preserves leading and trailing whitespace in program output', async () => {
       const { body } = await server.postJson('/api/run', {
         language: 'javascript',
         version: 'es2022',
@@ -388,10 +391,7 @@ describe('V-31 output byte fidelity', () => {
     },
   );
 
-  it(
-    'decodes multi-byte characters split across chunk boundaries',
-    open('V-31-utf8'),
-    async () => {
+  it('decodes multi-byte characters split across chunk boundaries', async () => {
       // Written in many separate bursts so the bytes genuinely cross pipe-chunk
       // boundaries. One large write can arrive as a single chunk, which would
       // let this pass without exercising the boundary it exists to check.

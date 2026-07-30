@@ -37,6 +37,37 @@ function probe(command, args) {
   }
 }
 
+/**
+ * Java needs BOTH halves of the toolchain, at compatible versions.
+ *
+ * A mixed install is common on developer machines and produces a deeply
+ * confusing failure: javac 17 compiles happily, then the JRE 8 launcher rejects
+ * the class file with UnsupportedClassVersionError - which looks like a bug in
+ * the adapter rather than a local environment problem. Requiring the runtime's
+ * major version to be at least the compiler's turns that into an honest skip.
+ */
+function javaToolchain() {
+  const compiler = probe('javac', ['-version']);
+  if (!compiler) return null;
+  const runtime = probe('java', ['-version']);
+  if (!runtime) return null;
+
+  const majorOf = text => {
+    // "javac 17.0.9" and "openjdk version \"1.8.0_501\"" both appear.
+    const modern = text.match(/\b(\d{2,})\b/);
+    if (modern) return Number.parseInt(modern[1], 10);
+    const legacy = text.match(/1\.(\d)\./);
+    return legacy ? Number.parseInt(legacy[1], 10) : null;
+  };
+
+  const compilerMajor = majorOf(compiler);
+  const runtimeMajor = majorOf(runtime);
+  if (compilerMajor && runtimeMajor && runtimeMajor < compilerMajor) {
+    return null;
+  }
+  return `${compiler.split('\n')[0]} / ${runtime.split('\n')[0]}`;
+}
+
 // Probe the exact binaries the server spawns, so availability here means the
 // server can actually run that language - not merely that something with a
 // similar name is on PATH.
@@ -44,9 +75,9 @@ const PROBES = {
   javascript: () => probe(process.execPath, ['--version']),
   typescript: () => probe(process.execPath, ['--version']),
   python: () => probe(process.env.PYTHON_BIN || 'python3', ['--version']),
-  java: () => probe('javac', ['-version']),
-  php: () => probe('php', ['--version']),
-  csharp: () => probe('dotnet', ['--version']),
+  java: javaToolchain,
+  php: () => probe(process.env.PHP_BIN || 'php', ['--version']),
+  csharp: () => probe(process.env.DOTNET_BIN || 'dotnet', ['--version']),
 };
 
 const detected = new Map();

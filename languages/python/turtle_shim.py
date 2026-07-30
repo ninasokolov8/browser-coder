@@ -1,18 +1,24 @@
 # ─── Turtle Shim for Browser Coder ──────────────────────────────────────────
 # Replaces the standard `turtle` module (which requires tkinter / a display)
 # with a pure-Python renderer that captures every drawing command and, at
-# process exit, serialises them to a single JSON blob printed on stdout as:
+# process exit, serialises them to JSON.
 #
-#   __TURTLE_COMMANDS__:<base64-encoded-JSON>
+# Transport: the JSON is written to the path in BROWSER_CODER_GRAPHICS_OUT,
+# which the server sets in the sandbox environment and which lives inside the
+# run's own private job directory. NOTHING is written to stdout.
 #
-# The browser-coder frontend (src/main.ts) detects this line, decodes it, and
-# renders the result on an HTML5 <canvas>.
+# That is deliberate and load-bearing. An earlier version printed the output
+# path to stdout for the server to read back; since stdout belongs to the
+# student's program, any program could name any file and have the service read
+# and delete it on its behalf. The server now chooses the path, so there is no
+# decision left for a program to influence. It also means a dense drawing is
+# never truncated by the 100 KB stdout cap.
 #
 # Design goals:
 #   • Full coverage of the common turtle API (module functions + Turtle class)
 #   • Secure: everything is scoped inside _setup_turtle() – no stdlib handles
 #     leak into the user's namespace after the function returns
-#   • No third-party dependencies; only stdlib (sys, json, math, atexit, base64)
+#   • No third-party dependencies; only stdlib (sys, json, math, atexit, os)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _setup_turtle():
@@ -20,7 +26,7 @@ def _setup_turtle():
     import json as _j
     import math as _m
     import atexit as _ae
-    import base64 as _b64
+    # base64 was only needed by the removed stdout fallback transport.
 
     # ── Shared drawing list (all turtles write here) ─────────────────────────
     _shapes = []
@@ -836,21 +842,42 @@ def _setup_turtle():
             data['pic'] = _cfg[0]['pic']
         json_str = _j.dumps(data, separators=(',', ':'))
 
-        # Write the JSON to a temp file and print only the path to stdout.
-        # This avoids the server's stdout size limit (100 KB) for programs
-        # that produce thousands of shapes (spirographs, dense mandalas, etc).
-        # The server reads the file in parseTurtleOutput() then deletes it.
+        # ── Write the drawing to the target the SERVICE chose ─────────────────
+        #
+        # The path comes from BROWSER_CODER_GRAPHICS_OUT, which the server sets
+        # in the sandbox environment before starting this process. It is inside
+        # the run's own private job directory.
+        #
+        # Nothing is printed to stdout. This matters for two reasons:
+        #
+        #  1. The previous design printed `__TURTLE_FILE__:<path>` and the server
+        #     then read and DELETED whatever path it found there. Because stdout
+        #     belongs to the student's program, any program could name any file
+        #     and have the service read and unlink it on its behalf. Choosing the
+        #     path server-side removes the decision an attacker could subvert;
+        #     filtering the marker would not have, because the flaw was trusting
+        #     a filesystem instruction from untrusted output at all.
+        #
+        #  2. The server's live-output filter had to buffer anything starting with
+        #     `__TURTLE_` before applying the output budget, so an unterminated
+        #     marker could exhaust its memory. With nothing printed there is
+        #     nothing to buffer.
+        #
+        # Using a file rather than stdout also keeps a dense drawing (spirograph,
+        # mandala) from being truncated by the 100 KB output cap.
         import os as _os
-        _tmp_dir = _os.environ.get('TMPDIR', _os.environ.get('TMP', '/tmp'))
-        _tmp_path = _os.path.join(_tmp_dir, '__turtle_%d__.json' % _os.getpid())
-        try:
-            with open(_tmp_path, 'w', encoding='utf-8') as _fh:
-                _fh.write(json_str)
-            print('__TURTLE_FILE__:' + _tmp_path, flush=True)
-        except Exception:
-            # Fallback: inline base64 (may still get truncated for huge programs)
-            _enc = _b64.b64encode(json_str.encode()).decode()
-            print('__TURTLE_COMMANDS__:' + _enc, flush=True)
+        _out_path = _os.environ.get('BROWSER_CODER_GRAPHICS_OUT')
+        if _out_path:
+            try:
+                # Written whole, then closed, so the server never observes a
+                # partially written JSON document.
+                with open(_out_path, 'w', encoding='utf-8') as _fh:
+                    _fh.write(json_str)
+            except Exception:
+                # A drawing that cannot be saved is a lost picture, never a failed
+                # program. Silently give up rather than corrupting the student's
+                # real output with a diagnostic they cannot act on.
+                pass
 
     _ae.register(_emit)
 
