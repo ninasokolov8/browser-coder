@@ -4018,3 +4018,57 @@ previous `test` script invoked `tests/run-tests.sh`, which printed
 confirming the test-credibility finding in section 6.5.
 
 **No application code changed in this commit.**
+
+### 2026-07-30 - Phase A1: pure domain layer
+
+**Commit:** `refactor(server): add canonical path and termination domain modules`
+
+First code of the refactor. Both modules are pure - no `fs`, no `express`, no
+child processes - so they are unit-testable without booting anything and can be
+shared with the browser workspace in Phase C.
+
+**`server/domain/paths.mjs`** - one canonical path validator replacing the two
+near-identical copies in `/api/run` and `/api/run/interactive` (V-26). It rejects
+rather than repairs, which is the root fix for N-12: the old code stripped a
+leading slash *before* testing for one, so the absolute-path guard was
+unreachable and `/main.py` and `main.py` silently collapsed onto one file. Rules
+now cover absolute paths, drive letters, traversal, `.` segments, empty segments,
+NUL and C0 control characters, length/segment/depth bounds, Windows reserved
+device names (bare and with an extension), trailing dot or space, the internal
+preview manifest name, and build-output directories supplied as source.
+`validateFileSet` adds the set-level invariants no per-path check can see: exact
+duplicates, case- and Unicode-normalization collisions, and a path used as both a
+file and a directory prefix. `resolveEntryPoint` is separate because "which file
+runs" is a different question from "is this legal", and separating them makes
+N-11's unreachable branch reachable - a mistyped entry point now says so instead
+of claiming none was supplied.
+
+The case/Unicode collision rule deserves a note: stored paths keep their exact
+bytes, but collisions are compared case-insensitively and NFC-normalized. The
+production container is Linux and case-sensitive while authors work on macOS and
+Windows, so a project holding both `Main.java` and `main.java` builds on the
+server and breaks on every author's machine. Rejecting the pair is the only
+behaviour that is identical everywhere.
+
+**`server/domain/termination.mjs`** - typed termination reasons and the legacy
+mapping. This replaces the single expression behind V-20:
+
+```js
+exitCode: killed ? -1 : (exitCode || 0)
+```
+
+which had two failure modes. `killed` was set only by the wall-clock timer, so
+the output-cap path killed the process and then reported **exit 0**; and
+`(exitCode || 0)` coerces the `null` Node reports for a signal death into
+success, so a segfault or OOM kill also looked clean. Both are the same mistake -
+inferring success from missing information. A service-initiated reason now
+overrides the OS-level view, and the raw code and signal are preserved for
+diagnosis rather than discarded.
+
+**Tests:** 66 unit tests, all passing. One caught a real gap during development -
+`infrastructure_error` fell through to "stopped for an unknown reason" - which was
+fixed in the module rather than in the test. `npm run test:unit` added.
+
+**Not yet wired into `server.mjs`.** This commit is additive so the two modules
+can be reviewed on their own; the next commits route the existing routes through
+them. Contract suites therefore still show the same 21 open defect gates.
