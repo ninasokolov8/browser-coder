@@ -571,6 +571,35 @@ function renderInstant(
   renderSnapshot(context, offscreen, cursors, images, canvasWidth, canvasHeight);
 }
 
+function resolveTurtleCanvas(): HTMLCanvasElement | null {
+  return (
+    turtleCanvasEl ??
+    (document.getElementById("turtle-canvas") as HTMLCanvasElement | null)
+  );
+}
+
+function resolveTurtleOutput(): HTMLElement | null {
+  return (
+    turtleOutputEl ??
+    document.getElementById("turtle-output")
+  );
+}
+
+function resolveOutputPanel(): HTMLElement | null {
+  return (
+    panelEl ??
+    document.getElementById("panel")
+  );
+}
+
+function hasImageAssets(data: TurtleData): boolean {
+  if (imageSource(data)) return true;
+
+  return Object.values(data.cursorAssets ?? {}).some(
+    (asset) => Boolean(asset?.dataUrl),
+  );
+}
+
 export function clearTurtleCanvas(): void {
   turtleRenderGeneration += 1;
 
@@ -579,10 +608,8 @@ export function clearTurtleCanvas(): void {
     turtleAnimRafId = null;
   }
 
-  // DOM references exported from ./dom may be null when the Turtle panel
-  // has not been mounted yet. Keep stable local references before use.
-  const canvas = turtleCanvasEl;
-  const output = turtleOutputEl;
+  const canvas = resolveTurtleCanvas();
+  const output = resolveTurtleOutput();
 
   if (canvas) {
     const context = canvas.getContext("2d");
@@ -608,44 +635,46 @@ export function renderTurtle(data: TurtleData): void {
     turtleAnimRafId = null;
   }
 
-  // Capture and validate nullable DOM references once.
-  //
-  // Using stable local constants also preserves TypeScript's non-null
-  // narrowing inside the asynchronous preloadImages().then() callback.
-  const canvas = turtleCanvasEl;
-  const output = turtleOutputEl;
-  const panel = panelEl;
+  // Only the canvas is required. The output wrapper and resizable panel are
+  // optional UI helpers and must never be allowed to cancel Turtle rendering.
+  const canvas = resolveTurtleCanvas();
+  const output = resolveTurtleOutput();
+  const panel = resolveOutputPanel();
 
-  if (!canvas || !output || !panel) {
+  if (!canvas) {
     console.error(
-      "Turtle renderer could not start because its DOM elements are missing.",
-      {
-        canvasFound: Boolean(canvas),
-        outputFound: Boolean(output),
-        panelFound: Boolean(panel),
-      },
+      "Turtle renderer could not start because #turtle-canvas is missing.",
     );
     return;
   }
 
-  void preloadImages(data).then(({ background, cursors: images }) => {
-    if (generation !== turtleRenderGeneration) return;
+  const canvasWidth =
+    data.w && data.w > 0
+      ? Math.min(data.w, 1200)
+      : 600;
+  const canvasHeight =
+    data.h && data.h > 0
+      ? Math.min(data.h, 900)
+      : 600;
+  const backgroundColor = data.bg ?? "white";
 
-    const canvasWidth = data.w && data.w > 0 ? Math.min(data.w, 1200) : 600;
-    const canvasHeight = data.h && data.h > 0 ? Math.min(data.h, 900) : 600;
-    const backgroundColor = data.bg ?? "white";
-    const shapes = data.shapes ?? [];
+  // Open the preview immediately. This is deliberately done before SVG/image
+  // preloading so ordinary Turtle programs never depend on the asset loader.
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  output?.classList.remove("hidden");
 
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+  const initialContext = canvas.getContext("2d");
+  if (!initialContext) return;
+  paintBase(
+    initialContext,
+    canvasWidth,
+    canvasHeight,
+    backgroundColor,
+    null,
+  );
 
-    const maybeContext = canvas.getContext("2d");
-    if (!maybeContext) return;
-
-    const context: CanvasRenderingContext2D = maybeContext;
-
-    output.classList.remove("hidden");
-
+  if (panel) {
     const targetHeight = Math.min(
       canvasHeight + 80,
       Math.floor(window.innerHeight * 0.72),
@@ -654,10 +683,26 @@ export function renderTurtle(data: TurtleData): void {
     if (panel.offsetHeight < targetHeight) {
       panel.style.height = `${targetHeight}px`;
     }
+  }
+
+  const renderPrepared = (
+    background: HTMLImageElement | null,
+    images: ImageMap,
+  ): void => {
+    if (generation !== turtleRenderGeneration) return;
+
+    // Re-setting dimensions intentionally clears the temporary loading frame.
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    const maybeContext = canvas.getContext("2d");
+    if (!maybeContext) return;
+    const context: CanvasRenderingContext2D = maybeContext;
 
     const offscreen = document.createElement("canvas");
     offscreen.width = canvasWidth;
     offscreen.height = canvasHeight;
+
     const maybeOffscreenContext = offscreen.getContext("2d");
     if (!maybeOffscreenContext) return;
     const offscreenContext: CanvasRenderingContext2D = maybeOffscreenContext;
@@ -670,8 +715,10 @@ export function renderTurtle(data: TurtleData): void {
       background,
     );
 
+    const shapes = data.shapes ?? [];
     const runtimeCursors = initialCursorMap(data);
     applyLeadingCursorEvents(shapes, runtimeCursors, data);
+
     renderSnapshot(
       context,
       offscreen,
@@ -687,7 +734,11 @@ export function renderTurtle(data: TurtleData): void {
     const speedValue = data.speed ?? 3;
     const instantLimit = 3000;
 
-    if (tracerValue === 0 || speedValue === 0 || shapes.length > instantLimit) {
+    if (
+      tracerValue === 0 ||
+      speedValue === 0 ||
+      shapes.length > instantLimit
+    ) {
       renderInstant(
         data,
         context,
@@ -703,8 +754,12 @@ export function renderTurtle(data: TurtleData): void {
       return;
     }
 
-    const clampedSpeed = Math.min(10, Math.max(1, Math.round(speedValue)));
-    const pixelsPerSecond = TURTLE_PX_PER_SEC[clampedSpeed] ?? 350;
+    const clampedSpeed = Math.min(
+      10,
+      Math.max(1, Math.round(speedValue)),
+    );
+    const pixelsPerSecond =
+      TURTLE_PX_PER_SEC[clampedSpeed] ?? 350;
 
     let shapeIndex = 0;
     let movementProgress = 0;
@@ -716,7 +771,9 @@ export function renderTurtle(data: TurtleData): void {
       if (generation !== turtleRenderGeneration) return;
 
       const deltaSeconds =
-        lastTime === null ? 0 : Math.min((time - lastTime) / 1000, 0.1);
+        lastTime === null
+          ? 0
+          : Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
       let pixelBudget = pixelsPerSecond * deltaSeconds;
@@ -726,14 +783,21 @@ export function renderTurtle(data: TurtleData): void {
         const shape = shapes[shapeIndex];
 
         if (commandPauseRemaining > 0) {
-          const used = Math.min(commandPauseRemaining, timeBudgetMs);
+          const used = Math.min(
+            commandPauseRemaining,
+            timeBudgetMs,
+          );
           commandPauseRemaining -= used;
           timeBudgetMs -= used;
+
           if (commandPauseRemaining > 0) break;
         }
 
         if (shape.k === "l" || shape.k === "M") {
-          const cursor = cursorFor(runtimeCursors, turtleId(shape));
+          const cursor = cursorFor(
+            runtimeCursors,
+            turtleId(shape),
+          );
           const startX = finiteNumber(shape.x1, cursor.x);
           const startY = finiteNumber(shape.y1, cursor.y);
           const endX = finiteNumber(shape.x2, startX);
@@ -754,6 +818,7 @@ export function renderTurtle(data: TurtleData): void {
                 images,
               );
             }
+
             cursor.x = endX;
             cursor.y = endY;
             cursor.h = finiteNumber(shape.h, cursor.h);
@@ -762,7 +827,9 @@ export function renderTurtle(data: TurtleData): void {
             continue;
           }
 
-          const remainingDistance = (1 - movementProgress) * length;
+          const remainingDistance =
+            (1 - movementProgress) * length;
+
           if (pixelBudget >= remainingDistance) {
             if (shape.k === "l") {
               drawTurtleShape(
@@ -775,6 +842,7 @@ export function renderTurtle(data: TurtleData): void {
                 images,
               );
             }
+
             cursor.x = endX;
             cursor.y = endY;
             cursor.h = finiteNumber(
@@ -798,17 +866,31 @@ export function renderTurtle(data: TurtleData): void {
             );
             pixelBudget = 0;
           }
+
           break;
         }
 
         if (shape.k === "R") {
-          const cursor = cursorFor(runtimeCursors, turtleId(shape));
+          const cursor = cursorFor(
+            runtimeCursors,
+            turtleId(shape),
+          );
           const target = finiteNumber(shape.h, cursor.h);
           const start = cursor.h;
-          const difference = ((target - start + 540) % 360) - 180;
-          const progressAdvance = timeBudgetMs / TURN_DURATION_MS;
-          const nextProgress = Math.min(1, turnProgress + progressAdvance);
-          cursor.h = start + difference * (nextProgress - turnProgress) / Math.max(1 - turnProgress, 0.0001);
+          const difference =
+            ((target - start + 540) % 360) - 180;
+          const progressAdvance =
+            timeBudgetMs / TURN_DURATION_MS;
+          const nextProgress = Math.min(
+            1,
+            turnProgress + progressAdvance,
+          );
+
+          cursor.h =
+            start +
+            difference *
+              (nextProgress - turnProgress) /
+              Math.max(1 - turnProgress, 0.0001);
           turnProgress = nextProgress;
           timeBudgetMs = 0;
 
@@ -820,6 +902,7 @@ export function renderTurtle(data: TurtleData): void {
             turnProgress = 0;
             commandPauseRemaining = COMMAND_PAUSE_MS;
           }
+
           break;
         }
 
@@ -861,5 +944,24 @@ export function renderTurtle(data: TurtleData): void {
     }
 
     turtleAnimRafId = requestAnimationFrame(animate);
-  });
+  };
+
+  // Ordinary Turtle drawings are rendered synchronously. SVG/background image
+  // programs use the async loader, but the panel is already open and visible.
+  if (!hasImageAssets(data)) {
+    renderPrepared(null, new Map());
+    return;
+  }
+
+  void preloadImages(data)
+    .then(({ background, cursors: images }) => {
+      renderPrepared(background, images);
+    })
+    .catch((error: unknown) => {
+      console.error("Turtle image preload failed:", error);
+
+      // Keep the Turtle preview functional with built-in cursor fallbacks even
+      // when a malformed SVG or browser image decoder rejects an asset.
+      renderPrepared(null, new Map());
+    });
 }
