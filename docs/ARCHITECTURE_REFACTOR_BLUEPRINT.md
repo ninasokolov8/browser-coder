@@ -4140,3 +4140,77 @@ call site instead of an accident.
 / 22 todo - identical to the pre-extraction baseline. Also fixed the test scripts
 to use a glob rather than a bare directory, which `node --test` does not resolve
 on Windows.
+
+### 2026-07-30 - Phase B (part 1): four live security defects
+
+**Commit:** `fix(security): close the rate-limit bypass, CORS grant, report plane and preview XSS`
+
+**N-01 - rate limiting was bypassable from the internet.** Two halves had to meet.
+`trust proxy: true` told Express to trust every hop, so `req.ip` came from the
+leftmost `X-Forwarded-For` entry - a value the client writes - and the limiter
+then exempted private addresses. Sending `X-Forwarded-For: 10.0.0.1` disabled rate
+limiting entirely, on endpoints that spawn compilers.
+
+The exemption's *reasoning* was sound (the api service publishes no port, and the
+security-test container must run unthrottled); its implementation read the wrong
+thing. The fix separates two questions that were conflated:
+
+| Question | Now answered by |
+|---|---|
+| Who is the client? | `req.ip`, derived from a trusted hop **count**, so Express counts inward from the socket and never reaches injected entries |
+| Did this bypass the proxy? | `req.socket.remoteAddress` - the real TCP peer, which no header can influence |
+
+A private peer that forwarded a client address *is* the proxy, so the request
+behind it is still limited. Only a private peer speaking for itself is internal.
+
+**V-46 - CORS "rejection" was a grant.** A disallowed origin was logged as
+`cors_rejected` and then echoed back in `Access-Control-Allow-Origin` together with
+`Access-Control-Allow-Credentials: true` for every non-preflight request. Only the
+preflight was refused - and a simple request does not send one, so any site could
+read credentialed responses. A disallowed origin now receives no allow-origin
+header at all, which is what makes the browser block the response. The subdomain
+rule is parsed from the hostname rather than `endsWith` on the raw origin string,
+requires `https` in production, and `Vary: Origin` is set.
+
+**V-45 / N-08 - the report plane.** Per the decision in 33.2, learners keep the
+read-only report pages so `hacklab=1` shows no visible regression, and execution
+moved behind `ADMIN_TOKEN` with a constant-time compare, a re-enabled 15-minute
+cooldown, and a bounded output buffer (the old one grew for the process lifetime).
+Authorisation **fails closed** when unconfigured and answers 404 rather than 401 -
+an operations endpoint that becomes public because an env var is missing is exactly
+how this defect would return.
+
+**V-03 / V-04 - preview documents executed on the IDE origin.** The existing
+comment argued that student pages are safe because the iframe withholds
+`allow-same-origin`. That is true of the wrapper and irrelevant, because the
+wrapper is not the only way to reach the file: navigating straight to
+`/preview/:id/index.html` served the same document as a **top-level page** with
+`script-src 'unsafe-inline' 'unsafe-eval'` and no sandbox at all, handing user
+JavaScript full authority over Browser Coder's origin - cookies, IndexedDB
+workspaces, and the API with the caller's credentials. Stored XSS, reachable by
+linking to the asset URL.
+
+The fix is the `sandbox` **CSP directive** on the response, which applies however
+the document was reached. `allow-scripts` is granted (running JavaScript is the
+point of an HTML preview); `allow-same-origin` is withheld, which is what makes the
+origin opaque - granting both would be equivalent to no sandbox. SVG and XML are
+classified as active documents too, which is easy to miss: an `.svg` can carry
+`<script>` and executes when navigated to, so they get `script-src 'none'`. An SVG
+used as an `<img>` is unaffected, because images do not run scripts.
+`allow-popups-to-escape-sandbox` is dropped from both wrappers.
+
+No second domain is available, so this is the in-place mitigation recorded in 33.2,
+**not** true origin isolation. The `PREVIEW_ORIGIN` seam remains the completion path.
+
+One test result worth recording: the V-04 gate initially still failed after the fix,
+because the explanatory HTML comment written next to the sandbox attribute contained
+the literal token the test greps for - inside a document served to browsers. The
+reasoning moved into the source. A test that greps served output for a forbidden
+string is cruder than parsing it, and that crudeness is what caught this.
+
+**Gate status: 19 of 22 permanent.** Remaining: V-23 and V-33 need a matching JDK
+(this host has javac 17 with JRE 8, now detected and skipped honestly), and V-32
+strict mode awaits Step-Up content migration.
+
+**Verification:** typecheck clean; 66 unit tests pass; contract 51 pass / 0 fail /
+9 skipped / 3 todo.

@@ -107,10 +107,7 @@ describe('V-02 turtle marker bytes bypass the output limit', () => {
 });
 
 describe('V-03 / V-04 preview documents execute on the IDE origin', () => {
-  it(
-    'sends a sandbox CSP directive on a directly navigated HTML asset',
-    open('V-03'),
-    async () => {
+  it('sends a sandbox CSP directive on a directly navigated HTML asset', async () => {
       const publish = await server.postJson('/api/previews', {
         entryPath: 'index.html',
         files: [{ path: 'index.html', content: '<script>document.title=1</script>' }],
@@ -127,10 +124,7 @@ describe('V-03 / V-04 preview documents execute on the IDE origin', () => {
     },
   );
 
-  it(
-    'does not let sandboxed preview content escape via popups',
-    open('V-04'),
-    async () => {
+  it('does not let sandboxed preview content escape via popups', async () => {
       const publish = await server.postJson('/api/previews', {
         entryPath: 'index.html',
         files: [{ path: 'index.html', content: '<h1>x</h1>' }],
@@ -145,10 +139,7 @@ describe('V-03 / V-04 preview documents execute on the IDE origin', () => {
     },
   );
 
-  it(
-    'serves a script-capable SVG without letting it execute as a document',
-    open('V-03-svg'),
-    async () => {
+  it('serves a script-capable SVG without letting it execute as a document', async () => {
       const publish = await server.postJson('/api/previews', {
         entryPath: 'index.html',
         files: [
@@ -455,10 +446,7 @@ describe('V-33 Java project entrypoints', () => {
 });
 
 describe('N-01 rate-limit identity must not be client-controlled', () => {
-  it(
-    'does not exempt a caller who claims a private address in X-Forwarded-For',
-    open('N-01'),
-    async () => {
+  it('does not exempt a caller who claims a private address in X-Forwarded-For', async () => {
       // The limiter exempts private source addresses, and Express is configured
       // to trust every hop, so a forged forwarded-for entry disables it.
       // Assert the exemption is not reachable from a request header.
@@ -476,7 +464,7 @@ describe('N-01 rate-limit identity must not be client-controlled', () => {
 });
 
 describe('V-45 / N-08 the report plane must not be public', () => {
-  it('refuses to start the security suite for an anonymous caller', open('V-45'), async () => {
+  it('refuses to start the security suite for an anonymous caller', async () => {
     const { status } = await server.postJson('/api/reports/run-tests', {});
     assert.ok(
       status === 401 || status === 403 || status === 404,
@@ -484,7 +472,7 @@ describe('V-45 / N-08 the report plane must not be public', () => {
     );
   });
 
-  it('does not expose operational terminal output anonymously', open('N-08'), async () => {
+  it('does not expose operational terminal output anonymously', async () => {
     const { status } = await server.get('/api/reports/output');
     assert.ok(
       status === 401 || status === 403 || status === 404,
@@ -494,7 +482,7 @@ describe('V-45 / N-08 the report plane must not be public', () => {
 });
 
 describe('V-46 CORS must actually reject a disallowed origin', () => {
-  it('does not echo a disallowed origin back with credentials', open('V-46'), async () => {
+  it('does not echo a disallowed origin back with credentials', async () => {
     const probe = await server.get('/api/languages', {
       headers: { Origin: 'https://evil.example' },
     });

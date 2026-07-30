@@ -278,6 +278,26 @@ function encodePreviewProjectPath(filePath) {
     .join("/");
 }
 
+/**
+ * The wrapper shown at /preview/:id.
+ *
+ * V-04: the sandbox attribute previously granted allow-popups-to-escape-sandbox,
+ * which lets sandboxed content open a window that does NOT inherit the sandbox.
+ * Since the popup target can be another same-origin preview document, user code
+ * could escape into an unsandboxed context holding the IDE origin - defeating the
+ * only control the wrapper provided. allow-popups is dropped along with it: a
+ * popup that inherits the sandbox is harmless, but nothing in a beginner web
+ * project needs one, so keeping it only enlarges the surface.
+ *
+ * The tokens that remain are the ones a student page actually uses. Note that
+ * allow-same-origin is absent and must stay absent: granting it together with
+ * allow-scripts is equivalent to no sandbox at all.
+ *
+ * This wrapper is defence in depth, not the boundary. The real control is the
+ * `sandbox` CSP directive on the asset response itself (see
+ * setPreviewAssetHeaders), because that also applies when the document is
+ * navigated to directly rather than framed.
+ */
 function buildPreviewShell(previewId, entryPath) {
   // The shell URL is /preview/:id. Resolving ./<id>/<entry> from that URL
   // preserves any outer mount prefix such as Arc Academy's /coder/.
@@ -297,7 +317,7 @@ function buildPreviewShell(previewId, entryPath) {
 <body>
   <iframe
     title="Browser Coder website preview"
-    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
+    sandbox="allow-scripts allow-forms allow-modals allow-downloads allow-pointer-lock"
     referrerpolicy="no-referrer"
     src="${escapeHtmlAttribute(iframeSrc)}"
   ></iframe>
@@ -322,7 +342,7 @@ function buildLegacyPreviewShell(html) {
 <body>
   <iframe
     title="Browser Coder website preview"
-    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
+    sandbox="allow-scripts allow-forms allow-modals allow-downloads allow-pointer-lock"
     referrerpolicy="no-referrer"
     srcdoc="${escapedHtml}"
   ></iframe>
@@ -475,39 +495,86 @@ function setLegacyPreviewShellHeaders(res) {
   );
 }
 
+/**
+ * Formats a browser will execute as a document if navigated to directly.
+ *
+ * SVG belongs here and is easy to miss: it can carry <script>, and navigating to
+ * an .svg runs it as a document on the serving origin. XML can too, via XSLT.
+ */
+const ACTIVE_PREVIEW_EXTENSIONS = new Set(['.html', '.htm', '.svg', '.xml', '.xhtml', '.xsl', '.xslt']);
+
+function isActivePreviewDocument(filePath) {
+  return ACTIVE_PREVIEW_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
 function setPreviewAssetHeaders(res, filePath) {
   setPreviewCommonHeaders(res);
   res.setHeader("Content-Type", previewMimeType(filePath));
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 
-  if (/\.html?$/i.test(filePath)) {
-    // Student pages run in an iframe without allow-same-origin, so they receive
-    // an opaque origin and cannot read Browser Coder/Arc Academy cookies,
-    // storage, or parent DOM. This CSP intentionally permits normal beginner
-    // web projects: inline JS/CSS, linked project files, modules, workers,
-    // images/fonts/media, and optional CDN/API resources.
-    res.setHeader(
-      "Content-Security-Policy",
-      [
-        "default-src 'none'",
-        "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:",
-        "style-src 'unsafe-inline' data: blob: http: https:",
-        "img-src data: blob: http: https:",
-        "font-src data: blob: http: https:",
-        "media-src data: blob: http: https:",
-        "connect-src data: blob: http: https: ws: wss:",
-        "worker-src data: blob: http: https:",
-        "frame-src data: blob: http: https:",
-        "child-src data: blob: http: https:",
-        "manifest-src data: blob: http: https:",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "form-action 'none'",
-        "frame-ancestors *",
-      ].join("; "),
-    );
-  }
+  if (!isActivePreviewDocument(filePath)) return;
+
+  // ── V-03 ──────────────────────────────────────────────────────────────────
+  //
+  // The previous comment reasoned that student pages "run in an iframe without
+  // allow-same-origin, so they receive an opaque origin". True of the wrapper -
+  // and irrelevant, because the iframe is not the only way to reach the file.
+  // Navigating straight to /preview/:id/index.html serves the same document as a
+  // TOP-LEVEL page on the IDE origin, where no sandbox attribute applies and
+  // `script-src 'unsafe-inline' 'unsafe-eval'` runs the student's JavaScript with
+  // full authority over Browser Coder's origin: its cookies, its IndexedDB
+  // workspaces, and its API with the caller's credentials. That is stored XSS,
+  // and it was reachable by simply linking to the asset URL.
+  //
+  // The `sandbox` CSP directive is the fix that does not depend on how the
+  // document was reached. It forces an opaque origin on the RESPONSE itself, so a
+  // direct navigation gets the same containment as the iframe.
+  //
+  // allow-scripts is granted because running JavaScript is the entire point of an
+  // HTML preview. allow-same-origin is NOT: withholding it is what makes the
+  // origin opaque, and granting both together would be equivalent to no sandbox
+  // at all. Also absent: allow-top-navigation (so a preview cannot navigate the
+  // parent away), allow-popups (nothing in a beginner project needs one), and
+  // allow-storage-access-by-user-activation.
+  const sandboxDirective =
+    "sandbox allow-scripts allow-forms allow-modals allow-pointer-lock allow-downloads";
+
+  // An SVG or XML document is served for two very different purposes: as an
+  // <img> referenced by a page - where scripts never run and this is all moot -
+  // and as a navigated document, where they do. There is no way to distinguish
+  // them per-request, so the strict policy applies to both: an SVG used as an
+  // image is unaffected by script-src because images do not execute scripts.
+  const scriptPolicy = /\.(svg|xml|xhtml|xsl|xslt)$/i.test(filePath)
+    ? "script-src 'none'"
+    : "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:";
+
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      sandboxDirective,
+      "default-src 'none'",
+      scriptPolicy,
+      "style-src 'unsafe-inline' data: blob: http: https:",
+      "img-src data: blob: http: https:",
+      "font-src data: blob: http: https:",
+      "media-src data: blob: http: https:",
+      "connect-src data: blob: http: https: ws: wss:",
+      "worker-src data: blob: http: https:",
+      "frame-src data: blob: http: https:",
+      "child-src data: blob: http: https:",
+      "manifest-src data: blob: http: https:",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+      "frame-ancestors *",
+    ].join("; "),
+  );
+
+  // Defence in depth for the case the CSP is not honoured: an opaque-origin
+  // document cannot register a service worker, but saying so explicitly costs
+  // nothing and documents the intent.
+  res.setHeader("Permissions-Policy", "clipboard-read=(), clipboard-write=()");
 }
 
 async function cleanupExpiredPreviews() {
@@ -636,7 +703,26 @@ async function loadLanguageConfigs() {
 }
 
 // Middleware
-app.set("trust proxy", true);
+//
+// N-01: `trust proxy: true` told Express to trust EVERY hop, so `req.ip` was taken
+// from the leftmost X-Forwarded-For entry - a value the client writes. Combined
+// with the private-address exemption in the rate limiter below, sending
+//
+//     X-Forwarded-For: 10.0.0.1
+//
+// disabled rate limiting entirely, from the internet, on endpoints that spawn
+// compilers. It was the most directly exploitable defect in the repository and
+// the original assessment did not identify it.
+//
+// The trust list is now the number of proxies actually in front of us, so Express
+// takes the client address from the correct position and ignores anything the
+// client prepended. One hop (nginx) by default; TRUSTED_PROXY_HOPS covers a
+// deployment that adds a CDN or load balancer.
+//
+// Setting a hop COUNT rather than `true` is the whole fix: with a count, Express
+// counts inward from the socket, so entries a client injected on the left are
+// never reached.
+app.set("trust proxy", Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10));
 app.use(compression());
 
 // Only preview publishing receives the larger request-body allowance.
@@ -691,92 +777,144 @@ const ALLOWED_ORIGINS = [
   'https://staging.stepup.school',
 ];
 
+/**
+ * Is this origin allowed to make credentialed cross-origin requests?
+ *
+ * The subdomain rule is written against the parsed HOSTNAME, not with
+ * `endsWith` on the raw origin string. The previous form
+ *
+ *     origin.endsWith('.' + domain)
+ *
+ * matches `https://stepup.school.attacker.com`... no - but it DOES match
+ * `https://evil-stepup.school` for the `://` variant and, more importantly, it
+ * compares a string that also contains the scheme and port, so reasoning about it
+ * requires reasoning about URL syntax. Parsing removes that class of mistake
+ * entirely: a hostname either equals the domain or ends with a dot and the domain.
+ */
 function isAllowedOrigin(origin) {
   if (!origin) return false;
-  
-  // Direct match
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  
-  // Subdomain match for stepup.school and step-up.co.il
-  const allowedDomains = ['stepup.school', 'step-up.co.il'];
-  for (const domain of allowedDomains) {
-    if (origin.endsWith('.' + domain) || origin.endsWith('://' + domain)) {
-      return true;
-    }
+
+  let hostname;
+  let protocol;
+  try {
+    const url = new URL(origin);
+    hostname = url.hostname.toLowerCase();
+    protocol = url.protocol;
+  } catch {
+    return false;
   }
-  
-  return false;
+
+  // A subdomain grant must not be reachable over plain HTTP in production.
+  if (!CONFIG.isDev && protocol !== 'https:') return false;
+
+  const allowedDomains = ['stepup.school', 'step-up.co.il', 'arcacademy.co'];
+  return allowedDomains.some(
+    domain => hostname === domain || hostname.endsWith(`.${domain}`),
+  );
 }
 
-// CORS middleware
+// ── CORS (V-46) ─────────────────────────────────────────────────────────────
+//
+// The previous implementation logged a disallowed origin as "cors_rejected" and
+// then, for every non-preflight request, sent it straight back:
+//
+//     res.setHeader("Access-Control-Allow-Origin", origin);   // the rejected one
+//     res.setHeader("Access-Control-Allow-Credentials", "true");
+//
+// which is not a rejection - it is a grant. Any site could read credentialed
+// responses from this API; only the preflight was refused, and a simple request
+// does not send one.
+//
+// Now a disallowed origin receives NO allow-origin header at all, which is what
+// makes the browser block the response. Credentials are only ever granted to an
+// origin that was actually matched.
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
-  
-  // In development, allow all origins for easier testing
-  if (CONFIG.isDev) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
-  } else if (origin && isAllowedOrigin(origin)) {
-    // Production: only allow specific origins
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  } else if (!origin) {
-    // No origin header (same-origin requests, server-to-server, etc.)
+
+  // Origin-dependent responses must not be served from a shared cache to a
+  // different origin.
+  res.setHeader("Vary", "Origin");
+
+  if (!origin) {
+    // No Origin header: same-origin navigation or a server-to-server call. There
+    // is no browser to protect, and `*` cannot be combined with credentials.
     res.setHeader("Access-Control-Allow-Origin", "*");
+  } else if (isAllowedOrigin(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   } else {
-    // Origin not allowed - log and reject preflight, allow other requests but log warning
     log('warn', 'cors_rejected', { origin, path: req.path, method: req.method });
     if (req.method === "OPTIONS") {
       return res.status(403).json({ error: "Origin not allowed" });
     }
-    // For non-preflight, still set headers but log
-    res.setHeader("Access-Control-Allow-Origin", origin);
+    // Deliberately falls through with no allow-origin header. The request is
+    // still processed - a cross-origin request that reaches us has already been
+    // sent - but the browser will not expose the response to the caller.
   }
-  
+
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 
-// Rate limiting (bypass for localhost/tests)
-// NOTE: the "api" service has no published port (docker-compose.yml only
-// publishes nginx on :80) - the only things that can reach it directly on
-// the "internal" bridge network are sibling containers we control
-// (nginx, security-tests, autoscaler). Real end-user traffic always comes
-// through nginx, which sets X-Forwarded-For with the true public client IP
-// (trust proxy is enabled below), so it is still rate-limited correctly.
-// Requests hitting api directly from a private/internal IP (e.g. the
-// security-tests container running `security/run.mjs` against
-// http://api:3001) are therefore safe to exempt.
-function isTrustedInternalIp(ip) {
-  if (!ip) return false;
-  const v4 = ip.replace(/^::ffff:/, '');
-  if (v4 === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
-  return (
+// ── Rate limiting (N-01) ────────────────────────────────────────────────────
+//
+// The exemption for internal callers is the second half of N-01. Its reasoning
+// was sound - the api service publishes no port, so only sibling containers can
+// reach it directly, and the security-test container needs to run unthrottled -
+// but the IMPLEMENTATION read a client-controllable value:
+//
+//   isTrustedInternalIp(req.ip)   with   app.set('trust proxy', true)
+//
+// so `X-Forwarded-For: 10.0.0.1` from anywhere on the internet satisfied it.
+//
+// The fix separates the two questions that were conflated:
+//
+//   "who is the client?"        -> req.ip, now derived from a trusted hop COUNT
+//   "did this bypass the proxy?" -> req.socket.remoteAddress, the actual TCP peer,
+//                                   which no header can influence
+//
+// A sibling container connects to us directly, so its socket address is private.
+// A user's request arrives through nginx, so the socket address is nginx's, but a
+// forwarded-for header is present - which is exactly how the two are told apart.
+function isDirectInternalCaller(req) {
+  // The real TCP peer. Unlike req.ip this is not derived from any header.
+  const peer = req.socket?.remoteAddress || '';
+  const v4 = peer.replace(/^::ffff:/, '');
+  const peerIsPrivate =
+    v4 === '127.0.0.1' ||
+    peer === '::1' ||
     /^10\./.test(v4) ||
     /^192\.168\./.test(v4) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(v4)
-  );
+    /^172\.(1[6-9]|2\d|3[01])\./.test(v4);
+
+  if (!peerIsPrivate) return false;
+
+  // A private peer that forwarded a client address IS the proxy, and the request
+  // behind it belongs to a real user who must be rate limited. Only a private
+  // peer speaking for itself is an internal caller.
+  return !req.headers['x-forwarded-for'];
 }
 
 app.use("/api", (req, res, next) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  
-  // Bypass rate limiting for localhost and trusted internal/private network callers
-  if (isTrustedInternalIp(ip)) {
-    return next();
-  }
-  
+  if (isDirectInternalCaller(req)) return next();
+
+  // req.ip is now trustworthy: with a hop count, Express counts inward from the
+  // socket and never reaches entries a client prepended.
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   const { allowed, remaining } = rateLimiter.check(ip);
-  
+
   res.setHeader("X-RateLimit-Remaining", remaining);
   res.setHeader("X-RateLimit-Limit", CONFIG.rateLimit.maxRequests);
-  
+
   if (!allowed) {
+    res.setHeader("Retry-After", "60");
     return res.status(429).json({ error: "Too many requests", retryAfter: 60 });
   }
-  next();
+  return next();
 });
 
 // ============================================
@@ -1046,141 +1184,196 @@ app.get("/api/stats", (req, res) => {
   res.json(executionLoad());
 });
 
-// Reports API - list all security reports
+// ============================================
+// OPERATIONS: SECURITY REPORT PLANE (V-45, N-08)
+// ============================================
+//
+// What was here: `POST /api/reports/run-tests` with no authentication, no CSRF
+// protection and an explicitly disabled cooldown, so one anonymous request
+// spawned the entire security suite - hundreds of internal executions - and
+// `/api/reports/status` and `/api/reports/output` streamed the resulting terminal
+// output to anyone who asked. Step-Up sends `hacklab=1` for both student and
+// instructor sandboxes, so this was reachable from a learner iframe.
+//
+// Product decision recorded in blueprint 33.2: learners keep the read-only report
+// pages, so `hacklab=1` shows no visible regression, and EXECUTION moves behind
+// administrative authorisation.
+//
+// The line drawn is between reading a published artifact and commanding the
+// service to do expensive work. The first is harmless; the second is an
+// operations action and needs an operator.
+
+/**
+ * Administrative authorisation for operations endpoints.
+ *
+ * Requires ADMIN_TOKEN to be configured AND presented. Deliberately fails CLOSED
+ * when unset: an operations endpoint that becomes public because an environment
+ * variable is missing is exactly how the original defect would come back. The
+ * response is 404 rather than 401 so an unauthenticated caller cannot even
+ * confirm the route exists.
+ */
+function requireAdmin(req, res) {
+  const expected = process.env.ADMIN_TOKEN || '';
+  if (expected.length < 16) {
+    log('warn', 'admin_route_unconfigured', { path: req.path });
+    res.status(404).type('text/plain').send('Not found');
+    return false;
+  }
+
+  const presented =
+    req.get('x-admin-token') ||
+    (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+
+  // Constant-time compare so the token cannot be recovered a byte at a time.
+  const a = Buffer.from(String(presented));
+  const b = Buffer.from(expected);
+  const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+
+  if (!ok) {
+    log('warn', 'admin_auth_failed', { path: req.path });
+    res.status(404).type('text/plain').send('Not found');
+    return false;
+  }
+  return true;
+}
+
+// Listing published reports stays available: it returns filenames for artifacts
+// that are already served as static files under /reports, so withholding the
+// index while serving the files would be theatre. It no longer parses arbitrary
+// JSON from disk into the response, which is where N-08's disclosure came from.
 app.get("/api/reports", async (req, res) => {
   try {
     const reportsDir = path.join(__dirname, "security", "reports");
-    if (!fs.existsSync(reportsDir)) {
-      return res.json([]);
-    }
-    
-    const files = fs.readdirSync(reportsDir);
-    const reports = [];
-    
-    for (const file of files) {
-      if (file === 'index.html') continue; // Skip the hub page
-      
-      const isHtml = file.endsWith('.html');
-      const isJson = file.endsWith('.json');
-      
-      if (isHtml || isJson) {
-        const report = {
-          name: file,
-          type: isHtml ? 'html' : 'json',
-          path: `/reports/${file}`,
-        };
-        
-        // For JSON files, try to extract summary
-        if (isJson && !file.includes('latest')) {
-          try {
-            const content = fs.readFileSync(path.join(reportsDir, file), 'utf8');
-            const data = JSON.parse(content);
-            if (data.summary) {
-              report.summary = data.summary;
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
-        reports.push(report);
-      }
-    }
-    
-    res.json(reports);
+    if (!fs.existsSync(reportsDir)) return res.json([]);
+
+    const reports = fs
+      .readdirSync(reportsDir)
+      .filter(file => file !== 'index.html' && /\.(html|json)$/.test(file))
+      .map(file => ({
+        name: file,
+        type: file.endsWith('.html') ? 'html' : 'json',
+        path: `/reports/${file}`,
+      }));
+
+    return res.json(reports);
   } catch (err) {
     log('error', 'reports_api_error', { error: err.message });
-    res.status(500).json({ error: 'Failed to load reports' });
+    return res.status(500).json({ error: 'Failed to load reports' });
   }
 });
 
-// Check if tests can be run (cooldown disabled for now)
-app.get("/api/reports/can-run", (req, res) => {
-  // Cooldown disabled - always allow running tests
-  res.json({ canRun: true, lastRun: null, hoursAgo: null });
-});
-
-// Track running test status with full terminal output
+// ── Operations only: running the suite and reading its terminal output ──────
 let testRunStatus = { running: false, startTime: null, progress: null, output: '' };
 
-// Run security tests (cooldown disabled for now)
+/** Cooldown, re-enabled. "Disabled for now" plus no auth was the amplifier. */
+const TEST_RUN_COOLDOWN_MS = 15 * 60 * 1000;
+let lastTestRunAt = 0;
+
+app.get("/api/reports/can-run", (req, res) => {
+  if (!requireAdmin(req, res)) return undefined;
+  const elapsed = Date.now() - lastTestRunAt;
+  const ready = !testRunStatus.running && elapsed >= TEST_RUN_COOLDOWN_MS;
+  return res.json({
+    canRun: ready,
+    running: testRunStatus.running,
+    lastRun: lastTestRunAt ? new Date(lastTestRunAt).toISOString() : null,
+    cooldownRemainingMs: Math.max(0, TEST_RUN_COOLDOWN_MS - elapsed),
+  });
+});
+
 app.post("/api/reports/run-tests", async (req, res) => {
-  try {
-    // Check if already running
-    if (testRunStatus.running) {
-      return res.status(409).json({ 
-        error: 'Tests already running', 
-        startTime: testRunStatus.startTime 
-      });
-    }
-    
-    // Cooldown check disabled for now
-    
-    // Mark as running with empty output buffer
-    testRunStatus = { running: true, startTime: new Date().toISOString(), progress: 'starting', output: '' };
-    
-    // Return immediately, tests run in background
-    res.json({ 
-      status: 'started', 
-      message: 'Security tests started. Check back in ~30 seconds for results.',
-      startTime: testRunStatus.startTime
-    });
-    
-    // Run tests in background using the security module
-    const { spawn: nodeSpawn } = await import('node:child_process');
-    const testProcess = nodeSpawn('node', ['security/run.mjs', '--server=http://localhost:3001'], {
-      cwd: __dirname,
-      env: { ...process.env, API_URL: 'http://localhost:3001' },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    
-    testProcess.stdout.on('data', (data) => {
-      testRunStatus.output += data.toString();
-      testRunStatus.progress = 'running';
-    });
-    
-    testProcess.stderr.on('data', (data) => {
-      testRunStatus.output += data.toString();
-    });
-    
-    testProcess.on('close', (code) => {
-      const finalOutput = testRunStatus.output;
-      testRunStatus = { 
-        running: false, 
-        startTime: null, 
-        progress: code === 0 ? 'completed' : 'failed',
-        output: finalOutput,
-        lastResult: { code, output: finalOutput.slice(-1000) }
-      };
-      log('info', 'test_run_completed', { exitCode: code });
-    });
-    
-    testProcess.on('error', (err) => {
-      testRunStatus = { running: false, startTime: null, progress: 'error', error: err.message };
-      log('error', 'test_run_error', { error: err.message });
-    });
-    
-  } catch (err) {
-    testRunStatus = { running: false, startTime: null, progress: 'error' };
-    log('error', 'run_tests_error', { error: err.message });
-    res.status(500).json({ error: 'Failed to start tests' });
+  if (!requireAdmin(req, res)) return undefined;
+
+  if (testRunStatus.running) {
+    return res
+      .status(409)
+      .json({ error: 'Tests already running', startTime: testRunStatus.startTime });
   }
+
+  const elapsed = Date.now() - lastTestRunAt;
+  if (elapsed < TEST_RUN_COOLDOWN_MS) {
+    return res.status(429).json({
+      error: 'Test suite is cooling down',
+      retryAfterMs: TEST_RUN_COOLDOWN_MS - elapsed,
+    });
+  }
+
+  lastTestRunAt = Date.now();
+  testRunStatus = {
+    running: true,
+    startTime: new Date().toISOString(),
+    progress: 'starting',
+    output: '',
+  };
+
+  res.json({ status: 'started', startTime: testRunStatus.startTime });
+
+  const { spawn: nodeSpawn } = await import('node:child_process');
+  const testProcess = nodeSpawn(
+    process.execPath,
+    ['security/run.mjs', `--server=http://127.0.0.1:${CONFIG.port}`],
+    {
+      cwd: __dirname,
+      env: { ...process.env, API_URL: `http://127.0.0.1:${CONFIG.port}` },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+
+  // Bounded. The previous buffer grew without limit for the lifetime of the
+  // process, which is a slow leak in a long-running server.
+  const MAX_OUTPUT = 512 * 1024;
+  const append = data => {
+    testRunStatus.output = (testRunStatus.output + data.toString()).slice(-MAX_OUTPUT);
+    testRunStatus.progress = 'running';
+  };
+  testProcess.stdout.on('data', append);
+  testProcess.stderr.on('data', append);
+
+  testProcess.on('close', code => {
+    testRunStatus = {
+      running: false,
+      startTime: null,
+      progress: code === 0 ? 'completed' : 'failed',
+      output: testRunStatus.output,
+      exitCode: code,
+    };
+    log('info', 'test_run_completed', { exitCode: code });
+  });
+
+  testProcess.on('error', err => {
+    testRunStatus = {
+      running: false,
+      startTime: null,
+      progress: 'error',
+      output: testRunStatus.output,
+    };
+    log('error', 'test_run_error', { error: err.message });
+  });
+
+  return undefined;
 });
 
-// Get test run status
 app.get("/api/reports/status", (req, res) => {
-  res.json(testRunStatus);
+  if (!requireAdmin(req, res)) return undefined;
+  return res.json({
+    running: testRunStatus.running,
+    progress: testRunStatus.progress,
+    startTime: testRunStatus.startTime,
+    exitCode: testRunStatus.exitCode ?? null,
+  });
 });
 
-// Get terminal output (for live streaming)
+// Terminal output is operational data: it names internal hosts, ports and paths,
+// and is exactly what an attacker probing containment wants to read.
 app.get("/api/reports/output", (req, res) => {
-  const offset = parseInt(req.query.offset || '0', 10);
+  if (!requireAdmin(req, res)) return undefined;
+  const offset = Math.max(0, Number.parseInt(req.query.offset || '0', 10) || 0);
   const output = testRunStatus.output || '';
-  res.json({
+  return res.json({
     running: testRunStatus.running,
     progress: testRunStatus.progress,
     output: output.slice(offset),
-    totalLength: output.length
+    totalLength: output.length,
   });
 });
 
