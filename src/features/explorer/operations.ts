@@ -478,10 +478,10 @@ function uniqueFileName(name: string, existing: string[]): string {
 
 // Import files dragged from the desktop into a target folder (or root).
 // Only supported-language files are accepted; everything else is reported
-// and skipped. Enforces the same limits Step-Up uses (≤256 KB/file, ≤300 files).
+// and skipped. Enforces the same limits Step-Up uses (≤8 MB/file, ≤300 files).
 export async function importExternalFiles(fileList: FileList, targetParentId: string | null) {
   if (policyState.lockStructure) return;
-  const MAX_BYTES = 256 * 1024;
+  const MAX_BYTES = 8 * 1024 * 1024;
   const MAX_FILES = 300;
 
   const files = Array.from(fileList);
@@ -502,7 +502,7 @@ export async function importExternalFiles(fileList: FileList, targetParentId: st
       continue;
     }
     if (file.size > MAX_BYTES) {
-      skipped.push(`${file.name} - larger than 256 KB`);
+      skipped.push(`${file.name} - larger than 8 MB`);
       continue;
     }
 

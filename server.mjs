@@ -3387,7 +3387,7 @@ const RUN_BODY_LIMIT_BYTES =
   4096;
 app.use("/api/run", express.json({ limit: RUN_BODY_LIMIT_BYTES }));
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "10mb" }));
 
 // Request ID
 app.use((req, res, next) => {
