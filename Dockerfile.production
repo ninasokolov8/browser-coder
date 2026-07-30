@@ -38,11 +38,23 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built app
+#
+# This list is an allowlist, which is the right default for a production image -
+# but it means a new top-level source directory must be added here or the image
+# silently ships without it. The refactor's `server/` tree is exactly that case:
+# omitting it produced ERR_MODULE_NOT_FOUND for server/config.mjs at startup,
+# with a healthy-looking build and a container that could not boot.
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.mjs ./
+COPY --from=builder /app/server ./server
 COPY --from=builder /app/languages ./languages
 COPY --from=builder /app/security ./security
 COPY --from=builder /app/tests ./tests
+
+# Fail the BUILD rather than the container if a required module is missing.
+# A missing import is otherwise only discovered when the process starts, which in
+# a rolling deploy means the old container is already gone.
+RUN node --input-type=module -e "import('/app/server/config.mjs').then(()=>console.log('module tree present'))"
 
 # Ensure reports directories exist and are writable
 RUN mkdir -p /app/security/reports /app/tests/reports /preview-data && \

@@ -59,6 +59,52 @@ async function waitForHealth(baseUrl, child, timeoutMs) {
 }
 
 /**
+ * The HTTP surface the tests use.
+ *
+ * Shared verbatim by the spawned-server and remote-server paths, so an assertion
+ * cannot behave differently depending on which one it is talking to.
+ */
+function makeClient(baseUrl) {
+  const parse = async response => {
+    const text = await response.text();
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      // Not JSON: plain-text errors and HTML previews are both expected.
+      body = null;
+    }
+    return { status: response.status, headers: response.headers, body, text };
+  };
+
+  return {
+    /** POST JSON and return { status, headers, body, text }. */
+    async postJson(routePath, payload, init = {}) {
+      return parse(
+        await fetch(`${baseUrl}${routePath}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+          body: JSON.stringify(payload),
+          signal: init.signal ?? AbortSignal.timeout(init.timeoutMs ?? 90000),
+        }),
+      );
+    },
+
+    async get(routePath, init = {}) {
+      return parse(
+        await fetch(`${baseUrl}${routePath}`, {
+          headers: init.headers,
+          // manual, so a redirect is observable rather than silently followed:
+          // the preview compatibility path depends on which one happens.
+          redirect: init.redirect ?? 'manual',
+          signal: AbortSignal.timeout(init.timeoutMs ?? 30000),
+        }),
+      );
+    },
+  };
+}
+
+/**
  * Start a server instance.
  *
  * @param {object} [options]
@@ -68,6 +114,34 @@ async function waitForHealth(baseUrl, child, timeoutMs) {
  *   (see blueprint V-37). Lower this once that is non-blocking.
  */
 export async function startServer(options = {}) {
+  // CONTRACT_TARGET_URL points the suite at an already-running server instead of
+  // spawning one. This is how the language matrix gets verified for real: the
+  // authoring host has no PHP, its `python3` is the Windows Store alias, and its
+  // JRE is version 8 against a version 17 compiler, so Python, PHP, Java and
+  // .NET 8 can only be exercised inside the production image.
+  //
+  // Because the suite is black-box, the same assertions run unchanged against a
+  // container. Nothing below this branch knows which it is talking to.
+  if (process.env.CONTRACT_TARGET_URL) {
+    const remoteUrl = process.env.CONTRACT_TARGET_URL.replace(/\/+$/, '');
+    await waitForHealth(
+      remoteUrl,
+      { exitCode: null, signalCode: null },
+      options.startupTimeoutMs ?? 60000,
+    );
+    return {
+      baseUrl: remoteUrl,
+      port: Number.parseInt(new URL(remoteUrl).port || '80', 10),
+      // A remote server's job root lives inside the container, so a test that
+      // needs a host-visible path must skip rather than pretend.
+      sandboxRoot: null,
+      previewDir: null,
+      serverLog: () => '(remote server: logs are in the container)',
+      stop: async () => {},
+      ...makeClient(remoteUrl),
+    };
+  }
+
   const port = await freePort();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -124,40 +198,7 @@ export async function startServer(options = {}) {
     previewDir,
     serverLog: () => logLines.join(''),
     stop,
-
-    /** POST JSON and return { status, headers, body, text }. */
-    async postJson(routePath, payload, init = {}) {
-      const response = await fetch(`${baseUrl}${routePath}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-        body: JSON.stringify(payload),
-        signal: init.signal ?? AbortSignal.timeout(init.timeoutMs ?? 90000),
-      });
-      const text = await response.text();
-      let body = null;
-      try {
-        body = text ? JSON.parse(text) : null;
-      } catch {
-        body = null;
-      }
-      return { status: response.status, headers: response.headers, body, text };
-    },
-
-    async get(routePath, init = {}) {
-      const response = await fetch(`${baseUrl}${routePath}`, {
-        headers: init.headers,
-        redirect: init.redirect ?? 'manual',
-        signal: AbortSignal.timeout(init.timeoutMs ?? 30000),
-      });
-      const text = await response.text();
-      let body = null;
-      try {
-        body = text ? JSON.parse(text) : null;
-      } catch {
-        body = null;
-      }
-      return { status: response.status, headers: response.headers, body, text };
-    },
+    ...makeClient(baseUrl),
   };
 }
 

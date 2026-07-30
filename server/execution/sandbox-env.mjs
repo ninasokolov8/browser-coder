@@ -63,10 +63,22 @@ export function buildSandboxEnv({ jobDir, config, extra = {} }) {
     DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1',
     DOTNET_CLI_HOME: jobDir,
 
-    // Applies to javac and java alike. We rely on the pattern corpus and the
-    // container boundary rather than Java's SecurityManager, which is removed in
-    // modern JDKs and which blocked even System.out.println when enabled.
-    JAVA_TOOL_OPTIONS: '-Xmx128m',
+    // JAVA_TOOL_OPTIONS is deliberately NOT set.
+    //
+    // It looks like the natural place for a heap limit, and it was used for one.
+    // But the JVM announces it on stderr at every startup:
+    //
+    //     Picked up JAVA_TOOL_OPTIONS: -Xmx128m
+    //
+    // which lands in the student's error output on every single Java run - noise
+    // they cannot act on, sitting above their own stack traces, and indenting the
+    // service's implementation details into their workspace. It was also
+    // redundant: the Java adapter passes `-Xmx128m` to the launcher and
+    // `-J-Xmx128m` to javac explicitly, which is both quieter and more precise,
+    // since the two processes can then be limited independently.
+    //
+    // Verified in the production image: with this removed, a Java run's stderr is
+    // empty for a program that prints nothing to it.
 
     ...extra,
   };

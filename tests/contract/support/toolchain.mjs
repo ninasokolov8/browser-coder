@@ -52,19 +52,54 @@ function javaToolchain() {
   const runtime = probe('java', ['-version']);
   if (!runtime) return null;
 
+  /**
+   * Feature version from a JDK banner.
+   *
+   * Must read the QUOTED version string, or the first token of `javac X`, and
+   * nothing else. Scanning the whole banner for a two-digit number is wrong,
+   * because `java -version` also prints the HotSpot internal version:
+   *
+   *     openjdk version "1.8.0_501"
+   *     OpenJDK 64-Bit Server VM (build 25.501-b09, mixed mode)
+   *                                     ^^ Java 8 reports 25 here
+   *
+   * so a loose scan reported this host's JRE 8 as version 25, concluded it was
+   * newer than its javac 21, and declared Java available - after which every Java
+   * test failed with a compile or class-version error that looked like an adapter
+   * bug rather than a local toolchain mismatch.
+   */
   const majorOf = text => {
-    // "javac 17.0.9" and "openjdk version \"1.8.0_501\"" both appear.
-    const modern = text.match(/\b(\d{2,})\b/);
-    if (modern) return Number.parseInt(modern[1], 10);
-    const legacy = text.match(/1\.(\d)\./);
-    return legacy ? Number.parseInt(legacy[1], 10) : null;
+    const firstLine = text.split('\n')[0];
+    // `java -version` / `java --version`: the version is always quoted.
+    const quoted = firstLine.match(/version\s+"([^"]+)"/);
+    // `javac 21.0.8`: the version is the second token.
+    const bare = firstLine.match(/^javac\s+(\S+)/);
+    const version = quoted?.[1] || bare?.[1];
+    if (!version) return null;
+
+    // Java 9+ is "21.0.8"; Java 8 and earlier are "1.8.0_501".
+    const legacy = version.match(/^1\.(\d+)/);
+    if (legacy) return Number.parseInt(legacy[1], 10);
+    const modern = version.match(/^(\d+)/);
+    return modern ? Number.parseInt(modern[1], 10) : null;
   };
 
   const compilerMajor = majorOf(compiler);
   const runtimeMajor = majorOf(runtime);
-  if (compilerMajor && runtimeMajor && runtimeMajor < compilerMajor) {
-    return null;
-  }
+
+  // The runtime must be able to load what the compiler emits. A mixed install
+  // (javac 17, JRE 8) compiles happily and then fails with
+  // UnsupportedClassVersionError, which reads like an adapter bug.
+  if (compilerMajor && runtimeMajor && runtimeMajor < compilerMajor) return null;
+
+  // And the compiler must support the highest release the catalog advertises.
+  // JDK 8's javac has no `--release` at all, so a JDK 8 host cannot verify the
+  // java17 profile even though both halves are present and consistent - which is
+  // exactly this authoring machine. Reporting "available" there produces a
+  // compile failure that looks like a defect in the Java adapter.
+  const HIGHEST_ADVERTISED_RELEASE = 17;
+  if (!compilerMajor || compilerMajor < HIGHEST_ADVERTISED_RELEASE) return null;
+
   return `${compiler.split('\n')[0]} / ${runtime.split('\n')[0]}`;
 }
 
@@ -81,6 +116,74 @@ const PROBES = {
 };
 
 const detected = new Map();
+
+/**
+ * Trivial program per language, used to ask a REMOTE server what it can run.
+ *
+ * When the suite targets a container, probing local binaries answers the wrong
+ * question entirely: the host's PATH says nothing about what is installed in the
+ * image. Availability is therefore established by actually executing something
+ * and checking it produced the expected output - a stronger signal than a version
+ * banner, because it exercises the compiler, the runtime, the sandbox environment
+ * and the adapter together.
+ */
+const REMOTE_PROBES = {
+  javascript: { version: 'es2022', code: 'console.log("probe-ok")' },
+  typescript: { version: 'ts5', code: 'const s: string = "probe-ok";\nconsole.log(s)' },
+  python: { version: 'python3', code: 'print("probe-ok")' },
+  java: {
+    version: 'java17',
+    code: 'public class Main { public static void main(String[] a){ System.out.println("probe-ok"); } }',
+  },
+  php: { version: 'php8', code: '<?php echo "probe-ok";' },
+  csharp: { version: 'csharp12', code: 'System.Console.WriteLine("probe-ok");' },
+};
+
+/** Probe a remote server once per language, in parallel. */
+export async function detectRemoteToolchains(baseUrl) {
+  const target = baseUrl.replace(/\/+$/, '');
+
+  const results = await Promise.all(
+    Object.entries(REMOTE_PROBES).map(async ([languageId, probeSpec]) => {
+      try {
+        const response = await fetch(`${target}/api/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: languageId, ...probeSpec }),
+          // Generous: a cold C# or Java image pays for a first restore/build.
+          signal: AbortSignal.timeout(300000),
+        });
+        const body = await response.json();
+        const ok = body?.exitCode === 0 && String(body?.stdout || '').includes('probe-ok');
+        return [
+          languageId,
+          ok ? `verified by execution on the target (${body.resolvedVersion?.resolved || probeSpec.version})` : null,
+          ok ? null : `exit=${body?.exitCode} stderr=${String(body?.stderr || '').slice(0, 220)}`,
+        ];
+      } catch (error) {
+        return [languageId, null, error.message];
+      }
+    }),
+  );
+
+  for (const [languageId, value, reason] of results) {
+    detected.set(languageId, value);
+    process.stderr.write(
+      value
+        ? `  probe ${languageId.padEnd(11)} OK\n`
+        : `  probe ${languageId.padEnd(11)} FAILED: ${reason}\n`,
+    );
+  }
+}
+
+// Top-level await, deliberately. node:test needs the skip decision at the moment a
+// test is DECLARED, during module evaluation - before any before() hook runs. This
+// is the only point at which the answer is available in time. Each test file is
+// its own process under `node --test`, so this runs once per file.
+if (process.env.CONTRACT_TARGET_URL) {
+  process.stderr.write('\nProbing target server for language support...\n');
+  await detectRemoteToolchains(process.env.CONTRACT_TARGET_URL);
+}
 
 /** Version banner for a language's toolchain, or null when it is unavailable. */
 export function toolchainVersion(languageId) {

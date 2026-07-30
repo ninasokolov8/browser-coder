@@ -1,0 +1,58 @@
+# Line-ending policy.
+#
+# Without this file, a Windows checkout converts everything to CRLF, and the
+# result is not merely cosmetic: `docker-entrypoint.sh` ends up in the production
+# image with a `#!/bin/sh\r` shebang, which the kernel cannot resolve. The
+# container then dies at startup with
+#
+#     exec /usr/local/bin/docker-entrypoint.sh: no such file or directory
+#
+# - a message that names the file it just found, and says nothing about carriage
+# returns. The Linux deploy host never reproduces it, because git checks out LF
+# there, so the image is only broken when built from a Windows working copy.
+#
+# `* text=auto` normalises to LF in the repository. The explicit `eol=lf` entries
+# below additionally force LF in the WORKING TREE, which is what matters for files
+# that are executed by something other than Windows: shell scripts, anything
+# COPYed into a Linux image, and Python that a Linux interpreter runs.
+
+* text=auto
+
+# Executed by /bin/sh inside Linux containers, or by the deploy host.
+*.sh            text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+nginx/*.conf    text eol=lf
+
+# Run by CPython inside the container. A shebang is not the issue here, but a
+# consistent representation keeps hashes and line offsets stable, and the turtle
+# shim's line-offset arithmetic depends on counting newlines.
+*.py            text eol=lf
+
+# Server and shared sources run under Node in Linux images.
+*.mjs           text eol=lf
+*.js            text eol=lf
+*.ts            text eol=lf
+*.json          text eol=lf
+
+# Language starter templates are served verbatim to the editor; their exact bytes
+# are compared against user content to decide whether a file was modified, so a
+# platform-dependent representation would make that comparison platform-dependent.
+languages/**/starters/*  text eol=lf
+
+# Binary: never touch.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.webp          binary
+*.ico           binary
+*.woff          binary
+*.woff2         binary
+*.ttf           binary
+*.otf           binary
+*.pdf           binary
+*.zip           binary

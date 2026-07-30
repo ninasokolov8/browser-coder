@@ -67,7 +67,10 @@ describe('POST /api/run/interactive', () => {
     });
 
     assert.equal(result.events[0].type, 'session');
-    assert.match(result.sessionId, /^[0-9a-f]{32}$/);
+    // Opaque and URL-safe. The format is deliberately NOT pinned: it now carries
+    // the owning replica so stdin can be forwarded there (V-08), and a client only
+    // ever echoes it back in a path segment.
+    assert.match(result.sessionId, /^[A-Za-z0-9_.-]{16,200}$/);
 
     const last = result.events.at(-1);
     assert.equal(last.type, 'exit');

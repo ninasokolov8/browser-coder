@@ -4214,3 +4214,69 @@ strict mode awaits Step-Up content migration.
 
 **Verification:** typecheck clean; 66 unit tests pass; contract 51 pass / 0 fail /
 9 skipped / 3 todo.
+
+### 2026-07-30 - Container verification: the language matrix, proven
+
+**Commit:** `test(container): verify the real language matrix, and fix what it found`
+
+The suite was run against the **production image** under the production security
+profile - read-only root filesystem, `no-new-privileges`, tmpfs mounts,
+`--pids-limit 512`, 1 GiB / 2 CPU.
+
+**Container: 61 pass / 0 fail / 1 skip / 1 todo.** Python, PHP, Java and .NET 8
+execution are now *verified* rather than inferred. **21 of 22 gates permanent**;
+only V-32 strict-version enforcement stays open, deliberately, pending Step-Up
+content migration.
+
+Four real defects surfaced that the authoring host structurally could not find.
+
+**1. CRLF broke the production image.** `docker-entrypoint.sh` was checked out with
+CRLF, so the image carried a `#!/bin/sh` shebang and the container died with
+`exec /usr/local/bin/docker-entrypoint.sh: no such file or directory` - a message
+that names the file it has just successfully found and says nothing about carriage
+returns. The Linux deploy host never reproduces it, so the image is broken *only*
+when built from a Windows working copy. Added `.gitattributes` and normalized 31
+Linux-executed files. This also explains the CRLF warning on every prior commit.
+
+**2. `Dockerfile.production` did not copy the new `server/` tree.** Its `COPY` list
+is an allowlist - correct for a production image, but it means a new top-level
+source directory must be added or the image silently ships without it. The build
+succeeded and the container failed at startup with `ERR_MODULE_NOT_FOUND`. Added
+the copy, plus a build-time import check so a missing module fails the **build**
+rather than the container - which in a rolling deploy is after the old container is
+already gone.
+
+**3. `JAVA_TOOL_OPTIONS` polluted every Java run's stderr** with
+`Picked up JAVA_TOOL_OPTIONS: -Xmx128m`, sitting above the student's own stack
+traces. It was also redundant: the adapter already passes `-Xmx128m` to the
+launcher and `-J-Xmx128m` to javac, which is quieter and lets the two be limited
+independently. Verified: Java stderr is now empty for a program that writes none.
+
+**4. The Java toolchain probe reported this host as capable when it is not.**
+`java -version` prints the HotSpot internal version on its second line - for Java 8
+that is `build 25.501-b09` - so scanning the banner for a two-digit number read the
+JRE as version **25**, judged it newer than `javac 21`, and ran the Java tests,
+which then failed in ways that looked like adapter bugs. The probe now reads only
+the quoted version string and additionally requires `javac` to support the highest
+advertised release, since JDK 8's javac has no `--release` at all.
+
+That fourth one is worth dwelling on: a *test-infrastructure* bug that manufactures
+false failures is as damaging as one that manufactures false passes. It sent me
+looking for a defect in the Java adapter that did not exist.
+
+**Test corrections (not code changes).** Three assertions still expected trimmed
+stdout; the session-id assertion pinned a format that now carries the owning
+replica for stdin forwarding (V-08); and the V-02 probe used `import sys`, which
+the policy corpus refuses - so it was rejected before running and *passed for
+entirely the wrong reason*. Exactly the failure mode the harness exists to prevent,
+found in the harness itself.
+
+**Harness addition.** `CONTRACT_TARGET_URL` points the black-box suite at a running
+server. Toolchain availability is then established by executing a probe program on
+**that server** rather than inspecting the host's PATH - a stronger signal, because
+it exercises compiler, runtime, sandbox environment and adapter together.
+
+**Confirmed in passing:** the cgroup memory detection added in A2 reports
+`memoryBudgetMB: 1024, memoryBudgetSource: cgroup-v1` inside the container while
+`maxConcurrent` is still 500, derived from the host's 30 GiB - V-36 demonstrated
+end to end, and ready to wire.

@@ -52,8 +52,18 @@ describe('V-01 turtle stdout path is a confused deputy', () => {
     // Must be gated: without a working python3 the program never runs, never
     // prints the sentinel, and the test passes vacuously - a false green on the
     // most severe finding in the repository.
-    openIf('python', 'V-01'),
-    async () => {
+    requires('python'),
+    async t => {
+      // Needs a filesystem both sides can see, so a canary can be planted where
+      // the server would read it if it still trusted a path from stdout. Against
+      // a container there is no such shared path, so this skips rather than
+      // passing vacuously; the container run covers the same fix through the
+      // turtle-graphics tests.
+      if (!server.sandboxRoot) {
+        t.skip('needs a host-visible job root; not available against a remote server');
+        return;
+      }
+
       // A program that prints the turtle file sentinel must not cause the API
       // to read - or delete - the named path with its own privileges.
       const canary = `${server.sandboxRoot.replace(/\\/g, '/')}/canary.json`;
@@ -82,17 +92,20 @@ describe('V-01 turtle stdout path is a confused deputy', () => {
 describe('V-02 turtle marker bytes bypass the output limit', () => {
   it(
     'counts withheld sentinel bytes against a hard cap',
-    openIf('python', 'V-02'),
+    requires('python'),
     async () => {
       // An unterminated sentinel must not accumulate without bound ahead of the
       // ordinary output budget.
+      //
+      // Uses print() rather than sys.stdout.write: `import sys` is refused by the
+      // policy corpus, so the earlier version of this test was rejected before it
+      // ran and reported zero events - passing for entirely the wrong reason.
       const result = await runInteractive(server, {
         language: 'python',
         code: [
-          'import sys',
-          'sys.stdout.write("__TURTLE_")',
+          'print("__TURTLE_", end="")',
           'for _ in range(200000):',
-          '    sys.stdout.write("A" * 100)',
+          '    print("A" * 100, end="")',
         ].join('\n'),
       });
 
@@ -221,7 +234,7 @@ describe('V-20 signal and output-limit termination must not report success', () 
 describe('V-23 / V-24 job isolation', () => {
   it(
     'gives two concurrent same-class Java runs disjoint workspaces',
-    openIf('java', 'V-23'),
+    requires('java'),
     async () => {
       const program = marker => `public class Main {
   public static void main(String[] a) { System.out.println("${marker}"); }
@@ -232,8 +245,9 @@ describe('V-23 / V-24 job isolation', () => {
         server.postJson('/api/run', { language: 'java', version: 'java17', code: program('BBB') }),
       ]);
 
-      assert.equal(first.body.stdout, 'AAA', `got: ${first.body.stdout} / ${first.body.stderr}`);
-      assert.equal(second.body.stdout, 'BBB', `got: ${second.body.stdout} / ${second.body.stderr}`);
+      // Exact bytes: stdout is no longer trimmed, so println's newline is present.
+      assert.equal(first.body.stdout, 'AAA\n', `got: ${first.body.stdout} / ${first.body.stderr}`);
+      assert.equal(second.body.stdout, 'BBB\n', `got: ${second.body.stdout} / ${second.body.stderr}`);
     },
   );
 
@@ -424,7 +438,7 @@ describe('V-32 requested version must be honoured or refused', () => {
 describe('V-33 Java project entrypoints', () => {
   it(
     'launches a nested, packaged main class by its fully qualified name',
-    openIf('java', 'V-33'),
+    requires('java'),
     async () => {
       const { body } = await server.postJson('/api/run', {
         language: 'java',
@@ -440,7 +454,7 @@ describe('V-33 Java project entrypoints', () => {
       });
 
       assert.equal(body.exitCode, 0, `stderr was: ${body.stderr}`);
-      assert.equal(body.stdout, 'nested-ok');
+      assert.equal(body.stdout, 'nested-ok\n');
     },
   );
 });
