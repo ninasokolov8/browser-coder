@@ -4392,3 +4392,119 @@ reverting this branch leaves a workspace the previous code can still open. The n
 code never reads it. A migration that is not needed is a migration that cannot
 fail, and a schema bump would have risked an unrecoverable `onupgradeneeded` abort
 on existing duplicate data for no benefit.
+
+---
+
+### C2 - Wiring the IDE to the workspace domain
+
+Commit: `refactor(workspace): make the workspace domain the IDE's single source of truth`
+
+C1 built the domain; this connects it and deletes what it replaces. `storage.ts`
+drops from 643 to 301 lines and `tabs.ts` from 812 to 675, and both change in kind:
+neither holds a file's text any more.
+
+**`TabManager` is now a view.** It owns the open-tab list and the tab-strip DOM,
+and asks the service for everything else. `Tab.file` keeps the old `StoredFile`
+shape so the existing call sites still read naturally, but every field is a
+**getter**: `content` reads the document's buffer, `path` is derived from the folder
+tree. That makes the previously-load-bearing question "which copy is freshest"
+unanswerable, because there is one copy.
+
+**`storage.ts` is a facade, not a store.** It routes each field of an update to the
+service command that owns it, so the merge that produced V-10 - a rename carrying
+the persisted row's stale content back over a live edit - is no longer expressible.
+Ten consumer modules keep working unchanged; new code uses `runtime.workspace`.
+
+**Four more instances of the same defect, found while wiring.** Each was the V-09
+shape - write, then rebuild state from the persisted row, then assert clean - in a
+place the ledger had not catalogued:
+
+| Site | What it did |
+|---|---|
+| `search.ts` `persistReplacedContent` | Replace-all across files rebuilt `tab.file` from the row and set `isDirty = false` |
+| `import-refactor.ts` `persistContent` | Import rewriting did the same after every file it touched |
+| `explorer/tree.ts` rename | Rebuilt the cached record, carrying content across by hand |
+| `explorer/operations.ts` `syncOpenTabsFromStorage` | Existed only to re-copy metadata after every move; now correctly a no-op, since paths are derived |
+
+`stepup.ts` also assigned `tab.file.content = data.code`, which against the new
+read-through view would **throw** rather than silently mis-set - so it was found
+immediately. It also disposed every Monaco model before each host update, which
+defeated the identity preservation added in C1; removing that means a Step-Up
+autosave no longer resets the editor, its undo history, or the scroll position.
+
+**V-18 closed: models carry real workspace URIs.** `file:///workspace/src/utils/
+math.py` instead of `file:///math_7.py`. Renames re-point the URI by recreating the
+model, which costs that file's undo history - a deliberate trade, since renaming is
+rare and deliberate while correct cross-file resolution is continuous. The previous
+behaviour kept undo and left the URI permanently wrong, which is why multi-file
+TypeScript resolution could not work even in principle.
+
+#### Verification: two browser suites, because static checks were not enough
+
+`npm run test:browser`. A real browser, real Monaco, real IndexedDB.
+
+- **`workspace-smoke`** (24 assertions) - the seams node cannot reach: that a
+  Monaco model really becomes the document's buffer, that a rename re-points the
+  URI and carries the text, that IndexedDB round-trips a workspace, that
+  `replaceAll` preserves model identity.
+- **`app-boot`** (21 assertions) - loads the **real IDE** in a same-origin iframe
+  and asserts it reaches Ready with no uncaught error, then creates a file, types
+  into the editor, and waits for autosave. The whole edit loop, end to end.
+
+Rather than adding Playwright, the runner finds the installed Chrome or Edge. Two
+things had to be learned the hard way and are now recorded in the runner: Vite binds
+to `[::1]` only on this host, so probing `127.0.0.1` reports the server as down
+while it is serving; and `--dump-dom` exits the browser as soon as loading finishes,
+which kills the page before an async test can complete - so the page POSTs its own
+result instead of the runner guessing when it is done.
+
+**Both suites found real bugs that everything else missed.**
+
+**1. A disposal-ordering bug in the model registry.** `#reconcile` disposed the old
+model before `attachBuffer` read its content, giving `Error: Model is disposed!`.
+Invisible to the node tests because `MemoryBuffer` has no disposed state. Fixed by
+attaching the replacement first.
+
+**2. `#private` fields versus the lazy proxies.** Six modules reached the editor,
+tab manager and storage through the same one-liner:
+
+```js
+const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
+```
+
+which reads the method off the real object and then calls it with `this` bound to
+the **proxy**. That worked only by accident: field access inside the method went
+back through the `get` trap and was forwarded. Rewriting `TabManager` with real
+`#private` fields broke it instantly -
+
+    TypeError: Cannot read private member #activeId from an object
+               whose class did not declare it
+
+- because a private slot is keyed on object identity. Replaced with one shared
+`lazyRef` helper that binds methods to their real receiver. Worth noting the latent
+scope: the same pattern wrapped the Monaco editor, so it would have broken against
+any dependency that later adopted `#private`.
+
+**And one bug in the harness itself:** the first smoke run printed a stack trace and
+then announced `PASSED`, because the catch handler reported the throw without
+incrementing the failure count. A harness that reports success on an exception is
+worse than no harness. This is the second time in this refactor that a test passed
+for the wrong reason - the V-02 probe in the container work was the first - which is
+why "confirm the test fails against the bug" is now a standing step rather than a
+formality.
+
+**Full state after C2:** typecheck clean on both configs; 135 unit tests; 24 + 21
+browser assertions; contract 51 pass / 0 fail / 11 skip / 1 todo, unchanged, since
+the server was not touched. The production bundle was checked to confirm the
+`__bcRuntime` test seam is dead-code-eliminated by `import.meta.env.DEV` rather than
+shipped.
+
+#### Known and deliberately left
+
+`@ts-nocheck` still sits on ten frontend modules, so the compiler is not protecting
+the majority of the UI layer. Lifting it temporarily during this work surfaced ~30
+pre-existing looseness errors - implicit `any`, `runtime.currentLang` possibly null,
+`HTMLElement.disabled`, one call to a `TabManager.addEventListener` that has never
+existed and is already guarded with `?.`. None were regressions from this change,
+and fixing them is a separate, mechanical commit rather than something to bury in a
+refactor of the persistence model. Recorded here so it is not mistaken for done.

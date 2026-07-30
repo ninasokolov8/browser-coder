@@ -23,9 +23,11 @@ export function setupStepUpIntegration(): void {
   async function handleSetFilesAsync(data: { files: Array<{ path: string; content: string; language?: string }> }) {
     if (!Array.isArray(data.files) || data.files.length === 0) return;
 
-    for (const [id] of runtime.fileModels) {
-      disposeModel(id);
-    }
+    // Models are deliberately NOT disposed here any more. `replaceAll` keeps the
+    // document for a path that still exists, so a host re-sending the same project
+    // preserves the editor model, its undo history and the user's scroll position.
+    // Disposing them up front threw all of that away on every host update, which
+    // is what made a Step-Up autosave feel like the editor was resetting.
 
     const activeTab = await tabManager.replaceAllFiles(
       data.files,
@@ -86,10 +88,11 @@ export function setupStepUpIntegration(): void {
         );
 
         if (tab) {
-          tab.file.content = data.code;
-
+          // `replaceAllFiles` already stored this content. Acquiring the model
+          // makes it the document's buffer, so there is nothing further to assign -
+          // and `tab.file.content` is now a read-through view of that buffer, so
+          // writing to it would throw rather than silently do the wrong thing.
           const model = getOrCreateModel(tab);
-          model.setValue(data.code);
 
           editor.setModel(model);
           updateEmptyState(false);

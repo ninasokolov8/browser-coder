@@ -9,7 +9,6 @@ import { downloadFile } from '../components/download';
 import { saveSettings } from '../components/settings';
 import { getOrCreateModel, updateEmptyState } from './editor-core';
 import { renderFileTree } from './explorer';
-import { getDbName, setDbName } from '../storage';
 
 export async function initializeWorkspace(): Promise<void> {
 const editor = runtime.editor;
@@ -21,16 +20,9 @@ if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) {
 setStatus("Loading files…");
 
 if (appConfig.isEmbedded) {
-  // Embedded mode: isolate this iframe's IndexedDB so multiple parts on the
-  // same Step-Up page don't share/overwrite each other's files. Each iframe
-  // gets a unique DB that's deleted on unload.
-  const isolatedDb = `BrowserCoderDB-embed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  setDbName(isolatedDb);
-  const dbToDelete = getDbName();
-  window.addEventListener('beforeunload', () => {
-    try { indexedDB.deleteDatabase(dbToDelete); } catch (_) { /* best effort */ }
-  });
-  // Start with clean state - files will be provided by Step-Up via postMessage (stepup:init).
+  // The isolated database name and its cleanup are decided in main.ts, where the
+  // workspace is constructed. Here we only start from a clean state: files arrive
+  // from Step-Up via postMessage (stepup:init).
   await tabManager.initEmbedded();
   updateEmptyState(true);
   editor.setModel(null);
@@ -122,38 +114,40 @@ langSel.addEventListener("change", async () => {
   preloadStarters(newLang.id).catch(() => {});
 });
 
-// Version selector
+// Version selector.
+//
+// Everything this handler needs is captured BEFORE the first await: the target
+// document id, the language and the version. The previous version read
+// `runtime.currentVersion` and `editor.getModel()` again *after* two awaits and
+// wrote the starter template into whatever model was active by then - so a user
+// who switched tabs while the starter was loading had the wrong file overwritten
+// (V-11). Applying content through the service, addressed by document id, means
+// the write cannot land anywhere else.
 versionSel.addEventListener("change", async () => {
-  const version = runtime.currentLang.versions.find((v: VersionConfig) => v.id === versionSel.value);
-  if (!version) return;
+  const targetLang = runtime.currentLang;
+  const targetVersion = targetLang.versions.find(candidate => candidate.id === versionSel.value);
+  if (!targetVersion) return;
 
-  runtime.currentVersion = version;
-  configureMonacoForVersion(runtime.currentLang, runtime.currentVersion);
+  runtime.currentVersion = targetVersion;
+  configureMonacoForVersion(targetLang, targetVersion);
 
   const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    // Smart content update: only replace if user hasn't modified the code
-    // Uses async check that compares content against starter template
-    let newContent: string | undefined = undefined;
-    const isModified = await tabManager.isTabUserModifiedAsync(activeTab.file.id);
-    if (!isModified) {
-      // Tab has default content - replace with new version's starter
-      newContent = await getStarterAsync(runtime.currentLang.id, runtime.currentVersion.id);
-    }
+  if (!activeTab) return;
+  const documentId = activeTab.file.id;
 
-    await tabManager.updateTabLanguage(activeTab.file.id, runtime.currentLang, runtime.currentVersion, newContent);
+  // Replace the content only when the file still holds an untouched starter.
+  const isModified = await tabManager.isTabUserModifiedAsync(documentId);
+  const newContent = isModified
+    ? undefined
+    : await getStarterAsync(targetLang.id, targetVersion.id);
 
-    // Update model content if changed
-    if (newContent !== undefined) {
-      const model = editor.getModel();
-      if (model) {
-        model.setValue(newContent);
-      }
-      setStatus(`${runtime.currentLang.name} ${runtime.currentVersion.name} - loaded starter template`);
-    } else {
-      setStatus(`${runtime.currentLang.name} ${runtime.currentVersion.name} - your code preserved`);
-    }
-  }
+  await tabManager.updateTabLanguage(documentId, targetLang, targetVersion, newContent);
+
+  setStatus(
+    newContent !== undefined
+      ? `${targetLang.name} ${targetVersion.name} - loaded starter template`
+      : `${targetLang.name} ${targetVersion.name} - your code preserved`
+  );
 });
 
 // Clear output button handled in VS Code UI section below

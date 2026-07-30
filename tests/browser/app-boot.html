@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>App boot smoke</title>
+    <style>
+      /* The iframe must have a real size or Monaco lays out at zero height and
+         some of its initialization paths never run. */
+      iframe { width: 1280px; height: 800px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Boots the REAL IDE and asserts it reaches a working state.
+
+      The workspace smoke test exercises the domain directly; this exercises the
+      composition - main.ts, the storage facade, TabManager, the explorer, the
+      lazily imported execution modules - in the order and environment the app
+      actually uses. A refactor of the workspace can typecheck, pass every unit
+      test, and still leave the application unable to start; only loading it
+      catches that.
+
+      Same-origin, so this page can read the app's DOM and its errors directly.
+    -->
+    <pre id="results">running…</pre>
+    <iframe id="app" src="/"></iframe>
+    <script type="module" src="./app-boot.ts"></script>
+  </body>
+</html>

@@ -9,10 +9,11 @@ import {
 } from '../components/dom';
 import { setOutput } from '../components/output';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
+import { lazyRef } from '../app/lazy';
 
-const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
-const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
-const storage = new Proxy({} as any, { get: (_t, p) => (runtime.storage as any)[p] });
+const editor = lazyRef(() => runtime.editor, 'editor') as any;
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
+const storage = lazyRef(() => runtime.storage, 'storage') as any;
 const fileModels = runtime.fileModels;
 
 // ===== SEARCH FUNCTIONALITY =====
@@ -48,45 +49,30 @@ let searchDecorations: string[] = [];  // Monaco decoration IDs for highlighting
 /**
  * Return the newest content for a file.
  *
- * Storage can lag behind an open Monaco model while the user is typing, so
- * search/replace must prefer the model, then the open tab, then IndexedDB.
+ * There is now one copy of a document's text, so there is nothing to prefer. The
+ * previous implementation ranked model over tab over IndexedDB, which was correct
+ * given three copies but only by convention - and search-and-replace across many
+ * files is exactly where a mis-ranked read silently corrupts work.
  */
 function getLiveFileContent(fileId: string, storedContent: string = ''): string {
-  const model = fileModels.get(fileId);
-  if (model && !model.isDisposed()) {
-    return model.getValue();
-  }
-
-  const tab = tabManager.getTab(fileId);
-  if (tab) {
-    return tab.file.content ?? storedContent;
-  }
-
-  return storedContent;
+  return runtime.workspace?.getDocument(fileId)?.getContent() ?? storedContent;
 }
 
 /**
- * Apply replacement content consistently to every representation of a file:
- * Monaco model, open tab metadata, and persistent storage.
+ * Write replacement content into a document.
+ *
+ * One assignment to the working copy, then one revision-guarded flush. The old
+ * version wrote to the model, wrote to storage, rebuilt `tab.file` from the
+ * persisted row, and then set `isDirty = false` - the same shape as V-09, so a
+ * keystroke arriving during a multi-file replace could be silently reverted.
  */
 async function persistReplacedContent(fileId: string, newContent: string): Promise<void> {
-  const model = fileModels.get(fileId);
-  if (model && !model.isDisposed() && model.getValue() !== newContent) {
-    model.setValue(newContent);
-  }
+  const workspace = runtime.workspace;
+  const document = workspace?.getDocument(fileId);
+  if (!workspace || !document) return;
 
-  const updatedFile = await storage.updateFile(fileId, { content: newContent });
-  const tab = tabManager.getTab(fileId);
-
-  if (tab) {
-    tab.file = updatedFile
-      ? { ...updatedFile, content: newContent }
-      : { ...tab.file, content: newContent };
-
-    // Replacement is persisted immediately, so the tab should not retain a
-    // stale dirty flag from Monaco's synchronous change event.
-    tab.isDirty = false;
-  }
+  document.setContent(newContent);
+  await workspace.flush(fileId);
 
   runtime.notifyWorkspaceChanged();
 }

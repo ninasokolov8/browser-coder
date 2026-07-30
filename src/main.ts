@@ -1,6 +1,7 @@
 import { initI18n, setLanguage, getLanguage as getUILang } from './i18n';
 import { getAllLanguages, getLanguage, preloadDefaultStarters } from './languages';
-import { storage } from './storage';
+import { setWorkspaceService, storage } from './storage';
+import { createWorkspace } from './workspace';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
@@ -43,7 +44,46 @@ async function bootstrap(): Promise<void> {
   runtime.currentVersion = populateVersionDropdown(runtime.currentLang, appConfig.urlVersion || undefined);
   configureMonacoForVersion(runtime.currentLang, runtime.currentVersion);
 
+  // The workspace is created before anything can touch it, and the database name
+  // is decided here because it depends on the embedding mode. Embedded IDEs get an
+  // isolated database so several Step-Up parts on one page cannot overwrite each
+  // other's files, and it is deleted on unload.
+  const databaseName = appConfig.isEmbedded
+    ? `BrowserCoderDB-embed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+    : 'BrowserCoderDB';
+
+  if (appConfig.isEmbedded) {
+    window.addEventListener('beforeunload', () => {
+      try {
+        indexedDB.deleteDatabase(databaseName);
+      } catch {
+        /* best effort - the browser may already be tearing the page down */
+      }
+    });
+  }
+
+  const workspace = createWorkspace({
+    databaseName,
+    languages: {
+      monacoLanguageFor: (languageId: string) =>
+        getLanguage(languageId)?.monacoLanguage || 'plaintext',
+    },
+  });
+
+  runtime.workspace = workspace.service;
+  runtime.models = workspace.models;
   runtime.storage = storage;
+  setWorkspaceService(workspace.service);
+
+  // Test seam, development builds only. The app-boot smoke test loads the real IDE
+  // in an iframe and needs to ask whether the workspace actually opened - a
+  // question the DOM cannot answer. Guarded by import.meta.env.DEV so it is
+  // dead-code-eliminated from the production bundle rather than shipping an
+  // internals handle to every page that embeds the IDE.
+  if (import.meta.env.DEV) {
+    (window as unknown as { __bcRuntime: unknown }).__bcRuntime = runtime;
+  }
+
   createEditor();
   createTabManager({
     renderFileTree: () => { void renderFileTree(); },

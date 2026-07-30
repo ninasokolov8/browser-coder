@@ -6,8 +6,9 @@ import {
   emptyStateNewFileBtn, searchInput,
 } from '../components/dom';
 import { saveSettings } from '../components/settings';
+import { lazyRef } from '../app/lazy';
 
-const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
+const editor = lazyRef(() => runtime.editor, 'editor') as any;
 
 // ===== SIDEBAR PANEL SWITCHING =====
 function panelIsVisible(panelName: string): boolean {

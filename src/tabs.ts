@@ -1,730 +1,571 @@
 /**
- * Tab Manager - Handles multi-file tab UI and state
+ * The tab bar: which documents are open, which one is showing, and its rendering.
+ *
+ * This used to be the workspace. It held every open file's text in
+ * `tab.file.content`, wrote to IndexedDB, debounced autosaves on a single shared
+ * timer, and rendered the tab strip - which is why the data-loss defects lived
+ * here. It is now a **view**: it owns the open-tab list and the DOM, and asks
+ * `WorkspaceService` for everything else.
+ *
+ * `Tab.file` is deliberately still shaped like the old `StoredFile`, but it is now
+ * a **live projection** rather than a snapshot: `content` reads the document's
+ * buffer on every access and `path` is derived from the folder tree. That keeps the
+ * existing call sites working while making them correct - the several places that
+ * did "check the model, then the tab, then the record" to find the freshest copy
+ * now get the same answer whichever they ask.
  */
 
-import { storage, StoredFile, WorkspaceState } from './storage';
 import { getAllLanguages, getLanguage, getStarterAsync, LoadedLanguage, VersionConfig } from './languages';
 import { isWorkspaceEntryHidden } from './features/workspace-visibility';
+import type { StoredFile } from './storage';
+import type { WorkspaceDocument, WorkspaceService } from './workspace';
 
 export interface Tab {
-  file: StoredFile;
-  isDirty: boolean;  // Has unsaved changes
+  /** A live view of the document. Not a copy - `content` reads the buffer. */
+  readonly file: StoredFile;
+  readonly isDirty: boolean;
+  readonly document: WorkspaceDocument;
 }
 
 export interface TabManagerEvents {
   onTabSwitch?: (tab: Tab) => void;
-  onTabCreate?: (tab: Tab) => void;
+  onTabCreate?: (tab: Tab | null) => void;
   onTabClose?: (tab: Tab) => void;
   onTabUpdate?: (tab: Tab) => void;
   onTabsChange?: (tabs: Tab[]) => void;
 }
 
-export class TabManager {
-  private tabs: Tab[] = [];
-  private activeTabId: string | null = null;
-  private containerEl: HTMLElement;
-  private events: TabManagerEvents;
-  private autoSaveTimer: number | null = null;
-  private autoSaveDelay = 1000; // 1 second debounce
+/**
+ * Project a document as the legacy `StoredFile` shape, reading through to the
+ * live buffer and the derived path.
+ *
+ * Getters rather than a spread: a spread would snapshot `content`, and a
+ * snapshot of content is precisely what every data-loss defect was made of.
+ */
+function projectDocument(document: WorkspaceDocument, service: WorkspaceService): StoredFile {
+  return {
+    id: document.id,
+    get name() {
+      return document.metadata.name;
+    },
+    get path() {
+      return service.pathOf(document.id) ?? document.metadata.name;
+    },
+    get parentId() {
+      return document.metadata.parentId;
+    },
+    get language() {
+      return document.metadata.language;
+    },
+    get version() {
+      return document.metadata.version;
+    },
+    get content() {
+      return document.getContent();
+    },
+    get createdAt() {
+      return document.metadata.createdAt;
+    },
+    get updatedAt() {
+      return document.metadata.updatedAt;
+    },
+    get order() {
+      return document.metadata.order;
+    },
+    get isUserModified() {
+      return document.metadata.isUserModified;
+    },
+  } as StoredFile;
+}
 
-  constructor(containerEl: HTMLElement, events: TabManagerEvents = {}) {
-    this.containerEl = containerEl;
-    this.events = events;
+export class TabManager {
+  #service: WorkspaceService;
+  #containerEl: HTMLElement;
+  #events: TabManagerEvents;
+
+  /** Open document ids, in tab-strip order. */
+  #openIds: string[] = [];
+  #activeId: string | null = null;
+  #views = new Map<string, Tab>();
+
+  constructor(containerEl: HTMLElement, service: WorkspaceService, events: TabManagerEvents = {}) {
+    this.#containerEl = containerEl;
+    this.#service = service;
+    this.#events = events;
+
+    // A rename or language change must redraw the strip. Previously each call site
+    // remembered to do this itself, and the ones that forgot showed a stale name.
+    this.#service.onDidChangeWorkspace(event => {
+      if (event.reason === 'delete' || event.reason === 'clear' || event.reason === 'replace-all') {
+        this.#dropClosedDocuments();
+      }
+      this.render();
+    });
   }
 
   // ========== Initialization ==========
 
-  /**
-   * Initialize tab manager - load saved files or return null for empty state
-   */
-  async init(defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
-    await storage.init();
-    
-    // Load existing files
-    const files = await storage.getAllFiles();
-    const state = await storage.getWorkspaceState();
+  /** Open the persisted workspace and return the tab to show, if any. */
+  async init(_defaultLang?: LoadedLanguage, _defaultVersion?: VersionConfig): Promise<Tab | null> {
+    if (!this.#service.isOpen) await this.#service.open();
 
-    if (files.length > 0) {
-      // Hidden support files remain persisted but must never become the file
-      // shown automatically when the workspace opens.
-      const visibleFiles = files.filter(file => !isWorkspaceEntryHidden(file));
-      const activeFile =
-        visibleFiles.find(file => file.id === state.activeFileId) ||
-        visibleFiles[0] ||
-        null;
+    const visible = this.#service
+      .allDocuments()
+      .filter(document => !isWorkspaceEntryHidden(this.#legacyShape(document)));
 
-      if (activeFile) {
-        const activeTab: Tab = { file: activeFile, isDirty: false };
-        this.tabs = [activeTab];
-        this.activeTabId = activeTab.file.id;
-        this.render();
-        this.events.onTabsChange?.(this.tabs);
-        return activeTab;
-      }
+    const restored =
+      visible.find(document => document.id === this.#service.state.activeFileId) ?? visible[0] ?? null;
 
-      // A workspace containing only hidden support files intentionally opens
-      // with no visible tab. The files still remain available to execution.
-      this.tabs = [];
-      this.activeTabId = null;
+    if (!restored) {
+      // A workspace containing only hidden support files opens with no visible
+      // tab. The files stay available to imports and execution.
+      this.#openIds = [];
+      this.#activeId = null;
       this.render();
-      this.events.onTabsChange?.(this.tabs);
-      return null;
-    } else {
-      // No files - return null, let UI show empty state
-      this.render();
-      this.events.onTabsChange?.(this.tabs);
+      this.#events.onTabsChange?.(this.getAllTabs());
       return null;
     }
+
+    this.#openIds = [restored.id];
+    this.#activeId = restored.id;
+    this.render();
+    this.#events.onTabsChange?.(this.getAllTabs());
+    return this.#viewOf(restored);
   }
 
-  /**
-   * Initialize tab manager in embedded mode - start with clean state (no IndexedDB restore).
-   * This prevents stale/duplicate files from previous sessions polluting the embedded IDE.
-   */
+  /** Embedded mode: no restore, because the host supplies content on every load. */
   async initEmbedded(): Promise<void> {
-    await storage.init();
-    await storage.clearAll();
-    this.tabs = [];
-    this.activeTabId = null;
+    await this.#service.openEmpty();
+    this.#openIds = [];
+    this.#activeId = null;
     this.render();
-    this.events.onTabsChange?.(this.tabs);
+    this.#events.onTabsChange?.(this.getAllTabs());
   }
 
   /**
-   * Replace all tabs with the given files. Clears storage and existing tabs first.
-   * Used by Step-Up integration when receiving files via postMessage.
-   * Preserves the currently active file by name to avoid tab-jumping on content updates.
+   * Replace every file with a host-supplied project.
+   *
+   * The atomicity, validation and identity preservation all live in
+   * `WorkspaceService.replaceAll`; this only decides which tab ends up showing.
    */
-  async replaceAllFiles(files: Array<{ path: string; content: string; language?: string }>, defaultLang: LoadedLanguage, defaultVersion: VersionConfig): Promise<Tab | null> {
-    // Remember active file path to restore after replacement
-    const activeTab = this.getActiveTab();
-    const previousActivePath = activeTab?.file.path || null;
+  async replaceAllFiles(
+    files: Array<{ path: string; content: string; language?: string }>,
+    defaultLang: LoadedLanguage,
+    defaultVersion: VersionConfig,
+  ): Promise<Tab | null> {
+    const previousActivePath = this.#activeId ? this.#service.pathOf(this.#activeId) : null;
 
-    // Clear existing state
-    await storage.clearAll();
-    this.tabs.forEach(t => this.events.onTabClose?.(t));
-    this.tabs = [];
-    this.activeTabId = null;
+    const result = await this.#service.replaceAll(files, {
+      resolve: (fileName, explicitLanguage) => {
+        const explicit = explicitLanguage ? getLanguage(explicitLanguage) : undefined;
+        const language = explicit || this.detectLanguageByExtension(fileName) || defaultLang;
+        // The version must belong to the language that was actually chosen.
+        // Resolving them independently is how an explicit `python` file could be
+        // given a JavaScript version id.
+        const version =
+          language.id === defaultLang.id
+            ? defaultVersion
+            : language.versions.find(candidate => candidate.default) || language.versions[0];
+        return { id: language.id, version: version.id };
+      },
+    });
 
-    // Folder hierarchy is implicit in the paths (e.g. "src/utils/math.py").
-    // Create each folder segment once and remember its id by full path.
-    const folderIdsByPath = new Map<string, string>();
-    const createdFiles: StoredFile[] = [];
+    this.#views.clear();
+    const visible = result.documents.filter(
+      document => !isWorkspaceEntryHidden(this.#legacyShape(document)),
+    );
 
-    for (const f of files) {
-      const rawPath = (f.path || `main.${defaultLang.extension}`).replace(/^\/+/, '');
-      const segments = rawPath.split('/').filter(s => s.length > 0 && s !== '.' && s !== '..');
-      const fileName = segments.pop() || `main.${defaultLang.extension}`;
-
-      // Ensure the folder chain for this file exists
-      let parentId: string | null = null;
-      let folderPath = '';
-      for (const segment of segments) {
-        folderPath += '/' + segment;
-        let folderId = folderIdsByPath.get(folderPath);
-        if (!folderId) {
-          const folder = await storage.createFolder({ name: segment, parentId });
-          folderId = folder.id;
-          folderIdsByPath.set(folderPath, folderId);
-        }
-        parentId = folderId;
-      }
-
-      // Per-file language: explicit > by file extension > embed default
-      const explicitLang = f.language ? getLanguage(f.language) : undefined;
-      const lang = explicitLang || this.detectLanguageByExtension(fileName) || defaultLang;
-      const version = lang.id === defaultLang.id
-        ? defaultVersion
-        : (lang.versions.find(v => v.default) || lang.versions[0]);
-
-      const storedFile = await storage.createFile({
-        name: fileName,
-        parentId,
-        language: lang.id,
-        version: version.id,
-        content: f.content || '',
-        isUserModified: false,
-      });
-      createdFiles.push(storedFile);
-    }
-
-    // Open only ONE visible tab. Hidden support files stay fully persisted and
-    // available to imports/execution, but are never selected automatically.
-    const visibleFiles = createdFiles.filter(file => !isWorkspaceEntryHidden(file));
-    const fileToOpen =
-      (previousActivePath && visibleFiles.find(file => file.path === previousActivePath)) ||
-      visibleFiles[0] ||
+    const toOpen =
+      (previousActivePath
+        ? visible.find(document => this.#service.pathOf(document.id) === previousActivePath)
+        : undefined) ??
+      visible[0] ??
       null;
-    if (fileToOpen) {
-      this.tabs.push({ file: fileToOpen, isDirty: false });
-      this.activeTabId = fileToOpen.id;
-    }
+
+    this.#openIds = toOpen ? [toOpen.id] : [];
+    this.#activeId = toOpen?.id ?? null;
+    await this.#service.setActiveDocument(this.#activeId);
 
     this.render();
-    this.events.onTabsChange?.(this.tabs);
-    return this.getActiveTab();
+    this.#events.onTabsChange?.(this.getAllTabs());
+    return toOpen ? this.#viewOf(toOpen) : null;
   }
 
-  /**
-   * Resolve a language by file extension (e.g. "Hello.cs" -> csharp).
-   * Returns undefined when no configured language matches.
-   */
+  /** Resolve a language by file extension, e.g. "Hello.cs" -> csharp. */
   detectLanguageByExtension(fileName: string): LoadedLanguage | undefined {
-    const dotIdx = fileName.lastIndexOf('.');
-    if (dotIdx <= 0) return undefined;
-    const ext = fileName.slice(dotIdx + 1).toLowerCase();
-    return getAllLanguages().find(l => l.extension.toLowerCase() === ext);
+    const dot = fileName.lastIndexOf('.');
+    if (dot <= 0) return undefined;
+    const extension = fileName.slice(dot + 1).toLowerCase();
+    return getAllLanguages().find(language => language.extension.toLowerCase() === extension);
   }
 
-  // ========== Tab Operations ==========
+  // ========== Tab operations ==========
 
-  /**
-   * Create a new file/tab
-   * @param emptyFile If true, creates file with empty content (useful for free_code tasks). Otherwise uses starter code.
-   */
-  async createNewFile(lang: LoadedLanguage, version: VersionConfig, name?: string, parentId: string | null = null, emptyFile: boolean = false): Promise<Tab | null> {
-    let fileContent = '';
-    if (!emptyFile) {
-      fileContent = await getStarterAsync(lang.id, version.id);
-    }
-    
-    // Generate unique name
-    const baseName = name || `main.${lang.extension}`;
-    const uniqueName = this.generateUniqueName(baseName);
+  async createNewFile(
+    lang: LoadedLanguage,
+    version: VersionConfig,
+    name?: string,
+    parentId: string | null = null,
+    emptyFile = false,
+  ): Promise<Tab | null> {
+    const content = emptyFile ? '' : await getStarterAsync(lang.id, version.id);
 
-    const file = await storage.createFile({
-      name: uniqueName,
+    const document = await this.#service.createDocument({
+      name: name || `main.${lang.extension}`,
       parentId,
       language: lang.id,
       version: version.id,
-      content: fileContent,
+      content,
       isUserModified: false,
     });
 
-    const tab: Tab = { file, isDirty: false };
-    this.tabs.push(tab);
-    
-    // Switch to new tab
-    await this.switchToTab(tab.file.id);
-    
-    this.events.onTabCreate?.(tab);
-    this.events.onTabsChange?.(this.tabs);
-    
+    const tab = this.#viewOf(document);
+    await this.switchToTab(document.id);
+    this.#events.onTabCreate?.(tab);
+    this.#events.onTabsChange?.(this.getAllTabs());
     return tab;
   }
 
   /**
-   * Generate a unique file name
-   */
-  private generateUniqueName(baseName: string): string {
-    const existing = new Set(this.tabs.map(t => t.file.name));
-    if (!existing.has(baseName)) return baseName;
-
-    const dotIdx = baseName.lastIndexOf('.');
-    const nameWithoutExt = dotIdx > 0 ? baseName.slice(0, dotIdx) : baseName;
-    const ext = dotIdx > 0 ? baseName.slice(dotIdx) : '';
-
-    let counter = 1;
-    let newName = `${nameWithoutExt}_${counter}${ext}`;
-    while (existing.has(newName)) {
-      counter++;
-      newName = `${nameWithoutExt}_${counter}${ext}`;
-    }
-    return newName;
-  }
-
-
-  /**
-   * Generate a unique file name within a specific folder using all persisted
-   * files, not only currently open tabs. This prevents template-created files
-   * from colliding with files that are visible in the explorer but not open.
-   */
-  private async generateUniqueNameForParent(baseName: string, parentId: string | null): Promise<string> {
-    const files = await storage.getChildFiles(parentId);
-    const existing = new Set(files.map(f => f.name));
-
-    // Include live tabs too, so an unsaved/newly-opened tab cannot collide.
-    for (const tab of this.tabs) {
-      if (tab.file.parentId === parentId) {
-        existing.add(tab.file.name);
-      }
-    }
-
-    if (!existing.has(baseName)) return baseName;
-
-    const dotIdx = baseName.lastIndexOf('.');
-    const nameWithoutExt = dotIdx > 0 ? baseName.slice(0, dotIdx) : baseName;
-    const ext = dotIdx > 0 ? baseName.slice(dotIdx) : '';
-
-    let counter = 1;
-    let newName = `${nameWithoutExt}_${counter}${ext}`;
-    while (existing.has(newName)) {
-      counter++;
-      newName = `${nameWithoutExt}_${counter}${ext}`;
-    }
-    return newName;
-  }
-
-  /**
-   * Open the clean starter-template file for a language when it already exists.
-   * If every existing file for that language has been changed even by one
-   * character, create a new starter file instead. This keeps the top language
-   * selector from rewriting whatever file the user is currently viewing.
+   * Open the clean starter file for a language, or create one.
+   *
+   * If a file for that language exists whose content is byte-for-byte the starter,
+   * focus it. If every one has been changed even by a single character, create a
+   * new starter instead - so the language selector can never rewrite the file the
+   * user is looking at.
    */
   async openLanguageTemplateFile(
     lang: LoadedLanguage,
     version: VersionConfig,
-    parentId?: string | null
+    parentId?: string | null,
   ): Promise<{ tab: Tab; created: boolean } | null> {
-    const targetParentId = parentId !== undefined
-      ? parentId
-      : (this.getActiveTab()?.file.parentId ?? null);
-    const storedFiles = await storage.getAllFiles();
-    const liveFilesById = new Map(this.tabs.map(tab => [tab.file.id, tab.file]));
-    const files = storedFiles
-      .map(file => liveFilesById.get(file.id) || file)
-      .filter(file => !isWorkspaceEntryHidden(file));
+    const targetParentId =
+      parentId !== undefined ? parentId : (this.getActiveTab()?.file.parentId ?? null);
 
-    const languageFiles = files.filter(file => file.language === lang.id);
-    const orderedLanguageFiles = [
-      ...languageFiles.filter(file => file.parentId === targetParentId),
-      ...languageFiles.filter(file => file.parentId !== targetParentId),
+    const candidates = this.#service
+      .allDocuments()
+      .filter(document => !isWorkspaceEntryHidden(this.#legacyShape(document)))
+      .filter(document => document.language === lang.id);
+
+    // Same folder first, so the selector prefers a file the user can already see.
+    const ordered = [
+      ...candidates.filter(document => document.parentId === targetParentId),
+      ...candidates.filter(document => document.parentId !== targetParentId),
     ];
-    const starterByVersion = new Map<string, string>();
-    const starterForVersion = async (versionId: string): Promise<string> => {
-      const cached = starterByVersion.get(versionId);
-      if (cached !== undefined) return cached;
 
+    const starterCache = new Map<string, string>();
+    const starterFor = async (versionId: string): Promise<string> => {
+      const cached = starterCache.get(versionId);
+      if (cached !== undefined) return cached;
       const starter = await getStarterAsync(lang.id, versionId);
-      starterByVersion.set(versionId, starter);
+      starterCache.set(versionId, starter);
       return starter;
     };
 
-    for (const file of orderedLanguageFiles) {
-      const fileVersion = lang.versions.find(v => v.id === file.version) || version;
-      const starterContent = await starterForVersion(fileVersion.id);
+    for (const document of ordered) {
+      const documentVersion = lang.versions.find(candidate => candidate.id === document.version) || version;
+      const starter = await starterFor(documentVersion.id);
 
-      // 100% exact comparison: no trim, normalization, or modified-flag shortcut.
-      if (file.content === starterContent) {
-        const tab = await this.switchToTab(file.id);
+      // Exact comparison: no trim, no normalization, no modified-flag shortcut.
+      if (document.getContent() === starter) {
+        const tab = await this.switchToTab(document.id);
         return tab ? { tab, created: false } : null;
       }
     }
 
-    const starterContent = await starterForVersion(version.id);
-    const fileName = await this.generateUniqueNameForParent(`main.${lang.extension}`, targetParentId);
-    const file = await storage.createFile({
-      name: fileName,
+    const starter = await starterFor(version.id);
+    const created = await this.#service.createDocument({
+      name: `main.${lang.extension}`,
       parentId: targetParentId,
       language: lang.id,
       version: version.id,
-      content: starterContent,
+      content: starter,
       isUserModified: false,
     });
 
-    const tab = await this.switchToTab(file.id);
+    const tab = await this.switchToTab(created.id);
     if (!tab) return null;
 
-    this.events.onTabCreate?.(tab);
-    this.events.onTabsChange?.(this.tabs);
-
+    this.#events.onTabCreate?.(tab);
+    this.#events.onTabsChange?.(this.getAllTabs());
     return { tab, created: true };
   }
 
-  /**
-   * Switch to a tab
-   */
   async switchToTab(fileId: string): Promise<Tab | null> {
-    let tab = this.tabs.find(t => t.file.id === fileId);
+    const document = this.#service.getDocument(fileId);
+    if (!document) return null;
+    if (isWorkspaceEntryHidden(this.#legacyShape(document))) return null;
 
-    if (tab && isWorkspaceEntryHidden(tab.file)) {
+    // Flush the outgoing tab rather than relying on its debounce, so switching
+    // away is a durability point.
+    if (this.#activeId && this.#activeId !== fileId) {
+      await this.#service.flush(this.#activeId);
+    }
+
+    if (!this.#openIds.includes(fileId)) {
+      this.#openIds.push(fileId);
+      this.#events.onTabsChange?.(this.getAllTabs());
+    }
+
+    this.#activeId = fileId;
+    await this.#service.setActiveDocument(fileId);
+
+    const tab = this.#viewOf(document);
+    this.render();
+    this.#events.onTabSwitch?.(tab);
+    return tab;
+  }
+
+  /**
+   * Close a tab. The file stays in storage and in the explorer (VS Code
+   * semantics); deleting is a separate, explicit explorer action.
+   */
+  async closeTab(fileId: string): Promise<Tab | null> {
+    const index = this.#openIds.indexOf(fileId);
+    if (index === -1) return null;
+
+    const document = this.#service.getDocument(fileId);
+    const closed = document ? this.#viewOf(document) : null;
+
+    if (document?.isDirty) await this.#service.flush(fileId);
+
+    this.#openIds.splice(index, 1);
+
+    if (this.#activeId === fileId) {
+      if (this.#openIds.length > 0) {
+        const neighbour = this.#openIds[Math.min(index, this.#openIds.length - 1)];
+        await this.switchToTab(neighbour);
+      } else {
+        this.#activeId = null;
+        await this.#service.setActiveDocument(null);
+      }
+    }
+
+    this.#views.delete(fileId);
+    this.render();
+    if (closed) this.#events.onTabClose?.(closed);
+    this.#events.onTabsChange?.(this.getAllTabs());
+    return closed;
+  }
+
+  /**
+   * Close every tab without deleting files.
+   *
+   * Deliberately does NOT touch persistence. The previous implementation cleared
+   * its single autosave timer here, because its one caller is Clear Cache and a
+   * debounced save landing after the database was emptied would recreate a file the
+   * user had just deleted. That hazard now belongs to `WorkspaceService.clearAll`,
+   * which suspends the writers, unregisters every document and resumes - so the
+   * protection travels with the operation that needs it instead of depending on
+   * two calls happening in the right order.
+   */
+  closeAllTabs(): void {
+    const closed = this.getAllTabs();
+    this.#openIds = [];
+    this.#activeId = null;
+    this.#views.clear();
+
+    this.render();
+    for (const tab of closed) this.#events.onTabClose?.(tab);
+    this.#events.onTabsChange?.([]);
+  }
+
+  /** Rename. Metadata only - the working copy is never touched. */
+  async renameTab(fileId: string, newName: string): Promise<Tab | null> {
+    const document = await this.#service.renameDocument(fileId, newName);
+    if (!document) return null;
+
+    const detected = this.detectLanguageByExtension(document.name);
+    if (detected && detected.id !== document.language) {
+      const version = detected.versions.find(candidate => candidate.default) || detected.versions[0];
+      await this.#service.setDocumentLanguage(fileId, detected.id, version.id);
+    }
+
+    // Renaming a visible file to the hidden prefix removes it from the student's
+    // UI immediately, without deleting it from storage.
+    if (isWorkspaceEntryHidden(this.#legacyShape(document))) {
+      await this.#service.flush(fileId);
+      const tab = this.#viewOf(document);
+      const index = this.#openIds.indexOf(fileId);
+      const wasActive = this.#activeId === fileId;
+      if (index !== -1) this.#openIds.splice(index, 1);
+
+      if (wasActive) {
+        this.#activeId = null;
+        const next = this.#openIds[Math.min(index, this.#openIds.length - 1)] ?? this.#openIds[0] ?? null;
+        if (next) await this.switchToTab(next);
+        else await this.#service.setActiveDocument(null);
+      }
+
+      this.#views.delete(fileId);
+      this.render();
+      this.#events.onTabClose?.(tab);
+      this.#events.onTabsChange?.(this.getAllTabs());
       return null;
     }
 
-    if (!tab) {
-      // Lazy open: file exists in storage (explorer tree) but has no tab yet.
-      const file = await storage.getFile(fileId);
-      if (!file || isWorkspaceEntryHidden(file)) return null;
-      tab = { file, isDirty: false };
-    }
-
-    // Save current tab only after confirming that the requested target is a
-    // visible student-facing file.
-    if (this.activeTabId) {
-      await this.saveCurrentTab();
-    }
-
-    if (!this.tabs.some(existing => existing.file.id === fileId)) {
-      this.tabs.push(tab);
-      this.events.onTabsChange?.(this.tabs);
-    }
-
-    this.activeTabId = fileId;
-    await this.saveWorkspaceState();
-    
+    const tab = this.#viewOf(document);
     this.render();
-    this.events.onTabSwitch?.(tab);
-    
+    this.#events.onTabUpdate?.(tab);
     return tab;
   }
 
-  /**
-   * Close a tab
-   */
-  async closeTab(fileId: string): Promise<Tab | null> {
-    const tabIndex = this.tabs.findIndex(t => t.file.id === fileId);
-    if (tabIndex === -1) return null;
-
-    const closedTab = this.tabs[tabIndex];
-
-    // Auto-save before closing so no work is lost
-    if (closedTab.isDirty) {
-      await this.saveTab(closedTab);
-    }
-
-    // Closing a tab does NOT delete the file - it stays in storage and in
-    // the explorer tree (VS Code semantics). Deleting is an explicit
-    // explorer action handled in main.ts.
-
-    // Remove from tabs
-    this.tabs.splice(tabIndex, 1);
-
-    // If we closed the active tab, switch to another
-    if (this.activeTabId === fileId) {
-      if (this.tabs.length > 0) {
-        // Switch to neighbor tab
-        const newIndex = Math.min(tabIndex, this.tabs.length - 1);
-        await this.switchToTab(this.tabs[newIndex].file.id);
-      } else {
-        this.activeTabId = null;
-      }
-    }
-
-    this.render();
-    this.events.onTabClose?.(closedTab);
-    this.events.onTabsChange?.(this.tabs);
-
-    return closedTab;
-  }
+  // ========== Content ==========
 
   /**
-   * Close all tabs without saving or deleting files
-   * Used when clearing cache
-   */
-  closeAllTabs(): void {
-    // A pending debounced auto-save can otherwise run after storage.clearAll()
-    // and restore a file that the user just deleted via Clear Cache.
-    if (this.autoSaveTimer !== null) {
-      clearTimeout(this.autoSaveTimer);
-      this.autoSaveTimer = null;
-    }
-
-    const closedTabs = [...this.tabs];
-    this.tabs = [];
-    this.activeTabId = null;
-
-    this.render();
-
-    for (const tab of closedTabs) {
-      this.events.onTabClose?.(tab);
-    }
-    this.events.onTabsChange?.(this.tabs);
-  }
-
-  /**
-   * Rename a tab/file
-   */
-  async renameTab(fileId: string, newName: string): Promise<Tab | null> {
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) return null;
-
-    // Ensure unique name
-    const uniqueName = this.generateUniqueName(newName);
-
-    // Re-detect language from the new extension (e.g. main.js -> main.php)
-    const updates: Partial<StoredFile> = { name: uniqueName };
-    const detected = this.detectLanguageByExtension(uniqueName);
-    if (detected && detected.id !== tab.file.language) {
-      const version = detected.versions.find(v => v.default) || detected.versions[0];
-      updates.language = detected.id;
-      updates.version = version.id;
-    }
-
-    const updated = await storage.updateFile(fileId, updates);
-    if (updated) {
-      tab.file = updated;
-
-      // Renaming a visible file to the hidden prefix should remove it from the
-      // student UI immediately without deleting it from storage.
-      if (isWorkspaceEntryHidden(updated)) {
-        if (this.autoSaveTimer !== null) {
-          clearTimeout(this.autoSaveTimer);
-          this.autoSaveTimer = null;
-        }
-
-        // Persist the newest in-memory contents together with the rename before
-        // removing the tab from the UI.
-        const persisted = await storage.updateFile(fileId, {
-          content: tab.file.content,
-          isUserModified: tab.file.isUserModified,
-        });
-        if (persisted) tab.file = persisted;
-        tab.isDirty = false;
-
-        const tabIndex = this.tabs.findIndex(existing => existing.file.id === fileId);
-        const wasActive = this.activeTabId === fileId;
-        if (tabIndex !== -1) this.tabs.splice(tabIndex, 1);
-
-        if (wasActive) {
-          this.activeTabId = null;
-          const nextTab = this.tabs[Math.min(tabIndex, this.tabs.length - 1)] || this.tabs[0] || null;
-          if (nextTab) {
-            await this.switchToTab(nextTab.file.id);
-          } else {
-            await this.saveWorkspaceState();
-          }
-        }
-
-        this.render();
-        this.events.onTabClose?.(tab);
-        this.events.onTabsChange?.(this.tabs);
-        return null;
-      }
-
-      this.render();
-      this.events.onTabUpdate?.(tab);
-    }
-
-    return tab;
-  }
-
-  // ========== Content Management ==========
-
-  /**
-   * Update tab content (called when editor content changes)
+   * Retained for callers that still push editor text in explicitly.
+   *
+   * Once a document's buffer IS the Monaco model, edits are observed directly and
+   * this is a no-op for the active document - which is why it no longer schedules
+   * anything itself. The coordinator is already subscribed.
    */
   markDirty(fileId: string, content: string): void {
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) return;
+    const document = this.#service.getDocument(fileId);
+    if (!document) return;
 
-    tab.file.content = content;
-    tab.file.isUserModified = true; // User has made changes
-    tab.isDirty = true;
+    if (document.getContent() !== content) document.setContent(content);
+    if (!document.metadata.isUserModified) {
+      void this.#service.setDocumentUserModified(fileId, true);
+    }
     this.render();
-
-    // Schedule auto-save
-    this.scheduleAutoSave(tab);
   }
 
-  /**
-   * Schedule auto-save with debounce
-   */
-  private scheduleAutoSave(tab: Tab): void {
-    if (this.autoSaveTimer) {
-      clearTimeout(this.autoSaveTimer);
-    }
-
-    this.autoSaveTimer = window.setTimeout(async () => {
-      await this.saveTab(tab);
-    }, this.autoSaveDelay);
-  }
-
-  /**
-   * Save a specific tab
-   */
   async saveTab(tab: Tab): Promise<void> {
-    const updated = await storage.updateFile(tab.file.id, {
-      content: tab.file.content,
-      language: tab.file.language,
-      version: tab.file.version,
-      isUserModified: tab.file.isUserModified,
-    });
-
-    if (updated) {
-      tab.file = updated;
-      tab.isDirty = false;
-      this.render();
-      this.events.onTabUpdate?.(tab);
-    }
+    await this.#service.flush(tab.file.id);
+    this.render();
+    this.#events.onTabUpdate?.(tab);
   }
 
-  /**
-   * Save current active tab
-   */
   async saveCurrentTab(): Promise<void> {
-    const tab = this.getActiveTab();
-    if (tab && tab.isDirty) {
-      await this.saveTab(tab);
-    }
+    if (this.#activeId) await this.#service.flush(this.#activeId);
   }
 
-  /**
-   * Update language/version for a tab
-   * @param newContent - If provided, replaces content (used when switching unmodified tabs)
-   */
+  /** Change a document's language and version, optionally replacing content. */
   async updateTabLanguage(
-    fileId: string, 
-    lang: LoadedLanguage, 
+    fileId: string,
+    lang: LoadedLanguage,
     version: VersionConfig,
-    newContent?: string
+    newContent?: string,
   ): Promise<Tab | null> {
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) return null;
+    const document = this.#service.getDocument(fileId);
+    if (!document) return null;
 
-    // Update extension in name
-    const oldName = tab.file.name;
-    const dotIdx = oldName.lastIndexOf('.');
-    const baseName = dotIdx > 0 ? oldName.slice(0, dotIdx) : oldName;
-    const newName = `${baseName}.${lang.extension}`;
-    const uniqueName = this.generateUniqueName(newName);
+    const dot = document.name.lastIndexOf('.');
+    const stem = dot > 0 ? document.name.slice(0, dot) : document.name;
 
-    const updateData: Partial<StoredFile> = {
-      language: lang.id,
-      version: version.id,
-      name: uniqueName,
-    };
+    const updated = await this.#service.setDocumentLanguage(fileId, lang.id, version.id, {
+      name: `${stem}.${lang.extension}`,
+      ...(newContent !== undefined ? { content: newContent, isUserModified: false } : {}),
+    });
+    if (!updated) return null;
 
-    // If new content provided (tab was unmodified), replace content and reset modified flag
-    if (newContent !== undefined) {
-      updateData.content = newContent;
-      updateData.isUserModified = false;
-    }
-
-    const updated = await storage.updateFile(fileId, updateData);
-
-    if (updated) {
-      tab.file = updated;
-      tab.isDirty = false; // Content just synced with storage
-      this.render();
-      this.events.onTabUpdate?.(tab);
-    }
-
+    const tab = this.#viewOf(updated);
+    this.render();
+    this.#events.onTabUpdate?.(tab);
     return tab;
   }
 
   /**
-   * Check if a tab has been modified by the user.
-   * Compares current content against the starter template - if they match,
-   * the file is considered "unmodified" even if isUserModified flag is set.
+   * Has the user really changed this file?
+   *
+   * Compares content against the starter **exactly**. The previous version
+   * trimmed both sides (V-12), so adding a trailing newline - or deleting one -
+   * counted as unmodified, and the version selector would then overwrite it.
    */
   async isTabUserModifiedAsync(fileId: string): Promise<boolean> {
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    if (!tab) return false;
-    
-    // If flag says not modified, definitely not modified
-    if (!tab.file.isUserModified) return false;
-    
-    // Flag says modified, but let's check if content matches starter
+    const document = this.#service.getDocument(fileId);
+    if (!document) return false;
+    if (!document.metadata.isUserModified) return false;
+
     try {
-      const starter = await getStarterAsync(tab.file.language, tab.file.version);
-      const currentContent = tab.file.content.trim();
-      const starterContent = starter.trim();
-      
-      // If content matches starter exactly, it's not really "modified"
-      if (currentContent === starterContent) {
-        // Reset the flag since it's not actually modified
-        tab.file.isUserModified = false;
+      const starter = await getStarterAsync(document.language, document.version);
+      if (document.getContent() === starter) {
+        await this.#service.setDocumentUserModified(fileId, false);
         return false;
       }
     } catch {
-      // If we can't get starter, fall back to flag
+      // Starter unavailable: fall back to the stored flag rather than guessing
+      // that the file is untouched, which would risk discarding real work.
     }
-    
-    return tab.file.isUserModified;
+
+    return document.metadata.isUserModified;
   }
 
-  /**
-   * Sync check if a tab has been modified (uses flag only, for backwards compatibility)
-   */
   isTabUserModified(fileId: string): boolean {
-    const tab = this.tabs.find(t => t.file.id === fileId);
-    return tab?.file.isUserModified ?? false;
-  }
-
-  // ========== State Management ==========
-
-  /**
-   * Save workspace state
-   */
-  private async saveWorkspaceState(): Promise<void> {
-    await storage.saveWorkspaceState({
-      activeFileId: this.activeTabId,
-      theme: 'vs-dark', // TODO: Get from actual theme selector
-    });
+    return this.#service.getDocument(fileId)?.metadata.isUserModified ?? false;
   }
 
   // ========== Getters ==========
 
   getTab(fileId: string): Tab | null {
-    return this.tabs.find(t => t.file.id === fileId) || null;
+    const document = this.#service.getDocument(fileId);
+    return document ? this.#viewOf(document) : null;
   }
 
   getActiveTab(): Tab | null {
-    if (!this.activeTabId) return null;
-    return this.tabs.find(t => t.file.id === this.activeTabId) || null;
+    if (!this.#activeId) return null;
+    const document = this.#service.getDocument(this.#activeId);
+    return document ? this.#viewOf(document) : null;
   }
 
   getAllTabs(): Tab[] {
-    return [...this.tabs];
+    const tabs: Tab[] = [];
+    for (const id of this.#openIds) {
+      const document = this.#service.getDocument(id);
+      if (document) tabs.push(this.#viewOf(document));
+    }
+    return tabs;
   }
 
   getTabCount(): number {
-    return this.tabs.length;
+    return this.getAllTabs().length;
   }
 
-  // ========== UI Rendering ==========
+  get activeDocumentId(): string | null {
+    return this.#activeId;
+  }
 
-  /**
-   * Render the tab bar
-   */
+  // ========== Rendering ==========
+
   render(): void {
-    this.containerEl.innerHTML = '';
+    this.#containerEl.innerHTML = '';
 
-    // Create tabs
-    for (const tab of this.tabs) {
-      const tabEl = this.createTabElement(tab);
-      this.containerEl.appendChild(tabEl);
+    for (const tab of this.getAllTabs()) {
+      this.#containerEl.appendChild(this.#createTabElement(tab));
     }
 
-    // Add "+" button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'tab-add';
-    addBtn.innerHTML = '+';
-    addBtn.title = 'New file (Ctrl+N)';
-    addBtn.onclick = () => {
+    const addButton = document.createElement('button');
+    addButton.className = 'tab-add';
+    addButton.textContent = '+';
+    addButton.title = 'New file (Ctrl+N)';
+    addButton.onclick = () => {
       if (document.body.classList.contains('structure-locked')) return;
-      this.events.onTabCreate?.(null as any); // Signal to create new
+      this.#events.onTabCreate?.(null);
     };
-    this.containerEl.appendChild(addBtn);
+    this.#containerEl.appendChild(addButton);
   }
 
-  /**
-   * Create a single tab element
-   */
-  private createTabElement(tab: Tab): HTMLElement {
-    const isActive = tab.file.id === this.activeTabId;
+  #createTabElement(tab: Tab): HTMLElement {
+    const isActive = tab.file.id === this.#activeId;
 
     const tabEl = document.createElement('div');
     tabEl.className = `tab ${isActive ? 'tab-active' : ''}`;
     tabEl.dataset.fileId = tab.file.id;
 
-    // File icon based on language
     const iconEl = document.createElement('span');
     iconEl.className = 'tab-icon';
-    iconEl.textContent = this.getLanguageIcon(tab.file.language);
+    iconEl.textContent = this.#languageIcon(tab.file.language);
     tabEl.appendChild(iconEl);
 
-    // File name
     const nameEl = document.createElement('span');
     nameEl.className = 'tab-name';
     nameEl.textContent = tab.file.name;
-    nameEl.ondblclick = (e) => {
-      e.stopPropagation();
-      this.startRename(tab, nameEl);
+    nameEl.ondblclick = event => {
+      event.stopPropagation();
+      this.#startRename(tab, nameEl);
     };
     tabEl.appendChild(nameEl);
 
-    // Dirty indicator
     if (tab.isDirty) {
       const dirtyEl = document.createElement('span');
       dirtyEl.className = 'tab-dirty';
@@ -733,37 +574,29 @@ export class TabManager {
       tabEl.appendChild(dirtyEl);
     }
 
-    // Close button
     const closeEl = document.createElement('button');
     closeEl.className = 'tab-close';
-    closeEl.innerHTML = '×';
+    closeEl.textContent = '×';
     closeEl.title = 'Close';
-    closeEl.onclick = (e) => {
-      e.stopPropagation();
+    closeEl.onclick = event => {
+      event.stopPropagation();
       if (document.body.classList.contains('structure-locked')) return;
-      this.closeTab(tab.file.id);
+      void this.closeTab(tab.file.id);
     };
     tabEl.appendChild(closeEl);
 
-    // Click to switch
-    tabEl.onclick = () => this.switchToTab(tab.file.id);
-
-    // Middle-click to close
-    tabEl.onmousedown = (e) => {
-      if (e.button === 1) { // Middle click
-        e.preventDefault();
-        if (document.body.classList.contains('structure-locked')) return;
-        this.closeTab(tab.file.id);
-      }
+    tabEl.onclick = () => void this.switchToTab(tab.file.id);
+    tabEl.onmousedown = event => {
+      if (event.button !== 1) return; // middle click
+      event.preventDefault();
+      if (document.body.classList.contains('structure-locked')) return;
+      void this.closeTab(tab.file.id);
     };
 
     return tabEl;
   }
 
-  /**
-   * Get language icon/emoji
-   */
-  private getLanguageIcon(langId: string): string {
+  #languageIcon(languageId: string): string {
     const icons: Record<string, string> = {
       javascript: '🟨',
       typescript: '🔷',
@@ -772,33 +605,30 @@ export class TabManager {
       php: '🐘',
       csharp: '🟦',
     };
-    return icons[langId] || '📄';
+    return icons[languageId] || '📄';
   }
 
-  /**
-   * Start inline rename
-   */
-  private startRename(tab: Tab, nameEl: HTMLElement): void {
+  #startRename(tab: Tab, nameEl: HTMLElement): void {
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'tab-rename-input';
     input.value = tab.file.name;
-    
-    const finishRename = async () => {
+
+    let finished = false;
+    const finish = async () => {
+      if (finished) return;
+      finished = true;
       const newName = input.value.trim();
-      if (newName && newName !== tab.file.name) {
-        await this.renameTab(tab.file.id, newName);
-      } else {
-        this.render();
-      }
+      if (newName && newName !== tab.file.name) await this.renameTab(tab.file.id, newName);
+      else this.render();
     };
 
-    input.onblur = finishRename;
-    input.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
+    input.onblur = () => void finish();
+    input.onkeydown = event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
         input.blur();
-      } else if (e.key === 'Escape') {
+      } else if (event.key === 'Escape') {
         input.value = tab.file.name;
         input.blur();
       }
@@ -808,5 +638,38 @@ export class TabManager {
     nameEl.appendChild(input);
     input.focus();
     input.select();
+  }
+
+  // ========== internals ==========
+
+  /** One stable view object per document, so identity comparisons keep working. */
+  #viewOf(document: WorkspaceDocument): Tab {
+    const existing = this.#views.get(document.id);
+    if (existing && existing.document === document) return existing;
+
+    const file = projectDocument(document, this.#service);
+    const view: Tab = {
+      file,
+      document,
+      get isDirty() {
+        return document.isDirty;
+      },
+    };
+    this.#views.set(document.id, view);
+    return view;
+  }
+
+  #legacyShape(document: WorkspaceDocument): StoredFile {
+    return projectDocument(document, this.#service);
+  }
+
+  #dropClosedDocuments(): void {
+    this.#openIds = this.#openIds.filter(id => this.#service.getDocument(id) !== null);
+    for (const id of [...this.#views.keys()]) {
+      if (!this.#service.getDocument(id)) this.#views.delete(id);
+    }
+    if (this.#activeId && !this.#service.getDocument(this.#activeId)) {
+      this.#activeId = this.#openIds[0] ?? null;
+    }
   }
 }

@@ -1,5 +1,4 @@
 import { runtime } from '../app/runtime';
-import { normalizeProjectPath } from '../components/project-path';
 
 export interface WorkspaceFile {
   path: string;
@@ -7,25 +6,27 @@ export interface WorkspaceFile {
   language?: string;
 }
 
-/** Collect one deterministic, current snapshot of every persisted project file. */
+/**
+ * One deterministic snapshot of every project file, with live content.
+ *
+ * The previous implementation read persisted records, normalized each path, then
+ * inserted into a `Map` keyed by that path - so two records that normalized to the
+ * same key silently collapsed and one file vanished from the snapshot, which is
+ * the payload sent to the host and to the runner (V-14). It also had to consult
+ * `runtime.fileModels` per file to find content that was newer than the record.
+ *
+ * Both problems are gone at the source: paths are derived from the tree, which
+ * rejects collisions before they can exist, and the service reads content from the
+ * authoritative buffer. The map keyed by path is no longer needed to deduplicate,
+ * because there is nothing to deduplicate.
+ */
 export async function collectWorkspaceSnapshot(): Promise<WorkspaceFile[]> {
-  const storage = runtime.storage;
-  if (!storage) return [];
+  const workspace = runtime.workspace;
+  if (!workspace) return [];
 
-  const storedFiles = await storage.getAllFiles();
-  const byPath = new Map<string, WorkspaceFile>();
-
-  for (const file of storedFiles) {
-    const normalizedPath = normalizeProjectPath(file.path || file.name);
-    if (!normalizedPath) continue;
-
-    const liveModel = runtime.fileModels.get(file.id);
-    byPath.set(normalizedPath, {
-      path: normalizedPath,
-      content: liveModel?.getValue() ?? file.content ?? '',
-      language: file.language,
-    });
-  }
-
-  return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+  return workspace.snapshotForExecution().map(file => ({
+    path: file.path,
+    content: file.content,
+    language: file.language,
+  }));
 }

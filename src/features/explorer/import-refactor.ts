@@ -1,5 +1,6 @@
 import { runtime } from '../../app/runtime';
 import type { StoredFile } from '../../storage';
+import { lazyRef } from '../../app/lazy';
 
 export type WorkspacePathSnapshot = Map<string, string>;
 
@@ -28,13 +29,8 @@ const PHP_EXTENSIONS = ['.php'];
 const HTML_EXTENSIONS = ['.html', '.htm'];
 const CSS_EXTENSIONS = ['.css'];
 
-const storage = new Proxy({} as any, {
-  get: (_target, property) => (runtime.storage as any)[property],
-});
-
-const tabManager = new Proxy({} as any, {
-  get: (_target, property) => (runtime.tabManager as any)[property],
-});
+const storage = lazyRef(() => runtime.storage, 'storage') as any;
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
 
 function splitPath(value: string): string[] {
   return String(value || '')
@@ -113,34 +109,27 @@ function relativeSpecifier(importerPath: string, targetPath: string): string {
   return relative;
 }
 
+// `StoredFile.content` reads through to the authoritative buffer, so the previous
+// model-then-tab-then-record hunt for the freshest copy has exactly one answer.
 function getLiveContent(file: StoredFile): string {
-  const model = runtime.fileModels.get(file.id);
-  if (model && !model.isDisposed()) return model.getValue();
-
-  const tab = tabManager.getTab(file.id);
-  if (tab) return tab.file.content ?? file.content;
-
   return file.content;
 }
 
+/**
+ * Rewrite a file's imports.
+ *
+ * One assignment to the working copy plus one revision-guarded flush. Writing to
+ * the model, then to storage, then reconstructing the tab from the persisted row
+ * was three chances to lose an edit made during the refactor.
+ */
 async function persistContent(file: StoredFile, content: string): Promise<void> {
-  const model = runtime.fileModels.get(file.id);
-  if (model && !model.isDisposed() && model.getValue() !== content) {
-    model.setValue(content);
-  }
+  const workspace = runtime.workspace;
+  const document = workspace?.getDocument(file.id);
+  if (!workspace || !document) return;
 
-  const updated = await storage.updateFile(file.id, {
-    content,
-    isUserModified: true,
-  });
-
-  const tab = tabManager.getTab(file.id);
-  if (tab) {
-    tab.file = updated
-      ? { ...updated, content }
-      : { ...tab.file, content };
-    tab.isDirty = false;
-  }
+  document.setContent(content);
+  await workspace.setDocumentUserModified(file.id, true);
+  await workspace.flush(file.id);
 }
 
 export async function captureWorkspacePaths(): Promise<WorkspacePathSnapshot> {

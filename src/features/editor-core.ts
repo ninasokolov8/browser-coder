@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor';
 import { getLanguage } from '../languages';
 import { TabManager, type Tab } from '../tabs';
-import { runtime } from '../app/runtime';
+import { requireModels, requireWorkspace, runtime } from '../app/runtime';
 import { policyState } from '../app/config';
 import { tabsEl, editorEmptyState, emptyStateNewFileBtn, statusLangEl, langSel, versionSel } from '../components/dom';
 import { configureMonacoForVersion, populateVersionDropdown } from '../components/monaco-config';
@@ -11,24 +11,20 @@ export function updateEmptyState(show: boolean): void {
   editorEmptyState.classList.toggle('visible', show);
 }
 
+/**
+ * The Monaco model for a tab, addressed by its real workspace path.
+ *
+ * The registry owns URI construction, so `src/utils/math.py` is
+ * `file:///workspace/src/utils/math.py` rather than the old `file:///math_7.py`
+ * (V-18). Acquiring a model also makes it the document's authoritative buffer, so
+ * the editor and the workspace stop holding two copies of the text.
+ */
 export function getOrCreateModel(tab: Tab): monaco.editor.ITextModel {
-  let model = runtime.fileModels.get(tab.file.id);
-  if (model && !model.isDisposed()) return model;
-
-  const lang = getLanguage(tab.file.language);
-  const monacoLang = lang?.monacoLanguage || 'plaintext';
-  const ext = lang?.extension || 'txt';
-  runtime.modelCounter += 1;
-  const uri = monaco.Uri.parse(`file:///${tab.file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}_${runtime.modelCounter}.${ext}`);
-  model = monaco.editor.createModel(tab.file.content, monacoLang, uri);
-  runtime.fileModels.set(tab.file.id, model);
-  return model;
+  return requireModels().acquire(tab.document);
 }
 
 export function disposeModel(fileId: string): void {
-  const model = runtime.fileModels.get(fileId);
-  if (model && !model.isDisposed()) model.dispose();
-  runtime.fileModels.delete(fileId);
+  runtime.models?.release(fileId);
 }
 
 export function applyFileLanguage(fileId: string): void {
@@ -39,10 +35,9 @@ export function applyFileLanguage(fileId: string): void {
   const lang = getLanguage(tab.file.language);
   if (!lang) return;
 
-  const model = runtime.fileModels.get(fileId);
-  if (model && !model.isDisposed() && model.getLanguageId() !== lang.monacoLanguage) {
-    monaco.editor.setModelLanguage(model, lang.monacoLanguage);
-  }
+  // Re-points the model at its current path and language, recreating it if the
+  // path changed - a rename must not leave the URI describing the old location.
+  runtime.models?.sync(tab.document);
 
   const activeTab = tabManager.getActiveTab();
   if (activeTab?.file.id === fileId) {
@@ -85,7 +80,7 @@ export function createTabManager(hooks: {
   refreshSearchHighlights: () => void;
 }): TabManager {
   const editor = runtime.editor!;
-  const manager = new TabManager(tabsEl, {
+  const manager = new TabManager(tabsEl, requireWorkspace(), {
     onTabSwitch: (tab: Tab) => {
       editor.setModel(getOrCreateModel(tab));
       const lang = getLanguage(tab.file.language);

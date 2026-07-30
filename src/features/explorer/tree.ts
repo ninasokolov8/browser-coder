@@ -8,13 +8,14 @@ import { explorerState } from './state';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { setOutput, setStatus } from '../../components/output';
 import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
+import { lazyRef } from '../../app/lazy';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
   deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
 } from './operations';
 
-const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
-const storage = new Proxy({} as any, { get: (_t, p) => (runtime.storage as any)[p] });
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
+const storage = lazyRef(() => runtime.storage, 'storage') as any;
 
 // ===== File Explorer Rendering =====
 export async function renderFileTree(tm = runtime.tabManager!) {
@@ -419,11 +420,13 @@ function attachTreeEventHandlers(tm: TabManager) {
                 version: (detected.versions.find(v => v.default) || detected.versions[0]).id,
               }
             : {};
-          const updatedFile = await storage.updateFile(id, { name: newName, ...langUpdates });
-          // Update the complete cached file record, including its new path.
+          await storage.updateFile(id, { name: newName, ...langUpdates });
+
+          // No cached record to rebuild: the tab reads its name and path from the
+          // document and the folder tree. `applyFileLanguage` re-points the Monaco
+          // model at the new path, since a URI cannot be renamed in place.
           const tab = tm.getTab(id);
-          if (tab && updatedFile) {
-            tab.file = { ...updatedFile, content: tab.file.content };
+          if (tab) {
             applyFileLanguage(id);
 
             // A file renamed to X_HIDDEN_ disappears from every normal file

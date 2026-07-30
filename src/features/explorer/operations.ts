@@ -11,10 +11,11 @@ import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core
 import { explorerState } from './state';
 import { renderFileTree } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
+import { lazyRef } from '../../app/lazy';
 
-const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
-const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
-const storage = new Proxy({} as any, { get: (_t, p) => (runtime.storage as any)[p] });
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
+const editor = lazyRef(() => runtime.editor, 'editor') as any;
+const storage = lazyRef(() => runtime.storage, 'storage') as any;
 const fileModels = runtime.fileModels;
 
 const INTERNAL_DRAG_MIME = 'application/x-browser-coder-items';
@@ -157,16 +158,22 @@ function uniqueFolderName(baseName: string, existingNames: string[]): string {
   return candidate;
 }
 
+/**
+ * Deliberately a no-op, retained so the call sites still read correctly.
+ *
+ * This existed because a move or a folder rename changed stored paths, and every
+ * open tab held its own copy of that metadata - so each structural change had to
+ * be followed by a refresh, and the refresh had to carefully preserve unsaved
+ * content while replacing everything else. Paths are now derived from the folder
+ * tree and content lives in one buffer, so a tab cannot hold stale metadata and
+ * there is nothing to synchronize.
+ *
+ * Kept rather than deleted at every call site because "after moving files, resync
+ * the open tabs" is a reasonable thing for a reader to look for; finding it here,
+ * and finding it empty, answers the question.
+ */
 export async function syncOpenTabsFromStorage(): Promise<void> {
-  for (const tab of tabManager.getAllTabs()) {
-    const storedFile = await storage.getFile(tab.file.id);
-    if (!storedFile) continue;
-
-    // Preserve unsaved editor content while refreshing path/parent metadata.
-    tab.file = tab.isDirty
-      ? { ...storedFile, content: tab.file.content, isUserModified: tab.file.isUserModified }
-      : storedFile;
-  }
+  // Intentionally empty. See above.
 }
 
 export async function createFolderFromSelection() {
@@ -297,21 +304,17 @@ btnClearCache.addEventListener('click', async () => {
     // against tabs that are being removed.
     editor.setModel(null);
 
-    // closeAllTabs() also cancels any pending debounced auto-save. This must
-    // happen BEFORE clearing IndexedDB, otherwise a delayed save can recreate
-    // files immediately after clearAll().
     tabManager.closeAllTabs();
 
-    // Dispose every Monaco model, including models for files that are not
-    // currently represented by an open tab.
-    for (const [fileId, model] of Array.from(runtime.fileModels.entries())) {
-      if (model && !model.isDisposed()) {
-        model.dispose();
-      }
+    // Dispose every Monaco model, including models for files with no open tab.
+    // The registry owns them, so releasing is enough.
+    for (const [fileId] of Array.from(runtime.fileModels.entries())) {
       runtime.fileModels.delete(fileId);
     }
 
-    // Clear persistent workspace data only after all writers are stopped.
+    // clearAll() suspends the autosave writers, unregisters every document and
+    // resumes, so a debounced save cannot land after this and recreate a file the
+    // user just deleted.
     await storage.clearAll();
 
     // Defensive verification: do not report success while IndexedDB still
@@ -570,9 +573,8 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
     } else {
       const res = await storage.moveFile(id, targetFolderId);
       if (res) movedAny = true;
-      // Keep any open tab's cached path/name in sync
-      const tab = tabManager.getTab(id);
-      if (tab && res) tab.file = res;
+      // No tab metadata to fix up: a tab's path is derived from the folder tree,
+      // so the move is already visible everywhere it is read.
     }
   }
 
