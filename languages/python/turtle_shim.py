@@ -134,8 +134,97 @@ def _setup_turtle():
             round(max(4.0, source_h * scale), 3),
         )
 
-    def _register_svg_shape(name):
-        """Load one local SVG only when an SVG cursor is actually requested."""
+    def _register_svg_source(shape_name, source):
+        """Register SVG text/data supplied directly by trusted lesson code.
+
+        This is an additive fallback for sandboxed projects where the SVG is
+        visible in the Browser Coder workspace but is not present in Python's
+        temporary execution directory.
+
+        Accepted source forms:
+          - raw SVG text
+          - UTF-8 bytes / bytearray
+          - data:image/svg+xml;base64,... URL
+          - dict with data/svg/source plus optional w, h and rotate
+        """
+        if source is None:
+            return False
+
+        requested_width = None
+        requested_height = None
+        rotate = False
+
+        if isinstance(source, dict):
+            requested_width = source.get('w', source.get('width'))
+            requested_height = source.get('h', source.get('height'))
+            rotate = bool(source.get('rotate', False))
+            source = source.get(
+                'data',
+                source.get('svg', source.get('source')),
+            )
+
+        if isinstance(source, bytearray):
+            source = bytes(source)
+
+        if isinstance(source, bytes):
+            try:
+                svg_text = source.decode('utf-8-sig')
+            except Exception:
+                return False
+        elif isinstance(source, str):
+            value = source.strip()
+
+            if value.lower().startswith('data:image/svg+xml'):
+                comma = value.find(',')
+                if comma < 0:
+                    return False
+
+                header = value[:comma].lower()
+                payload = value[comma + 1:]
+
+                if ';base64' not in header:
+                    return False
+
+                try:
+                    svg_text = _b64.b64decode(payload).decode('utf-8-sig')
+                except Exception:
+                    return False
+            else:
+                svg_text = source
+        else:
+            return False
+
+        encoded_bytes = svg_text.encode('utf-8')
+
+        if (
+            len(encoded_bytes) <= 0
+            or len(encoded_bytes) > 12 * 1024 * 1024
+            or '<svg' not in svg_text.lower()
+        ):
+            return False
+
+        width, height = _svg_dimensions(svg_text)
+
+        try:
+            if requested_width is not None:
+                width = max(2.0, float(requested_width))
+            if requested_height is not None:
+                height = max(2.0, float(requested_height))
+        except Exception:
+            return False
+
+        encoded = _b64.b64encode(encoded_bytes).decode('ascii')
+
+        _svg_shapes[shape_name] = {
+            'data': 'data:image/svg+xml;base64,' + encoded,
+            'w': width,
+            'h': height,
+            'rotate': rotate,
+        }
+        return True
+
+    def _register_svg_shape(name, source=None):
+        """Register inline SVG data first, then use the existing file path."""
         import os as _os
 
         shape_name = str(name)
@@ -144,6 +233,12 @@ def _setup_turtle():
         if shape_name in _svg_shapes:
             return True
 
+        # NEW: safe inline source path. No file/system access is needed in the
+        # student or lesson code.
+        if source is not None:
+            return _register_svg_source(shape_name, source)
+
+        # EXISTING BEHAVIOUR: read a local SVG when present in the runtime.
         raw_name = _os.path.expanduser(shape_name)
         candidates = []
 
@@ -161,6 +256,12 @@ def _setup_turtle():
             _candidate(_os.path.join(script_dir, raw_name))
         except Exception:
             pass
+
+        # Browser Coder already adds project folders to sys.path.
+        # Check those exact locations without a recursive filesystem scan.
+        for import_dir in _sys.path:
+            if isinstance(import_dir, str) and import_dir:
+                _candidate(_os.path.join(import_dir, raw_name))
 
         # Keep the limit bounded. The data is written to the existing temp JSON
         # output path, so this does not affect normal stdout limits.
@@ -628,14 +729,20 @@ def _setup_turtle():
     shapesize = turtlesize
 
     def addshape(name, shape=None):
-        """Register an existing polygon shape or an optional local SVG.
+        """Register an existing polygon shape or an SVG cursor.
 
-        The original polygon path is unchanged. SVG loading runs only when the
-        requested name ends with .svg and no polygon data was supplied.
+        Existing polygon registration is unchanged.
+
+        SVG registration supports both:
+            screen.register_shape("player.svg")
+        when the SVG exists in the runtime, and:
+            screen.register_shape("player.svg", SVG_TEXT)
+        when lesson code supplies safe inline SVG content.
         """
         shape_name = str(name)
-        if shape is None and shape_name.lower().endswith('.svg'):
-            _register_svg_shape(shape_name)
+
+        if shape_name.lower().endswith('.svg'):
+            _register_svg_shape(shape_name, shape)
             return
 
         try:
