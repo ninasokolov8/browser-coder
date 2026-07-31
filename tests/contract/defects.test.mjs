@@ -23,6 +23,8 @@
 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { runInteractive, startServer } from './support/server.mjs';
 import { requires } from './support/toolchain.mjs';
@@ -507,5 +509,58 @@ describe('V-46 CORS must actually reject a disallowed origin', () => {
       'https://evil.example',
       'a disallowed origin was echoed back in Access-Control-Allow-Origin',
     );
+  });
+});
+
+describe('N-13 the starter route must not be a path traversal primitive', () => {
+  // Found while extracting the route into server/http/routes/languages.mjs.
+  //
+  // Express matches `:language` against a single path SEGMENT of the raw URL and
+  // then percent-decodes it, so `..%2Ffoo` contains no literal slash, matches as one
+  // segment, and reaches the handler already decoded to `../foo`. The handler joined
+  // that straight onto the languages directory.
+  //
+  // Exploitation needs a file at `<escaped path>/starters/<version>.<ext>`, and for
+  // an unrecognised language the extension falls back to `.txt` - so the primitive is
+  // constrained but real. Confirmed by removing the guard and reading a file from
+  // outside the repository root over plain HTTP, unauthenticated.
+  //
+  // This test PLANTS such a file, because a probe aimed at a path that does not exist
+  // returns 404 whether or not the guard is present, and would pass against the
+  // vulnerable code.
+  const baitDir = path.join(process.cwd(), 'tests', '.traversal-bait', 'starters');
+  const baitFile = path.join(baitDir, 'leak.txt');
+
+  before(() => {
+    fs.mkdirSync(baitDir, { recursive: true });
+    fs.writeFileSync(baitFile, 'SECRET-OUTSIDE-LANGUAGES', 'utf8');
+  });
+
+  after(() => {
+    fs.rmSync(path.join(process.cwd(), 'tests', '.traversal-bait'), { recursive: true, force: true });
+  });
+
+  it('cannot read a real file outside the languages directory', async () => {
+    // From <root>/languages, `../tests/.traversal-bait` resolves to a directory that
+    // genuinely holds starters/leak.txt. Without the containment check this returns
+    // 200 and the file's contents.
+    const { status, body } = await server.get(
+      '/api/starter/..%2Ftests%2F.traversal-bait/leak',
+    );
+
+    assert.equal(status, 404, `escaped the languages root: ${JSON.stringify(body).slice(0, 200)}`);
+    assert.doesNotMatch(JSON.stringify(body ?? ''), /SECRET-OUTSIDE-LANGUAGES/);
+  });
+
+  it('refuses an encoded traversal in the version segment', async () => {
+    const { status } = await server.get('/api/starter/python/..%2F..%2Fconfig');
+    assert.equal(status, 404);
+  });
+
+  it('still serves a legitimate starter', async () => {
+    // The guard must not be so blunt that it breaks the endpoint it protects.
+    const { status, body } = await server.get('/api/starter/python/python3');
+    assert.equal(status, 200);
+    assert.equal(typeof body.code, 'string');
   });
 });
