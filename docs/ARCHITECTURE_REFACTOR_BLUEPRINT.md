@@ -4825,3 +4825,55 @@ and whitespace but is deliberately not fuzzy - `5 Strictly` is refused.
 | Browser (workspace, app-boot, embedded) | 24 + 26 + 19, all pass |
 | Typecheck | clean, both configs |
 | `server.mjs` | **4,563 -> 223 lines** |
+
+---
+
+### Phase D - the command registry (V-17)
+
+Commit: `d77d388`
+
+**The recorded defect understated it.** V-17 says the run button and Ctrl+Enter
+never consult `policyState.allowRun`. Reading the code, Ctrl+N and Ctrl+W bypass
+`lockStructure` as well - so a read-only, structure-locked embed both ran code and
+created files.
+
+**The shape matters more than the count.** `stepup.ts` *did* check `allowRun` -
+before synthesising a button click. Enforcement lived at one **caller** rather than
+at the **action**, so every other caller was a hole by construction. Meanwhile the
+sidebar did:
+
+```js
+document.body.classList.toggle('run-disabled', !policyState.allowRun);
+```
+
+The button looked disabled and was fully clickable. Styling is not enforcement.
+
+`src/commands/` replaces this with a declaration - id, title, capability, `when`,
+handler - from which **both** the UI's enablement and the refusal of execution
+derive. Two properties follow that four added `if`s would not give:
+
+- `isEnabled()` and `execute()` read the same declaration, so a greyed-but-live
+  control is not expressible. Binding a button *is* reading its enablement.
+- Policy is re-read at execution, not captured at binding, so a control bound while
+  running was permitted stops working after `stepup:set-readonly`.
+
+The host is now just another `source`. `stepup:run` and `autoRun` call `execute()`
+instead of checking policy themselves and synthesising a click - removing the
+second copy of the rule that could drift from the first.
+
+Refusals are also **explained**. A student pressing Ctrl+Enter in a read-only task
+gets *"Running is disabled for this task"* rather than silence - which is the
+opposite failure a naive fix would have introduced.
+
+**Verified to detect the defect.** Disabling the capability check fails 6 unit tests
+and 4 browser assertions, including `the refused command really created nothing` -
+without the check, files really are created in a locked workspace. The browser
+assertions drive the *real* IDE into a locked state the way Step-Up does, then try
+to run and to create a file, and additionally check the button reports
+`aria-disabled` rather than only carrying a CSS class.
+
+This is also the substrate Phase E's command palette needs: a palette is a list of
+registered commands filtered by `isEnabled`, which now exists.
+
+**State:** 229 unit tests, 3 browser suites (24 + 26 + 25), contract 55 pass / 0
+fail / 0 todo, typecheck and build clean.
