@@ -23,6 +23,7 @@ import { setStatus } from './components/output';
 import { updateGridForRTL } from './features/ui-layout';
 import { initializeGoToDefinition } from './features/go-to-definition';
 import { initializeWebPreview } from './features/live-preview';
+import { initializeFormatting } from './features/formatting';
 
 async function bootstrap(): Promise<void> {
   setStatus('Loading languages…');
@@ -135,6 +136,9 @@ async function bootstrap(): Promise<void> {
   await initializeWorkspace();
   initializeGoToDefinition();
   initializeWebPreview();
+  // Before the editor features load, so `Format document` is enabled correctly on
+  // the very first document rather than after the first language switch.
+  initializeFormatting();
 
   // Execution and run-panel handlers depend on the initialized editor. Load
   // them only after initializeWorkspace() has completed. Sidebar handlers are

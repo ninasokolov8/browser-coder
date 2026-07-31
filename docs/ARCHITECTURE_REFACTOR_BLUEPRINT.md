@@ -5722,3 +5722,104 @@ expectation wrong exits 1.
 - The `sys` allowlist is enforced in two places (the regex corpus and the AST
   pass) that must be kept in step by hand. A single source would be better; noted
   in the code at both sites.
+
+### H5 - Format document, in every language
+
+`Format document` was bound straight to `editor.action.formatDocument`. Monaco
+runs whatever provider is registered for the model's language and, when there is
+none, does nothing whatsoever - no error, no message, no edit. Python, Java, PHP,
+C# and Markdown had no provider, so for **five of the ten languages** the command
+was a silent no-op that a student reads as "my code is already formatted".
+
+H5 was scoped in §35.10 as "remove or gate it per language". Gating alone would
+have been the smaller half: the command would then be honestly greyed out for half
+the IDE. Both halves are done - the five languages now have a real formatter, and
+the outcome is reported either way.
+
+#### What was built
+
+**`src/features/format-core.ts`** - a pure, node-tested formatter for the
+languages Monaco does not cover. Explicitly NOT black, prettier or
+google-java-format: those are large programs with their own line-breaking
+opinions, and shipping four more toolchains in the image is a much bigger
+decision. It does the subset that is unambiguous:
+
+| Language | What it does |
+|---|---|
+| java, csharp, php | re-indent by bracket depth, plus whitespace |
+| python | whitespace only, plus tabs→spaces when indentation is consistently tabs |
+| markdown, svg, xml | whitespace only |
+
+Whitespace means: strip trailing spaces, normalise CRLF, collapse runs of blank
+lines to two (PEP 8 wants two between definitions, so collapsing to one would
+fight the language), and end with exactly one newline.
+
+It never re-wraps or re-breaks a line. A deliberate layout choice inside a line
+survives.
+
+#### The safety rule, which is most of the design
+
+A formatter that corrupts a program is far worse than one that does less than
+expected. So indentation is rewritten **only** when the file can be scanned
+exactly, and every construct the scanner does not model exactly makes it abandon
+re-indentation and fall back to the whitespace pass:
+
+- a PHP heredoc - the body is arbitrary text and can contain unbalanced braces
+- a C# verbatim string - `@"a "" b"` escapes by doubling, so the backslash rule
+  is wrong
+- an unterminated string or block comment
+- unbalanced brackets, or depth going negative - the file does not parse, and
+  re-indenting would move every line after the mistake and bury it
+
+Braces inside strings and comments are not counted. Each of those cases is a test,
+because each is a way a hand-written formatter silently destroys code.
+
+**Python indentation is never re-derived.** Deciding where a block ends *is*
+deciding what the program does. Badly indented Python is left exactly as written -
+asserted directly, since "helpfully fixing" it would be choosing the student's
+program behaviour for them.
+
+#### Reporting, which is the other half of "not silently"
+
+The local formatter declines in the cases above, and a student who is not told
+that has been misled in the same way as before, just more quietly. The provider
+records what it did; the command reads it back and puts it in the status bar -
+either `Formatted Main.java` or `Tidied Main.java — indentation was left alone:
+the file has unbalanced brackets…`.
+
+The command also has a `when` guard, so a future language with no formatter is
+greyed out rather than silently doing nothing.
+
+#### Verification
+
+- 35 unit tests, passing first run. They cover each declining case, brace-in-
+  string and brace-in-comment, escaped quotes, over-indented code being pulled
+  back, and idempotence across four languages.
+- A browser assertion drives the real command on a ragged Java file and checks
+  that each nesting level is one step deeper than the last - asserted as **depth**,
+  not as a count of spaces. The first version hardcoded 4 and failed, because the
+  width comes from the editor's own `tabSize`, which is 2. The corrected assertion
+  is the one that survives an unrelated preference change.
+- JSON is asserted to still be formatted by *Monaco*, so the local provider cannot
+  quietly take over a language Monaco does better.
+- 335 unit tests, all browser suites, clean build.
+
+#### Not done in H5
+
+- **No real code formatter for Python, Java, PHP or C#.** Line breaking, argument
+  wrapping, brace placement, blank-line conventions - none of it. Doing it
+  properly means `black`, `google-java-format`, `php-cs-fixer` and `dotnet format`
+  in the image, an `/api/format` endpoint, and the latency of a round trip per
+  format. `black` is the highest-value one and Alpine has no pip in the current
+  image, so it is a Dockerfile change, not a code change.
+- **Format-on-paste and format-on-type do not use the local formatter**, and this
+  is worth stating precisely because the opposite is easy to assume. Both options
+  are `true` in the editor config, but Monaco routes them to
+  `onTypeFormattingEditProvider` and `documentRangeFormattingEditProvider`
+  respectively - checked in `formatActions.js`, not inferred - and only a
+  *document* provider is registered here. So the local formatter runs on explicit
+  format and nothing else, which is the conservative behaviour but means pasting
+  ragged Java into a Java file still leaves it ragged. A range provider would need
+  the scanner to establish depth at an arbitrary start line first.
+- The XML/SVG formatter does not re-indent elements, which is the thing a user
+  would most expect from "format" on an SVG.

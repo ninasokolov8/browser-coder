@@ -469,6 +469,107 @@ async function checkWebLanguageServices(frameWindow: Window): Promise<void> {
 }
 
 /**
+ * Format document must actually format, in every language.
+ *
+ * It was bound straight to Monaco's action, which does nothing when no provider
+ * is registered for the model's language - no error, no message, no edit. Five of
+ * the ten languages had no provider, so for half the IDE the command was a silent
+ * no-op that read as "your code is already formatted".
+ *
+ * Driven through the command registry, on a Java file, because Java is one of the
+ * five and its indentation is unambiguous enough to assert exactly.
+ */
+async function checkFormattingWorks(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the formatting check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { getContent(): string } | null;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
+
+  const document = await workspace.createDocument({
+    name: 'Ragged.java',
+    language: 'java',
+    version: 'java17',
+    content:
+      'public class Ragged {\n' +
+      'public static void main(String[] a) {\n' +
+      'if (a.length > 0) {\n' +
+      'System.out.println("x");   \n' +
+      '}\n' +
+      '}\n' +
+      '}\n',
+  });
+
+  await tabManager.switchToTab(document.id);
+  const outcome = await commands.execute('editor.formatDocument', { source: 'api' });
+  check('the format command is enabled for Java', outcome.status === 'ran', `status ${outcome.status}`);
+
+  // The edit is applied to the model, which flows back into the document.
+  const formatted = await waitFor(
+    'the Java file to be re-indented',
+    () => /\n[ \t]+public static/.test(workspace.getDocument(document.id)?.getContent() ?? ''),
+    10000,
+  );
+  check('formatting a Java file actually indents it', formatted);
+
+  const content = workspace.getDocument(document.id)?.getContent() ?? '';
+  lines.push(`INFO formatted Java:\n${content.replace(/\n/g, '\\n')}`);
+
+  // Asserted as DEPTH, not as a number of spaces: the width comes from the
+  // editor's own tabSize, so hardcoding it would make this test fail the day
+  // someone changes an unrelated editor preference - which is exactly what it did
+  // when first written against 4 spaces while the editor uses 2.
+  const indentOf = (needle: string): number => {
+    const line = content.split('\n').find(candidate => candidate.trim().startsWith(needle));
+    return line === undefined ? -1 : /^[ \t]*/.exec(line)![0].length;
+  };
+
+  const classDepth = indentOf('public class');
+  const methodDepth = indentOf('public static');
+  const ifDepth = indentOf('if (');
+  const bodyDepth = indentOf('System.out');
+
+  check(
+    'each nesting level is indented one step further than the last',
+    classDepth === 0 &&
+      methodDepth > classDepth &&
+      ifDepth > methodDepth &&
+      bodyDepth > ifDepth &&
+      methodDepth - classDepth === ifDepth - methodDepth &&
+      ifDepth - methodDepth === bodyDepth - ifDepth,
+    `depths: class ${classDepth}, method ${methodDepth}, if ${ifDepth}, body ${bodyDepth}`,
+  );
+  check('trailing whitespace is removed', !/[ \t]+\n/.test(content));
+
+  // And a language Monaco owns must still be handled by Monaco, not by us.
+  const jsonDocument = await workspace.createDocument({
+    name: 'ragged.json',
+    language: 'json',
+    version: 'json',
+    content: '{"a":1,"b":[2,3]}',
+  });
+  await tabManager.switchToTab(jsonDocument.id);
+  const jsonOutcome = await commands.execute('editor.formatDocument', { source: 'api' });
+  check('the format command is enabled for JSON', jsonOutcome.status === 'ran');
+
+  const jsonFormatted = await waitFor(
+    'the JSON file to be reformatted by Monaco',
+    () => (workspace.getDocument(jsonDocument.id)?.getContent() ?? '').includes('\n'),
+    10000,
+  );
+  check("Monaco's own JSON formatter still runs", jsonFormatted);
+}
+
+/**
  * Wait until the diagnostics for one document stop changing.
  *
  * Needed because the producers answer on different schedules: the run publishes
@@ -803,6 +904,7 @@ async function run(): Promise<void> {
   await checkEveryRunStreams(frameWindow);
   await checkRunErrorsBecomeMarkers(frameWindow);
   await checkWebLanguageServices(frameWindow);
+  await checkFormattingWorks(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

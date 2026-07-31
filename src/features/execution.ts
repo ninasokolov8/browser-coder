@@ -15,6 +15,7 @@ import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runBtn } from '../components/dom';
 import { bindButton, bindKeybinding } from '../commands';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
+import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { getOrCreateModel } from './editor-core';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
@@ -361,8 +362,24 @@ commands.register({
   id: 'editor.formatDocument',
   title: 'Format document',
   capability: 'edit',
-  run: () => {
-    editor.getAction('editor.action.formatDocument')?.run();
+  // Enabled only when something will actually happen. Monaco's action does
+  // nothing at all for a language with no provider - no error, no message - so
+  // without this the command was a no-op that read as "already formatted".
+  when: () => {
+    const model = editor.getModel();
+    return model !== null && hasFormatter(model.getLanguageId());
+  },
+  run: async () => {
+    const model = editor.getModel();
+    if (!model) return;
+
+    const fileName = tabManager.getActiveTab()?.file.name ?? 'the document';
+    await editor.getAction('editor.action.formatDocument')?.run();
+
+    // The local formatter declines to re-indent where guessing could corrupt the
+    // program. Saying so is the difference between "it did less than you expected"
+    // and the silent no-op this command used to be.
+    setStatus(describeFormatResult(fileName, takeLastFormatResult(model)));
   },
 });
 
