@@ -6693,3 +6693,117 @@ message rather than a silent drop.
 - No drag-to-reorder, no rename validation that the new extension still matches the
   bytes (renaming `a.png` to `a.gif` currently keeps the PNG content under a GIF name).
 - Audio and PDF are stored but have no player or viewer.
+
+### H7 (part 2) - The server half
+
+The adapter was reachable only from a test. It is now reachable from HTTP.
+
+#### Debugging is a flag, not a second endpoint
+
+`POST /api/run/interactive` takes `debug: true`. A debug session **is** an interactive
+session - a live process, streamed output, stdin, the same idle and lifetime timers,
+the same concurrency accounting. A parallel `/api/run/debug` would have duplicated all
+of that, and the two would drift; the stdin regex and V-40 were both that shape.
+
+The frozen v1 surface is untouched, and a test asserts it: a request without the flag
+receives **zero** `debug:` events, so no existing consumer has to learn the new
+vocabulary.
+
+#### Debug frames ride the run's own stream
+
+Not a second channel. One ordered transport means a `stopped` event cannot overtake
+the output the program printed just before pausing - two channels could not guarantee
+that, and the student would watch the program stop before seeing what it had just
+printed. Asserted by index: the `stdout` frame carrying "before the stop" must appear
+in the stream *before* `debug:stopped`.
+
+Every frame is namespaced `debug:` on the way out, so it can never collide with
+`stdout`, `exit`, `waiting` or `ping`, now or later.
+
+#### The channel
+
+`server/debug/channel.mjs` binds a loopback listener and the adapter connects back.
+
+- **Bound before the spawn**, deliberately. A port allocated afterwards leaves a
+  window where the adapter connects to nothing, which on a loaded machine is the
+  difference between a debugger that works and one that intermittently does not.
+- **`127.0.0.1` explicitly.** The container network is `internal: true`, but binding
+  all interfaces would still expose a channel that reads variables out of a running
+  program to every sibling container.
+- **Allocated only for a debug run.** Unlike the graphics channel - cheap, so always
+  created - this holds a listening socket, and one per concurrent execution is a real
+  cost for a feature most runs do not use.
+- **First correct token wins**; later connections are dropped, so a race cannot leave
+  two peers interleaving frames into one session.
+- **Bounded**: 4 MB per frame, 8 MB unparsed buffer, and a 20-second attach timeout
+  that reports `debug:error` rather than leaving the run pending.
+
+The token is not the security boundary and the file says so: the student's own program
+can read it from its environment, and impersonating your own debugger only confuses
+your own UI. It exists so the server can tell a *different* session's process apart
+from the one it is waiting for.
+
+#### The command boundary
+
+`buildDebugCommand` is an allowlist that rebuilds each frame field by field, because
+`evaluate` runs an arbitrary expression inside the student's paused process. Line
+numbers must be positive integers under a ceiling, capped at 500; expressions are
+length-bounded; unknown commands are refused with 400.
+
+`hasOwnProperty` rather than a bare lookup, so `constructor`, `toString` and
+`__proto__` are not command names.
+
+The expression itself is deliberately **not** filtered, and the test says why:
+evaluating in a paused frame is the feature, the program is the student's own, and the
+confinement that matters is the container plus the AST gate that already refused `os`
+before the run started. Filtering here would break legitimate debugging and add
+nothing.
+
+#### Three bugs the tests found
+
+**`stop` hung on a paused program.** `set_quit` sets `quitting`, which is read by the
+trace function *on the running thread* - and a paused thread is blocked on the command
+queue, not in the trace function, so it never looks. Stop worked on a program stuck in
+a loop and hung on a paused one, which is the far more common case. Fixed by also
+waking the paused frame, reusing the "channel has gone" path it already had.
+
+**The debug run was less confined than an ordinary run.** The adapter did not install
+`fs_guard.py`, so `open('/etc/passwd')` would have worked under Debug and not under
+Run - and students would have found out which button was looser. Now installed, with a
+contract test asserting both halves: `/etc/passwd` is refused AND a workspace write
+still succeeds, so the guard is confining rather than merely blocking.
+
+**Guard ordering.** Installed before reading the program source, the guard refused the
+adapter's own read of the file it was told to run - the program never started and every
+breakpoint was simply never reached. The source is now read first; the adapter loading
+its own target is not the student doing I/O.
+
+#### One latent bug fixed on the way
+
+`sessionCommand` called `apply(id, req)` unwrapped. Express 4 does not catch a
+rejection from an async handler, so a throw would have left the request hanging until
+the client gave up. That was harmless while `apply` was total - stdin and stop cannot
+fail - and the debug command refuses both an unknown command and a session with no
+debugger. Now wrapped, honouring `statusCode`.
+
+#### Verification
+
+- 24 unit tests on the channel and the command boundary, including the handshake, a
+  wrong token, an event before the handshake, a second connection, a malformed frame,
+  and loopback-only binding.
+- 11 contract tests over real HTTP in the production image: attach, breakpoints with
+  variables, stepping, evaluate, stop-while-paused, event ordering, and the three
+  refusal cases (400 unknown command, 400 empty expression, 410 unknown session, 409
+  session with no debugger).
+- 35 debug assertions green in the container; 578 unit, 119 contract, 322 security
+  cases, clean typecheck.
+
+#### Still to do
+
+- **No UI.** A user still cannot debug anything: there is no breakpoint margin, no
+  toolbar, no variables or call-stack panel. That is H7 part 3.
+- **Python only.** `supportsDebug` is declared per adapter and the route tells the
+  client plainly when a language cannot be debugged, so the refusal is honest - but
+  Java, C#, PHP and JavaScript each need a different mechanism (JDWP, netcoredbg,
+  Xdebug, the V8 inspector) and none reuses this adapter.
+- Breakpoints still bind to the entry file only.

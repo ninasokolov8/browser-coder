@@ -85,6 +85,10 @@ class DebugSession {
         BROWSER_CODER_DEBUG_PORT: String(this.#server.address().port),
         BROWSER_CODER_DEBUG_TOKEN: 'contract-token',
         BROWSER_CODER_DEBUG_PROGRAM: this.programPath,
+        // The pipeline sets this for every run; the guard confines `open` to it.
+        // Without it the guard falls back to cwd and a workspace write would land
+        // somewhere else - so the harness has to mirror what production does.
+        BROWSER_CODER_WORKSPACE: this.dir,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -394,6 +398,45 @@ describe('stopping where the program broke', { skip }, () => {
     assert.match(debug.stderr, /ZeroDivisionError/);
     // And no temporary job path.
     assert.doesNotMatch(debug.stderr, /bc-dbg-/);
+  });
+});
+
+describe('a debug run is as confined as an ordinary run', { skip }, () => {
+  let debug;
+
+  before(async () => {
+    debug = session([
+      'print("start")',
+      'try:',
+      '    handle = open("/etc/passwd")',
+      '    print("READ", len(handle.read()))',
+      'except PermissionError as error:',
+      '    print("REFUSED")',
+      'with open("mine.txt", "w") as f:',
+      '    f.write("ok")',
+      'print("WROTE")',
+    ].join('\n'));
+    await debug.start();
+    await debug.waitFor('hello');
+    debug.send({ command: 'setBreakpoints', lines: [] });
+    await debug.waitFor('breakpoints');
+    await debug.waitFor('started');
+  });
+
+  after(() => debug?.dispose());
+
+  test('the filesystem guard is installed under the debugger too', async () => {
+    // Load-bearing. Without this the debugger would be a way around the confinement
+    // that H4 put on `open`: /etc/passwd would be readable under Debug and not under
+    // Run, and students would find out which button is looser.
+    await debug.waitFor('terminated');
+    await debug.waitForExit();
+
+    assert.match(debug.stdout, /REFUSED/, `guard not active: ${debug.stdout}`);
+    assert.doesNotMatch(debug.stdout, /READ/);
+    // And workspace-local I/O still works, so the guard is confining rather than
+    // simply blocking - which is what H4 was for.
+    assert.match(debug.stdout, /WROTE/);
   });
 });
 

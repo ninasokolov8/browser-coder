@@ -28,6 +28,7 @@
 import { validateFileSet, resolveEntryPoint, DEFAULT_PATH_LIMITS } from '../domain/paths.mjs';
 import { TerminationReason, classifyExit } from '../domain/termination.mjs';
 import { createGraphicsChannel, readGraphicsChannel } from '../graphics/turtle.mjs';
+import { DebugChannel, DEBUG_PORT_ENV, DEBUG_TOKEN_ENV } from '../debug/channel.mjs';
 import { resolveVersion } from '../languages/catalog.mjs';
 import { getAdapter } from '../languages/registry.mjs';
 import { log } from '../logging.mjs';
@@ -242,10 +243,38 @@ export class ExecutionPipeline {
       const graphics = createGraphicsChannel(job);
 
       const timeoutMs = hooks.timeoutMs ?? this.config.execution.timeoutMs;
+
+      /*
+       * The debug channel, when this run asked to be debugged.
+       *
+       * Bound BEFORE the child is spawned, deliberately: the adapter connects back
+       * on startup, and a port allocated after the spawn leaves a window where it
+       * connects to nothing. On a loaded machine that is the difference between a
+       * debugger that works and one that intermittently does not.
+       *
+       * Not allocated for an ordinary run. Unlike the graphics channel - which is
+       * cheap and always created so the adapter never has to guess - this holds a
+       * listening socket, and every run holding one would be a socket per concurrent
+       * execution for a feature most runs do not use.
+       */
+      let debugChannel = null;
+      let debugEnv = {};
+      if (hooks.debug && plan.adapter.supportsDebug) {
+        debugChannel = new DebugChannel({
+          onEvent: hooks.onDebugEvent ?? (() => {}),
+          onClose: hooks.onDebugClose,
+        });
+        const port = await debugChannel.listen();
+        debugEnv = {
+          [DEBUG_PORT_ENV]: String(port),
+          [DEBUG_TOKEN_ENV]: debugChannel.token,
+        };
+      }
+
       const sandboxEnv = buildSandboxEnv({
         jobDir: job.dir,
         config: this.config,
-        extra: graphics.env,
+        extra: { ...graphics.env, ...debugEnv },
       });
 
       const prepared = await plan.adapter.prepare({
@@ -258,6 +287,9 @@ export class ExecutionPipeline {
         sandboxEnv,
         templateRoot: this.templateRoot,
         timeoutMs,
+        // Present only for a debug run, so an adapter can pick a different launch
+        // without having to inspect the environment it was handed.
+        debug: debugChannel ? { enabled: true } : null,
       });
 
       // A compile or lint failure is a terminal result, not a live session. The
@@ -300,6 +332,10 @@ export class ExecutionPipeline {
         onStderr: hooks.onStderr,
         transformStderr: prepared.transformStderr,
       });
+
+      // Tear the channel down with the run. A listener outlasting the process it
+      // was serving is a leaked socket per debug session.
+      managed.done.finally(() => debugChannel?.close());
 
       const done = managed.done.then(result => {
         // Read the drawing BEFORE disposing the job, and only from the path this
@@ -353,6 +389,20 @@ export class ExecutionPipeline {
         closeStdin: managed.closeStdin,
         stop: managed.stop,
         done,
+
+        /**
+         * Whether this run really has a debugger attached.
+         *
+         * Distinct from "the client asked for one": the adapter must declare
+         * `supportsDebug` AND the channel must have bound. The route tells the
+         * student when it did not, rather than running a program that ignores every
+         * breakpoint - a debugger that silently does nothing is the worst outcome
+         * here, because the student concludes their breakpoint was wrong.
+         */
+        debugSupported: debugChannel !== null,
+
+        /** Send one validated command to the adapter. False when nothing is attached. */
+        sendDebug: frame => debugChannel?.send(frame) ?? false,
       };
     } catch (error) {
       finish();

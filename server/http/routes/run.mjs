@@ -21,6 +21,7 @@
 import { TerminationReason, toLegacyExitCode, toLegacyNote } from '../../domain/termination.mjs';
 import { ExecutionRefused } from '../../execution/pipeline.mjs';
 import { FORWARDED_HEADER } from '../../execution/session-registry.mjs';
+import { buildDebugCommand } from '../../debug/channel.mjs';
 import { log } from '../../logging.mjs';
 
 /**
@@ -180,6 +181,19 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
     const { language, version, code, files, entryPoint } = req.body || {};
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
 
+    /*
+     * Debugging is an additive flag on the existing route, not a new endpoint.
+     *
+     * A debug session IS an interactive session - a live process, streamed output,
+     * stdin, the same idle and lifetime timers, the same concurrency accounting. A
+     * parallel `/api/run/debug` would have been a second copy of all of that, and
+     * the two would drift; V-40 and the stdin regex were both that shape.
+     *
+     * The frozen v1 surface is untouched: a client that never sends `debug` gets
+     * byte-identical behaviour, and the extra event types only appear when asked for.
+     */
+    const wantsDebug = req.body?.debug === true;
+
     // Admission before preparation, so compilation cannot overrun the cap (V-27).
     const capacity = sessions.checkCapacity(ip);
     if (!capacity.ok) {
@@ -262,10 +276,31 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
           timeoutMs: 0,
           onStdout: text => onOutput('stdout', text),
           onStderr: text => onOutput('stderr', text),
+          debug: wantsDebug,
+          // Debug frames ride the SAME NDJSON stream as stdout. One ordered
+          // transport means a `stopped` event cannot arrive before the output the
+          // program printed just before pausing, which two channels could not
+          // guarantee - and the student would see the pause before the print.
+          onDebugEvent: event => {
+            // Counts as activity: a program paused at a breakpoint is doing exactly
+            // what it was asked to, and the idle timer must not reap it while the
+            // student reads their variables.
+            resetIdle();
+            send(event);
+          },
         },
       );
     } catch (error) {
       return sendRefusal(res, error);
+    }
+
+    // Asked to debug a language with no adapter. Told plainly rather than running
+    // anyway and ignoring every breakpoint.
+    if (wantsDebug && !handle.debugSupported) {
+      send({
+        type: 'debug:unsupported',
+        message: `${language} cannot be debugged yet. The program will run normally.`,
+      });
     }
 
     // A compile failure never becomes a live session: it answers as JSON, which
@@ -393,7 +428,18 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
 
       const local = sessions.get(id);
       if (local) {
-        apply(id, req);
+        // Wrapped, and this matters more than it looks. Express 4 does not catch a
+        // rejection from an async handler, so a throw here would leave the request
+        // hanging until the client gave up rather than answering. `apply` used to be
+        // total - stdin and stop cannot fail - but the debug command below refuses
+        // an unknown command and a session with no debugger, and both are throws.
+        try {
+          apply(id, req);
+        } catch (error) {
+          const status = Number(error?.statusCode) || 500;
+          if (status >= 500) log('warn', 'session_command_failed', { error: error?.message });
+          return res.status(status).json({ error: error?.message || 'Command failed' });
+        }
         return res.json({ ok: true });
       }
 
@@ -444,6 +490,37 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
     id => sessions.stop(id, TerminationReason.CANCELLED),
     { idempotent: true },
   );
+
+  /*
+   * Debug control: one route, the command in the path.
+   *
+   * The command name is validated against an allowlist in server/debug/channel.mjs
+   * and the body is rebuilt field by field, because `evaluate` runs an expression
+   * inside the student's paused process - so a request body must never reach the
+   * adapter unexamined.
+   *
+   * Routed through `sessionCommand`, so a debug command lands on the replica that
+   * owns the session exactly as stdin does. Without that it would work about half
+   * the time behind two replicas, which is V-08 again.
+   */
+  sessionCommand('/api/run/interactive/:id/debug/:command', (id, req) => {
+    const session = sessions.get(id);
+    const frame = buildDebugCommand(req.params.command, req.body);
+
+    if (!frame) {
+      // A refusal, not a silent drop: a UI sending a command the server does not
+      // accept must find out now rather than waiting for a stop that never comes.
+      throw Object.assign(new Error(`unknown debug command: ${req.params.command}`), {
+        statusCode: 400,
+      });
+    }
+
+    if (!session?.handle?.sendDebug?.(frame)) {
+      throw Object.assign(new Error('this session has no debugger attached'), {
+        statusCode: 409,
+      });
+    }
+  });
 
   // EOF without termination, so `input()` past the end of input raises the way it
   // does in a terminal. Additive; harmless to a v1 client that never calls it.

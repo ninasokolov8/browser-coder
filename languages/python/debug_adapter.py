@@ -195,6 +195,20 @@ class _Channel:
             return None
         return self._queue.get()
 
+    def unblock(self):
+        """Wake a paused frame that is waiting for a command.
+
+        `set_quit` alone is not enough to stop a PAUSED program. `quitting` is read by
+        the trace function on the running thread, and that thread is blocked in
+        `_pause` waiting on this queue - so it never returns to the trace function to
+        notice. Stop therefore worked on a looping program and hung on a paused one,
+        which is the more common case by far.
+
+        A None frame is what `_pause` already treats as "the channel has gone": it
+        quits and returns. Reusing that path rather than adding a second one.
+        """
+        self._queue.put(None)
+
     def close(self):
         self._closed.set()
 
@@ -537,6 +551,21 @@ def _print_user_traceback(exc_type, exc_value, traceback_object, program):
     sys.stderr.flush()
 
 
+def _install_fs_guard_for_debug():
+    """Run fs_guard.py in its own namespace, before anything else.
+
+    The guard lives beside this file, so it is found relative to `__file__` rather
+    than through an environment variable a program could influence.
+
+    A missing or broken guard raises. The alternative - carrying on unguarded -
+    would mean the debugger quietly had filesystem access the Run button does not.
+    """
+    guard = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fs_guard.py')
+    with open(guard, 'r', encoding='utf-8') as handle:
+        source = handle.read()
+    exec(compile(source, guard, 'exec'), {'__name__': '_bc_fs_guard'})    # noqa: S102
+
+
 def main():
     port = int(os.environ.get('BROWSER_CODER_DEBUG_PORT') or 0)
     token = os.environ.get('BROWSER_CODER_DEBUG_TOKEN') or ''
@@ -545,6 +574,27 @@ def main():
     if not port or not program:
         sys.stderr.write('[debugger not configured]\n')
         return 2
+
+    # The program's source, read BEFORE the filesystem guard is installed.
+    #
+    # Ordering matters and getting it wrong is silent: the guard confines `open` to
+    # the workspace, and the adapter loading the file it was told to run is not the
+    # student doing I/O. Installed first, the guard refused the adapter's own read,
+    # the program never started, and every breakpoint was simply never reached.
+    try:
+        with open(program, 'r', encoding='utf-8-sig') as handle:
+            program_source = handle.read()
+    except OSError as error:
+        sys.stderr.write('[could not read %s: %s]\n' % (program, error))
+        return 2
+
+    # Now confine the program, exactly as the ordinary bootstrap does.
+    #
+    # Load-bearing: without it a debug run would be LESS confined than a normal run,
+    # `open('/etc/passwd')` would work under the debugger and not otherwise, and
+    # students would find out which of the two buttons is looser. "Run" and "Debug"
+    # must have one security posture.
+    _install_fs_guard_for_debug()
 
     sock = socket.create_connection(('127.0.0.1', port), timeout=10)
     sock.settimeout(None)
@@ -561,11 +611,16 @@ def main():
             debugger.apply_breakpoints(command.get('lines') or [])
             started.set()
         elif action == 'stop':
+            # Two halves, and both are needed.
+            #
             # `quitting` is read by the trace function on the RUNNING thread, so
-            # setting it here makes the program raise BdbQuit at its next traced
-            # event. That is what makes Stop work on a program stuck in a loop,
-            # which is the case a paused-only design cannot serve.
+            # setting it makes a program stuck in a loop raise BdbQuit at its next
+            # traced event - the case a paused-only design cannot serve.
             debugger.set_quit()
+            # And a program that is PAUSED is blocked on the command queue, not in
+            # the trace function, so it would never look at `quitting` at all. This
+            # wakes it so it can unwind.
+            channel.unblock()
 
     channel.start_reading(handle_immediate)
 
@@ -580,9 +635,7 @@ def main():
     try:
         # runpy would add its own frames; compiling here keeps the stack the
         # student's own, and __name__ == '__main__' so `if __name__` guards run.
-        with open(program, 'r', encoding='utf-8-sig') as handle:
-            source = handle.read()
-        code = compile(source, program, 'exec')
+        code = compile(program_source, program, 'exec')
         globals_dict = {'__name__': '__main__', '__file__': program, '__builtins__': __builtins__}
         debugger.run(code, globals_dict, globals_dict)
     except bdb.BdbQuit:

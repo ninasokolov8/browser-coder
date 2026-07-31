@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { runToCompletion } from '../../execution/process-runner.mjs';
 import { GRAPHICS_OUT_ENV, usesTurtle } from '../../graphics/turtle.mjs';
+import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
 import { log } from '../../logging.mjs';
 import SECURITY from '../../security/patterns.mjs';
 import { diagnostics, stripJobPaths } from '../adapter-kit.mjs';
@@ -32,6 +33,7 @@ const LANGUAGES_ROOT = path.resolve(
 const SHIM_PATH = path.join(LANGUAGES_ROOT, 'python', 'turtle_shim.py');
 const PREFLIGHT_PATH = path.join(LANGUAGES_ROOT, 'python', 'preflight.py');
 const FS_GUARD_PATH = path.join(LANGUAGES_ROOT, 'python', 'fs_guard.py');
+const DEBUG_ADAPTER_PATH = path.join(LANGUAGES_ROOT, 'python', 'debug_adapter.py');
 
 /** Environment variable naming the directory a program may open files in. */
 export const WORKSPACE_ENV = 'BROWSER_CODER_WORKSPACE';
@@ -208,6 +210,16 @@ async function preflight(ctx, source, displayName) {
 export const pythonAdapter = {
   id: 'python',
 
+  /**
+   * Python can be debugged.
+   *
+   * Declared rather than assumed, so the pipeline only pays for a listening socket
+   * on a language that has an adapter to connect back - and so a client asking to
+   * debug Java gets an honest refusal instead of a run that silently ignores every
+   * breakpoint.
+   */
+  supportsDebug: true,
+
   defaultEntryName() {
     return 'main.py';
   },
@@ -264,18 +276,39 @@ export const pythonAdapter = {
 
     const offset = shimLineOffset();
 
+    /*
+     * A debug run launches the adapter instead of the bootstrap.
+     *
+     * `debug_adapter.py` installs its own trace hook and then executes the entry
+     * file itself, so the two launches are exclusive. The filesystem guard is
+     * exec'd by the adapter for the same reason it is by the bootstrap - the
+     * program must be as confined under the debugger as without it, or "run" and
+     * "debug" would have different security postures and students would discover
+     * which one is looser.
+     *
+     * The turtle shim still applies: it was prepended to the entry file above, and
+     * the adapter compiles that file as-is.
+     */
+    const debugging = ctx.debug?.enabled === true;
+    const adapterArgs = debugging
+      ? ['-u', '-I', '-S', '-B', DEBUG_ADAPTER_PATH]
+      : ['-u', '-I', '-S', '-B', '-c', bootstrap];
+
     return {
       kind: 'launch',
       command: ctx.config.tools.python,
       // -u unbuffered so a prompt with no trailing newline reaches the user
       // immediately; -I isolated; -S no site; -B no .pyc beside the source.
-      args: ['-u', '-I', '-S', '-B', '-c', bootstrap],
+      args: adapterArgs,
       cwd: job.dir,
       timeoutMs: ctx.timeoutMs,
       extraEnv: {
         // The one directory a program may open files in. Read by fs_guard.py.
         [WORKSPACE_ENV]: path.resolve(job.dir),
         ...(ctx.graphics ? { [GRAPHICS_OUT_ENV]: ctx.graphics.path } : {}),
+        // Which file the adapter should run. The port and token are already in the
+        // sandbox environment, put there by the pipeline before the spawn.
+        ...(debugging ? { [DEBUG_PROGRAM_ENV]: entryAbsolute } : {}),
       },
       transformStderr: text => {
         let out = stripJobPaths(text, job.dir);
