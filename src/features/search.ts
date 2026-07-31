@@ -8,6 +8,7 @@ import {
   btnRegex, btnCase, btnWord, btnCodeOnly, btnClearSearch, btnReplaceAll, btnReplaceAllFiles,
 } from '../components/dom';
 import { setOutput } from '../components/output';
+import { escapeHtml } from '../components/html-escape.ts';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 import { lazyRef } from '../app/lazy';
 
@@ -407,13 +408,7 @@ function renderSearchResults() {
   attachSearchResultHandlers();
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+
 
 function attachSearchResultHandlers() {
   // Click on file to open it

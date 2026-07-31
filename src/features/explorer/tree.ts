@@ -6,6 +6,7 @@ import { applyFileLanguage } from '../editor-core';
 import { explorerState } from './state';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { setOutput, setStatus } from '../../components/output';
+import { escapeHtml } from '../../components/html-escape.ts';
 import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
 import { lazyRef } from '../../app/lazy';
 import type { TabManager } from '../../tabs';
@@ -173,14 +174,8 @@ export async function renderFileTree(tm = runtime.tabManager!) {
   };
   sortNodes(rootNodes);
 
-  const escapeHtml = (value: string): string => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-
-  const escapeAttribute = (value: string): string => escapeHtml(value);
+  // The shared escaper covers both positions, so the two names are one function.
+  const escapeAttribute = escapeHtml;
 
   // Render HTML
   function renderNode(node: TreeNode, depth: number = 0): string {

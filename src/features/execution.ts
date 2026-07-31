@@ -20,6 +20,7 @@ import { getOrCreateModel } from './editor-core';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
+import { escapeHtml } from '../components/html-escape.ts';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -33,13 +34,13 @@ function requireRuntime() {
 
 // ── Output helpers ──────────────────────────────────────────────────────────
 
-/** Escape text for safe embedding as HTML content. */
-function esc(s: string): string {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+/**
+ * Escape text for embedding in the output panel's markup.
+ *
+ * Was a local three-character escaper that omitted quotes - the weakest of four
+ * copies in the codebase. Now the shared one; see src/components/html-escape.ts.
+ */
+const esc = escapeHtml;
 
 /**
  * "Run" an SVG file: open the picture in its own floating window — the same kind

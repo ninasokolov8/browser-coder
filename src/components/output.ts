@@ -2,6 +2,7 @@ import {
   statusEl,
   panelContentEl,
 } from "./dom";
+import { escapeHtml } from './html-escape.ts';
 
 /**
  * Escape a plain string for safe insertion as HTML content.
@@ -9,10 +10,10 @@ import {
  * user-controlled strings (stdout, stderr, filenames, error messages).
  */
 export function escHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  // Delegates to the one escaper. Kept as a named export because the output panel
+  // is the main consumer and the name reads well at those call sites; the previous
+  // body escaped only three characters.
+  return escapeHtml(text);
 }
 
 export function setStatus(s: string) {

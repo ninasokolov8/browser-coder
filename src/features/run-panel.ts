@@ -2,6 +2,7 @@ import { runtime } from '../app/runtime';
 import { parseFunctions, extractDefinitionsOnly } from '../components/code-analysis';
 import { setOutput, setStatus, setOutputHtml } from '../components/output';
 import { runBtn } from '../components/dom';
+import { escapeHtml } from '../components/html-escape.ts';
 
 // ===== FUNCTION PARSER & RUN PANEL =====
 const functionListEl = document.getElementById('function-list')!;
@@ -45,7 +46,6 @@ export function renderFunctionList() {
   };
 
   // Helper to escape HTML
-  const escapeHtml = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   functionListEl.innerHTML = functions.map(fn => {
     const hasParams = fn.params && fn.params.trim().length > 0;
@@ -202,22 +202,20 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     const data = await res.json();
 
     if (!res.ok) {
-      const fnEsc = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      setOutputHtml(`<span class="error">Error: ${fnEsc(data.error || 'Unknown error')}</span>\n<span class="error">[exit code: 1]</span>`);
+      setOutputHtml(`<span class="error">Error: ${escapeHtml(data.error || 'Unknown error')}</span>\n<span class="error">[exit code: 1]</span>`);
       setStatus("Error ❌");
       return;
     }
 
-    const fnEsc = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const parts = [];
-    if (data.stdout) parts.push(fnEsc(data.stdout));
+    if (data.stdout) parts.push(escapeHtml(data.stdout));
     if (data.stderr) {
       if (parts.length > 0) parts.push('\n');
       parts.push(`<span class="info">── stderr ─────────────────────────────────────────────────</span>\n`);
-      parts.push(`<span class="error">${fnEsc(data.stderr)}</span>`);
+      parts.push(`<span class="error">${escapeHtml(data.stderr)}</span>`);
     }
     if (parts.length === 0 && data.exitCode === 0) {
-      parts.push(`<span class="success">${fnEsc(fnName)}${fnEsc(argsDisplay)} completed (no output)</span>`);
+      parts.push(`<span class="success">${escapeHtml(fnName)}${escapeHtml(argsDisplay)} completed (no output)</span>`);
     }
     if (parts.length > 0) {
       const last = parts[parts.length - 1];
@@ -231,8 +229,7 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     setOutputHtml(parts.join(''));
     setStatus(data.exitCode === 0 ? `${fnName}${argsDisplay} ✅` : `${fnName}${argsDisplay} ❌`);
   } catch (e) {
-    const fnEsc2 = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    setOutputHtml(`<span class="error">Network error: ${fnEsc2(String(e))}</span>\n<span class="error">[exit code: 1]</span>`);
+    setOutputHtml(`<span class="error">Network error: ${escapeHtml(String(e))}</span>\n<span class="error">[exit code: 1]</span>`);
     setStatus("Error ❌");
   }
 }
