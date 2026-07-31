@@ -4734,3 +4734,94 @@ through a live server:
 - the V-46 lookalikes: `stepup.school.attacker.com`, `evil-stepup.school`
 
 Contract: 54 pass / 0 fail / 11 skip / 1 todo - unchanged behaviour, three new gates.
+
+---
+
+### Phase B part 2 - capacity and versions. All 22 gates now permanent.
+
+Commits: `fda6644` (V-36, V-35), `2b92e6c` (V-32)
+
+**The defect ledger is closed: `todo: 0`.** 22 of 22 gates permanent, from a
+baseline of 1.
+
+#### V-36 - concurrency derived from memory the process does not have
+
+`maxConcurrent` was `min(500, floor(TOTAL_MEMORY_MB / 50))` against the **host's**
+memory. On the production droplet that is 30 GiB behind a 1 GiB container, so it
+computed the 500 ceiling: **eight times** the memory actually available. Admission
+therefore never refused anything, and the kernel enforced the real limit by
+OOM-killing the container. A capacity control that is 8x too high is not a capacity
+control; it converts a clean 503 into an outage.
+
+The cgroup detection added in A2 was already correct and already reporting
+`memoryBudgetMB: 1024` inside the container - it simply was not wired to the limit
+it existed for.
+
+```
+available     = budget - SERVER_RESERVE_MB (256)
+maxConcurrent = clamp(1, 500, available / RUN_MEMORY_MB)
+```
+
+Measured: 1 GiB -> **15**, 512 MiB -> **5**, the 63 GiB dev host unchanged at 500.
+A tiny container returns 1 rather than 0, because refusing every request looks like
+a broken deployment rather than a full one.
+
+Three things worth naming:
+
+- **The server keeps a reserve.** Spending the whole budget on children means the
+  process supervising them dies first, and the first symptom is the supervisor
+  rather than a refused run.
+- **`maxInteractiveSessions` is now bounded by `maxConcurrent`.** Since A3/A4 every
+  run *is* a session holding a live process, so the two limits describe one
+  resource. A flat 200 against a derived 15 would mean the honest limit is simply
+  bypassed by using the interactive endpoint - the one the IDE uses for everything.
+- **`RUN_MEMORY_MB` is named rather than a magic 50 inside a division**, and it is
+  optimistic: the Java adapter passes `-Xmx128m` and node gets
+  `--max-old-space-size=128`. Lowering it is a capacity decision, not a bug fix, so
+  the default is unchanged and the env var exists to make that decision without
+  editing code.
+
+`/health` additionally reports `memoryBudgetMB` and `memoryBudgetSource`, because
+`memoryMB` is the *host's* memory and on a container it disagrees with the budget
+the limit derives from - which is exactly the confusion that let this sit unnoticed.
+
+**V-35** removed with it: the `scaling` block and `maxQueueSize` configured a worker
+pool, an autoscaler and a queue that do not exist, and nothing read them.
+Configuration describing absent machinery is worse than none - it tells the next
+reader there is a pool to tune, and hides the limit that is real.
+
+#### V-32 - refuse an unknown version, keep the known gaps working
+
+The staged fix in A3/A4 made resolution explicit and reported but left enforcement
+behind a single `STRICT_VERSIONS` switch **that could never be turned on**: it
+covered every unresolved version at once, so enabling it would reject Python 3.11
+and Java 21 - values real, checked-in Step-Up lessons request.
+
+The switch was the wrong shape. It conflated:
+
+| | |
+|---|---|
+| **known gap** | Real content asks for a toolchain this service does not have (Python 3.11, Java 21, C# 11). Refusing breaks lessons. Falls back, and the response **says** the request was not honoured. |
+| **unknown** | A typo, a probe, a client bug. Nobody legitimately sends `python-does-not-exist`, and quietly running Python 3.12 for it **is** the defect. |
+
+Separating them lets the second be refused today while the first keeps working. An
+unknown version is now a 400 naming the versions that do exist.
+
+Two switches remain, pointing opposite ways: `STRICT_VERSIONS=1` also refuses the
+known gaps (flip once Step-Up content is migrated); `ALLOW_UNKNOWN_VERSIONS=1`
+restores lenience, so a surprise from production is a config change rather than a
+rollback.
+
+Verified across the real matrix: exact ids, every Step-Up display alias (`5 Strict`,
+`17`, `12`, `8`, `3`), the known gaps, and garbage. Alias matching normalizes case
+and whitespace but is deliberately not fuzzy - `5 Strictly` is refused.
+
+#### State
+
+| | |
+|---|---|
+| Unit | **216** pass / 0 fail |
+| Contract | 55 pass / 0 fail / 11 skip / **0 todo** |
+| Browser (workspace, app-boot, embedded) | 24 + 26 + 19, all pass |
+| Typecheck | clean, both configs |
+| `server.mjs` | **4,563 -> 223 lines** |
