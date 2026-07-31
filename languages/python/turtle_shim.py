@@ -26,7 +26,14 @@ def _setup_turtle():
     import json as _j
     import math as _m
     import atexit as _ae
-    # base64 was only needed by the removed stdout fallback transport.
+    # base64 is needed again, for SVG cursor shapes.
+    #
+    # It was removed on this branch when the stdout fallback transport went, and the
+    # SVG cursor feature - written in parallel on `main` - added three new uses of
+    # it. Git merged both sides without a conflict and produced code that raises
+    # `NameError: _b64` the first time a program calls `register_shape("x.svg")`.
+    # Nothing in a clean merge, a typecheck or a Python parse catches that.
+    import base64 as _b64
 
     # ── Shared drawing list (all turtles write here) ─────────────────────────
     _shapes = []
@@ -91,9 +98,252 @@ def _setup_turtle():
     # alongside the drawing data as an explicit polygon.
     _BUILTIN_SHAPES = ('classic', 'arrow', 'turtle', 'circle',
                        'square', 'triangle', 'blank')
-    _polys    = {}       # custom shapes: name -> [[x, y], ...]
+    _polys    = {}       # custom polygon shapes: name -> [[x, y], ...]
+    _svg_shapes = {}     # SVG cursor shapes: name -> embedded image metadata
+
+    # Must match GRAPHICS_LIMITS.maxSvgBytes in server/graphics/turtle.mjs.
+    #
+    # The ported version used 12 MB, which base64 inflates to 16 MB - twice the
+    # whole graphics channel's 8 MB budget, so a shape anywhere near that size
+    # could never be delivered at all. It would have looked like a mysterious
+    # "my cursor did not appear" rather than a limit. A cursor icon is a few KB.
+    _MAX_SVG_BYTES = 256 * 1024
     _turtles  = []       # states of every Turtle() instance the program made
     _gs_used  = [False]  # did the program actually use the module-level turtle?
+
+    # ── Optional SVG cursor support ──────────────────────────────────────────
+    # This is deliberately isolated from the normal polygon/built-in path.
+    # When no SVG shape is registered, the shim emits exactly the same payload
+    # fields and drawing commands as before.
+    def _svg_dimensions(svg_text):
+        """Return a small cursor size while preserving the SVG aspect ratio."""
+        import re as _re
+
+        viewbox = _re.search(
+            r'viewBox\s*=\s*["\']\s*[-+0-9.eE]+\s+[-+0-9.eE]+\s+'
+            r'([-+0-9.eE]+)\s+([-+0-9.eE]+)\s*["\']',
+            svg_text,
+            _re.I,
+        )
+        if viewbox:
+            source_w = max(1.0, float(viewbox.group(1)))
+            source_h = max(1.0, float(viewbox.group(2)))
+        else:
+            width_match = _re.search(
+                r'\bwidth\s*=\s*["\']\s*([-+0-9.eE]+)',
+                svg_text,
+                _re.I,
+            )
+            height_match = _re.search(
+                r'\bheight\s*=\s*["\']\s*([-+0-9.eE]+)',
+                svg_text,
+                _re.I,
+            )
+            source_w = max(
+                1.0,
+                float(width_match.group(1)) if width_match else 42.0,
+            )
+            source_h = max(
+                1.0,
+                float(height_match.group(1)) if height_match else 42.0,
+            )
+
+        max_side = 42.0
+        scale = max_side / max(source_w, source_h)
+        return (
+            round(max(4.0, source_w * scale), 3),
+            round(max(4.0, source_h * scale), 3),
+        )
+
+    def _register_svg_source(shape_name, source):
+        """Register SVG text/data supplied directly by trusted lesson code.
+
+        This is an additive fallback for sandboxed projects where the SVG is
+        visible in the Browser Coder workspace but is not present in Python's
+        temporary execution directory.
+
+        Accepted source forms:
+          - raw SVG text
+          - UTF-8 bytes / bytearray
+          - data:image/svg+xml;base64,... URL
+          - dict with data/svg/source plus optional w, h and rotate
+        """
+        if source is None:
+            return False
+
+        requested_width = None
+        requested_height = None
+        rotate = False
+
+        if isinstance(source, dict):
+            requested_width = source.get('w', source.get('width'))
+            requested_height = source.get('h', source.get('height'))
+            rotate = bool(source.get('rotate', False))
+            source = source.get(
+                'data',
+                source.get('svg', source.get('source')),
+            )
+
+        if isinstance(source, bytearray):
+            source = bytes(source)
+
+        if isinstance(source, bytes):
+            try:
+                svg_text = source.decode('utf-8-sig')
+            except Exception:
+                return False
+        elif isinstance(source, str):
+            value = source.strip()
+
+            if value.lower().startswith('data:image/svg+xml'):
+                comma = value.find(',')
+                if comma < 0:
+                    return False
+
+                header = value[:comma].lower()
+                payload = value[comma + 1:]
+
+                if ';base64' not in header:
+                    return False
+
+                try:
+                    svg_text = _b64.b64decode(payload).decode('utf-8-sig')
+                except Exception:
+                    return False
+            else:
+                svg_text = source
+        else:
+            return False
+
+        encoded_bytes = svg_text.encode('utf-8')
+
+        if (
+            len(encoded_bytes) <= 0
+            or len(encoded_bytes) > _MAX_SVG_BYTES
+            or '<svg' not in svg_text.lower()
+        ):
+            return False
+
+        width, height = _svg_dimensions(svg_text)
+
+        try:
+            if requested_width is not None:
+                width = max(2.0, float(requested_width))
+            if requested_height is not None:
+                height = max(2.0, float(requested_height))
+        except Exception:
+            return False
+
+        encoded = _b64.b64encode(encoded_bytes).decode('ascii')
+
+        _svg_shapes[shape_name] = {
+            'data': 'data:image/svg+xml;base64,' + encoded,
+            'w': width,
+            'h': height,
+            'rotate': rotate,
+        }
+        return True
+
+    def _register_svg_shape(name, source=None):
+        """Register inline SVG data first, then use the existing file path."""
+        import os as _os
+
+        shape_name = str(name)
+        if not shape_name.lower().endswith('.svg'):
+            return False
+        if shape_name in _svg_shapes:
+            return True
+
+        # NEW: safe inline source path. No file/system access is needed in the
+        # student or lesson code.
+        if source is not None:
+            return _register_svg_source(shape_name, source)
+
+        # Read a local SVG when present in the workspace.
+        #
+        # Confined to the workspace deliberately. The version this was ported from
+        # called `expanduser` and `abspath` on the shape name, so
+        # `register_shape("/etc/hosts.svg")` or `register_shape("~/.ssh/id_rsa.svg")`
+        # named a real absolute path to try to open.
+        #
+        # On this branch `open` is already confined by languages/python/fs_guard.py,
+        # so those reads FAIL - but `os.path.isfile` and `os.path.getsize` are not
+        # guarded, so the candidate loop would still answer "does this file exist?"
+        # for any path on the container. That is a small leak, and there is no reason
+        # to leave it: a cursor image lives in the student's own project.
+        workspace = _os.path.realpath(
+            _os.environ.get('BROWSER_CODER_WORKSPACE') or _os.getcwd()
+        )
+
+        candidates = []
+
+        def _candidate(path):
+            if not path:
+                return
+            try:
+                absolute = _os.path.realpath(path)
+            except OSError:
+                return
+            # realpath first, so a symlink or `..` cannot step outside.
+            if absolute != workspace and not absolute.startswith(workspace + _os.sep):
+                return
+            if absolute not in candidates:
+                candidates.append(absolute)
+
+        # A name with a drive letter, a leading separator or a `~` is not a
+        # workspace-relative file name and is not treated as one.
+        if not _os.path.isabs(shape_name) and not shape_name.startswith('~'):
+            _candidate(_os.path.join(workspace, shape_name))
+            _candidate(_os.path.join(_os.getcwd(), shape_name))
+            try:
+                script_dir = _os.path.dirname(_os.path.abspath(_sys.argv[0]))
+                _candidate(_os.path.join(script_dir, shape_name))
+            except Exception:
+                pass
+
+            # Browser Coder already adds project folders to sys.path.
+            # Check those exact locations without a recursive filesystem scan.
+            for import_dir in _sys.path:
+                if isinstance(import_dir, str) and import_dir:
+                    _candidate(_os.path.join(import_dir, shape_name))
+
+        max_svg_bytes = _MAX_SVG_BYTES
+
+        for candidate in candidates:
+            try:
+                if not _os.path.isfile(candidate):
+                    continue
+                size = _os.path.getsize(candidate)
+                if size <= 0 or size > max_svg_bytes:
+                    continue
+
+                with open(candidate, 'rb') as handle:
+                    raw = handle.read(max_svg_bytes + 1)
+                if len(raw) > max_svg_bytes:
+                    continue
+
+                svg_text = raw.decode('utf-8-sig')
+                if '<svg' not in svg_text.lower():
+                    continue
+
+                width, height = _svg_dimensions(svg_text)
+                encoded = _b64.b64encode(
+                    svg_text.encode('utf-8')
+                ).decode('ascii')
+
+                _svg_shapes[shape_name] = {
+                    'data': 'data:image/svg+xml;base64,' + encoded,
+                    'w': width,
+                    'h': height,
+                    # Photo/avatar SVG cursors stay upright while the logical
+                    # turtle heading still controls movement.
+                    'rotate': False,
+                }
+                return True
+            except Exception:
+                continue
+
+        return False
 
     def _eff(s):
         """Stretch factors actually applied to the cursor polygon."""
@@ -158,7 +408,9 @@ def _setup_turtle():
     def _set_shape(s, name=None):
         if name is not None:
             n = str(name)
-            if n in _polys:
+            if n.lower().endswith('.svg') and n not in _svg_shapes:
+                _register_svg_shape(n)
+            if n in _polys or n in _svg_shapes:
                 s['sh'] = n
                 _app(s)
             elif n.lower() in _BUILTIN_SHAPES:
@@ -519,21 +771,36 @@ def _setup_turtle():
     shapesize = turtlesize
 
     def addshape(name, shape=None):
-        """Register a polygon shape: a sequence of (x, y) pairs.
+        """Register an existing polygon shape or an SVG cursor.
 
-        Image and compound shapes have no meaning for the canvas renderer and
-        are ignored, exactly as they were before shapes were supported.
+        Existing polygon registration is unchanged.
+
+        SVG registration supports both:
+            screen.register_shape("player.svg")
+        when the SVG exists in the runtime, and:
+            screen.register_shape("player.svg", SVG_TEXT)
+        when lesson code supplies safe inline SVG content.
         """
+        shape_name = str(name)
+
+        if shape_name.lower().endswith('.svg'):
+            _register_svg_shape(shape_name, shape)
+            return
+
         try:
             pts = [[round(float(p[0]), 3), round(float(p[1]), 3)] for p in shape]
         except Exception:
             return
         if len(pts) >= 3:
-            _polys[str(name)] = pts
+            _polys[shape_name] = pts
     register_shape = addshape
 
     def getshapes():
-        return sorted(list(_BUILTIN_SHAPES) + list(_polys))
+        return sorted(
+            list(_BUILTIN_SHAPES)
+            + list(_polys)
+            + list(_svg_shapes)
+        )
 
     def tilt(angle):
         _set_tilt(_gs, angle, relative=True)
@@ -838,6 +1105,8 @@ def _setup_turtle():
         }
         if _polys:
             data['polys'] = _polys
+        if _svg_shapes:
+            data['svgShapes'] = _svg_shapes
         if _cfg[0]['pic']:
             data['pic'] = _cfg[0]['pic']
         json_str = _j.dumps(data, separators=(',', ':'))

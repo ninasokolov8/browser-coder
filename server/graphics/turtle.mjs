@@ -56,7 +56,213 @@ export const GRAPHICS_LIMITS = Object.freeze({
   maxTextLength: 2000,
   maxStringLength: 256,
   coordinateLimit: 100000,
+
+  // ── SVG cursor shapes ────────────────────────────────────────────────────
+  //
+  // An SVG cursor is an ICON. The version of this feature written on the old
+  // architecture allowed 12 MB per shape, which base64 inflates to 16 MB - twice
+  // the whole channel's 8 MB budget, so a payload at that limit could never have
+  // been read at all. These bounds are sized for what a cursor actually is.
+  maxSvgShapes: 16,
+  /** Bytes of decoded SVG per shape. A detailed icon is a few KB. */
+  maxSvgBytes: 256 * 1024,
+  /** Total across every shape, so 16 large ones cannot add up to a stall. */
+  maxSvgTotalBytes: 1024 * 1024,
+  /** Cursor edge length in canvas units. */
+  maxSvgDimension: 2000,
 });
+
+/** The one data-URL form the shim is allowed to produce. */
+const SVG_DATA_URL_PREFIX = 'data:image/svg+xml;base64,';
+
+/**
+ * Constructs that make an SVG active rather than a picture.
+ *
+ * The renderer draws these through `new Image()` and `ctx.drawImage`, which is the
+ * safe context: a browser will not run scripts or fetch external references for an
+ * SVG loaded as an image. So this is defence in depth, not the only barrier - and it
+ * is worth having precisely because that guarantee lives in the client. Anyone who
+ * later renders the same payload with `innerHTML`, `<object>`, `<embed>` or `<use>`
+ * would silently make it live, and this check is what stops that becoming a hole.
+ */
+const ACTIVE_SVG_CONSTRUCTS = [
+  /<\s*script/i,
+  /<\s*foreignObject/i,
+  /<\s*iframe/i,
+  /<\s*embed/i,
+  /<\s*object/i,
+  /<\s*use\b/i,          // can pull in an external document fragment
+  /<\s*image[^>]*href\s*=\s*["']?\s*(?:https?:|\/\/)/i,
+  /<!ENTITY/i,           // XXE / billion laughs
+  /<!DOCTYPE[^>]*\[/i,   // internal DTD subset
+  /\son\w+\s*=/i,        // onload, onerror, onclick, ...
+  /javascript\s*:/i,
+  /\bxlink:href\s*=\s*["']?\s*(?:https?:|\/\/|data:)/i,
+];
+
+/**
+ * The payload the shim actually emits.
+ *
+ * ## Why this is a table and not a guess
+ *
+ * The previous version of this sanitiser required every entry to carry `t` or
+ * `type`, bounded a `text` field, and ran cursors through the same function as
+ * shapes. The shim emits **`k`** for the kind, **`txt`** for text, and cursors that
+ * carry no kind at all. So every shape and every cursor was rejected, the payload
+ * came out with two empty arrays, and the final
+ * `if (out.shapes.length === 0 && out.cursors.length === 0) return null` turned the
+ * whole drawing into `turtleData: null`.
+ *
+ * Turtle graphics - the headline feature of this IDE - rendered nothing at all, and
+ * no test caught it because none of them looked at a real payload.
+ *
+ * These tables were captured by running the real shim in the production image and
+ * printing the key set of every distinct shape kind. Same discipline as the
+ * compiler-output parsers: write the schema down from what the program actually
+ * produced, not from what it ought to produce.
+ *
+ * Kinds: l=line, F=filled polygon, M=move (pen up), T=text, D=dot, S=stamp,
+ * SH=cursor-state change.
+ */
+const NUMERIC_FIELDS = [
+  'x', 'y', 'x1', 'y1', 'x2', 'y2',
+  'w', 'h', 'pw', 'r',
+  'sw', 'sl', 'ow', 'tl', 'sid',
+];
+
+/** String fields, bounded by `maxStringLength` unless listed as text. */
+const STRING_FIELDS = ['c', 'fc', 'pc', 'sh', 'font', 'align'];
+
+/** Free text, bounded by the larger `maxTextLength`. */
+const TEXT_FIELDS = ['txt'];
+
+/** Point arrays, capped hardest because they dominate the payload. */
+const POINT_FIELDS = ['pts'];
+
+const SHAPE_FIELDS = {
+  numbers: NUMERIC_FIELDS,
+  strings: STRING_FIELDS,
+  texts: TEXT_FIELDS,
+  points: POINT_FIELDS,
+  /** Recognised kinds. An unknown kind is dropped rather than passed through. */
+  kinds: new Set(['l', 'F', 'M', 'T', 'D', 'S', 'SH']),
+};
+
+const CURSOR_FIELDS = {
+  numbers: NUMERIC_FIELDS,
+  strings: STRING_FIELDS,
+  texts: [],
+  points: POINT_FIELDS,
+  booleans: ['vis'],
+};
+
+/**
+ * Copy one record field by field, bounding each and dropping anything unlisted.
+ *
+ * Rebuilt rather than spread-and-patched. The old version did `{ ...shape }` first,
+ * which meant any field the shim had not been reviewed for travelled straight
+ * through to the browser - the opposite of the allowlist the comment claimed.
+ */
+function sanitizeRecord(record, fields, limits, requireKind) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+
+  const out = {};
+
+  if (requireKind) {
+    const kind = typeof record.k === 'string' ? record.k : null;
+    if (kind === null || !fields.kinds.has(kind)) return null;
+    out.k = kind;
+  }
+
+  for (const key of fields.numbers) {
+    if (record[key] === undefined) continue;
+    const value = finiteNumber(record[key], limits.coordinateLimit);
+    if (value !== null) out[key] = value;
+  }
+
+  for (const key of fields.strings) {
+    if (typeof record[key] !== 'string') continue;
+    out[key] = boundedString(record[key], limits.maxStringLength);
+  }
+
+  for (const key of fields.texts) {
+    if (typeof record[key] !== 'string') continue;
+    out[key] = boundedString(record[key], limits.maxTextLength);
+  }
+
+  for (const key of fields.points) {
+    if (!Array.isArray(record[key])) continue;
+    const cleaned = [];
+    for (const point of record[key].slice(0, limits.maxPointsPerShape)) {
+      if (Array.isArray(point) && point.length >= 2) {
+        const x = finiteNumber(point[0], limits.coordinateLimit);
+        const y = finiteNumber(point[1], limits.coordinateLimit);
+        if (x !== null && y !== null) cleaned.push([x, y]);
+      } else {
+        const n = finiteNumber(point, limits.coordinateLimit);
+        if (n !== null) cleaned.push(n);
+      }
+    }
+    out[key] = cleaned;
+  }
+
+  for (const key of fields.booleans ?? []) {
+    if (typeof record[key] === 'boolean') out[key] = record[key];
+  }
+
+  return out;
+}
+
+/**
+ * Validate one SVG cursor entry, returning a bounded copy or null.
+ *
+ * The payload is produced by the trusted shim, but the SVG CONTENT inside it comes
+ * from the student's workspace - so the content is untrusted even though the
+ * envelope is not.
+ */
+function sanitizeSvgShape(value, limits, budget) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (typeof value.data !== 'string') return null;
+  if (!value.data.startsWith(SVG_DATA_URL_PREFIX)) return null;
+
+  const encoded = value.data.slice(SVG_DATA_URL_PREFIX.length);
+  // Strict base64: anything else means the shim was not the author.
+  if (encoded.length === 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return null;
+
+  // Check the decoded size against the budget BEFORE decoding a second time.
+  const approximateBytes = Math.floor((encoded.length * 3) / 4);
+  if (approximateBytes > limits.maxSvgBytes) return null;
+  if (budget.used + approximateBytes > limits.maxSvgTotalBytes) return null;
+
+  let text;
+  try {
+    text = Buffer.from(encoded, 'base64').toString('utf8');
+  } catch {
+    return null;
+  }
+
+  if (!/<\s*svg/i.test(text)) return null;
+  for (const pattern of ACTIVE_SVG_CONSTRUCTS) {
+    if (pattern.test(text)) {
+      log('warn', 'turtle_svg_shape_rejected', { reason: String(pattern) });
+      return null;
+    }
+  }
+
+  const width = finiteNumber(value.w, limits.maxSvgDimension);
+  const height = finiteNumber(value.h, limits.maxSvgDimension);
+
+  budget.used += approximateBytes;
+
+  return {
+    data: value.data,
+    // A non-positive or absent dimension falls back to the renderer's default
+    // rather than producing a zero-area or inverted draw.
+    w: width !== null && width > 0 ? width : 42,
+    h: height !== null && height > 0 ? height : 42,
+    rotate: value.rotate === true,
+  };
+}
 
 /**
  * Allocate the graphics target for a job.
@@ -113,40 +319,8 @@ export function sanitizeTurtleData(raw, limits = GRAPHICS_LIMITS) {
   const speed = finiteNumber(raw.speed, limits.coordinateLimit);
   if (speed !== null) out.speed = speed;
 
-  const sanitizeShape = shape => {
-    if (!shape || typeof shape !== 'object') return null;
-    const kind = boundedString(shape.t ?? shape.type, 32);
-    if (kind === null) return null;
-
-    const result = { ...shape };
-    // Points arrays dominate the payload, so they are capped hardest.
-    for (const key of ['p', 'points', 'pts']) {
-      if (Array.isArray(shape[key])) {
-        const capped = shape[key].slice(0, limits.maxPointsPerShape);
-        const cleaned = [];
-        for (const point of capped) {
-          if (Array.isArray(point) && point.length >= 2) {
-            const x = finiteNumber(point[0], limits.coordinateLimit);
-            const y = finiteNumber(point[1], limits.coordinateLimit);
-            if (x !== null && y !== null) cleaned.push([x, y]);
-          } else {
-            const n = finiteNumber(point, limits.coordinateLimit);
-            if (n !== null) cleaned.push(n);
-          }
-        }
-        result[key] = cleaned;
-      }
-    }
-    if (typeof shape.text === 'string') {
-      result.text = boundedString(shape.text, limits.maxTextLength);
-    }
-    for (const key of ['c', 'color', 'fill', 'font', 'align', 'shape']) {
-      if (typeof shape[key] === 'string') {
-        result[key] = boundedString(shape[key], limits.maxStringLength);
-      }
-    }
-    return result;
-  };
+  const sanitizeShape = shape => sanitizeRecord(shape, SHAPE_FIELDS, limits, true);
+  const sanitizeCursor = cursor => sanitizeRecord(cursor, CURSOR_FIELDS, limits, false);
 
   if (Array.isArray(raw.shapes)) {
     out.shapes = raw.shapes
@@ -160,7 +334,9 @@ export function sanitizeTurtleData(raw, limits = GRAPHICS_LIMITS) {
   if (Array.isArray(raw.cursors)) {
     out.cursors = raw.cursors
       .slice(0, limits.maxCursors)
-      .map(sanitizeShape)
+      // A cursor is NOT a shape: it carries no `k`, so running it through the shape
+      // sanitiser rejected every one of them.
+      .map(sanitizeCursor)
       .filter(Boolean);
   } else {
     out.cursors = [];
@@ -185,6 +361,33 @@ export function sanitizeTurtleData(raw, limits = GRAPHICS_LIMITS) {
       count++;
     }
     if (count > 0) out.polys = polys;
+  }
+
+  // SVG cursor shapes, from `register_shape("player.svg")`.
+  //
+  // This whole block is why the allowlist shape of this function matters: the
+  // feature was written against the old architecture, where nothing sanitised the
+  // payload. Merged here unchanged it would have been silently DROPPED - the field
+  // is not in the allowlist, so the renderer would never have seen it. A test now
+  // pins that it survives, and pins the bounds it survives within.
+  if (raw.svgShapes && typeof raw.svgShapes === 'object' && !Array.isArray(raw.svgShapes)) {
+    const svgShapes = {};
+    const budget = { used: 0 };
+    let count = 0;
+
+    for (const [name, value] of Object.entries(raw.svgShapes)) {
+      if (count >= limits.maxSvgShapes) break;
+      const key = boundedString(name, limits.maxStringLength);
+      if (key === null || key === '') continue;
+
+      const shape = sanitizeSvgShape(value, limits, budget);
+      if (!shape) continue;
+
+      svgShapes[key] = shape;
+      count += 1;
+    }
+
+    if (count > 0) out.svgShapes = svgShapes;
   }
 
   // `pic` names a workspace image the frontend resolves. It is a filename, not a

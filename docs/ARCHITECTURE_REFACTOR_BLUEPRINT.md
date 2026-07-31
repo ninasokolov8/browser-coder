@@ -6327,3 +6327,161 @@ clean traceback, and a breakpoint added mid-run taking effect.
   in the entry file, because `apply_breakpoints` binds every line to
   `self._program_path`.
 - No conditional breakpoints, no watch expressions, no changing a variable's value.
+
+## 37. Merging `main` into the refactor branch
+
+Six commits landed on `main` while phases A-H were in progress: an SVG-cursor
+feature for turtle, and a set of upload-size raises. Both were written against the
+pre-refactor architecture. A real `git merge` was taken rather than a hand-copy, so
+future pulls do not re-present these commits; `server.mjs` resolved to ours (223
+lines against their 4,563) and `nginx/nginx.conf` to ours (rewritten in Phase F).
+
+Everything else auto-merged **without a conflict**, and four separate things were
+broken by that clean merge. This section is mostly about those, because "the merge
+succeeded" and "the code works" turned out to be unrelated statements.
+
+### 37.1 The clean merge produced code that could not run
+
+`turtle_shim.py` auto-merged with no conflict. Their side added three uses of
+`_b64`; our side had **deleted `import base64 as _b64`** as dead when the stdout
+fallback transport was removed. Git took both hunks happily.
+
+The result raises `NameError: _b64` the first time any program calls
+`register_shape("x.svg")`. Nothing catches it: not the merge, not a typecheck, not
+`ast.parse`, not any existing test.
+
+### 37.2 The feature would have been silently discarded
+
+`sanitizeTurtleData` is an allowlist, and `svgShapes` was not on it. The merged
+feature would have been stripped between the shim and the browser, with no error
+anywhere - the cursor simply would not appear.
+
+### 37.3 Turtle rendering was ALREADY broken, and the merge exposed it
+
+Testing the ported feature end to end showed `turtleData: null` for a **plain**
+turtle program. Not a merge regression - a pre-existing defect on this branch.
+
+`sanitizeTurtleData` was written against an imagined schema:
+
+| It expected | The shim actually emits |
+|---|---|
+| `t` or `type` for the kind | **`k`** |
+| `text` | **`txt`** |
+| cursors shaped like shapes | cursors with **no kind at all** |
+
+So every shape and every cursor was rejected, both arrays came out empty, and the
+trailing `if (out.shapes.length === 0 && out.cursors.length === 0) return null`
+turned every drawing into `turtleData: null`.
+
+**Turtle graphics - the headline feature of this IDE, and one the user called out
+specifically - rendered nothing whatsoever.** Every unit test passed because every
+fixture was hand-written in the shape the sanitiser expected. My own new SVG test
+had the same bug: its base fixture used `{ t: 'M' }` and had to be corrected when
+the sanitiser was.
+
+The schema was captured by running the real shim in the production image and
+printing the key set of every distinct kind:
+
+```
+kinds: l F M T D S SH
+["c","k","w","x1","x2","y1","y2"]      line
+["fc","k","pc","pts","pw"]             filled polygon
+["k","x","y"]                          move
+["align","c","font","k","txt","x","y"] text
+["c","k","r","x","y"]                  dot
+["c","fc","h","k","ow","pc","sh","sid","sl","sw","tl","x","y"]  stamp
+["fc","k","ow","pc","sh","sl","sw","tl"]                        cursor state
+cursor: sh fc pc sw sl ow tl x y h vis
+```
+
+`sanitizeRecord` is now a table-driven allowlist over those exact fields, and it
+**rebuilds** the record instead of `{ ...shape }`-then-patch. The old version spread
+the input first, so any unreviewed field travelled straight to the browser - the
+opposite of the allowlist its own comment claimed.
+
+`tests/contract/turtle-payload.test.mjs` runs the real shim through the real
+interpreter and feeds the real output to the sanitiser. Drift in either direction
+fails, which is the only way this class of bug is caught. It also pins that
+`dot(10)` is a **diameter** (r=5), because getting that backwards draws every dot
+at twice the requested size and still looks plausible.
+
+### 37.4 The size raises were half-applied, and blocked by nginx
+
+Their intent was 8 MB uploads. What actually shipped:
+
+- `docker-compose.yml`: `MAX_CODE_CHARS=8388608`
+- `docker-compose.prod.yml`: `MAX_CODE_CHARS=750000` - **not raised**
+- `docker-compose.prod.yml`: `PREVIEW_MAX_BYTES=8388608` - raised
+
+So in production a student could publish an 8 MB preview but not *run* a project
+over 750 KB. The feature worked in development and silently did not in production,
+which is worse than it not existing.
+
+And on this branch the server derives its run body limit from the size policy
+(`RUN_BODY_LIMIT_BYTES = maxCodeChars * 3 + …`), so 8 MB derives **24.1 MB** - while
+nginx's `/api/run` and `/api/run/interactive` locations capped bodies at **3m**.
+Behind nginx the raise did nothing at all; a large project got a 413 the application
+never saw. The same shape as V-40.
+
+Fixed by aligning prod with dev, and raising the two nginx locations to 26m (and
+`/api/previews` to 32m, their number). But an aligned pair of numbers is exactly
+what drifted in the first place, so `scripts/check-ops-config.mjs` now:
+
+- imports `server/config.mjs` under the compose ceiling, reads the **derived** body
+  limit, parses every `/api/run*` location out of `nginx.conf`, and fails when
+  nginx allows less than the server accepts
+- fails when the two compose files disagree about `MAX_CODE_CHARS`
+
+Both gates were confirmed to fire: reverting prod to 750000 produces
+`FAIL MAX_CODE_CHARS differs between compose files`.
+
+### 37.5 Security review of the ported feature
+
+**The renderer is safe by construction.** The client draws the SVG through
+`new Image()` and `ctx.drawImage`, which is the restricted context: a browser runs
+no scripts and fetches no external references for an SVG loaded as an image.
+
+That guarantee lives in the client, though, so the server now validates the content
+as well. Anyone who later renders the same payload with `innerHTML`, `<object>`,
+`<embed>` or `<use>` would make it live, and this is what stops that becoming a
+hole. Refused: `<script>`, `<foreignObject>`, `<iframe>`, `<embed>`, `<object>`,
+`<use>`, `on*=` handlers, `javascript:`, external/`data:` `href` and `xlink:href`,
+`<!ENTITY>` and a DOCTYPE with an internal subset. A test asserts that legitimate
+artwork - `defs`, gradients, paths - is **not** caught by that list, because a
+rejection rule broad enough to break real cursors is its own bug.
+
+**Their size cap was unusable.** 12 MB per shape, which base64 inflates to 16 MB -
+twice the graphics channel's entire 8 MB budget, so a shape near that limit could
+never have been delivered and would have looked like a mysterious failure rather
+than a limit. Now 256 KB per shape, 1 MB total, 16 shapes, with the shim's constant
+and the server's limit pinned equal by a test.
+
+**Their file lookup escaped the workspace.** `_register_svg_shape` called
+`expanduser` and `abspath` on the shape name, so `register_shape("/etc/hosts.svg")`
+or `register_shape("~/.ssh/id_rsa.svg")` named a real absolute path to open. On this
+branch H4's `fs_guard` already confines `open`, so the reads fail - but
+`os.path.isfile` and `os.path.getsize` are not guarded, so the candidate loop still
+answered "does this path exist?" for anything on the container. Candidates are now
+confined to the workspace by `realpath` prefix check, and an absolute or `~` name is
+not treated as a workspace file at all. Verified end to end: registering
+`/etc/hostname.svg` yields no shape and no path in the payload.
+
+### 37.6 Verification
+
+- 34 unit tests for the SVG sanitiser, 17 contract tests running the real shim.
+- An 18-check end-to-end probe against the production image: inline SVG source, a
+  workspace `.svg` file, absolute-path refusal, hostile-SVG stripping, and a plain
+  turtle program still drawing.
+- 489 unit, 97 contract (11 skipped), all browser suites, ops checks green.
+
+### 37.7 Flagged for the user
+
+`MAX_CODE_CHARS=8388608` means a single `/api/run` body may be ~24 MB, parsed into
+memory by `express.json` **before** the concurrency gate. With `limit_conn 400` that
+is a genuine amplification, and it is the other developer's deliberate product
+decision rather than something to quietly revert - so it stands, and it is recorded
+here.
+
+The right fix is not a smaller number: it is to stop sending assets through the JSON
+run body at all. Binary assets belong on a separate multipart endpoint with its own
+limit, which is how the asset support in the next section is built.

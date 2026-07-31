@@ -45,17 +45,25 @@ export interface TurtleCursor extends Partial<TurtleLook> {
   vis?: boolean;
 }
 
+export interface TurtleSvgShape {
+  data: string;       // embedded SVG data URL supplied by the Python shim
+  w?: number;         // unscaled cursor width
+  h?: number;         // unscaled cursor height
+  rotate?: boolean;   // false keeps avatar/photo SVGs upright
+}
+
 export interface TurtleData {
-  bg?:      string;
-  w?:       number;
-  h?:       number;
-  tracer?:  number;
-  speed?:   number;
-  shapes?:  TurtleShape[];
-  cursors?: TurtleCursor[];
-  polys?:   Record<string, number[][]>;   // shapes from register_shape()
-  pic?:     string;   // bgpic() argument, exactly as the program wrote it
-  picData?: string;   // that picture as a data URL, resolved by the frontend
+  bg?:        string;
+  w?:         number;
+  h?:         number;
+  tracer?:    number;
+  speed?:     number;
+  shapes?:    TurtleShape[];
+  cursors?:   TurtleCursor[];
+  polys?:     Record<string, number[][]>;          // polygon register_shape()
+  svgShapes?: Record<string, TurtleSvgShape>;      // optional SVG cursors
+  pic?:       string;   // bgpic() argument, exactly as the program wrote it
+  picData?:   string;   // that picture as a data URL, resolved by the frontend
 }
 
 // Animation RAF id (requestAnimationFrame) — null when idle
@@ -66,6 +74,11 @@ let turtleAnimRafId: number | null = null;
 // the program clears the canvas — and because only one drawing is ever
 // rendered at a time.
 let turtleBgImage: HTMLImageElement | null = null;
+
+// Optional SVG cursor images. These remain empty for every existing non-SVG
+// Turtle program, so the original polygon renderer stays on its old path.
+let turtleSvgImages = new Map<string, HTMLImageElement>();
+let turtleSvgAssets: Record<string, TurtleSvgShape> = {};
 
 // Incremented by every renderTurtle()/clearTurtleCanvas() call so a background
 // picture that finishes loading late can tell it belongs to a run that has
@@ -161,6 +174,42 @@ function drawTurtleCursor(
   polys?: Record<string, number[][]>,
 ): void {
   if (look.sh === 'blank') return;
+
+  // SVG cursor branch. Existing built-in and polygon shapes never enter here.
+  const svgImage = turtleSvgImages.get(look.sh);
+  const svgAsset = turtleSvgAssets[look.sh];
+  if (svgImage && svgAsset) {
+    const baseWidth = Math.max(2, Number(svgAsset.w ?? 42));
+    const baseHeight = Math.max(2, Number(svgAsset.h ?? 42));
+    const drawWidth = baseWidth * look.sl;
+    const drawHeight = baseHeight * look.sw;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    if (svgAsset.rotate === true) {
+      // SVG images are authored upright. Heading 90 points up in Turtle,
+      // therefore heading 90 requires no canvas rotation.
+      ctx.rotate((90 - headingDeg - look.tl) * Math.PI / 180);
+    } else if (look.tl !== 0) {
+      ctx.rotate(-look.tl * Math.PI / 180);
+    }
+
+    try {
+      ctx.drawImage(
+        svgImage,
+        -drawWidth / 2,
+        -drawHeight / 2,
+        drawWidth,
+        drawHeight,
+      );
+    } catch (_e) {
+      // An unusable SVG must not break normal Turtle rendering.
+    }
+    ctx.restore();
+    return;
+  }
+
   const poly = polys?.[look.sh] ?? TURTLE_SHAPE_POLYS[look.sh] ?? TURTLE_SHAPE_POLYS.classic;
   if (!poly || poly.length < 2) return;
 
@@ -364,23 +413,46 @@ export function renderTurtle(data: TurtleData): void {
 
   const seq = ++turtleRenderSeq;
   turtleBgImage = null;
+  turtleSvgImages = new Map<string, HTMLImageElement>();
+  turtleSvgAssets = data.svgShapes ?? {};
 
-  if (!data.picData) {
+  const svgEntries = Object.entries(turtleSvgAssets);
+
+  // Preserve the original fast path exactly for every existing Turtle program.
+  // Image loading is introduced only when bgpic or an SVG cursor is present.
+  if (!data.picData && svgEntries.length === 0) {
     drawTurtleData(data);
     return;
   }
 
-  const picture = new Image();
-  picture.onload = () => {
-    if (seq !== turtleRenderSeq) return;   // a newer run already took over
-    turtleBgImage = picture;
-    drawTurtleData(data);
+  let pendingImages = (data.picData ? 1 : 0) + svgEntries.length;
+
+  const imageFinished = () => {
+    pendingImages -= 1;
+    if (pendingImages === 0 && seq === turtleRenderSeq) {
+      drawTurtleData(data);
+    }
   };
-  picture.onerror = () => {
-    if (seq !== turtleRenderSeq) return;
-    drawTurtleData(data);                  // unusable picture → plain background
-  };
-  picture.src = data.picData;
+
+  if (data.picData) {
+    const picture = new Image();
+    picture.onload = () => {
+      if (seq === turtleRenderSeq) turtleBgImage = picture;
+      imageFinished();
+    };
+    picture.onerror = imageFinished;
+    picture.src = data.picData;
+  }
+
+  for (const [name, asset] of svgEntries) {
+    const image = new Image();
+    image.onload = () => {
+      if (seq === turtleRenderSeq) turtleSvgImages.set(name, image);
+      imageFinished();
+    };
+    image.onerror = imageFinished;
+    image.src = asset.data;
+  }
 }
 
 function drawTurtleData(data: TurtleData): void {
@@ -596,6 +668,8 @@ export function clearTurtleCanvas(): void {
   // decode from the previous run cannot draw into the cleared canvas.
   turtleRenderSeq++;
   turtleBgImage = null;
+  turtleSvgImages = new Map<string, HTMLImageElement>();
+  turtleSvgAssets = {};
 
   // Normal code execution calls this even when the page has no turtle UI.
   // Missing optional elements must therefore be a no-op, never a run failure.

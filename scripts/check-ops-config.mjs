@@ -21,6 +21,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
 
 const files = process.argv.slice(2);
 if (files.length === 0) files.push('docker-compose.yml', 'docker-compose.prod.yml');
@@ -111,6 +112,104 @@ for (const file of files) {
       fail(`${name} does not set no-new-privileges`);
     }
   }
+}
+
+// ── nginx body limits must cover what the server will accept ────────────────
+//
+// These live in two files that nobody edits together. `main` raised
+// MAX_CODE_CHARS from 750 KB to 8 MB, which derives a ~24 MB body allowance in
+// server/config.mjs, while nginx's per-location cap stayed at 3m - so the raise
+// silently did nothing in production and a large project got a 413 that never
+// reached the application. Exactly the shape of V-40.
+//
+// Both sides are computed here and compared, so the pair cannot drift again.
+await checkNginxBodyLimits();
+
+async function checkNginxBodyLimits() {
+  const nginxPath = 'nginx/nginx.conf';
+  if (!existsSync(nginxPath)) {
+    fail(`${nginxPath} is missing, so its body limits cannot be checked`);
+    return;
+  }
+
+  // Read the derived limit from the same module the server uses, under the highest
+  // ceiling any compose file sets - reading the number rather than restating it.
+  //
+  // Every file is compared, because the raise that motivated this check was applied
+  // to the DEV compose file and not to prod: an 8 MB project ran in development and
+  // was rejected in production, which is worse than the feature not existing.
+  const perFile = readComposeEnvNumbers('MAX_CODE_CHARS');
+  const distinct = [...new Set(Object.values(perFile))];
+  if (distinct.length > 1) {
+    const detail = Object.entries(perFile).map(([file, value]) => `${file}=${value}`).join(', ');
+    fail(`MAX_CODE_CHARS differs between compose files (${detail}); dev and prod must agree`);
+  }
+  const composeMax = distinct.length > 0 ? Math.max(...distinct) : null;
+  const previous = process.env.MAX_CODE_CHARS;
+  if (composeMax !== null) process.env.MAX_CODE_CHARS = String(composeMax);
+
+  let derived;
+  try {
+    ({ RUN_BODY_LIMIT_BYTES: derived } = await import(
+      `../server/config.mjs?ops-check=${Date.now()}`
+    ));
+  } finally {
+    if (previous === undefined) delete process.env.MAX_CODE_CHARS;
+    else process.env.MAX_CODE_CHARS = previous;
+  }
+
+  const conf = readFileSync(nginxPath, 'utf8');
+
+  // Every /api/run location, since the IDE only ever uses the interactive one and
+  // a limit set on just the other would look correct while failing every real run.
+  const runLocations = [...conf.matchAll(
+    /location[^{]*\/api\/run[^{]*\{([\s\S]*?)\n {8}\}/g,
+  )];
+
+  if (runLocations.length === 0) {
+    fail('nginx.conf declares no /api/run location, so the body limit is nginx\'s 1 MB default');
+    return;
+  }
+
+  for (const [, block] of runLocations) {
+    const name = /location[^\n]*/.exec(block.slice(0, 0) + block)?.[0] ?? 'a /api/run location';
+    const match = /client_max_body_size\s+(\d+)([kKmMgG]?)/.exec(block);
+    if (!match) {
+      fail('an /api/run location has no client_max_body_size, so nginx\'s 1 MB default applies');
+      continue;
+    }
+    const bytes = toBytes(Number(match[1]), match[2]);
+    if (bytes < derived) {
+      fail(
+        `nginx allows ${mib(bytes)} for an /api/run location but the server derives ` +
+        `${mib(derived)} from MAX_CODE_CHARS - nginx would 413 a project the app accepts`,
+      );
+    } else {
+      pass(`nginx allows ${mib(bytes)} for /api/run, covering the server's ${mib(derived)}`);
+    }
+  }
+}
+
+/** The value of one env key in every compose file that sets it. */
+function readComposeEnvNumbers(key) {
+  const found = {};
+  for (const file of ['docker-compose.prod.yml', 'docker-compose.yml']) {
+    if (!existsSync(file)) continue;
+    const match = new RegExp(`${key}=(\\d+)`).exec(readFileSync(file, 'utf8'));
+    if (match) found[file] = Number(match[1]);
+  }
+  return found;
+}
+
+// Function declarations, not const arrows: these are called from
+// checkNginxBodyLimits above, and a const is not hoisted.
+function toBytes(value, unit) {
+  const scale = { '': 1, k: 1024, K: 1024, m: 1048576, M: 1048576, g: 1073741824, G: 1073741824 };
+  return value * (scale[unit] ?? 1);
+}
+
+function mib(bytes) {
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
 console.log('');
