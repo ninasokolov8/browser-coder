@@ -23,7 +23,6 @@ import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import os from "node:os";
 import crypto from "node:crypto";
-import compression from "compression";
 
 // ── Extracted modules ───────────────────────────────────────────────────────
 // Phase A of the architecture refactor. These were inline in this file; the
@@ -51,49 +50,10 @@ import { reapAbandonedJobs } from './server/execution/job.mjs';
 import { registerRunRoutes } from './server/http/routes/run.mjs';
 import { registerPreviewRoutes } from './server/http/routes/previews.mjs';
 import { PreviewStore } from './server/previews/store.mjs';
+import { applyRequestContext } from './server/http/middleware/request-context.mjs';
+import { createCorsMiddleware } from './server/http/middleware/cors.mjs';
+import { RateLimiter, createRateLimitMiddleware } from './server/http/middleware/rate-limit.mjs';
 import { extensionFor, loadCatalog } from './server/languages/catalog.mjs';
-
-// ============================================
-// RATE LIMITER
-// ============================================
-class RateLimiter {
-  constructor() {
-    this.requests = new Map();
-    setInterval(() => this.cleanup(), CONFIG.rateLimit.windowMs);
-  }
-  
-  check(ip) {
-    const now = Date.now();
-    const key = ip;
-    
-    if (!this.requests.has(key)) {
-      this.requests.set(key, { count: 1, resetAt: now + CONFIG.rateLimit.windowMs });
-      return { allowed: true, remaining: CONFIG.rateLimit.maxRequests - 1 };
-    }
-    
-    const record = this.requests.get(key);
-    
-    if (now > record.resetAt) {
-      record.count = 1;
-      record.resetAt = now + CONFIG.rateLimit.windowMs;
-      return { allowed: true, remaining: CONFIG.rateLimit.maxRequests - 1 };
-    }
-    
-    record.count++;
-    const remaining = Math.max(0, CONFIG.rateLimit.maxRequests - record.count);
-    
-    return { allowed: record.count <= CONFIG.rateLimit.maxRequests, remaining };
-  }
-  
-  cleanup() {
-    const now = Date.now();
-    for (const [key, record] of this.requests) {
-      if (now > record.resetAt) {
-        this.requests.delete(key);
-      }
-    }
-  }
-}
 
 // The preview store owns its own directory, cleanup timer and readiness flag.
 // Constructed here rather than at import time so that importing the server no
@@ -126,7 +86,11 @@ const pipeline = new ExecutionPipeline({
   templateRoot: EXECUTION_ROOT,
 });
 const sessions = new SessionRegistry({ config: CONFIG });
-const rateLimiter = new RateLimiter();
+const rateLimiter = new RateLimiter({
+  windowMs: CONFIG.rateLimit.windowMs,
+  maxRequests: CONFIG.rateLimit.maxRequests,
+});
+rateLimiter.start();
 
 // Reap job directories left by a crash or a hard kill. Live session
 // directories are excluded, because a student thinking about what to type is
@@ -172,220 +136,13 @@ async function loadLanguageConfigs() {
   return languages;
 }
 
-// Middleware
-//
-// N-01: `trust proxy: true` told Express to trust EVERY hop, so `req.ip` was taken
-// from the leftmost X-Forwarded-For entry - a value the client writes. Combined
-// with the private-address exemption in the rate limiter below, sending
-//
-//     X-Forwarded-For: 10.0.0.1
-//
-// disabled rate limiting entirely, from the internet, on endpoints that spawn
-// compilers. It was the most directly exploitable defect in the repository and
-// the original assessment did not identify it.
-//
-// The trust list is now the number of proxies actually in front of us, so Express
-// takes the client address from the correct position and ignores anything the
-// client prepended. One hop (nginx) by default; TRUSTED_PROXY_HOPS covers a
-// deployment that adds a CDN or load balancer.
-//
-// Setting a hop COUNT rather than `true` is the whole fix: with a count, Express
-// counts inward from the socket, so entries a client injected on the left are
-// never reached.
-app.set("trust proxy", Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10));
-app.use(compression());
+applyRequestContext(app, { config: CONFIG, runBodyLimitBytes: RUN_BODY_LIMIT_BYTES });
 
-// Only preview publishing receives the larger request-body allowance.
-app.use(
-  "/api/previews",
-  express.json({ limit: CONFIG.preview.maxHtmlBytes * 2 + 1024 * 1024 }),
-);
-
-// /api/run carries a whole multi-file project as JSON. JSON-encoding the raw
-// code inflates its byte size well past CONFIG.execution.maxCodeChars: every
-// newline/quote/backslash in the source doubles when escaped, non-ASCII
-// comments/strings cost extra UTF-8 bytes, and each file adds JSON wrapper
-// overhead ({"name":...,"content":...,"language":...,"isMain":...}). A body
-// limit equal to maxCodeChars therefore rejects legitimate projects that are
-// well within the app's own size policy (enforced below in POST /api/run)
-// before the handler even runs - that's the previous 413. Size the transport
-// limit for the actual worst case allowed by that policy instead of copying
-// the same number:
-//   - content: up to 3x for escaping + multi-byte overhead
-//   - per file: path + ~100 bytes of JSON metadata, up to maxProjectFiles files
-//   - a few KB slack for language/version/entryPoint and JSON punctuation
-// Derived from the size policy in server/config.mjs so raising a limit there
-// raises the transport allowance too. See that module for the reasoning.
-app.use("/api/run", express.json({ limit: RUN_BODY_LIMIT_BYTES }));
-
-app.use(express.json({ limit: "100kb" }));
-
-// Request ID
-app.use((req, res, next) => {
-  req.id = crypto.randomBytes(4).toString("hex");
-  res.setHeader("X-Request-ID", req.id);
-  next();
-});
-
-// ============================================
-// CORS CONFIGURATION - Step-Up Integration
-// ============================================
-const ALLOWED_ORIGINS = [
-  'http://localhost:8000',
-  'http://localhost:3000',
-  'http://localhost',
-  'http://127.0.0.1:8000',
-  'http://127.0.0.1:3000',
-  'https://stepup.school',
-  'https://step-up.co.il',
-  'https://www.stepup.school',
-  'https://www.step-up.co.il',
-    'https://arc.co',
-     'https://www.arc.co',
-  // Development / staging
-  'http://stepup.local',
-  'https://staging.stepup.school',
-];
-
-/**
- * Is this origin allowed to make credentialed cross-origin requests?
- *
- * The subdomain rule is written against the parsed HOSTNAME, not with
- * `endsWith` on the raw origin string. The previous form
- *
- *     origin.endsWith('.' + domain)
- *
- * matches `https://stepup.school.attacker.com`... no - but it DOES match
- * `https://evil-stepup.school` for the `://` variant and, more importantly, it
- * compares a string that also contains the scheme and port, so reasoning about it
- * requires reasoning about URL syntax. Parsing removes that class of mistake
- * entirely: a hostname either equals the domain or ends with a dot and the domain.
- */
-function isAllowedOrigin(origin) {
-  if (!origin) return false;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-
-  let hostname;
-  let protocol;
-  try {
-    const url = new URL(origin);
-    hostname = url.hostname.toLowerCase();
-    protocol = url.protocol;
-  } catch {
-    return false;
-  }
-
-  // A subdomain grant must not be reachable over plain HTTP in production.
-  if (!CONFIG.isDev && protocol !== 'https:') return false;
-
-  const allowedDomains = ['stepup.school', 'step-up.co.il', 'arcacademy.co'];
-  return allowedDomains.some(
-    domain => hostname === domain || hostname.endsWith(`.${domain}`),
-  );
-}
-
-// ── CORS (V-46) ─────────────────────────────────────────────────────────────
-//
-// The previous implementation logged a disallowed origin as "cors_rejected" and
-// then, for every non-preflight request, sent it straight back:
-//
-//     res.setHeader("Access-Control-Allow-Origin", origin);   // the rejected one
-//     res.setHeader("Access-Control-Allow-Credentials", "true");
-//
-// which is not a rejection - it is a grant. Any site could read credentialed
-// responses from this API; only the preflight was refused, and a simple request
-// does not send one.
-//
-// Now a disallowed origin receives NO allow-origin header at all, which is what
-// makes the browser block the response. Credentials are only ever granted to an
-// origin that was actually matched.
-app.use("/api", (req, res, next) => {
-  const origin = req.headers.origin;
-
-  // Origin-dependent responses must not be served from a shared cache to a
-  // different origin.
-  res.setHeader("Vary", "Origin");
-
-  if (!origin) {
-    // No Origin header: same-origin navigation or a server-to-server call. There
-    // is no browser to protect, and `*` cannot be combined with credentials.
-    res.setHeader("Access-Control-Allow-Origin", "*");
-  } else if (isAllowedOrigin(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  } else {
-    log('warn', 'cors_rejected', { origin, path: req.path, method: req.method });
-    if (req.method === "OPTIONS") {
-      return res.status(403).json({ error: "Origin not allowed" });
-    }
-    // Deliberately falls through with no allow-origin header. The request is
-    // still processed - a cross-origin request that reaches us has already been
-    // sent - but the browser will not expose the response to the caller.
-  }
-
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
-
-// ── Rate limiting (N-01) ────────────────────────────────────────────────────
-//
-// The exemption for internal callers is the second half of N-01. Its reasoning
-// was sound - the api service publishes no port, so only sibling containers can
-// reach it directly, and the security-test container needs to run unthrottled -
-// but the IMPLEMENTATION read a client-controllable value:
-//
-//   isTrustedInternalIp(req.ip)   with   app.set('trust proxy', true)
-//
-// so `X-Forwarded-For: 10.0.0.1` from anywhere on the internet satisfied it.
-//
-// The fix separates the two questions that were conflated:
-//
-//   "who is the client?"        -> req.ip, now derived from a trusted hop COUNT
-//   "did this bypass the proxy?" -> req.socket.remoteAddress, the actual TCP peer,
-//                                   which no header can influence
-//
-// A sibling container connects to us directly, so its socket address is private.
-// A user's request arrives through nginx, so the socket address is nginx's, but a
-// forwarded-for header is present - which is exactly how the two are told apart.
-function isDirectInternalCaller(req) {
-  // The real TCP peer. Unlike req.ip this is not derived from any header.
-  const peer = req.socket?.remoteAddress || '';
-  const v4 = peer.replace(/^::ffff:/, '');
-  const peerIsPrivate =
-    v4 === '127.0.0.1' ||
-    peer === '::1' ||
-    /^10\./.test(v4) ||
-    /^192\.168\./.test(v4) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(v4);
-
-  if (!peerIsPrivate) return false;
-
-  // A private peer that forwarded a client address IS the proxy, and the request
-  // behind it belongs to a real user who must be rate limited. Only a private
-  // peer speaking for itself is an internal caller.
-  return !req.headers['x-forwarded-for'];
-}
-
-app.use("/api", (req, res, next) => {
-  if (isDirectInternalCaller(req)) return next();
-
-  // req.ip is now trustworthy: with a hop count, Express counts inward from the
-  // socket and never reaches entries a client prepended.
-  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-  const { allowed, remaining } = rateLimiter.check(ip);
-
-  res.setHeader("X-RateLimit-Remaining", remaining);
-  res.setHeader("X-RateLimit-Limit", CONFIG.rateLimit.maxRequests);
-
-  if (!allowed) {
-    res.setHeader("Retry-After", "60");
-    return res.status(429).json({ error: "Too many requests", retryAfter: 60 });
-  }
-  return next();
-});
+// Order is behaviour: CORS answers preflights before anything else touches the
+// request, and the rate limiter must sit in front of every /api route rather
+// than beside them, or a route registered earlier would not be covered.
+app.use('/api', createCorsMiddleware({ isDev: CONFIG.isDev, log }));
+app.use('/api', createRateLimitMiddleware({ limiter: rateLimiter }));
 
 // ============================================
 // API ROUTES
@@ -798,6 +555,7 @@ async function gracefulShutdown(signal) {
   log('info', 'shutdown_started', { signal, activeRuns: pipeline.activeCount, sessions: sessions.size });
 
   previewStore.stop();
+  rateLimiter.stop();
   clearInterval(jobReaperTimer);
 
   const stopped = sessions.stopAll();
