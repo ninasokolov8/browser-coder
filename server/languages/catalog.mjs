@@ -16,16 +16,28 @@
  * Step-Up UI cannot yet explain.
  *
  * Silently substituting is equally wrong, and is what the pre-refactor code did.
- * So resolution is explicit and measurable:
+ * So resolution is explicit, and the outcome is reported on every response:
  *
- *   exact     the requested ID is a real profile
- *   alias     a known display value mapped through the table below
- *   fallback  unrecognised; the language default is used, and this is REPORTED
- *             in the response and logged, not hidden
+ *   exact                 the requested ID is a real profile
+ *   alias                 a known display value, mapped through the table below
+ *   unavailable-fallback  a value real content sends that has no toolchain here
+ *                         (Python 3.11, Java 21). The default runs and the response
+ *                         SAYS the request was not honoured.
+ *   <refused>             anything else is a 400
  *
- * `STRICT_VERSIONS=1` turns `fallback` into a 400. That is the switch to flip
- * once Step-Up content has been migrated - the enforcement order the blueprint
- * requires (accept and measure first, enforce second).
+ * That last line is the V-32 fix, and the distinction it draws is the whole point.
+ * The first attempt used a single `strict` switch covering both of the last two
+ * cases, which is why it could not be turned on: rejecting Python 3.11 would break
+ * checked-in Step-Up lessons. But nobody legitimately requests
+ * "python-does-not-exist", and quietly running Python 3.12 for it is exactly the
+ * defect. Separating a KNOWN gap from an UNKNOWN value lets the second be refused
+ * today while the first keeps working.
+ *
+ * Two switches remain, in opposite directions:
+ *   STRICT_VERSIONS=1         also refuse the known-unavailable set. Flip this once
+ *                             Step-Up content has been migrated.
+ *   ALLOW_UNKNOWN_VERSIONS=1  restore the old lenient behaviour, if production turns
+ *                             out to send something this table does not know about.
  */
 
 import fs from 'node:fs';
@@ -224,16 +236,35 @@ export function resolveVersion(languageId, requestedVersion, options = {}) {
     value => normalizeVersionKey(value) === requestedKey,
   );
 
-  // Reported either way; whether it is fatal depends on the enforcement stage.
+  // The two situations that the original single `strict` switch conflated:
+  //
+  //   knownUnavailable  A value real Step-Up content sends, for which there is no
+  //                     toolchain here - Python 3.11, Java 21. Rejecting these turns
+  //                     working lessons into errors the Step-Up UI cannot explain,
+  //                     so they fall back and SAY SO. Resolving them for real means
+  //                     provisioning the toolchain or migrating the content.
+  //
+  //   unknown           Anything else: a typo, a probe, a client bug. Nobody
+  //                     legitimately sends "python-does-not-exist", and running
+  //                     Python 3.12 for it is precisely the silent substitution
+  //                     V-32 is about. This is refused by default.
+  //
+  // Treating both as "fallback" is what made V-32 unfixable without breaking
+  // production. Separating them closes the case that matters today and leaves the
+  // compatibility path that justified the deferral intact.
+  const allowUnknown = options.allowUnknown ?? process.env.ALLOW_UNKNOWN_VERSIONS === '1';
+  const refuse = strict || (!knownUnavailable && !allowUnknown);
+
   log('warn', 'version_unresolved', {
     language: languageId,
     requested: String(requestedVersion).slice(0, 64),
     knownUnavailable,
     strict,
-    resolvedTo: strict ? null : defaultVersion.id,
+    refused: refuse,
+    resolvedTo: refuse ? null : defaultVersion.id,
   });
 
-  if (strict) {
+  if (refuse) {
     return {
       ok: false,
       code: knownUnavailable ? 'version_unavailable' : 'version_unknown',

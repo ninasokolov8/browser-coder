@@ -421,7 +421,7 @@ describe('V-31 output byte fidelity', () => {
 });
 
 describe('V-32 requested version must be honoured or refused', () => {
-  it('rejects an unknown version instead of silently ignoring it', open('V-32'), async () => {
+  it('rejects an unknown version instead of silently ignoring it', async () => {
     const { status, body } = await server.postJson('/api/run', {
       language: 'python',
       version: 'python-does-not-exist',
