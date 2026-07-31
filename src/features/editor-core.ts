@@ -2,7 +2,7 @@ import * as monaco from 'monaco-editor';
 import { getLanguage } from '../languages';
 import { TabManager, type Tab } from '../tabs';
 import { requireModels, requireWorkspace, runtime } from '../app/runtime';
-import { policyState } from '../app/config';
+import { appConfig, policyState } from '../app/config';
 import { tabsEl, editorEmptyState, emptyStateNewFileBtn, statusLangEl, langSel, versionSel } from '../components/dom';
 import { configureMonacoForVersion, populateVersionDropdown } from '../components/monaco-config';
 import { setOutput, setStatus } from '../components/output';
@@ -51,7 +51,12 @@ export function applyFileLanguage(fileId: string): void {
 
 export function createEditor(): monaco.editor.IStandaloneCodeEditor {
   const editor = monaco.editor.create(document.getElementById('editor')!, {
-    theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 14,
+    theme: 'vs-dark', automaticLayout: true,
+    // Minimap on in the full IDE, off when embedded. It is a navigation aid for a
+    // long file, and an embedded snippet pane is neither long nor wide enough to
+    // spare the columns - which is why it was off everywhere before.
+    minimap: { enabled: appConfig.ideMode === 'full' && !appConfig.isEmbedded, renderCharacters: false },
+    fontSize: 14,
     fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace",
     fontLigatures: true, tabSize: 2, insertSpaces: true, wordWrap: 'on', lineNumbers: 'on',
     renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, autoClosingBrackets: 'always',

@@ -5823,3 +5823,99 @@ greyed out rather than silently doing nothing.
   the scanner to establish depth at an arbitrary start line first.
 - The XML/SVG formatter does not re-indent elements, which is the thing a user
   would most expect from "format" on an SVG.
+
+### H8 - Quick-open, breadcrumbs, minimap
+
+Closes the "cheap familiarity wins" line in §35.10. Taken before H6 because it is
+entirely independent of the language registry, and because a session limit
+interrupted the H6 mapping work partway through.
+
+**Quick-open (Ctrl+P).** The explorer tree is fine for a handful of files and
+useless for fifty; without this the only way to reach a file in a nested folder is
+to expand the path by hand every time. Ranking is deliberate:
+
+- a match on the file NAME beats a match on the folder path, so typing `main` finds
+  `main.py` before `main/helper.py`. The penalty for a path-only match is larger
+  than any realistic name-match gap count, so the two never interleave - asserted
+  directly, because a ranking that puts the wrong file first still looks like it
+  works.
+- with no query, most-recently-opened first. Recency is recorded in
+  `TabManager.switchToTab`, which is the single point every route into a file goes
+  through - the explorer, the tab bar, go-to-definition, the Problems panel and
+  quick-open itself.
+- hidden workspace entries are excluded, matching the explorer.
+
+**`picker.ts`, extracted rather than copied.** Quick-open needed the same overlay
+lifecycle, subsequence matcher, keyboard navigation and re-entrant-close fix as the
+command palette. That close fix was found by a failing test, so a second copy would
+have meant re-introducing the bug the first time anyone edited one of them. The
+command palette is now 66 lines of "what to list", down from 243.
+
+The DOM contract (`#command-palette`, `.palette-box`, `.palette-row`, and the rest)
+is unchanged, because the stylesheet and the existing browser assertions both depend
+on it. Those palette assertions are what guards the extraction: they and the new
+quick-open assertions must both pass, or the shared code has been broken for one of
+them.
+
+**Breadcrumbs.** Monaco has none - that is a VS Code feature built on top of it -
+so this is a real component. A tab shows `helper.py`; the breadcrumb shows
+`src > utils > helper.py`, which matters as soon as two folders hold a file of the
+same name, plus the symbol the cursor is inside, so a student scrolled deep into a
+long function can see which one.
+
+Symbols come from an indentation/declaration heuristic in
+`breadcrumb-symbols.ts`, for **every** language including the ones with a Monaco
+language service. The reason is not laziness: Monaco's standalone build registers
+document-symbol providers internally but exposes no public API to *execute* them -
+`executeDocumentSymbolProvider` is a VS Code command, not part of monaco-editor -
+so reaching the TypeScript worker's symbols would mean depending on private
+internals that shift between releases. Using the heuristic everywhere also means
+the breadcrumb behaves the same in all six code languages rather than being rich in
+two and blank in four.
+
+Split into its own module because `breadcrumbs.ts` imports Monaco, and a module
+that imports Monaco cannot be loaded by node - so anything left there is untestable
+without a browser. Same split as `format-core.ts` / `formatting.ts`.
+
+**Minimap**, on in the full IDE and off when embedded. It is a navigation aid for a
+long file, and an embedded snippet pane is neither long nor wide enough to spare the
+columns - which is presumably why it was off everywhere.
+
+#### Verification
+
+- 21 unit tests on the pure parts: subsequence matching, the name-over-path ranking
+  including the no-interleaving property, and the symbol heuristic across python,
+  java, javascript and typescript plus the "no pattern, so return nothing rather
+  than guess" case.
+- A browser assertion presses Ctrl+P on the real app, checks the overlay is a
+  DIFFERENT element from the command palette (otherwise Ctrl+P is merely opening the
+  palette and the features are confused), types a filter, presses Enter, and
+  requires the editor to have switched. Then it moves the cursor into a function and
+  requires the symbol segment to appear: `zebra-quickopen.py > stripes`.
+- 356 unit tests, all three browser suites, clean build.
+
+#### Corrections made while building it
+
+- The first version of `breadcrumbs.ts` contained a confused half-written block
+  attempting to reach Monaco's symbol registry, left in place. Removed, along with a
+  `symbolSpine` helper it left dead, and the file's header comment - which claimed
+  symbols came from Monaco's providers - was corrected to say what the code does.
+- The JS/TS heuristic patterns use alternation, so `match[2]` is `undefined` for two
+  of the three shapes (`function f`, `class C`, `const f = () =>`). Fixed to take
+  the first defined group.
+- One assertion claimed the cursor on a declaration line should NOT report that
+  symbol. The implementation reports it, VS Code reports it, and reporting it is
+  what stops the breadcrumb blinking out as the cursor crosses each declaration.
+  The test was wrong and was corrected, not the code.
+
+#### Not done in H8
+
+- Breadcrumb folder segments are not clickable. They render as plain text, because
+  "reveal this folder in the explorer" needs an explorer API that does not exist
+  yet; only the file and symbol segments navigate.
+- The symbol heuristic is a heuristic. It will miss a function declared inside a
+  string, a multi-line signature, or a decorator-heavy definition, and it does not
+  understand `case` labels. It never claims a symbol whose declaration it did not
+  match, so the failure mode is a missing segment rather than a wrong one.
+- No symbol-level quick-open ("go to symbol in file"). The heuristic could drive it
+  and the picker already supports it.

@@ -469,6 +469,135 @@ async function checkWebLanguageServices(frameWindow: Window): Promise<void> {
 }
 
 /**
+ * Quick-open and the breadcrumb bar.
+ *
+ * Quick-open shares its overlay with the command palette (`picker.ts`), which was
+ * extracted from the palette rather than copied. That extraction is the risk this
+ * covers: the palette's own assertions above must still pass, AND the new consumer
+ * must work, or the shared code has been broken for one of them.
+ */
+async function checkQuickOpenAndBreadcrumbs(frameWindow: Window): Promise<void> {
+  const frameDocument = frame.contentDocument!;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the navigation check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    createFolder?(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as {
+    switchToTab(id: string): Promise<unknown>;
+    getActiveTab(): { file: { id: string; name: string } } | null;
+  };
+
+  // A distinctively-named file, so the filter result is unambiguous.
+  const target = await workspace.createDocument({
+    name: 'zebra-quickopen.py',
+    language: 'python',
+    version: 'python3',
+    content: 'def stripes():\n    return 3\n',
+  });
+
+  // Ctrl+P, on the document, exactly as a user presses it.
+  const press = (key: string, options: Record<string, boolean> = {}): void => {
+    frameDocument.dispatchEvent(
+      new frameWindow.KeyboardEvent('keydown', {
+        key,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      }),
+    );
+  };
+
+  press('p');
+  const opened = await waitFor(
+    'quick-open to appear',
+    () => frameDocument.getElementById('quick-open') !== null,
+    5000,
+  );
+  check('Ctrl+P opens quick-open', opened);
+  if (!opened) return;
+
+  // It must be a DIFFERENT overlay from the command palette, or Ctrl+P is just
+  // opening the palette and the two features are confused.
+  check(
+    'quick-open is not the command palette',
+    frameDocument.getElementById('command-palette') === null,
+  );
+
+  const overlay = frameDocument.getElementById('quick-open')!;
+  const input = overlay.querySelector('.palette-input') as HTMLInputElement;
+  check('quick-open has an input', input !== null);
+  if (!input) return;
+
+  const rowLabels = (): string[] =>
+    Array.from(overlay.querySelectorAll('.palette-row .palette-label')).map(
+      node => node.textContent ?? '',
+    );
+
+  check('quick-open lists workspace files', rowLabels().length > 0, `rows: ${rowLabels().length}`);
+
+  // Filtering, by subsequence, the way a user types.
+  input.value = 'zebra';
+  input.dispatchEvent(new frameWindow.Event('input', { bubbles: true }));
+
+  const filtered = await waitFor(
+    'quick-open to filter to the zebra file',
+    () => rowLabels().length > 0 && rowLabels().every(label => /zebra/i.test(label)),
+    5000,
+  );
+  check('typing filters the file list', filtered, `rows: ${rowLabels().join(', ')}`);
+
+  // Enter must actually switch to it.
+  input.dispatchEvent(
+    new frameWindow.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+  );
+
+  const switched = await waitFor(
+    'the editor to switch to the picked file',
+    () => tabManager.getActiveTab()?.file.id === target.id,
+    5000,
+  );
+  check('picking a file opens it', switched, `active: ${tabManager.getActiveTab()?.file.name}`);
+  check('quick-open closes after picking', frameDocument.getElementById('quick-open') === null);
+
+  // ── Breadcrumbs ──────────────────────────────────────────────────────────
+  const bar = frameDocument.getElementById('breadcrumbs');
+  check('the breadcrumb bar exists', bar !== null);
+  if (!bar) return;
+
+  const crumbs = (): string[] =>
+    Array.from(bar.querySelectorAll('.breadcrumb-segment')).map(node => node.textContent ?? '');
+
+  const named = await waitFor(
+    'the breadcrumb to show the file',
+    () => crumbs().some(text => text === 'zebra-quickopen.py'),
+    8000,
+  );
+  check('the breadcrumb names the open file', named, `crumbs: ${crumbs().join(' > ')}`);
+
+  // Put the cursor inside the function and require the symbol segment. This is the
+  // part a path-only breadcrumb would not give.
+  const editor = runtime.editor as {
+    setPosition(position: { lineNumber: number; column: number }): void;
+  };
+  editor.setPosition({ lineNumber: 2, column: 5 });
+
+  const symbolShown = await waitFor(
+    'the breadcrumb to show the enclosing symbol',
+    () => crumbs().includes('stripes'),
+    8000,
+  );
+  check('the breadcrumb tracks the enclosing symbol', symbolShown, `crumbs: ${crumbs().join(' > ')}`);
+  lines.push(`INFO breadcrumbs: ${crumbs().join(' > ')}`);
+}
+
+/**
  * Format document must actually format, in every language.
  *
  * It was bound straight to Monaco's action, which does nothing when no provider
@@ -905,6 +1034,7 @@ async function run(): Promise<void> {
   await checkRunErrorsBecomeMarkers(frameWindow);
   await checkWebLanguageServices(frameWindow);
   await checkFormattingWorks(frameWindow);
+  await checkQuickOpenAndBreadcrumbs(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

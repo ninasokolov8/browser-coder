@@ -807,7 +807,10 @@
         direction: ltr;
         text-align: left;
       }
-      #command-palette {
+      /* One overlay, two users: the command palette and quick-open share
+         picker.ts, so they share the styling too. */
+      #command-palette,
+      #quick-open {
         position: fixed;
         inset: 0;
         z-index: 4000;
@@ -849,6 +852,50 @@
       .palette-row.disabled { opacity: 0.45; cursor: default; }
       .palette-note { color: var(--text-secondary); font-size: 11px; }
       .palette-empty { padding: 12px; color: var(--text-secondary); font-size: 13px; }
+      /* Quick-open's second column: the containing folder. Dimmed and pushed
+         right so the file name stays the thing the eye lands on. */
+      .palette-detail {
+        color: var(--text-secondary);
+        font-size: 11px;
+        margin-left: auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        direction: ltr;
+      }
+
+      /* ── Breadcrumbs ──────────────────────────────────────────────────── */
+      #breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex: 0 0 auto;
+        padding: 3px 10px;
+        font-size: 11px;
+        overflow-x: auto;
+        white-space: nowrap;
+        background: var(--bg-panel, #252526);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        /* A file path is a path, not prose: it stays LTR even in the Hebrew UI. */
+        direction: ltr;
+        scrollbar-width: none;
+      }
+      #breadcrumbs::-webkit-scrollbar { height: 0; }
+      #breadcrumbs[hidden] { display: none; }
+      .breadcrumb-segment {
+        background: none;
+        border: 0;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font: inherit;
+        color: var(--text-secondary, #999);
+      }
+      button.breadcrumb-segment { cursor: pointer; }
+      button.breadcrumb-segment:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary, #ddd); }
+      button.breadcrumb-segment:focus-visible { outline: 1px solid #75beff; outline-offset: -1px; }
+      .breadcrumb-file { color: var(--text-primary, #ddd); }
+      .breadcrumb-symbol { color: #9cdcfe; }
+      .breadcrumb-separator { color: rgba(255, 255, 255, 0.25); }
       #problems-content {
         flex: 1;
         overflow-y: auto;
@@ -1595,6 +1642,10 @@
           <!-- Tabs rendered by TabManager -->
         </div>
         <div id="editor-container">
+          <!-- Breadcrumbs: folder path plus the symbol the cursor is inside.
+               Hidden until there is something to show, so an empty workspace does
+               not reserve a blank strip. -->
+          <nav id="breadcrumbs" aria-label="Breadcrumbs" hidden></nav>
           <div id="editor"></div>
           <div id="editor-empty-state">
             <div class="empty-state-content">

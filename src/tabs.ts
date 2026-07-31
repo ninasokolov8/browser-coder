@@ -17,6 +17,7 @@
 
 import { getAllLanguages, getLanguage, getStarterAsync, LoadedLanguage, VersionConfig } from './languages';
 import { isWorkspaceEntryHidden } from './features/workspace-visibility';
+import { noteFileOpened } from './features/quick-open';
 import type { StoredFile } from './storage';
 import type { WorkspaceDocument, WorkspaceService } from './workspace';
 
@@ -314,6 +315,11 @@ export class TabManager {
     if (this.#activeId && this.#activeId !== fileId) {
       await this.#service.flush(this.#activeId);
     }
+
+    // Recency for quick-open. Recorded here because this is the single point every
+    // route into a file goes through - the explorer, the tab bar, quick-open
+    // itself, go-to-definition and the Problems panel all call switchToTab.
+    noteFileOpened(fileId);
 
     if (!this.#openIds.includes(fileId)) {
       this.#openIds.push(fileId);

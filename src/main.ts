@@ -9,6 +9,8 @@ import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
 import { connectRunMarkers } from './diagnostics/server-source';
 import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
 import { initializeCommandPalette } from './features/command-palette';
+import { initializeQuickOpen } from './features/quick-open';
+import { initializeBreadcrumbs } from './features/breadcrumbs';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
@@ -171,6 +173,10 @@ async function bootstrap(): Promise<void> {
   // The palette is the registry's list filtered by isEnabled. Registering it
   // last means every command exists by the time it can be opened.
   initializeCommandPalette(runtime.commands!);
+  // Ctrl+P and the breadcrumb bar. Both are navigation aids that need the
+  // workspace and the editor, so they go here rather than in workspace-init.
+  initializeQuickOpen();
+  initializeBreadcrumbs(runtime.editor!);
 
   initializeLayout();
   setStatus('Ready ✅ (Ctrl+Enter to run)');
