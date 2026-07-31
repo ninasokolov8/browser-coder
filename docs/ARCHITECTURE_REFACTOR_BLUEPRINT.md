@@ -6485,3 +6485,93 @@ here.
 The right fix is not a smaller number: it is to stop sending assets through the JSON
 run body at all. Binary assets belong on a separate multipart endpoint with its own
 limit, which is how the asset support in the next section is built.
+
+## 38. Turtle: the whole public API
+
+The claim "turtle is fully supported" was untested, so the first step was to make it
+measurable. `turtle.__all__` lists **122** public names. Asked of the shim:
+**96 provided, 26 missing.**
+
+`tests/contract/turtle-api.test.mjs` now reads the real module's `__all__` at test
+time and requires the shim to provide every name. It cannot go stale against a
+future Python: if 3.14 adds a name, the test starts failing.
+
+### 38.1 What was missing, and what was done with it
+
+**Implemented** (21): `Vec2D` with its full operator set, `Shape`, `Terminator`,
+`degrees`, `radians`, `begin_poly`, `end_poly`, `get_poly`, `get_shapepoly`,
+`clone`, `teleport`, `turtles`, `getpen`, `getturtle`, `setworldcoordinates`,
+`shearfactor`, `shapetransform`, `setundobuffer`, `undobufferentries`, `ondrag`,
+`onrelease`.
+
+**Aliased** (2): `RawPen`, `TurtleScreen`. The real module separates a turtle or
+screen bound to a given canvas from the default one; there is a single canvas here,
+so they are the same class under both names. Kept as names so `isinstance` and
+subclassing resolve.
+
+**Refused, with a sentence explaining why** (3): `getcanvas` returns a tkinter
+canvas; `write_docstringdict` writes a Python source file to disk; `ScrolledCanvas`
+is a tkinter widget. Each raises `NotImplementedError` naming the reason and pointing
+at what does work. A stub that silently did nothing would be worse - the program
+would appear to succeed and the student would have no idea why nothing happened.
+
+### 38.2 Details that needed real thought
+
+**Angle units.** `degrees()` / `radians()` change the unit for every angle crossing
+the API. Internally everything stays degrees and the conversion happens at the
+boundary - the angle coming in, the heading going out - because a stored unit invites
+a half-converted calculation. Asserted in both directions: setting pi radians and
+moving must land at `(0, 10)`, not merely report a plausible heading.
+
+**`teleport` is not penup-goto-pendown.** That sequence leaves the pen up if it was
+already up; `teleport` restores whatever the state was. `fill_gap=True` draws the
+jump. Both asserted by counting the emitted line segments.
+
+**`clone` must not copy fill progress.** Copying the fill path, flag and insert index
+would make the clone close the original's half-finished polygon.
+
+**`getpen()` must return the same object every time.** The module-level turtle is a
+state dict, not an object, so the wrapper is built once and cached - two objects
+sharing one state would make `getpen() is getpen()` false and break identity
+comparisons in student code.
+
+**`Shape` objects were accepted and discarded.** `addshape` only understood a raw
+point sequence, so the documented two-step form -
+`register_shape("name", Shape("polygon", points))` - silently did nothing. It now
+handles a `Shape`, a raw sequence, or a compound shape.
+
+**Screen-style programs need the methods on the object.** `setworldcoordinates`,
+`degrees`, `radians`, `turtles` and the key handlers existed only at module level, so
+`screen.setworldcoordinates(...)` raised `AttributeError` - indistinguishable from
+the feature not existing. A program written in the `screen = Screen()` style never
+touches the module functions.
+
+**`__all__` did not exist on the fake module.** `from turtle import *` fell back to
+whatever `dir()` happened to expose, and the conformance test could not compare the
+two modules at all. It is now set from the names actually exported.
+
+### 38.3 Verification
+
+- 21 conformance assertions: every name present, every one callable or
+  constructible, the Turtle instance surface, and behaviour for each new API.
+- A broad program exercising most of the library still produces a valid payload.
+- Skips honestly when the host has no tkinter, because importing the real `turtle`
+  needs it - which is the whole reason this shim exists. The production container has
+  none, so this runs on the host while the payload tests run in both.
+- 489 unit, 118 contract (11 skipped), 322 security cases, browser suites, and the
+  turtle end-to-end probe against the production image.
+
+### 38.4 Not done
+
+- **Animation is still a still image.** `ontimer`, `onkey`, `onclick`, `ondrag` and
+  `onrelease` accept handlers and record nothing, because a finished canvas has no
+  event loop. A program that only draws from a key handler draws nothing. Making
+  those live needs the drawing to stream during the run rather than being emitted at
+  exit - the same transport shape as the debugger, and a larger piece of work.
+- `setworldcoordinates` is **recorded, not applied**: the renderer still uses canvas
+  coordinates, so a program relying on a remapped system draws at the wrong scale.
+  The field is in the payload for the frontend to honour.
+- `undobufferentries` counts a stack nothing pushes to, so it reports 0 until `undo`
+  is given real history.
+- `shapetransform` and `shearfactor` are stored and returned but the canvas renderer
+  does not yet apply them to the cursor polygon.
