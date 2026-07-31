@@ -7,18 +7,17 @@ import { appConfig, policyState } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
 import { notifyRunResult } from '../integrations/stepup-bus';
-import { setStatus, setOutput, appendOutput, setOutputHtml } from '../components/output';
+import { setStatus, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
-import { runInteractive, codeReadsStdin, stopInteractive } from '../components/interactive-console';
-import { renderTurtle, clearTurtleCanvas } from '../components/turtle';
-import type { TurtleData } from '../components/turtle';
+import { runProgram, stopInteractive } from '../components/interactive-console';
+import { clearTurtleCanvas } from '../components/turtle';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runBtn } from '../components/dom';
 import { bindButton, bindKeybinding } from '../commands';
 import { getOrCreateModel } from './editor-core';
 import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
-import { hideImageWindow, showImageWindow } from '../components/image-window';
+import { showImageWindow } from '../components/image-window';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -30,19 +29,6 @@ function requireRuntime() {
   return { editor, tabManager, storage };
 }
 
-/**
- * Does this run need an interactive console? True when ANY file that will be
- * executed reads from stdin - not just the entry file, since a helper module
- * imported by the entry point may be the one calling input().
- */
-function payloadReadsStdin(langId: string, body: Record<string, unknown>): boolean {
-  const files = body.files as Array<{ content?: string }> | undefined;
-  if (Array.isArray(files)) {
-    return files.some(file => codeReadsStdin(langId, file?.content || ''));
-  }
-  return codeReadsStdin(langId, (body.code as string) || '');
-}
-
 // ── Output helpers ──────────────────────────────────────────────────────────
 
 /** Escape text for safe embedding as HTML content. */
@@ -51,62 +37,6 @@ function esc(s: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-}
-
-function getCompileLabel(langId: string): string {
-  switch (langId) {
-    case 'java':       return 'Compile Error (javac)';
-    case 'csharp':     return 'Compile Error (dotnet build)';
-    case 'typescript': return 'TypeScript Error';
-    case 'php':        return 'Parse Error (php -l)';
-    case 'python':     return 'Problem Detected — code was not run';
-    default:           return 'Compile Error';
-  }
-}
-
-/**
- * Render a /api/run result into the output panel as formatted HTML.
- * Compile errors get a blue header and red error text.
- * Runtime output appears as-is with an optional red stderr section and a
- * green/red exit-code footer.
- */
-function renderRunResult(
-  data: { stdout?: string; stderr?: string; exitCode: number; phase?: string },
-  langId: string
-): void {
-  const isCompile = data.phase === 'compile';
-  const parts: string[] = [];
-
-  if (isCompile) {
-    parts.push(`<span class="info">── ${esc(getCompileLabel(langId))} ──────────────────────────────────────</span>\n`);
-    if (data.stderr) {
-      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
-    }
-  } else {
-    if (data.stdout) {
-      parts.push(esc(data.stdout));
-    }
-    if (data.stderr) {
-      if (parts.length > 0) parts.push('\n');
-      const errLabel = langId === 'python' ? 'Python Error' : langId === 'java' ? 'Java Error' : langId === 'csharp' ? 'C# Error' : langId === 'php' ? 'PHP Error' : 'Error Output';
-      parts.push(`<span class="info">── ${errLabel} ─────────────────────────────────────────────</span>\n`);
-      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
-    }
-  }
-
-  // Trailing newline before footer
-  if (parts.length > 0) {
-    const last = parts[parts.length - 1];
-    if (!last.endsWith('\n')) parts.push('\n');
-  }
-
-  if (data.exitCode === 0) {
-    parts.push(`<span class="success">[exit 0 ✓]</span>`);
-  } else {
-    parts.push(`<span class="error">[exit code: ${data.exitCode}]</span>`);
-  }
-
-  setOutputHtml(parts.join(''));
 }
 
 /**
@@ -264,126 +194,34 @@ requestBody = {
 };
 }
 
-    // ── Interactive stdin path ────────────────────────────────────────────
-    // Programs that pause for keyboard input (input(), Scanner, readline,
-    // Console.ReadLine, fgets(STDIN), …) cannot use the buffered /api/run
-    // round-trip: it returns a single result and cannot wait mid-execution,
-    // so the program would hang until the timeout and lose everything after
-    // the prompt. Route them to the streaming console instead, which works
-    // for BOTH snippet and multi-file project runs and every language.
-    if (!appConfig.noOutput && payloadReadsStdin(lang.id, requestBody)) {
-      stopRunLoader();
-      clearTurtleCanvas();
-      const result = await runInteractive(lang.id, requestBody);
-      if (appConfig.isEmbedded) {
-        notifyRunResult({
-          stdout: result.stdout,
-          stderr: result.stderr,
-          exitCode: result.exitCode,
-          durationMs: result.durationMs,
-        });
-      }
-      return;
-    }
+    // ── One transport ────────────────────────────────────────────────────
+    //
+    // Every run streams. There is no longer a regex deciding whether this
+    // program 'looks like' it reads input, and no buffered branch behind it - see
+    // the note at the top of interactive-console.ts for why that split was wrong.
+    //
+    // /api/run still exists and is unchanged; Step-Up calls it server-side. The
+    // IDE simply no longer uses it.
+    const result = await runProgram(lang.id, requestBody, {
+      // Stop the spinner the moment the stream is live: from then on the console
+      // owns the panel and shows progress by printing.
+      onStreamStart: () => stopRunLoader(),
 
-    const resp = await fetch("/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      // turtle.bgpic("maze.svg") names a workspace file. Python reports only the
+      // name, so it is resolved here, where the workspace is in scope.
+      resolveImage: (name: string) =>
+        resolveWorkspaceImageUrl(
+          name,
+          normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+        ),
     });
 
-    const raw = await resp.text();
-    let data: any = null;
-
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = null;
-    }
-
-    stopRunLoader();
-    setOutput("");
-    clearTurtleCanvas();
-    hideImageWindow();
-
-    if (!resp.ok) {
-      setOutputHtml(
-        `<span class="error">HTTP ${resp.status}\n${esc(raw || '(empty response)')}</span>\n` +
-        `<span class="error">[exit code: 1]</span>`
-      );
-      setStatus("Run failed");
-      return;
-    }
-
-    if (!data) {
-      setOutputHtml(
-        `<span class="error">ERROR: Server returned no JSON.\n${esc(raw || '(empty response)')}</span>\n` +
-        `<span class="error">[exit code: 1]</span>`
-      );
-      setStatus("Run failed");
-      return;
-    }
-
-    // ── Turtle graphics output ──────────────────────────────────────────
-    // A run counts as turtle output when it drew something *or* left a turtle
-    // on screen (a program may only place the cursor without drawing).
-    //
-    // Only open the turtle window when the program finished successfully
-    // (exit 0). A compile/syntax error means the program never ran, and a
-    // runtime error (e.g. a typo like `t.foward`) means it failed part-way -
-    // in both cases we show only the error and draw nothing, so a broken
-    // program never flashes a half-finished drawing.
-    let turtleRenderErr: string | null = null;
-    let missingTurtlePic: string | null = null;
-    if (
-      data.exitCode === 0 &&
-      data.phase !== 'compile' &&
-      data.turtleData &&
-      (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)
-    ) {
-      try {
-        // bgpic("maze.svg") names a project file. Python only reports the name;
-        // the image itself lives in the workspace, so resolve it here and hand
-        // the renderer a data URL.
-        const picName = (data.turtleData as TurtleData).pic;
-        if (picName) {
-          const picUrl = await resolveWorkspaceImageUrl(
-            picName,
-            normalizeProjectPath(activeTab.file.path || activeTab.file.name),
-          );
-          if (picUrl) (data.turtleData as TurtleData).picData = picUrl;
-          else missingTurtlePic = picName;
-        }
-        renderTurtle(data.turtleData as TurtleData);
-      } catch (renderErr) {
-        turtleRenderErr = String(renderErr);
-      }
-    }
-
-    renderRunResult(data, lang.id);
-    if (missingTurtlePic) {
-      appendOutput(
-        `[turtle: background image "${missingTurtlePic}" was not found in this project. ` +
-        `Add an .svg file with that name — bgpic() reads SVG images from the workspace.]`
-      );
-    }
-    if (turtleRenderErr) appendOutput(`[turtle render error: ${turtleRenderErr}]`);
-
-    setStatus(
-      data.exitCode === 0
-        ? 'Ready ✅'
-        : data.phase === 'compile'
-          ? 'Compile error ❌'
-          : 'Runtime error ❌'
-    );
-    
-    // Notify parent of run result (Step-Up integration)
     if (appConfig.isEmbedded) {
       notifyRunResult({
-        stdout: data.stdout || '',
-        stderr: data.stderr || '',
-        exitCode: data.exitCode ?? -1,
-        durationMs: data.durationMs || 0
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs,
       });
     }
   } catch (e: any) {

@@ -1,20 +1,53 @@
 //
-// Interactive console: runs a program that PAUSES for keyboard input
-// (Python input(), Java Scanner, JS readline/prompt, PHP fgets(STDIN),
-// C# Console.ReadLine, …) and lets the user type answers into the output
-// panel, exactly like a real IDE terminal.
+// The run console: the ONE transport for executing a program.
 //
-// A normal run posts to /api/run and gets one buffered JSON result back, which
-// cannot support a program that waits mid-execution. This module instead uses
-// the streaming session endpoints:
-//   POST /api/run/interactive            -> { sessionId } (or { compile })
-//   GET  /api/run/interactive/:id/stream -> Server-Sent Events (stdout/stderr/exit)
-//   POST /api/run/interactive/:id/stdin  -> one line of input
-//   POST /api/run/interactive/:id/close  -> stop
+// It used to be the special case. `runCode` pattern-matched the source with a
+// regex - `input(`, `Scanner`, `readline`, `Console.ReadLine`, `STDIN` - and sent
+// anything that matched here, while everything else took a buffered /api/run
+// round trip that returned a single JSON blob at the end.
+//
+// That split was wrong in three ways, and blueprint section 12 had already called
+// for deleting it:
+//
+//   1. A missed detection was a HANG, not a fallback. Any way of reading stdin the
+//      regex did not anticipate - a helper wrapping input(), an idiom not on the
+//      list - took the buffered path and blocked until the timeout with no prompt.
+//   2. An ordinary run did not stream. A program printing for ten seconds showed
+//      nothing for ten seconds. Every real IDE streams its output.
+//   3. Two client paths meant two result shapes, two error renderings, and two
+//      places to change anything about running code. They had already drifted:
+//      only the buffered one resolved turtle.bgpic() images.
+//
+// The server has always been ready for this - every run spawns with stdin open and
+// the buffered route simply closes it immediately - so the only thing standing in
+// the way was the regex. It is gone.
+//
+// Protocol:
+//   POST /api/run/interactive           -> NDJSON stream, or JSON for a compile error
+//   POST /api/run/interactive/:id/stdin -> one line of input
+//   POST /api/run/interactive/:id/close -> stop
+//
+// /api/run still exists and is still a frozen contract - Step-Up calls it
+// server-side - it is simply no longer how the IDE runs code.
 import { panelContentEl, runBtn } from './dom';
 import { setStatus } from './output';
 import { renderTurtle } from './turtle';
 import { t } from '../i18n';
+
+export interface RunConsoleOptions {
+  /**
+   * Resolve a turtle background image named by `turtle.bgpic("maze.svg")` to a
+   * data URL.
+   *
+   * Injected rather than imported so this module keeps no dependency on the
+   * workspace. It exists at all because only the buffered path used to do this,
+   * so unifying on this one would otherwise have silently dropped bgpic support.
+   */
+  resolveImage?: (name: string) => Promise<string | null>;
+
+  /** Called once the stream is live, so a caller can stop its own spinner. */
+  onStreamStart?: () => void;
+}
 
 export interface InteractiveResult {
   stdout: string;
@@ -32,32 +65,6 @@ let active: ActiveSession | null = null;
 
 export function isInteractiveActive(): boolean {
   return !!active;
-}
-
-/** Detect whether user code reads from stdin, so we know to run it interactively. */
-export function codeReadsStdin(langId: string, code: string): boolean {
-  if (!code) return false;
-  switch (langId) {
-    case 'python':
-      return /(^|[^.\w])input\s*\(/.test(code) || /\bsys\s*\.\s*stdin\b/.test(code);
-    case 'javascript':
-    case 'typescript':
-      return /\bprompt\s*\(/.test(code)
-        || /\bprocess\s*\.\s*stdin\b/.test(code)
-        || /\breadline\b/.test(code)
-        || /\bcreateInterface\b/.test(code);
-    case 'php':
-      return /\bSTDIN\b/.test(code) || /\breadline\s*\(/.test(code);
-    case 'java':
-      return /\bSystem\s*\.\s*in\b/.test(code)
-        || /\bnew\s+Scanner\b/.test(code)
-        || /\bSystem\s*\.\s*console\s*\(/.test(code);
-    case 'csharp':
-      return /\bConsole\s*\.\s*Read(Line|Key)?\s*\(/.test(code)
-        || /\bConsole\s*\.\s*In\b/.test(code);
-    default:
-      return false;
-  }
 }
 
 function compileLabel(langId: string): string {
@@ -95,11 +102,11 @@ export function stopInteractive(): void {
  *                either { code } (snippet mode) or { files, entryPoint }
  *                (project/full mode), so every mode is supported.
  */
-export function runInteractive(
+export function runProgram(
   langId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  options: RunConsoleOptions = {},
 ): Promise<InteractiveResult> {
-  stopInteractive();
 
   return new Promise<InteractiveResult>((resolve) => {
     // ── Build the console DOM inside the output panel ────────────────────────
@@ -122,8 +129,24 @@ export function runInteractive(
     input.spellcheck = false;
     input.placeholder = t('panel.stdinHint') || 'type your answer, then press Enter';
     input.setAttribute('aria-label', t('panel.stdinLabel') || 'Program input');
+
+    // End-of-input.
+    //
+    // The server has always had /eof, and nothing in the UI ever called it. A
+    // program that reads UNTIL end of input - `for line in sys.stdin`, a JS
+    // `process.stdin` reader, `while (scanner.hasNextLine())` - therefore had no
+    // way to finish: the student could type lines forever and the program only
+    // stopped when the idle timeout killed it. In a real terminal this is Ctrl+D,
+    // so that works here, with a button because Ctrl+D is not discoverable.
+    const eofButton = document.createElement('button');
+    eofButton.className = 'term-eof';
+    eofButton.type = 'button';
+    eofButton.textContent = t('panel.endInput');
+    eofButton.title = t('panel.endInputHint');
+
     inputLine.appendChild(caret);
     inputLine.appendChild(input);
+    inputLine.appendChild(eofButton);
 
     panelContentEl.appendChild(outEl);
     panelContentEl.appendChild(inputLine);
@@ -148,7 +171,7 @@ export function runInteractive(
       resolve(result);
     };
 
-    const finishRun = (
+    const finishRun = async (
       exitCode: number,
       durationMs: number,
       note?: string | null,
@@ -166,6 +189,23 @@ export function runInteractive(
         ((turtleData.shapes?.length ?? 0) > 0 || (turtleData.cursors?.length ?? 0) > 0)
       ) {
         try {
+          // bgpic("maze.svg") names a project file. Python reports only the name,
+          // so the image has to be resolved from the workspace before rendering.
+          const picName = turtleData.pic;
+          if (picName && options.resolveImage) {
+            const picUrl = await options.resolveImage(picName);
+            if (picUrl) {
+              turtleData.picData = picUrl;
+            } else {
+              append(
+                `
+[turtle: background image "${picName}" was not found in this project. ` +
+                `Add an .svg file with that name - bgpic() reads SVG images from the workspace.]
+`,
+                'info',
+              );
+            }
+          }
           renderTurtle(turtleData);
         } catch (renderErr) {
           append(`\n[turtle render error: ${String(renderErr)}]\n`, 'error');
@@ -200,8 +240,37 @@ export function runInteractive(
       }).catch(() => {});
     };
 
+    /**
+     * Close the program's stdin, the way Ctrl+D does in a terminal.
+     *
+     * Distinct from `close`, which kills the process. This says "there is no more
+     * input", letting a program that reads until end-of-input finish normally and
+     * print whatever it computed. Without it such a program could only ever be
+     * killed by the idle timeout.
+     */
+    let sentEof = false;
+    const sendEof = () => {
+      if (!sessionId || settled || sentEof) return;
+      sentEof = true;
+      append('\n[end of input]\n', 'info');
+      inputLine.style.display = 'none';
+      setStatus('Running…');
+      fetch(`/api/run/interactive/${sessionId}/eof`, { method: 'POST' }).catch(() => {});
+    };
+
+    eofButton.addEventListener('click', event => {
+      event.preventDefault();
+      sendEof();
+    });
+
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Enter') { e.preventDefault(); submit(); return; }
+      // Ctrl+D on an EMPTY line only, matching a real terminal: with text typed,
+      // Ctrl+D would discard it, which is not what anyone expects.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && input.value === '') {
+        e.preventDefault();
+        sendEof();
+      }
     });
 
     void (async () => {
@@ -215,7 +284,13 @@ export function runInteractive(
         if (settled) return;
         if (inputLine.style.display !== 'none') { input.focus(); return; }
         inputLine.style.display = '';
-        setStatus('Waiting for input ⌨️');
+        // Deliberately states the CAPABILITY, not a claim about the program.
+        // Without a pseudo-terminal a blocked read cannot be observed, so the
+        // server infers it - and now that every run streams, the inference is
+        // sometimes just 'this program went quiet'. Announcing "waiting for input"
+        // for a program that is merely computing teaches the student to distrust
+        // the prompt.
+        setStatus(t('status.readyForInput'));
         input.focus();
         panelContentEl.scrollTop = panelContentEl.scrollHeight;
       };
@@ -225,6 +300,9 @@ export function runInteractive(
           case 'session':
             sessionId = msg.sessionId;
             active = { sessionId, controller };
+            // The stream is live from here, so the caller can drop its spinner
+            // and let the console own the panel.
+            options.onStreamStart?.();
             break;
           case 'stdout':
             aggStdout += msg.data;
@@ -241,7 +319,7 @@ export function runInteractive(
             break;
           case 'exit':
             active = null;
-            finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
+            void finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
             break;
         }
       };

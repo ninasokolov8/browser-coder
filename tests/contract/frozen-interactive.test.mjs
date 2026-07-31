@@ -203,3 +203,74 @@ describe('POST /api/run/interactive', () => {
     assert.doesNotMatch(stdout, /should not reach here/);
   });
 });
+
+describe('the waiting hint distinguishes a prompt from slow work', () => {
+  // Every run streams now, not only the ones a regex thought would read input.
+  // That makes the hint's accuracy matter: announcing "ready for input" whenever a
+  // program goes quiet would fire for anything that computes for a moment, and a
+  // prompt the student learns to ignore is worse than no prompt.
+  //
+  // The signal is the trailing newline. A prompt is written WITHOUT one, because
+  // the caret belongs on the same line; ordinary output ends with one.
+
+  it('does not announce input for a program that prints a line and then works', async () => {
+    const result = await runInteractive(server, {
+      language: 'javascript',
+      version: 'es2022',
+      // Ends with a newline, then computes for ~1s. Under a flat timer this
+      // reported "waiting for input" after 250ms.
+      code: 'console.log("starting");\nsetTimeout(() => console.log("done"), 1000);',
+    });
+
+    const waiting = result.events.filter(event => event.type === 'waiting');
+    assert.equal(
+      waiting.length,
+      0,
+      'a program that is merely computing must not be announced as waiting for input',
+    );
+    assert.equal(result.events.at(-1).exitCode, 0);
+  });
+
+  it('does announce input for output left mid-line', async () => {
+    let answered = false;
+    const result = await runInteractive(
+      server,
+      {
+        language: 'javascript',
+        version: 'es2022',
+        // No trailing newline: the shape of every real prompt.
+        code: [
+          'process.stdout.write("Name: ");',
+          'process.stdin.once("data", d => {',
+          '  console.log("hi " + String(d).trim());',
+          '  process.stdin.pause();',
+          '});',
+        ].join('\n'),
+      },
+      {
+        async onEvent(event, sessionId) {
+          if (event.type === 'waiting' && sessionId && !answered) {
+            answered = true;
+            await server.postJson(`/api/run/interactive/${sessionId}/stdin`, { data: 'Ada' });
+            // Then end input, the way Ctrl+D does. Node keeps the event loop
+            // alive while stdin is open, so without EOF this program would run
+            // until the idle timeout even though it has nothing left to do -
+            // which is exactly the situation the console's new End-input control
+            // exists for.
+            await server.postJson(`/api/run/interactive/${sessionId}/eof`, {});
+          }
+        },
+      },
+    );
+
+    assert.ok(
+      result.events.some(event => event.type === 'waiting'),
+      'a prompt left mid-line must be announced so the caret appears',
+    );
+    const stdout = result.events
+      .filter(event => event.type === 'stdout')
+      .map(event => event.data)
+      .join('');
+    assert.match(stdout, /hi Ada/);
+  });
+});

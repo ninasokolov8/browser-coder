@@ -67,5 +67,8 @@
   "policy.runDisabled": "Running is disabled for this task",
   "policy.readonly": "This file is read-only",
   "policy.structureLocked": "Adding, renaming and deleting files is locked for this task",
-  "policy.searchReplaceDisabled": "Replace is disabled for this task"
+  "policy.searchReplaceDisabled": "Replace is disabled for this task",
+  "status.readyForInput": "Ready for input ⌨️",
+  "panel.endInput": "End input",
+  "panel.endInputHint": "Send end-of-input (Ctrl+D), so a program that reads until EOF can finish"
 }

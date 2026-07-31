@@ -29,7 +29,9 @@ const RECEIVER_PORT = Number(process.env.RECEIVER_PORT || 5200);
 // for entirely the wrong reason.
 const SUITES = {
   workspace: { page: '/tests/browser/workspace-smoke.html', port: 5199 },
-  'app-boot': { page: '/tests/browser/app-boot.html', port: 5199 },
+  // Needs the API: it asserts that a run STREAMS, which cannot be checked against
+  // a dev server with nothing behind its /api proxy.
+  'app-boot': { page: '/tests/browser/app-boot.html', port: 5199, needsApi: true },
   embedded: { page: '/tests/browser/embedded.html?embed-host=1', port: 3000 },
 };
 const SUITE = process.argv[2] || 'workspace';
@@ -156,6 +158,30 @@ if (!alreadyRunning) {
   }
 } else {
   process.stderr.write(`reusing the dev server already on ${VITE_PORT}\n`);
+}
+
+// The API server, for suites that execute code. Vite proxies /api to :3001, so a
+// suite asserting on a real run needs something listening there - otherwise the
+// fetch fails and the page hangs on a reader that never yields.
+if (selected.needsApi) {
+  const apiUp = await waitForServer('http://localhost:3001/live', 1);
+  if (apiUp) {
+    process.stderr.write('reusing the API already on 3001\n');
+  } else {
+    process.stderr.write('starting the API on 3001…\n');
+    const api = spawn(process.execPath, ['server.mjs'], {
+      // Development mode: the dev server serves the client, so the API only has to
+      // answer /api. A declared budget keeps capacity deterministic across hosts.
+      env: { ...process.env, PORT: '3001', NODE_ENV: 'development', MEMORY_BUDGET_MB: '2048' },
+      stdio: 'ignore',
+    });
+    started.push(api);
+
+    if (!(await waitForServer('http://localhost:3001/live'))) {
+      process.stderr.write('the API did not become ready\n');
+      process.exit(1);
+    }
+  }
 }
 
 const { server, report } = startReceiver();

@@ -277,6 +277,86 @@ async function checkProblemsAndPalette(frameWindow: Window): Promise<void> {
   }
 }
 
+
+/**
+ * Every run must stream, including one that never reads input.
+ *
+ * That case is the whole point: it used to take the buffered /api/run path and
+ * show nothing until the program exited. If the transport regressed to buffering,
+ * the first output arrives at roughly the same time as the exit - so this measures
+ * the GAP between them rather than merely checking the output eventually appears.
+ */
+async function checkEveryRunStreams(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the streaming check', false);
+    return;
+  }
+
+  // Straight to the endpoint: this asserts the TRANSPORT, without depending on the
+  // editor's current language or on driving the UI.
+  const started = Date.now();
+  const events: Array<{ type: string; at: number }> = [];
+
+  const response = await frameWindow.fetch('/api/run/interactive', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      language: 'javascript',
+      version: 'es2022',
+      // No stdin anywhere: the old regex would have sent this down the buffered
+      // path. Prints, waits, prints again.
+      code: 'console.log("FIRST");\nsetTimeout(() => console.log("SECOND"), 1200);',
+    }),
+  });
+
+  check('a non-interactive run is accepted by the streaming route', response.ok);
+  if (!response.ok || !response.body) return;
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let firstOutputAt: number | null = null;
+  let exitAt: number | null = null;
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let index: number;
+    while ((index = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, index).trim();
+      buffer = buffer.slice(index + 1);
+      if (!line) continue;
+      let event: { type: string; data?: string };
+      try {
+        event = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      events.push({ type: event.type, at: Date.now() - started });
+      if (event.type === 'stdout' && /FIRST/.test(event.data || '') && firstOutputAt === null) {
+        firstOutputAt = Date.now() - started;
+      }
+      if (event.type === 'exit') exitAt = Date.now() - started;
+    }
+  }
+
+  lines.push(`INFO stream: ${events.map(e => `${e.type}@${e.at}ms`).join(' ')}`);
+
+  check('the run produced output and exited', firstOutputAt !== null && exitAt !== null);
+  if (firstOutputAt === null || exitAt === null) return;
+
+  // The program sleeps 1.2s between the two prints, so a live stream delivers the
+  // first line at least a second before the exit. Buffered, the gap collapses.
+  const gap = exitAt - firstOutputAt;
+  check(
+    'output arrives DURING the run, not batched at the end',
+    gap > 800,
+    `first output at ${firstOutputAt}ms, exit at ${exitAt}ms, gap ${gap}ms`,
+  );
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -427,6 +507,7 @@ async function run(): Promise<void> {
 
   await checkCrossFileTypeScript(frameWindow);
   await checkProblemsAndPalette(frameWindow);
+  await checkEveryRunStreams(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

@@ -105,8 +105,25 @@ function sendRefusal(res, error) {
  *
  * Note this is only about WHEN THE UI HINTS. It no longer decides whether input
  * is possible: every session accepts stdin regardless.
+ *
+ * The third delay exists because the IDE now streams EVERY run, not only ones a
+ * regex thought would read input. A program that prints a line and then computes
+ * for a second would otherwise be announced as waiting for input, which is simply
+ * untrue and teaches the student to distrust the prompt.
+ *
+ * The signal that separates them is the trailing newline. A prompt is written
+ * WITHOUT one - `input("Name: ")`, `printf("n? ")`, `Console.Write(...)` - because
+ * the caret is meant to sit on the same line. Ordinary output ends with a newline.
+ * So unterminated output is a strong prompt signal and gets the short delay, while
+ * output that ended cleanly is probably just work in progress and waits longer.
+ *
+ * It is still a heuristic: without a pseudo-terminal a blocked read cannot be
+ * observed. But it is right far more often than a flat timer, and being wrong is
+ * harmless in both directions - typing into a program that is not reading merely
+ * buffers, and a late hint still arrives.
  */
-const WAITING_DELAY_AFTER_OUTPUT_MS = 250;
+const WAITING_DELAY_AFTER_PROMPT_MS = 250;
+const WAITING_DELAY_AFTER_LINE_MS = 1500;
 const WAITING_DELAY_INITIAL_MS = 1200;
 const PING_INTERVAL_MS = 15000;
 
@@ -175,6 +192,7 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
     const state = {
       finished: false,
       sawOutput: false,
+      outputEndedMidLine: false,
       idleTimer: null,
       lifetimeTimer: null,
       waitingTimer: null,
@@ -206,7 +224,11 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
         () => {
           if (!state.finished) send({ type: 'waiting' });
         },
-        state.sawOutput ? WAITING_DELAY_AFTER_OUTPUT_MS : WAITING_DELAY_INITIAL_MS,
+        !state.sawOutput
+          ? WAITING_DELAY_INITIAL_MS
+          : state.outputEndedMidLine
+            ? WAITING_DELAY_AFTER_PROMPT_MS
+            : WAITING_DELAY_AFTER_LINE_MS,
       );
     };
 
@@ -223,6 +245,8 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
       if (state.finished || !text) return;
       send({ type, data: text });
       state.sawOutput = true;
+      // Only stdout counts: a stderr warning ending mid-line is not a prompt.
+      if (type === 'stdout') state.outputEndedMidLine = !text.endsWith('\n');
       resetIdle();
       armWaiting();
     };
