@@ -92,7 +92,16 @@ export const MEMORY_BUDGET = detectMemoryBudgetMb();
  * runs leaves nothing for the thing supervising them, and the first symptom is the
  * supervisor being killed rather than a run being refused.
  */
-const SERVER_RESERVE_MB = intFromEnv('SERVER_RESERVE_MB', 256);
+function defaultReserveMb(budgetMb) {
+  // A flat 256 starves a small container: the production compose limit is 512 MB,
+  // where a fixed reserve would take half the budget and leave room for five runs.
+  // A quarter of the budget, clamped, keeps the reserve proportionate at both ends -
+  // 128 MB is about what express plus the session registry plus this process's own
+  // V8 heap actually occupies, and above 1 GB more than 256 MB is waste.
+  return Math.min(256, Math.max(128, Math.floor(budgetMb / 4)));
+}
+
+const SERVER_RESERVE_MB = intFromEnv('SERVER_RESERVE_MB', 0);
 
 /**
  * Assumed peak resident memory of one run.
@@ -121,7 +130,7 @@ const RUN_MEMORY_MB = intFromEnv('RUN_MEMORY_MB', 50);
  */
 export function deriveMaxConcurrent({
   budgetMb,
-  reserveMb = SERVER_RESERVE_MB,
+  reserveMb = SERVER_RESERVE_MB || defaultReserveMb(budgetMb),
   perRunMb = RUN_MEMORY_MB,
   override = 0,
   ceiling = 500,

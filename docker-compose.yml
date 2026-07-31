@@ -58,6 +58,17 @@ services:
       - MAX_SCALE=${MAX_SCALE:-8}
       - MAX_CODE_CHARS=750000
     # SECURITY: Container-level sandboxing
+    # N-05: the fork-bomb limit the comment claimed.
+    #
+    # docker-compose.yml said "# SECURITY: Limit PIDs to prevent fork bombs" under
+    # deploy.resources and then set NOTHING. Containment did not exist.
+    #
+    # It has to be the top-level `pids_limit`, not a deploy.resources entry:
+    # `docker compose up` ignores most of `deploy` outside swarm mode, which is
+    # part of why the gap went unnoticed. 512 is comfortably above what a
+    # legitimate compile needs (javac and dotnet each spawn a handful) and far
+    # below what a fork bomb needs to hurt the host.
+    pids_limit: 512
     security_opt:
       - no-new-privileges:true
     read_only: false  # Needed for temp files during code execution
@@ -69,7 +80,7 @@ services:
     cap_add:
       - SETUID
       - SETGID
-    # SECURITY: Network isolation - no external network access
+    # No egress: the `internal` network sets `internal: true` (V-07).
     networks:
       - internal
     healthcheck:
@@ -86,10 +97,13 @@ services:
         limits:
           memory: 1G
           cpus: '1.0'
+          # Kept in step with the top-level pids_limit above: compose refuses a
+          # project where the two disagree, and swarm reads this one while
+          # `docker compose up` reads the other.
+          pids: 512
         reservations:
           memory: 256M
           cpus: '0.25'
-        # SECURITY: Limit PIDs to prevent fork bombs
       
   # ============================================
   # AUTOSCALER - Monitors load & scales API
@@ -144,8 +158,20 @@ services:
         limits:
           memory: 256M
 
+# ── V-07: the network named "internal" was not internal ─────────────────────
+# `driver: bridge` alone creates an ordinary bridge WITH NAT egress, so the
+# comment "no external network access" on the api service described a property
+# the file did not configure. `internal: true` is the attribute that actually
+# removes the default route, and without it a student's program could reach the
+# internet from inside the sandbox.
+#
+# Everything this stack needs is reachable without egress: nginx talks to api
+# over this network, the security tests talk to api by service name, and the
+# language toolchains are baked into the image. The api service is on `internal`
+# ONLY; nginx is additionally on `default` so it can be published.
 networks:
   internal:
     driver: bridge
+    internal: true
   default:
     driver: bridge

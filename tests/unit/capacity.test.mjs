@@ -15,8 +15,17 @@ import { CONFIG, MEMORY_BUDGET, deriveMaxConcurrent } from '../../server/config.
 
 describe('deriveMaxConcurrent', () => {
   test('a 1 GiB container gets a limit that fits in 1 GiB', () => {
-    // (1024 - 256 reserved) / 50 per run = 15.
+    // reserve = clamp(128, 256, 1024/4) = 256; (1024 - 256) / 50 = 15.
     assert.equal(deriveMaxConcurrent({ budgetMb: 1024 }), 15);
+  });
+
+  test('the reserve is proportionate, so a small container is not starved', () => {
+    // The production compose limit is 512 MB. A flat 256 MB reserve would take half
+    // the budget and leave room for five runs; a quarter leaves room for seven.
+    assert.equal(deriveMaxConcurrent({ budgetMb: 512 }), 7);
+    // ...and above 1 GB the reserve stops growing, because more than 256 MB for
+    // express plus a session registry is waste.
+    assert.equal(deriveMaxConcurrent({ budgetMb: 4096 }), 76);
   });
 
   test('the old formula would have allowed 500 for the same container', () => {
@@ -41,7 +50,7 @@ describe('deriveMaxConcurrent', () => {
 
   test('a tiny container still runs one program rather than refusing everything', () => {
     // Returning 0 would make every request 503 and look like a broken deployment.
-    assert.equal(deriveMaxConcurrent({ budgetMb: 256 }), 1);
+    assert.equal(deriveMaxConcurrent({ budgetMb: 256 }), 2);
     assert.equal(deriveMaxConcurrent({ budgetMb: 10 }), 1);
     assert.equal(deriveMaxConcurrent({ budgetMb: 0 }), 1);
   });
