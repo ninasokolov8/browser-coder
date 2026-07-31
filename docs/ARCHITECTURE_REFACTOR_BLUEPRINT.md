@@ -4647,3 +4647,90 @@ that a file the host drops is removed rather than lingering.
 
 `npm run test:browser` now runs all three suites: workspace (24), app-boot (26),
 embedded (19).
+
+---
+
+### A5/A6 - server.mjs becomes a composition root
+
+Commits: `20891b9` (previews), `69a5a1a` (middleware), `363315e` (composition root)
+
+**4,563 -> 223 lines** across the whole refactor; 1,532 -> 223 in this step. What
+remains is only wiring: what exists, in what order, and what starts when.
+
+| Module | Was |
+|---|---|
+| `server/previews/project.mjs` | path rules and project validation - now **pure** |
+| `server/previews/shell.mjs` | the iframe wrappers and escaping - now **pure** |
+| `server/previews/headers.mjs` | MIME table, CSP policy, active-document rule |
+| `server/previews/store.mjs` | `PreviewStore`: filesystem, publish, cleanup |
+| `server/http/middleware/request-context.mjs` | proxy trust, body limits, request id |
+| `server/http/middleware/cors.mjs` | origin allowlist and CORS (V-46) |
+| `server/http/middleware/rate-limit.mjs` | `RateLimiter`, internal exemption (N-01) |
+| `server/http/routes/{previews,health,languages,reports}.mjs` | the route groups |
+| `server/http/lifecycle.mjs` | ordered drain and signal handling (V-30) |
+
+**Import-time side effects are gone.** The old file created the preview storage
+directory, armed a cleanup interval, kicked off a sweep, and constructed a
+`RateLimiter` whose constructor called a bare `setInterval` - so merely *importing*
+the server touched the filesystem and started unstoppable background work that held
+the event loop open during shutdown. Everything with a side effect is now an
+explicit `start()` from the composition root, and every timer is unref'd and
+stoppable. `PreviewStore.start()` returns whether storage is usable rather than
+throwing, because a server that cannot write previews must still run code.
+
+**Two workarounds removed rather than moved.** `let shuttingDown` sat near the top
+of the file with a comment explaining it had to be declared there so the health
+handlers could read it without hitting a temporal dead zone - a workaround for the
+handlers and the drain living in one file. The lifecycle owns the flag now and
+health takes an `isShuttingDown()` callback, so the hazard is gone rather than
+commented. The language config cache moved in with the routes that use it instead
+of remaining two loose module-level bindings.
+
+#### N-13: a path traversal, found while extracting the starter route
+
+Express matches `:language` against a single path **segment** of the raw URL and
+then percent-decodes it. So `..%2F..%2Fbait` contains no literal slash, matches as
+one segment, and reaches the handler already decoded to `../../bait`. The handler
+joined that straight onto the languages directory.
+
+Exploitation needs a file at `<escaped path>/starters/<version>.<ext>`, and for an
+unrecognised language `extensionFor` falls back to `.txt` - so the primitive is
+constrained, but real. Confirmed by planting a file **outside the repository root**
+and reading it back over plain HTTP, unauthenticated:
+
+```
+GET /api/starter/..%2F..%2Fbait-dir/leak
+200 {"code":"SECRET-OUTSIDE-ROOT"}
+```
+
+Fixed by re-resolving and requiring containment beneath the languages directory
+before the file is opened. Severity: unauthenticated arbitrary read, restricted to
+paths ending `/starters/<name>.<ext>`. Not in the original assessment, and not
+something the extraction created - it has been shipped behaviour.
+
+**The first version of the gate passed against the vulnerable code**, because it
+probed a path that does not exist and returns 404 either way. It now plants a real
+file and was verified to fail with the guard removed, reporting the leaked contents
+in the assertion message. That is the third time in this refactor a test passed for
+the wrong reason - after the V-02 policy-rejected probe and the smoke harness that
+announced PASSED on an exception - which is why the negative check is a standing
+step rather than a formality.
+
+#### New coverage
+
+**57 new unit tests** (192 total), covering what previously could only be observed
+through a live server:
+
+- preview containment, including the `a/../b` case that normalizes to something
+  harmless but is still refused, because accepting it would make the check depend
+  on normalization order
+- the sibling-prefix case: `/previews/<id>-evil` must not pass as being inside
+  `/previews/<id>`
+- the V-04 sandbox tokens, asserted as absent rather than assumed
+- **the N-01 bypass attempted directly**: a public peer sending
+  `X-Forwarded-For: 10.0.0.1` is not exempt and is throttled; a private peer that
+  forwarded a client address is the *proxy*, not an internal caller; addresses that
+  merely resemble a private range (172.32, 172.15, 100.64) are not exempt
+- the V-46 lookalikes: `stepup.school.attacker.com`, `evil-stepup.school`
+
+Contract: 54 pass / 0 fail / 11 skip / 1 todo - unchanged behaviour, three new gates.
