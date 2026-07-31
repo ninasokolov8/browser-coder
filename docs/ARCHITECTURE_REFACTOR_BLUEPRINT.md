@@ -5131,3 +5131,244 @@ Full Step-Up Unit suite: **458 tests, 1146 assertions, all passing.**
 Deploy order, unchanged from 33.3: **Browser Coder accepts first, then Step-Up
 sends.** Nothing here depends on a Browser Coder change, so the two can ship
 independently.
+
+---
+
+## 35. Gap analysis after phases A-G
+
+Written after the refactor, against the running code, with every claim checked
+rather than recalled. Phases A-G closed the defects the audit *found*; this section
+is about what the audit and the plan never asked.
+
+The organising observation: **the refactor fixed correctness, not capability.** The
+IDE is now safe, honest and well-structured. It is not yet a development
+environment, because for four of its six languages the editor cannot tell the
+student anything the compiler knows.
+
+### 35.1 The plan's own promise that was not delivered
+
+Section 12 says every run becomes "a live session with open stdin", and that this
+"removes the stdin-detection regex entirely".
+
+Half of that shipped. `server/execution/pipeline.mjs` really does always spawn with
+`stdin: true`, and the buffered route simply calls `closeStdin()` immediately. But
+the **client** still decides the transport by pattern-matching the source:
+
+```ts
+// src/features/execution.ts
+if (!appConfig.noOutput && payloadReadsStdin(lang.id, requestBody)) { … interactive … }
+const resp = await fetch("/api/run", …);   // otherwise: buffered JSON
+```
+
+`payloadReadsStdin` is the regex the plan said would be deleted. Three consequences,
+all user-visible:
+
+1. **Output does not stream for an ordinary run.** A program that prints for ten
+   seconds shows nothing for ten seconds, then everything. Every real IDE streams.
+2. **A missed detection is a hang.** The regex looks for `input(`, `Scanner`,
+   `readline`, `Console.ReadLine`, `STDIN`. Anything else - a helper that wraps
+   `input()` behind an indirection the regex cannot see, `fileinput`, a language
+   idiom not on the list - takes the buffered path and blocks until the timeout with
+   no prompt.
+3. **Two client paths remain**, with two result shapes, two error renderings and two
+   places to change anything about running code.
+
+The fix is to delete the regex and make the streaming route the only route. The
+server is already built for it. This is the single largest gap and the one the
+original plan explicitly intended to close.
+
+### 35.2 The editor never learns what the compiler knows
+
+`monaco.editor.setModelMarkers` is called **nowhere** in `src/`. Verified by
+grep across the whole tree.
+
+So when javac, dotnet, PHP or Python reports an error, it is rendered as text in the
+output panel and nothing else happens. No squiggle. No red line. No entry in the
+Problems panel. No way to click to the offending line. For four of six languages the
+editor is a text box that occasionally receives a paragraph of compiler output.
+
+Phase E built `DiagnosticsStore` with a **per-producer key** specifically so a
+`server` producer could sit alongside `ts` - and then only wired the Monaco one.
+That is an omission in my implementation, not in the plan.
+
+What is missing is a per-language diagnostic parser: javac's
+`Main.java:12: error: ';' expected`, dotnet's
+`Program.cs(4,17): error CS1002:`, Python's traceback tail, PHP's
+`Parse error: … on line 7`. Each is a small, well-defined regex, and each turns a
+paragraph of text into a marker with a line, a column and a severity.
+
+**Also missing: only TypeScript gates a run.** `runCode` checks markers for
+`lang.id === 'typescript'`. JavaScript has full Monaco diagnostics and is not gated.
+
+### 35.3 Language support is six tokenizers and two language services
+
+Monaco bundles language *services* for exactly four languages:
+
+```
+node_modules/monaco-editor/esm/vs/language/  ->  css, html, json, typescript
+```
+
+Everything else - `python`, `java`, `php`, `csharp` - comes from `basic-languages`,
+which provides a **tokenizer and bracket/comment configuration only**. Concretely,
+for those four languages the IDE has:
+
+| Feature | TS/JS | Python, Java, PHP, C# |
+|---|---|---|
+| Syntax colouring | yes | **yes** |
+| Bracket matching, folding, comment toggle | yes | yes |
+| Error squiggles | yes | **no** |
+| Real completion (types, members) | yes | **no** - word-based guesses only |
+| Signature help | yes | no |
+| Format document | yes | **no** |
+| Rename symbol, find references | yes | no |
+| Go to definition | yes | a custom regex implementation |
+
+Two things follow that should be said plainly:
+
+- **"Format Document" is a command that lies.** Phase D registered
+  `editor.formatDocument` and bound Ctrl+Shift+F. For Python, Java, PHP and C#
+  Monaco has no formatting provider, so it does nothing. Registering a command that
+  cannot work is worse than not having it - it is the enablement/visibility problem
+  V-17 was about, one layer up.
+- **Completion for four languages is `showWords: true`** - suggestions drawn from
+  words already in the buffer. It looks like IntelliSense and is not.
+
+Closing this properly means a language server per language, which is the LSP work
+33.4 records as not attempted. There is a cheaper intermediate: send the file to the
+existing `/api/run` compile phase on idle and turn the result into markers. That
+gives real, compiler-accurate errors for every language without an LSP fleet, at the
+cost of latency and a run slot.
+
+### 35.4 HTML, CSS, SVG, JSON and Markdown are second-class
+
+There is no `languages/html/config.json` - or css, svg, json, markdown. The
+consequences:
+
+- They are absent from the language dropdown.
+- `detectLanguageByExtension('index.html')` returns `undefined`, so a host-supplied
+  or imported HTML file **falls back to the default language** and is stored as, and
+  syntax-coloured as, JavaScript.
+- The preview feature recognises them by *file extension* in `live-preview.ts`,
+  entirely separately from the language registry - so the IDE simultaneously does
+  and does not know what an HTML file is.
+
+The irony is that Monaco already bundles **full html, css and json language
+services** - formatting, completion, validation - and the IDE cannot reach them
+because no language is registered. Adding four config files is the cheapest
+significant capability increase available.
+
+PNG and other binary assets are not representable at all: `StoredFile.content` is a
+`string`, so an image can only exist as an SVG (text) or a data URI pasted into
+source. `svg-assets.ts` and `image-window.ts` handle SVG specifically.
+
+### 35.5 The security policy now defends a boundary that moved
+
+Measured against the live validator:
+
+| Program | Verdict |
+|---|---|
+| `import random`, `turtle`, `math`, `json`, `datetime`, `collections`, `typing`, `itertools`, `re`, `dataclasses` | allowed |
+| `import os` / `os.system(...)` | **blocked** (correct) |
+| `import sys` → `sys.exit(0)` | **blocked** |
+| `open("data.txt")` | **blocked** |
+| `eval(input())` | **blocked** |
+| `from pathlib import Path` | **blocked** |
+| `import io`, `threading`, `sqlite3` | **blocked** |
+
+So the answer to "full library support" is: the *named* libraries work - `random`
+and `turtle` both do - but **file handling, `sys.exit`, and `eval` do not**, and
+those are standard curriculum topics. A "read a file and count the words" exercise
+cannot run.
+
+The important part is *why this is now the wrong trade*. When the blocklist was
+written, the regex was the only boundary. After Phase F it is not:
+
+- the network is `internal: true` - verified, `ENETUNREACH` from inside
+- the root filesystem is read-only, with the job directory on tmpfs
+- `cap_drop: ALL`, `no-new-privileges`, `pids_limit: 512`
+- each job gets a private 0o700 directory, reaped afterwards
+
+`socket`, `urllib` and `requests` cannot reach anything. `open()` cannot escape the
+job directory. The regex is now redundant for the threats the kernel handles, and
+actively harmful for teaching. It should be narrowed to what containment genuinely
+cannot catch - and the blocklist's own value re-examined, since a blocklist is a
+guess about attacker vocabulary while the container is a boundary.
+
+### 35.6 Versions are thinner than the dropdown suggests
+
+Python offers exactly **one** version. Java offers 11 and 17 but the image carries
+one JDK, so `java11` is `--release 11` on JDK 17 - correct bytecode, but not a real
+Java 11. C# 10 and 12 are `<LangVersion>` on one SDK. V-32 now refuses an unknown
+version and reports a fallback honestly, which is the right behaviour, but "multiple
+versions" mostly means multiple language levels on one toolchain. Real multi-version
+support means multiple toolchains in the image and a larger image.
+
+### 35.7 Debugging: not started, and correctly identified as large
+
+Nothing exists. Even the prerequisites are absent: `glyphMargin` is not enabled on
+the editor, which is where breakpoint dots live.
+
+A real debugger needs a stateful session with pause/resume semantics - the
+architecture is close, because the interactive session already is exactly that
+shape: a long-lived process with a live bidirectional channel. What is missing is a
+debug adapter per language:
+
+| Language | Adapter | Notes |
+|---|---|---|
+| Python | `debugpy` | speaks DAP directly; by far the best first target |
+| JS/TS | node `--inspect` | CDP, needs translation to DAP |
+| Java | JDWP | `-agentlib:jdwp`, then a DAP bridge |
+| C# | `netcoredbg` | separate binary in the image |
+| PHP | Xdebug | separate extension |
+
+Honest recommendation: **Python-only, via debugpy, as a vertical slice.** It covers
+the majority of use, proves the UI and the session protocol, and does not commit to
+five adapters. Breakpoints, step over/into/out, continue, stop, variables and call
+stack are one coherent piece of work on top of the session machinery that already
+exists.
+
+### 35.8 Structure: what I would still change
+
+The server is now clean - a 223-line composition root over focused modules. The
+client is not symmetric with it.
+
+- **`src/features/explorer/import-refactor.ts`, 1,070 lines** - the largest file in
+  the repo. It does path arithmetic *and* language-specific import rewriting for
+  eight languages in one module, with the per-language knowledge inline. This is
+  precisely the shape `server/languages/adapters/` replaced on the server. It should
+  become an adapter per language behind one interface.
+- **`src/features/execution.ts`, 627 lines** - still decides the transport, renders
+  run results as HTML, handles SVG preview, and hosts the keyword-help context menu.
+  Three unrelated jobs.
+- **There is no client-side language registry** matching the server's. Language
+  knowledge is scattered across `codeReadsStdin` (a switch), `getCompileLabel` (a
+  switch), `detectImportLanguage` (a switch), and the error-cleaning paths. Every one
+  of those is a place to forget a language when adding the seventh.
+- **`storage.ts` is a compatibility facade** that was always meant to be temporary.
+  Ten modules still call it instead of `runtime.workspace`.
+
+### 35.9 Editor surface a real IDE has and this does not
+
+Verified absent: minimap (explicitly `enabled: false`), breadcrumbs, `glyphMargin`,
+quick-open by filename (Ctrl+P - the palette added in Phase E is commands only),
+split/side-by-side editors, diff view, find-all-references, rename symbol,
+snippets, a real terminal.
+
+Present and working: multi-cursor, folding, bracket-pair colourisation, word wrap,
+find/replace across files, drag-and-drop import, ZIP export, go-to-definition
+(custom), keyword help, the Problems panel and the command palette.
+
+### 35.10 Priority
+
+Ordered by user-visible value per unit of risk.
+
+| # | Item | Why first |
+|---|---|---|
+| 1 | Delete the stdin regex; make every run stream | The plan promised it, the server is ready, and it removes a hang |
+| 2 | Server diagnostics → Monaco markers | Turns four languages from "text box" into "editor"; the store already has the seam |
+| 3 | Register html/css/json/markdown as languages | Four config files unlock language services Monaco already ships |
+| 4 | Narrow the Python blocklist to what the container cannot contain | Restores file handling and `sys.exit` to the curriculum |
+| 5 | Remove or gate `formatDocument` per language | A command that silently does nothing is worse than no command |
+| 6 | Client language-adapter registry; split import-refactor and execution | Removes the last "add a language, edit six switches" hazard |
+| 7 | Debugging, Python-first via debugpy | Large but well-scoped once 1 is done |
+| 8 | Quick-open, breadcrumbs, minimap | Cheap familiarity wins |
