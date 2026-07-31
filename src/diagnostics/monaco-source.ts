@@ -14,6 +14,7 @@
 
 import * as monaco from 'monaco-editor';
 
+import { RUN_MARKER_OWNER } from './server-source.ts';
 import type { DiagnosticsStore, Diagnostic, DiagnosticSeverity } from './store.ts';
 import type { MonacoModelRegistry } from '../workspace/monaco/model-registry.ts';
 import type { WorkspaceService } from '../workspace/service.ts';
@@ -79,6 +80,10 @@ export function connectMonacoDiagnostics({
 
     const diagnostics: Diagnostic[] = monaco.editor
       .getModelMarkers({ resource: uri })
+      // Skip our own run markers. Writing a marker fires onDidChangeMarkers, so
+      // mirroring them back into the store would republish every run diagnostic
+      // under the `ts` producer - a feedback loop that duplicates each one.
+      .filter(marker => marker.owner !== RUN_MARKER_OWNER)
       .map(marker => ({
         documentId: document.id,
         path: document.path,

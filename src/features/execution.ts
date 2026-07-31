@@ -14,6 +14,7 @@ import { clearTurtleCanvas } from '../components/turtle';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runBtn } from '../components/dom';
 import { bindButton, bindKeybinding } from '../commands';
+import { publishRunDiagnostics } from '../diagnostics/server-source';
 import { getOrCreateModel } from './editor-core';
 import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
@@ -215,6 +216,26 @@ requestBody = {
           normalizeProjectPath(activeTab.file.path || activeTab.file.name),
         ),
     });
+
+    // Compiler and runtime errors become editor markers and Problems entries, not
+    // just a paragraph of text. For Python, Java, PHP and C# this is the ONLY thing
+    // that knows what is wrong - Monaco has no language service for them.
+    if (runtime.workspace && runtime.models && runtime.diagnostics) {
+      publishRunDiagnostics({
+        store: runtime.diagnostics,
+        service: runtime.workspace,
+        models: runtime.models,
+        languageId: lang.id,
+        // Both streams: javac and node use stderr, php -l splits across the two,
+        // and a Python traceback can arrive on either depending on the phase.
+        output: `${result.stderr || ''}
+${result.stdout || ''}`,
+        entryDocumentId: activeTab.file.id,
+        documentCount: Array.isArray(requestBody.files)
+          ? (requestBody.files as unknown[]).length
+          : 1,
+      });
+    }
 
     if (appConfig.isEmbedded) {
       notifyRunResult({

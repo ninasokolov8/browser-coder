@@ -6,6 +6,7 @@ import { createWorkspace } from './workspace';
 import { createCommandRegistry } from './commands';
 import { DiagnosticsStore } from './diagnostics/store';
 import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
+import { connectRunMarkers } from './diagnostics/server-source';
 import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
 import { initializeCommandPalette } from './features/command-palette';
 import { appConfig, applyModeClasses } from './app/config';
@@ -144,6 +145,10 @@ async function bootstrap(): Promise<void> {
     models: workspace.models,
     service: workspace.service,
   });
+  // Squiggles for compiler errors. Driven by the store rather than written at
+  // publish time, so a stale result being discarded also clears its marker.
+  connectRunMarkers({ store: diagnostics, models: workspace.models, service: workspace.service });
+
   initializeProblemsPanel(diagnostics);
 
   runtime.commands!.register({

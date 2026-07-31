@@ -73,12 +73,28 @@ export const phpAdapter = {
     });
 
     if (!lint.termination.succeeded) {
-      // php -l writes its diagnosis to stdout, not stderr.
-      const raw = (lint.stdout || lint.stderr || '').trim();
-      const cleaned = stripJobPaths(raw, job.dir)
-        .replace(/\nErrors parsing[^\n]*$/m, '')
+      // BOTH streams, because php -l splits its answer across them:
+      //
+      //   stderr: PHP Parse error:  syntax error, unexpected token "echo", …
+      //           in /job/main.php on line 3
+      //   stdout: Errors parsing /job/main.php
+      //
+      // The previous `lint.stdout || lint.stderr` took stdout because it was
+      // non-empty, and then stripped the "Errors parsing" line as noise - leaving
+      // NOTHING. Every PHP syntax error reported as the bare string
+      // "Errors parsing main.php": no message, no line number, nothing to act on.
+      const combined = [lint.stderr, lint.stdout]
+        .map(part => (part || '').trim())
+        .filter(Boolean)
+        .join('\n');
+
+      const cleaned = stripJobPaths(combined, job.dir)
+        // Now safe to drop: it is a summary of the real message above it, and it
+        // is only removed when something else survives.
+        .replace(/^Errors parsing[^\n]*$/gm, '')
         .trim();
-      return diagnostics(cleaned || raw, lint.durationMs);
+
+      return diagnostics(cleaned || combined, lint.durationMs);
     }
 
     return {

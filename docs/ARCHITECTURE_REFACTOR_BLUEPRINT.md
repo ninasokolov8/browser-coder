@@ -5372,3 +5372,125 @@ Ordered by user-visible value per unit of risk.
 | 6 | Client language-adapter registry; split import-refactor and execution | Removes the last "add a language, edit six switches" hazard |
 | 7 | Debugging, Python-first via debugpy | Large but well-scoped once 1 is done |
 | 8 | Quick-open, breadcrumbs, minimap | Cheap familiarity wins |
+
+## 36. Closing the gaps (H-series)
+
+### H2 - The editor learns what the compiler knows
+
+Closes §35.2. Before this, `monaco.editor.setModelMarkers` was called nowhere in
+the codebase. For Python, Java, PHP and C# - which have no Monaco language service
+- a compile or runtime error produced a paragraph of text in the output panel and
+nothing else: no squiggle, no Problems entry, no click target, no line number the
+editor understood.
+
+**Written against captured output, not documentation.** Every parser fixture in
+`tests/unit/compiler-output.test.ts` is real text taken from the production image
+by running a broken program through `/api/run`. This mattered more than usual: a
+parser written from memory matches nothing, and a diagnostics pipeline that
+produces no diagnostics is indistinguishable from a working one that found no
+problems. Capturing the output first is also what exposed the two adapter bugs
+below - both invisible from the client, both making the parser's job impossible.
+
+#### Two adapter defects found while capturing fixtures
+
+**C# ran the template, never the student's code.** `prepare()` copied the project
+template over the job directory with `force: true` and no filter. `job.writeFiles`
+had already written `Program.cs`; the copy overwrote it. Every C# program printed
+the template's output and exited 0 - including programs that could not compile.
+
+```js
+fs.cpSync(templateDir, job.dir, {
+  recursive: true,
+  force: true,
+  filter: source => !source.toLowerCase().endsWith('.cs'),
+});
+```
+
+**PHP discarded its own error message.** The lint step took `lint.stdout ||
+lint.stderr`. `php -l` writes the summary ("Errors parsing main.php") to stdout and
+the actual diagnosis to stderr, so the `||` selected the useless half and dropped
+the useful one - and a later `.replace` stripped the summary, leaving an empty
+error. Both streams are now combined before cleaning.
+
+Both were verified against a rebuilt image, not by reading the diff.
+
+#### The pipeline
+
+`src/diagnostics/compiler-output.ts` - six parsers, one per language, each
+returning `{ file, line, column?, severity, message }`. Real formats:
+
+| Language | Shape |
+|---|---|
+| Python | `  File "main.py", line 2` … `NameError: name 'y' is not defined` |
+| javac | `Main.java:1: error: illegal start of expression` |
+| C# | `Program.cs(1,9): error CS1525: Invalid expression term ';'` |
+| PHP | `PHP Parse error:  syntax error, … in main.php on line 3` |
+| node | `file://main.mjs:2` … `at file://main.mjs:2:1` |
+| tsc | `main.ts:1:7 - error TS2322: Type 'string' is not assignable…` |
+
+Three properties are deliberate:
+
+- **A Python traceback blames the deepest frame.** Frames are listed
+  outermost-first, so reporting the first would point at the call site rather than
+  the fault.
+- **Node's own frames are never blamed.** `node:internal/modules/...` is a file the
+  student cannot open and did not write.
+- **Unparseable output produces nothing.** A marker on the wrong line sends the
+  student to correct code, which is worse than no marker. Every language has a
+  test asserting that unrecognised text yields an empty list.
+
+`src/diagnostics/server-source.ts` publishes into the existing revision-guarded
+store and mirrors the store into Monaco:
+
+- **Bound to the revision the run executed.** If the student edited during the
+  round trip, the store discards the result rather than pointing at moved lines.
+- **Filename resolution refuses to guess.** The server runs snippets as `main.py`,
+  `Main.java` or `Program.cs` whatever the tab is called, so an exact path match is
+  tried, then a unique basename match, and only then the entry document - and that
+  last fallback applies only when the run contained one file.
+- **Markers are clamped to the model.** A compiler can name a line past the end of
+  what the editor now holds, and Monaco throws on an out-of-range marker.
+- **Underlines run to end of line.** Compilers rarely give an end column and a
+  one-character squiggle is easy to miss.
+
+#### The feedback loop, and the test that nearly missed it
+
+Writing a marker fires `onDidChangeMarkers`, which `monaco-source.ts` handles by
+republishing every marker on that model into the store under the `ts` producer -
+including the run markers it just received. One filter on `marker.owner` prevents
+it.
+
+The first version of the browser assertion passed with that filter deleted. Two
+reasons, both worth recording:
+
+1. It looked for any `ts` diagnostic on line 2. Monaco's JavaScript worker
+   legitimately reports `Cannot find name 'notDefinedAnywhere'` there, so the check
+   would have failed against correct code too. The discriminator is the *message*:
+   a mirror carries the run's wording verbatim.
+2. It read the store immediately. Monaco's marker events are debounced, so the
+   mirror arrives a few hundred milliseconds after the run marker - after the
+   assertion had already run. `settleDiagnostics` now waits for the document's
+   diagnostics to stop changing.
+
+With both corrected, removing the filter fails the test with
+`L2:ReferenceError: notDefinedAnywhere is not defined`, and restoring it passes.
+
+#### Verification
+
+- `tests/unit/compiler-output.test.ts` - 17 tests over real captured output.
+- `tests/browser/app-boot.ts` - drives `workspace.run` on a failing program through
+  the real command registry and asserts the marker exists, is on line 2, carries
+  the compiler's message, has Error severity, reaches the Problems store, and is
+  not mirrored. Also asserts JavaScript is checked statically before any run.
+- Full suite green: typecheck, 267 unit, 57 contract (11 skipped for toolchains
+  absent from the host), all three browser suites.
+
+#### Not done in H2
+
+- Diagnostics are cleared and republished per run, so errors from a previous run in
+  a *different* language are dropped. Correct for the single-language runs the IDE
+  performs, but it means a polyglot project cannot show both at once.
+- The parsers cover the six languages the IDE runs. Adding a language still means
+  adding a parser; there is no generic fallback, by choice - see "refuses to guess".
+- Warnings are parsed for Java and PHP only, because the other four toolchains are
+  not invoked in a mode that emits them.

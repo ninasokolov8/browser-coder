@@ -189,13 +189,24 @@ export const csharpAdapter = {
     try {
       const templateDir = await ensureTemplate(ctx, profile);
       if (fs.existsSync(templateDir)) {
-        fs.cpSync(templateDir, job.dir, { recursive: true, force: true });
-        // The template's placeholder Program.cs would otherwise declare a second
-        // entry point and fail the build with CS0017.
-        const placeholder = path.join(job.dir, 'Program.cs');
-        if (!sourceFiles.some(file => file.name === 'Program.cs') && fs.existsSync(placeholder)) {
-          fs.rmSync(placeholder, { force: true });
-        }
+        // NEVER copy the template's source. The pipeline writes the student's
+        // files into job.dir BEFORE prepare() runs (see pipeline.mjs:
+        // job.writeFiles then adapter.prepare), and `force: true` overwrote them -
+        // so the template's placeholder `Console.WriteLine("template")` replaced
+        // Program.cs and EVERY C# program printed "template" and exited 0. The
+        // student's code was never compiled.
+        //
+        // The placeholder-removal guard below this used to be the only defence,
+        // and it only fired when the student had NOT supplied a Program.cs - which
+        // is the one case where nothing needed protecting.
+        //
+        // Only the build state is worth copying: obj/ and bin/ hold the restored
+        // package graph, which is the entire point of warming a template.
+        fs.cpSync(templateDir, job.dir, {
+          recursive: true,
+          force: true,
+          filter: source => !source.toLowerCase().endsWith('.cs'),
+        });
       }
     } catch (error) {
       log('warn', 'csharp_template_copy_failed', { error: error.message });

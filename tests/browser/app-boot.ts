@@ -357,6 +357,188 @@ async function checkEveryRunStreams(frameWindow: Window): Promise<void> {
   );
 }
 
+/**
+ * Wait until the diagnostics for one document stop changing.
+ *
+ * Needed because the producers answer on different schedules: the run publishes
+ * synchronously when the stream closes, while Monaco's marker events are debounced.
+ * Reading the store at the first sign of either one measures a half-finished state.
+ */
+async function settleDiagnostics(
+  store: { all(): Array<{ documentId: string; source: string; line: number; message: string }> },
+  documentId: string,
+  quietPolls = 5,
+  intervalMs = 200,
+  maxMs = 10000,
+): Promise<void> {
+  const snapshot = () =>
+    JSON.stringify(
+      store
+        .all()
+        .filter(diagnostic => diagnostic.documentId === documentId)
+        .map(diagnostic => `${diagnostic.source}:${diagnostic.line}:${diagnostic.message}`)
+        .sort(),
+    );
+
+  const deadline = Date.now() + maxMs;
+  let previous = snapshot();
+  let stable = 0;
+
+  while (Date.now() < deadline && stable < quietPolls) {
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+    const current = snapshot();
+    stable = current === previous ? stable + 1 : 0;
+    previous = current;
+  }
+}
+
+/**
+ * A failed run must put a squiggle on the line, not just text in a panel.
+ *
+ * This is the capability the IDE did not have: `setModelMarkers` was called
+ * nowhere, so for Python, Java, PHP and C# - which have no Monaco language service
+ * - a compiler error produced no marker, no Problems entry and nothing to click.
+ *
+ * Driven through the real command, so it exercises parsing, document resolution and
+ * marker writing together rather than calling the parser directly. JavaScript is
+ * used because its failure is reproducible on any host; the parsers for the other
+ * five are unit-tested against output captured from the production image.
+ */
+async function checkRunErrorsBecomeMarkers(frameWindow: Window): Promise<void> {
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') })
+    .__bcMonaco;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!monacoApi || !runtime) {
+    check('monaco and runtime are reachable for the marker check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const models = runtime.models as {
+    peek(id: string): { uri: { toString(): string } } | null;
+    ensureModelsFor(languageIds: readonly string[]): void;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
+
+  // A program that throws at a line we choose, so the reported line can be asserted
+  // rather than merely being present.
+  const broken = await workspace.createDocument({
+    name: 'marker-probe.js',
+    language: 'javascript',
+    version: 'es2022',
+    content: 'console.log("before");\nnotDefinedAnywhere();\n',
+  });
+
+  models.ensureModelsFor(['javascript']);
+  await tabManager.switchToTab(broken.id);
+
+  const outcome = await commands.execute('workspace.run', { source: 'api' });
+  check('the failing run executed', outcome.status === 'ran', `status ${outcome.status}`);
+
+  const model = models.peek(broken.id);
+  check('the failing document has a model', model !== null);
+  if (!model) return;
+
+  const runMarkersNow = () =>
+    monacoApi.editor
+      .getModelMarkers({})
+      .filter(
+        marker =>
+          marker.resource.toString() === model.uri.toString() &&
+          marker.owner === 'browser-coder-run',
+      );
+
+  // runCode publishes after the stream closes, but the store notifies listeners
+  // asynchronously, so the marker lands a tick or two later.
+  const appeared = await waitFor('a marker from the failed run', () => runMarkersNow().length > 0, 30000);
+  check('a runtime error becomes an editor marker', appeared);
+
+  const runMarkers = runMarkersNow();
+  lines.push(
+    `INFO run markers: ${runMarkers.map(m => `L${m.startLineNumber}:${m.message}`).join(' | ') || '(none)'}`,
+  );
+  if (runMarkers.length === 0) return;
+
+  const marker = runMarkers[0];
+  // Line 2 is `notDefinedAnywhere()`. A marker on the wrong line sends the student
+  // to correct code, so the number is asserted, not just the presence.
+  check(
+    'the marker is on the line that actually failed',
+    marker.startLineNumber === 2,
+    `marker was on line ${marker.startLineNumber}`,
+  );
+  check(
+    'the marker carries the real error message',
+    /ReferenceError|notDefinedAnywhere/.test(marker.message),
+    marker.message,
+  );
+  check(
+    'it is reported as an error, not a warning',
+    marker.severity === monacoApi.MarkerSeverity.Error,
+    `severity ${marker.severity}`,
+  );
+
+  // And the Problems panel reads the same store, so it must be listed there too.
+  const store = runtime.diagnostics as {
+    all(): Array<{ documentId: string; source: string; line: number; message: string }>;
+  };
+
+  // Settle before reading the store.
+  //
+  // Monaco fires onDidChangeMarkers on a debounce, so a mirror of the run markers
+  // would arrive a few hundred milliseconds AFTER the run marker itself. Asserting
+  // immediately passes whether or not the loop exists - which is exactly what this
+  // check did until removing the guard failed to break it.
+  await settleDiagnostics(store, broken.id);
+
+  const sources = [...new Set(store.all().map(diagnostic => diagnostic.source))];
+  check(
+    'the failure reaches the Problems store as well',
+    sources.includes('javascript'),
+    `sources: ${sources.join(', ') || '(none)'}`,
+  );
+
+  // The run producer must not be mirrored back under the `ts` producer: writing a
+  // marker fires onDidChangeMarkers, so without the exclusion in monaco-source.ts
+  // every run diagnostic is republished as a `ts` one and listed twice.
+  //
+  // The discriminator is the MESSAGE, not the line or the count. Monaco's own JS
+  // worker legitimately flags this same line ("Cannot find name ..."), so counting
+  // `ts` diagnostics on this document would fail against correct code. A mirror is
+  // identifiable by carrying the run's wording verbatim.
+  const mirrored = store
+    .all()
+    .filter(
+      diagnostic =>
+        diagnostic.documentId === broken.id &&
+        diagnostic.source === 'ts' &&
+        diagnostic.message === marker.message,
+    );
+  check(
+    'run markers are not mirrored back as a second diagnostic',
+    mirrored.length === 0,
+    mirrored.map(diagnostic => `L${diagnostic.line}:${diagnostic.message}`).join(' | '),
+  );
+
+  // Monaco checks JavaScript semantically, so this error is ALSO caught before the
+  // run. Asserting it here keeps that from being switched off unnoticed - it is the
+  // difference between a JS typo showing instantly and only after a round trip.
+  const staticallyCaught = store
+    .all()
+    .some(
+      diagnostic =>
+        diagnostic.documentId === broken.id &&
+        diagnostic.source === 'ts' &&
+        /notDefinedAnywhere/.test(diagnostic.message),
+    );
+  check('JavaScript is also checked statically, before any run', staticallyCaught);
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -508,6 +690,7 @@ async function run(): Promise<void> {
   await checkCrossFileTypeScript(frameWindow);
   await checkProblemsAndPalette(frameWindow);
   await checkEveryRunStreams(frameWindow);
+  await checkRunErrorsBecomeMarkers(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.
