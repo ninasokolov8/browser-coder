@@ -3,6 +3,7 @@ import { initI18n, setLanguage, getLanguage as getUILang } from './i18n';
 import { getAllLanguages, getLanguage, preloadDefaultStarters } from './languages';
 import { setWorkspaceService, storage } from './storage';
 import { createWorkspace } from './workspace';
+import { createCommandRegistry } from './commands';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
@@ -70,6 +71,10 @@ async function bootstrap(): Promise<void> {
         getLanguage(languageId)?.monacoLanguage || 'plaintext',
     },
   });
+
+  // One enforcement point for user actions. Created before any feature module
+  // registers a command or binds a control (V-17).
+  runtime.commands = createCommandRegistry();
 
   runtime.workspace = workspace.service;
   runtime.models = workspace.models;

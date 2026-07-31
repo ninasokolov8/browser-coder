@@ -69,6 +69,10 @@ interface RuntimeSeam {
   };
   models: { peek(id: string): { isDisposed(): boolean } | null };
   tabManager: { getAllTabs(): Array<{ file: { id: string; name: string } }> };
+  commands: {
+    isEnabled(id: string): boolean;
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
 }
 
 function seam(): RuntimeSeam | undefined {
@@ -224,6 +228,59 @@ async function run(): Promise<void> {
   );
   check('a file the host drops is removed', removed);
 
+
+  // ===== V-17: run policy must be enforced, not merely styled =====
+  //
+  // The run button was greyed with a CSS class while its click listener ran the
+  // code regardless, and Ctrl+Enter, Ctrl+N and Ctrl+W had no check at all. This
+  // drives the real IDE into a read-only, structure-locked state the way Step-Up
+  // does, then asks the registry the same question the UI asks.
+  post({ type: 'stepup:set-readonly', readonly: true, allowRun: false, lockStructure: true });
+
+  const locked = await waitFor(
+    'the policy to apply',
+    () => seam()!.commands.isEnabled('workspace.run') === false,
+    10000,
+  );
+  check('the run command reports itself disabled under policy', locked);
+
+  const refusedRun = await seam()!.commands.execute('workspace.run', { source: 'keybinding' });
+  check(
+    'a keybinding cannot run code when running is disabled',
+    refusedRun.status === 'refused',
+    `outcome was ${refusedRun.status}`,
+  );
+
+  const refusedNew = await seam()!.commands.execute('workspace.newFile', { source: 'keybinding' });
+  check(
+    'a keybinding cannot create a file when structure is locked',
+    refusedNew.status === 'refused',
+    `outcome was ${refusedNew.status}`,
+  );
+
+  const documentsBefore = seam()!.workspace.allDocuments().length;
+  await seam()!.commands.execute('workspace.newFile', { source: 'ui' });
+  check(
+    'the refused command really created nothing',
+    seam()!.workspace.allDocuments().length === documentsBefore,
+  );
+
+  // The button must also STOP OFFERING the action, not just refuse it.
+  const runButton = frame.contentDocument?.getElementById('run');
+  check(
+    'the run button is marked disabled for assistive technology',
+    runButton?.getAttribute('aria-disabled') === 'true',
+    `aria-disabled was ${runButton?.getAttribute('aria-disabled')}`,
+  );
+
+  // Restoring the policy must re-enable it, or a task that unlocks mid-way is stuck.
+  post({ type: 'stepup:set-readonly', readonly: false, allowRun: true, lockStructure: false });
+  const unlocked = await waitFor(
+    'the policy to be restored',
+    () => seam()!.commands.isEnabled('workspace.run') === true,
+    10000,
+  );
+  check('restoring the policy re-enables the command', unlocked);
   check('no errors inside the embedded IDE', errors.length === 0, errors.slice(0, 5).join(' | '));
   equal('the remaining documents are correct', seam()!.workspace.allDocuments().length, 2);
 }

@@ -154,8 +154,11 @@ export function setupStepUpIntegration(): void {
 
     notifyParentReady(policyState.readonly);
 
-    if (data.autoRun && policyState.allowRun) {
-      setTimeout(() => runBtn.click(), 200);
+    if (data.autoRun) {
+      // The registry decides whether it is allowed; autoRun only says the host
+      // wants it. Checking the policy here as well would be a second copy of the
+      // rule that can drift from the first.
+      setTimeout(() => void runtime.commands?.execute('workspace.run', { source: 'host' }), 200);
     }
   }
 
@@ -239,9 +242,11 @@ export function setupStepUpIntegration(): void {
       }
 
       case 'stepup:run':
-        if (policyState.allowRun) {
-          runBtn.click();
-        }
+        // Through the registry rather than synthesising a click. The old form
+        // checked `policyState.allowRun` here, at the caller - which is precisely
+        // the shape that left every OTHER caller unchecked (V-17). One enforcement
+        // point, and the host is just another source.
+        await runtime.commands?.execute('workspace.run', { source: 'host' });
         break;
 
       case 'stepup:set-readonly':

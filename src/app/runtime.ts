@@ -3,6 +3,7 @@ import type { LoadedLanguage, VersionConfig } from '../languages';
 import type { TabManager } from '../tabs';
 import type { storage as storageType } from '../storage';
 import type { MonacoModelRegistry, WorkspaceService } from '../workspace';
+import type { CommandRegistry } from '../commands/registry.ts';
 
 export type StorageApi = typeof storageType;
 
@@ -52,6 +53,8 @@ export const runtime: {
   /** The single owner of workspace state. Prefer this over `storage`. */
   workspace: WorkspaceService | null;
   models: MonacoModelRegistry | null;
+  /** The single enforcement point for user actions (V-17). */
+  commands: CommandRegistry | null;
   fileModels: ModelMapView;
   currentLang: LoadedLanguage | null;
   currentVersion: VersionConfig | null;
@@ -62,6 +65,7 @@ export const runtime: {
   storage: null,
   workspace: null,
   models: null,
+  commands: null,
   fileModels: new ModelMapView(),
   currentLang: null,
   currentVersion: null,

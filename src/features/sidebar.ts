@@ -57,6 +57,9 @@ export function applyPolicyFromMessage(data: { readonly?: boolean; lockStructure
   });
 
   applyIdePolicy();
+  // Policy just changed, so every bound control must re-read its enablement.
+  // Without this a button stays clickable after a stepup:set-readonly (V-17).
+  runtime.commands?.notifyPolicyChanged();
 }
 
 export function switchSidebarPanel(panelName: string) {

@@ -15,6 +15,7 @@ import { renderTurtle, clearTurtleCanvas } from '../components/turtle';
 import type { TurtleData } from '../components/turtle';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runBtn } from '../components/dom';
+import { bindButton, bindKeybinding } from '../commands';
 import { getOrCreateModel } from './editor-core';
 import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
@@ -413,44 +414,85 @@ const initialized = requireRuntime();
 const editor = initialized.editor;
 const tabManager = initialized.tabManager;
 
-runBtn.addEventListener("click", () => runCode(editor.getValue()));
+// ── Commands (V-17) ─────────────────────────────────────────────────────────
+//
+// Every one of these used to be wired directly to a handler that checked nothing.
+// The run button was greyed by a CSS class while remaining fully clickable, and
+// Ctrl+Enter, Ctrl+N and Ctrl+W had neither an indication nor a check - so a
+// read-only, structure-locked embed ran code and created files. Declaring the
+// capability once, and deriving both the UI state and the refusal from it, is what
+// stops a future binding from reintroducing the hole.
+const commands = runtime.commands!;
 
-// Keyboard shortcuts
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-  runBtn.click();
+commands.register({
+  id: 'workspace.run',
+  title: 'Run',
+  capability: 'run',
+  run: () => runCode(editor.getValue()),
 });
 
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-  // Save current tab
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    tabManager.saveCurrentTab();
+commands.register({
+  id: 'workspace.saveFile',
+  title: 'Save',
+  // Saving is not gated on `edit`: autosave persists a dirty document anyway, so
+  // refusing an explicit save would only make the shortcut feel broken while
+  // changing nothing about what reaches storage.
+  when: () => tabManager.getActiveTab() !== null,
+  run: async () => {
+    const activeTab = tabManager.getActiveTab();
+    if (!activeTab) return;
+    await tabManager.saveCurrentTab();
     setStatus(`Saved ${activeTab.file.name}`);
-  }
+  },
 });
 
-// Ctrl+N - New file
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, async () => {
-  const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion);
-  if (newTab) {
-    const model = getOrCreateModel(newTab);
-    editor.setModel(model);
-    setStatus(`Created ${newTab.file.name}`);
-  }
+commands.register({
+  id: 'workspace.newFile',
+  title: 'New file',
+  capability: 'structure',
+  run: async () => {
+    const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion);
+    if (newTab) {
+      editor.setModel(getOrCreateModel(newTab));
+      setStatus(`Created ${newTab.file.name}`);
+    }
+  },
 });
 
-// Ctrl+W - Close current tab
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, async () => {
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab && tabManager.getTabCount() > 1) {
-    await tabManager.closeTab(activeTab.file.id);
-  }
+commands.register({
+  id: 'workspace.closeTab',
+  title: 'Close tab',
+  capability: 'structure',
+  // Closing the last tab leaves the editor with nothing to show, which the empty
+  // state handles - but the previous binding refused it silently, so keep that.
+  when: () => tabManager.getActiveTab() !== null && tabManager.getTabCount() > 1,
+  run: async () => {
+    const activeTab = tabManager.getActiveTab();
+    if (activeTab) await tabManager.closeTab(activeTab.file.id);
+  },
 });
 
-// Format document
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
-  editor.getAction("editor.action.formatDocument")?.run();
+commands.register({
+  id: 'editor.formatDocument',
+  title: 'Format document',
+  capability: 'edit',
+  run: () => {
+    editor.getAction('editor.action.formatDocument')?.run();
+  },
 });
+
+bindButton(commands, runBtn, 'workspace.run');
+
+bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'workspace.run');
+bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, 'workspace.saveFile');
+bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, 'workspace.newFile');
+bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, 'workspace.closeTab');
+bindKeybinding(
+  commands,
+  editor,
+  monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
+  'editor.formatDocument',
+);
 
 // "Explain this keyword" - right-click a keyword to see a plain-English
 // explanation + example, backed by languages/*/keywords.json.
