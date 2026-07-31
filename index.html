@@ -1584,6 +1584,9 @@
                 <button class="search-btn" id="btn-regex" data-i18n-title="search.regex">.*</button>
                 <button class="search-btn" id="btn-case" data-i18n-title="search.matchCase">Aa</button>
                 <button class="search-btn" id="btn-word" data-i18n-title="search.matchWord">ab</button>
+                <!-- Skip matches inside comments and string literals. Needs the
+                     per-language lexer, which is why it could not exist before. -->
+                <button class="search-btn" id="btn-code-only" data-i18n-title="search.codeOnly">{ }</button>
               </div>
               <div class="search-row">
                 <input type="text" id="replace-input" class="search-input" data-i18n-placeholder="search.replace" placeholder="Replace">

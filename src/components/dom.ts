@@ -37,6 +37,7 @@ export const searchCountEl = document.getElementById("search-count")!;
 export const btnRegex = document.getElementById("btn-regex")!;
 export const btnCase = document.getElementById("btn-case")!;
 export const btnWord = document.getElementById("btn-word")!;
+export const btnCodeOnly = document.getElementById("btn-code-only")!;
 export const btnClearSearch = document.getElementById("btn-clear-search")!;
 export const btnReplaceAll = document.getElementById("btn-replace-all")!;
 export const btnReplaceAllFiles = document.getElementById("btn-replace-all-files")!;

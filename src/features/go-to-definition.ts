@@ -1,6 +1,7 @@
 import * as monaco from 'monaco-editor';
 import { requireModels, runtime } from '../app/runtime';
 import { getAllLanguages } from '../languages';
+import { maskCommentsAndStrings } from '../languages/syntax.ts';
 import type { StoredFile } from '../storage';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 
@@ -61,73 +62,14 @@ function getLiveContent(file: StoredFile): string {
   return file.content;
 }
 
-function maskCommentsAndStrings(code: string): string {
-  let output = '';
-  let state: 'normal' | 'single' | 'double' | 'template' | 'line' | 'block' = 'normal';
-  let escaped = false;
-
-  for (let index = 0; index < code.length; index++) {
-    const char = code[index];
-    const next = code[index + 1];
-
-    if (state === 'line') {
-      if (char === '\n') {
-        output += '\n';
-        state = 'normal';
-      } else output += ' ';
-      continue;
-    }
-
-    if (state === 'block') {
-      if (char === '*' && next === '/') {
-        output += '  ';
-        index++;
-        state = 'normal';
-      } else output += char === '\n' ? '\n' : ' ';
-      continue;
-    }
-
-    if (state !== 'normal') {
-      output += char === '\n' ? '\n' : ' ';
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (
-        (state === 'single' && char === "'") ||
-        (state === 'double' && char === '"') ||
-        (state === 'template' && char === '`')
-      ) state = 'normal';
-      continue;
-    }
-
-    if (char === '/' && next === '/') {
-      output += '  ';
-      index++;
-      state = 'line';
-    } else if (char === '/' && next === '*') {
-      output += '  ';
-      index++;
-      state = 'block';
-    } else if (char === '#') {
-      output += ' ';
-      state = 'line';
-    } else if (char === "'") {
-      output += ' ';
-      state = 'single';
-    } else if (char === '"') {
-      output += ' ';
-      state = 'double';
-    } else if (char === '`') {
-      output += ' ';
-      state = 'template';
-    } else output += char;
-  }
-
-  return output;
-}
 
 function collectDefinitions(file: StoredFile): SymbolDefinition[] {
   const content = getLiveContent(file);
-  const lines = maskCommentsAndStrings(content).split('\n');
+  // Keyed by the file's own language. The lexer this replaced took no language and
+  // hardcoded C-like syntax plus a `#` case - so it masked Python line comments but
+  // not Python docstrings, and applied `#` to languages where it means something
+  // else. See src/languages/syntax.ts.
+  const lines = maskCommentsAndStrings(file.language, content).split('\n');
   const definitions: SymbolDefinition[] = [];
   const seen = new Set<string>();
 

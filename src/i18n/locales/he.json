@@ -20,6 +20,7 @@
   "search.regex": "השתמש בביטוי רגולרי",
   "search.matchCase": "התאם רישיות",
   "search.matchWord": "התאם מילה שלמה",
+  "search.codeOnly": "קוד בלבד (דילוג על הערות ומחרוזות)",
   "search.replaceAll": "החלף הכל",
   "search.results": "{{count}} תוצאות ב-{{files}} קבצים",
   "search.noResults": "הקלד כדי לחפש בכל הקבצים",

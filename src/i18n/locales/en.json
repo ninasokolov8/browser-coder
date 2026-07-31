@@ -20,6 +20,7 @@
   "search.regex": "Use Regular Expression",
   "search.matchCase": "Match Case",
   "search.matchWord": "Match Whole Word",
+  "search.codeOnly": "Code only (skip comments and strings)",
   "search.replaceAll": "Replace All",
   "search.results": "{{count}} results in {{files}} files",
   "search.noResults": "Type to search across all files",

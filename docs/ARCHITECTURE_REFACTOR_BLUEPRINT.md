@@ -5919,3 +5919,158 @@ columns - which is presumably why it was off everywhere.
   match, so the failure mode is a missing segment rather than a wrong one.
 - No symbol-level quick-open ("go to symbol in file"). The heuristic could drive it
   and the picker already supports it.
+
+### H6 (part 1) - One lexer, keyed by language
+
+H6 was scoped as "client language-adapter registry; removes the last 'add a
+language, edit six switches' hazard". Before designing anything, the client was
+mapped exhaustively - six parallel readers, each reading its files in full -
+producing **199 per-language sites**, 179 of them registry candidates:
+
+| Sites | File |
+|---|---|
+| 50 | `src/features/explorer/import-refactor.ts` |
+| 36 | `src/features/go-to-definition.ts` |
+| 23 | `src/components/code-analysis.ts` |
+| 9 | `src/features/format-core.ts` |
+| 8 | `src/features/execution.ts` |
+| 8 | `src/components/monaco-config.ts` |
+| 7 | `src/features/live-preview.ts` |
+| 5 each | `src/languages/types.ts`, `server/languages/catalog.mjs`, `src/features/search.ts` |
+| 1-4 each | eleven more |
+
+That map is kept at `docs/h6-sitemap.json`. Three of its claims were verified by
+hand rather than taken on trust, and all three held.
+
+#### The finding that decided what to build first
+
+`maskCommentsAndStrings` - blank out comments and string bodies so a regex can scan
+code without matching things that merely look like code - existed **twice**, as two
+independently written ~90-line state machines:
+
+- `src/components/code-analysis.ts:65` (the Run panel's function outline)
+- `src/features/go-to-definition.ts:64` (symbol lookup)
+
+Neither took a language argument. Both hardcoded C-like syntax. And they had
+**diverged**: go-to-definition had grown a `#` case for Python comments;
+code-analysis never did.
+
+That is not a tidiness complaint. Measured, before any change:
+
+```python
+def real():
+    pass
+text = """
+def inside_a_docstring():
+"""
+```
+
+`parseFunctions(code, 'python')` returned **two** functions. Python's triple-quoted
+strings were modelled by neither copy, so the Run panel listed a function that does
+not exist - and "run this function in isolation" would synthesise a call to it.
+`code-analysis.ts` had **no test file at all**, which is how it survived.
+
+#### What was built
+
+**`src/languages/syntax.ts`** - a per-language syntax table plus one lexer built
+from it. Line comments, block comments, string delimiters (with `escapes` and
+`multiline` per delimiter), whether indentation is significant, and which extra
+characters belong to an identifier.
+
+Omissions are a **compile error**: `SYNTAX` is a
+`Record<KnownLanguageId, LanguageSyntax>`, so adding a language id without
+describing its syntax does not build. That is the actual mechanism for removing the
+"forget one of six switches" hazard - a registry a new language can silently skip
+would just be six switches wearing a hat.
+
+Ordering inside the table is load-bearing and documented as such: `"""` must be
+tried before `"`, or a docstring scans as an empty string followed by loose code -
+exactly the original bug.
+
+Cases the table gets right that a shared C-like default gets wrong:
+
+- **Python** `"""` and `'''`, and `#`
+- **Java** text blocks (`"""`)
+- **C# verbatim strings** - `@"C:\path\"` ends at the quote, because backslash is
+  *not* an escape there; honouring it would swallow the rest of the file
+- **PHP** has two line-comment forms, `//` and `#`
+- **Markdown** `#` is a heading, *not* a comment - treating it as one would blank
+  every heading
+- **JSON** claims no comment syntax at all, matching what the editor tells the
+  student
+- **HTML/SVG** use `<!-- -->`; `//` inside a URL is not a comment
+- an **unknown** language is returned unchanged rather than C-masked, so a caller
+  degrades to "matches too much" instead of "silently matches the wrong thing"
+
+The invariant every caller depends on - identical length and identical newline
+positions - is asserted for all eleven languages, because each caller masks, runs a
+regex, then reports the position it found.
+
+**A third scanner in `format-core.ts` was deliberately left alone.** Its contract is
+stricter: it must *decline* on anything it cannot model exactly, because it rewrites
+the file. Forcing the two together would push the wrong contract onto one of them.
+Noted in both files so the duplication reads as a decision, not an oversight.
+
+#### Search stopped ignoring its own language parameter
+
+`search.ts` accepted `language` and threaded it through four signatures to reach an
+emoji in the results list. It now decides two things, and both were bugs:
+
+- **Whole-word search for a PHP variable found nothing.** `\b` sits *between* `$`
+  and `t`, so `\b\$total\b` matches zero times. Asserted in the test as the old
+  behaviour, next to the new one.
+- **Whole-word `my-class` in CSS also matched `my-class-extra`**, because `\b`
+  treats the hyphen as a boundary. Also asserted both ways.
+
+Both now use the language's own identifier characters via lookbehind/lookahead.
+
+**New "code only" toggle** - skip matches inside comments and string literals. The
+highest-value search feature the IDE lacked, and one that could not exist before
+this module: deciding whether an offset is inside a comment needs a per-language
+lexer. Search runs on the masked text and reports the **original**, which is sound
+only because of the length-and-newline guarantee.
+
+#### A destructive inconsistency, found while wiring it
+
+The two replace-all paths built their own patterns with
+`buildSearchPattern(query, true)` - **no language** - while search passed one. So
+whole-word search and whole-word replace disagreed about where a word starts. With
+`codeOnly` it would have been worse and silent: the results list would show three
+matches and replace-all would rewrite five, including ones inside comments the
+student deliberately left alone.
+
+Both paths now go through one `replaceInFile` helper that takes the same language
+and the same options, so they cannot diverge. Matches are located on the masked text
+and spliced out of the original right-to-left by offset. Replace-all-across-files
+resolves the language **per file**, since a project can hold Python and CSS and
+their word boundaries differ.
+
+#### Verification
+
+- 47 tests in `syntax.test.ts` - the Python docstring case, the length/newline
+  invariant across all eleven languages, C# verbatim strings, Markdown headings,
+  JSON's absent comments, per-language identifier patterns, and the search/replace
+  properties including both old bugs asserted as old behaviour.
+- 23 tests in a new `code-analysis.test.ts`, for a module that had none.
+- **The gate was confirmed against the bug**: reverting the Python masking makes
+  two docstring tests fail; restoring it passes them.
+- 426 unit tests, all three browser suites, clean build.
+
+#### Still to do in H6
+
+- **`import-refactor.ts` (1070 lines) is not split**, and it has a user-visible bug
+  the map surfaced: `svg`, `json` and `markdown` are absent from
+  `detectImportLanguage`, so the `default:` branch returns zero replacements **with
+  no warning** - the "N imports updated" toast reports success while references rot.
+  It also has no test file.
+- **`execution.ts` (527 lines) is not split.** It still mixes run orchestration,
+  three "this file is not a program" handlers, the TypeScript pre-run gate, request
+  construction, diagnostics publication, embedded-host notification, five command
+  registrations, five keybindings and two context-menu actions - registered as a
+  side effect of import, which constrains any split.
+- `esc()` is duplicated four times across `execution.ts`, `run-panel.ts`,
+  `explorer/tree.ts` and `search.ts`, and **the copy in `execution.ts` omits `"`**.
+- `code-analysis.ts` re-runs its whole-file regex pass on the UI thread twice a
+  second while typing (debounced 500ms, over the entire file).
+- `tabs.ts:612` hardcodes a file icon instead of reading `lang.icon`, which
+  `explorer/tree.ts:219` does correctly.
