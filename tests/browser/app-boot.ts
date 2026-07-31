@@ -167,6 +167,116 @@ async function checkCrossFileTypeScript(frameWindow: Window): Promise<void> {
   lines.push(`INFO diagnostics on the importing file: ${messages.join(' | ') || '(none)'}`);
 }
 
+
+/**
+ * The Problems panel and the command palette, driven the way a user drives them.
+ *
+ * The cross-file check above deliberately leaves a real type error in the
+ * workspace, so by the time this runs there is something for the panel to show.
+ * Asserting on an empty panel would prove only that it rendered.
+ */
+async function checkProblemsAndPalette(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const frameDocument = frame.contentDocument!;
+  if (!runtime) {
+    check('runtime is reachable for the problems check', false);
+    return;
+  }
+
+  const store = runtime.diagnostics as {
+    counts(): { error: number; warning: number; total: number };
+    all(): Array<{ message: string; path: string; line: number }>;
+  } | null;
+  check('the diagnostics store is constructed', store !== null);
+  if (!store) return;
+
+  // Monaco's worker is asynchronous, so the store fills in a moment after the
+  // markers appear.
+  const populated = await waitFor(
+    'the diagnostics store to see the type error',
+    () => store.counts().error > 0,
+    30000,
+  );
+  check('a real type error reaches the diagnostics store', populated);
+  lines.push(`INFO diagnostics: ${JSON.stringify(store.counts())}`);
+
+  // The status bar used to be a hardcoded 0.
+  const statusErrors = frameDocument.getElementById('status-errors');
+  check(
+    'the status bar reports the error count',
+    (statusErrors?.textContent ?? '').replace(/[^0-9]/g, '') !== '0',
+    `status bar read "${statusErrors?.textContent}"`,
+  );
+
+  // Open the panel the way a user does, by clicking the tab.
+  const problemsTab = frameDocument.querySelector('.panel-tab[data-tab="problems"]') as HTMLElement | null;
+  check('the Problems tab exists', problemsTab !== null);
+  problemsTab?.click();
+
+  const rows = frameDocument.querySelectorAll('#problems-content .problem-row');
+  check('the Problems panel lists the problem', rows.length > 0, `${rows.length} rows`);
+
+  const firstRow = rows[0] as HTMLElement | undefined;
+  check(
+    'a problem row is keyboard reachable',
+    firstRow?.getAttribute('role') === 'button' && firstRow?.tabIndex === 0,
+  );
+
+  // A compiler message can contain a user identifier; it must render as text.
+  check(
+    'problem messages are rendered as text, not HTML',
+    frameDocument.querySelector('#problems-content script') === null,
+  );
+
+  // ===== command palette =====
+
+  frameDocument.dispatchEvent(
+    new frameWindow.KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }),
+  );
+
+  const paletteOpen = await waitFor(
+    'the command palette to open',
+    () => frameDocument.getElementById('command-palette') !== null,
+    5000,
+  );
+  check('Ctrl+Shift+P opens the command palette', paletteOpen);
+
+  if (paletteOpen) {
+    const paletteRows = frameDocument.querySelectorAll('#command-palette .palette-row');
+    check('the palette lists registered commands', paletteRows.length > 0, `${paletteRows.length} rows`);
+
+    const labels = [...paletteRows].map(row => row.textContent || '');
+    check(
+      'the palette includes the run command',
+      labels.some(label => /run/i.test(label)),
+      labels.slice(0, 6).join(' | '),
+    );
+
+    // Filtering by subsequence: "nf" should find "New file".
+    const input = frameDocument.querySelector('#command-palette .palette-input') as HTMLInputElement;
+    input.value = 'nf';
+    input.dispatchEvent(new frameWindow.Event('input', { bubbles: true }));
+
+    const filtered = [...frameDocument.querySelectorAll('#command-palette .palette-row')]
+      .map(row => row.textContent || '');
+    check(
+      'subsequence filtering finds New file from "nf"',
+      filtered.some(label => /new file/i.test(label)),
+      filtered.join(' | '),
+    );
+
+    frameDocument.dispatchEvent(
+      new frameWindow.KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }),
+    );
+    const closed = await waitFor(
+      'the palette to close',
+      () => frameDocument.getElementById('command-palette') === null,
+      5000,
+    );
+    check('the palette toggles closed', closed);
+  }
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -316,6 +426,7 @@ async function run(): Promise<void> {
   }
 
   await checkCrossFileTypeScript(frameWindow);
+  await checkProblemsAndPalette(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

@@ -4,6 +4,7 @@ import type { TabManager } from '../tabs';
 import type { storage as storageType } from '../storage';
 import type { MonacoModelRegistry, WorkspaceService } from '../workspace';
 import type { CommandRegistry } from '../commands/registry.ts';
+import type { DiagnosticsStore } from '../diagnostics/store.ts';
 
 export type StorageApi = typeof storageType;
 
@@ -55,6 +56,8 @@ export const runtime: {
   models: MonacoModelRegistry | null;
   /** The single enforcement point for user actions (V-17). */
   commands: CommandRegistry | null;
+  /** Problems, bound to the revision they were computed for. */
+  diagnostics: DiagnosticsStore | null;
   fileModels: ModelMapView;
   currentLang: LoadedLanguage | null;
   currentVersion: VersionConfig | null;
@@ -66,6 +69,7 @@ export const runtime: {
   workspace: null,
   models: null,
   commands: null,
+  diagnostics: null,
   fileModels: new ModelMapView(),
   currentLang: null,
   currentVersion: null,

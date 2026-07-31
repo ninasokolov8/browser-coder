@@ -807,6 +807,87 @@
         direction: ltr;
         text-align: left;
       }
+      #command-palette {
+        position: fixed;
+        inset: 0;
+        z-index: 4000;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 12vh;
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .palette-box {
+        width: min(620px, 92vw);
+        background: var(--bg-panel, #252526);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+      }
+      .palette-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: var(--text-primary, #ddd);
+        background: var(--bg-input, #3c3c3c);
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        outline: none;
+      }
+      .palette-list { max-height: 46vh; overflow-y: auto; }
+      .palette-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 12px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .palette-row.selected { background: rgba(255, 255, 255, 0.10); }
+      .palette-row.disabled { opacity: 0.45; cursor: default; }
+      .palette-note { color: var(--text-secondary); font-size: 11px; }
+      .palette-empty { padding: 12px; color: var(--text-secondary); font-size: 13px; }
+      #problems-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 0;
+        font-size: 12px;
+      }
+      #problems-content.visible { display: block; }
+      .problems-empty {
+        padding: 10px 14px;
+        color: var(--text-secondary);
+      }
+      .problem-file {
+        padding: 4px 14px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        background: var(--bg-panel, #1e1e1e);
+      }
+      .problem-row {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        padding: 3px 14px 3px 28px;
+        cursor: pointer;
+      }
+      .problem-row:hover { background: rgba(255,255,255,0.06); }
+      .problem-row:focus-visible { outline: 1px solid #75beff; outline-offset: -1px; }
+      .problem-icon { flex: 0 0 auto; }
+      .problem-row.severity-error .problem-icon { color: #f48771; }
+      .problem-row.severity-warning .problem-icon { color: #ce9178; }
+      .problem-row.severity-info .problem-icon { color: #75beff; }
+      .problem-message { flex: 1 1 auto; }
+      .problem-location {
+        flex: 0 0 auto;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+      .problem-source { flex: 0 0 auto; color: var(--text-secondary); opacity: 0.75; }
       #panel-content .error { color: #f48771; }
       #panel-content .success { color: #89d185; }
       #panel-content .info { color: #75beff; }
@@ -1518,6 +1599,7 @@
           <div id="panel-header">
             <div class="panel-tabs">
               <div class="panel-tab active" data-tab="output" data-i18n="panel.output">Output</div>
+              <div class="panel-tab" data-tab="problems" data-i18n="panel.problems">Problems</div>
             </div>
             <div class="panel-actions">
               <button id="clearOutput" class="panel-btn" data-i18n-title="panel.clear">🗑</button>
@@ -1525,6 +1607,7 @@
             </div>
           </div>
           <div id="panel-content" data-i18n="panel.placeholder">(Run code to see output here)</div>
+          <div id="problems-content" hidden></div>
         </div>
       </div>
 

@@ -4,6 +4,10 @@ import { getAllLanguages, getLanguage, preloadDefaultStarters } from './language
 import { setWorkspaceService, storage } from './storage';
 import { createWorkspace } from './workspace';
 import { createCommandRegistry } from './commands';
+import { DiagnosticsStore } from './diagnostics/store';
+import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
+import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
+import { initializeCommandPalette } from './features/command-palette';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
@@ -130,6 +134,27 @@ async function bootstrap(): Promise<void> {
   await import('./features/execution');
   const { initializeRunPanel } = await import('./features/run-panel');
   initializeRunPanel();
+
+  // Problems: one store, fed by Monaco's markers, read by the panel, the status
+  // bar and the run gate - so those three cannot disagree about what is wrong.
+  const diagnostics = new DiagnosticsStore();
+  runtime.diagnostics = diagnostics;
+  connectMonacoDiagnostics({
+    store: diagnostics,
+    models: workspace.models,
+    service: workspace.service,
+  });
+  initializeProblemsPanel(diagnostics);
+
+  runtime.commands!.register({
+    id: 'workspace.showProblems',
+    title: 'command.showProblems',
+    run: () => showPanelTab('problems'),
+  });
+
+  // The palette is the registry's list filtered by isEnabled. Registering it
+  // last means every command exists by the time it can be opened.
+  initializeCommandPalette(runtime.commands!);
 
   initializeLayout();
   setStatus('Ready ✅ (Ctrl+Enter to run)');

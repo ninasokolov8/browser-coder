@@ -1,13 +1,11 @@
 {
   "app.title": "Browser Coder - Web IDE",
   "app.logo": "Browser Coder",
-  
   "titlebar.run": "Run",
   "titlebar.running": "Running",
   "titlebar.download": "Download",
   "titlebar.clear": "Clear",
   "titlebar.hackLab": "Hack Lab",
-  
   "sidebar.explorer": "Explorer",
   "sidebar.search": "Search",
   "sidebar.runDebug": "Run and Debug",
@@ -17,7 +15,6 @@
   "sidebar.clear": "Clear",
   "sidebar.downloadProject": "Download Project",
   "sidebar.clearCache": "Clear Cache",
-  
   "search.placeholder": "Search",
   "search.replace": "Replace",
   "search.regex": "Use Regular Expression",
@@ -26,39 +23,49 @@
   "search.replaceAll": "Replace All",
   "search.results": "{{count}} results in {{files}} files",
   "search.noResults": "Type to search across all files",
-  
   "run.runAll": "Run All",
   "run.runFile": "Run Entire File",
   "run.functions": "Functions",
   "run.noFunctions": "No functions detected",
-  
   "context.newFile": "New File",
   "context.newFolder": "New Folder",
   "context.rename": "Rename",
   "context.delete": "Delete",
-  
   "editor.noFile": "No file open",
   "editor.createFile": "Create a new file to start coding",
   "editor.newFile": "New File",
   "editor.explainKeyword": "💡 Explain this keyword",
   "editor.runSelected": "▶ Run Selected",
   "editor.example": "Example:",
-  
   "panel.output": "Output",
   "panel.clear": "Clear",
   "panel.toggle": "Toggle Panel",
   "panel.placeholder": "(Run code to see output here)",
   "panel.stdinLabel": "Program input",
   "panel.stdinHint": "type your answer, then press Enter",
-  
   "status.line": "Ln {{line}}, Col {{col}}",
   "status.encoding": "UTF-8",
   "status.branch": "main",
   "status.errors": "{{count}}",
-  
   "dialog.confirmDelete": "Are you sure you want to delete '{{name}}'?",
   "dialog.unsavedChanges": "You have unsaved changes. Do you want to save before closing?",
-  
   "language.select": "Language",
-  "theme.select": "Theme"
+  "theme.select": "Theme",
+  "panel.problems": "Problems",
+  "problems.none": "No problems have been detected in the workspace.",
+  "problems.summary": "{{errors}} errors, {{warnings}} warnings",
+  "command.run": "Run",
+  "command.save": "Save",
+  "command.newFile": "New file",
+  "command.closeTab": "Close tab",
+  "command.formatDocument": "Format document",
+  "command.showProblems": "Show Problems",
+  "command.palette": "Command palette",
+  "palette.placeholder": "Type a command name",
+  "palette.empty": "No matching commands",
+  "palette.unavailable": "unavailable",
+  "policy.runDisabled": "Running is disabled for this task",
+  "policy.readonly": "This file is read-only",
+  "policy.structureLocked": "Adding, renaming and deleting files is locked for this task",
+  "policy.searchReplaceDisabled": "Replace is disabled for this task"
 }
