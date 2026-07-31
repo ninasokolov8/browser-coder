@@ -6,6 +6,7 @@ import { appConfig, policyState } from '../app/config';
 import { tabsEl, editorEmptyState, emptyStateNewFileBtn, statusLangEl, langSel, versionSel } from '../components/dom';
 import { configureMonacoForVersion, populateVersionDropdown } from '../components/monaco-config';
 import { setOutput, setStatus } from '../components/output';
+import { hideAssetViewer, isAssetFile, showAssetViewer } from './asset-viewer.ts';
 
 export function updateEmptyState(show: boolean): void {
   editorEmptyState.classList.toggle('visible', show);
@@ -87,6 +88,17 @@ export function createTabManager(hooks: {
   const editor = runtime.editor!;
   const manager = new TabManager(tabsEl, requireWorkspace(), {
     onTabSwitch: (tab: Tab) => {
+      // A binary asset gets the viewer, not the editor. Checked before acquiring a
+      // model because the registry now throws for one - deliberately, since handing
+      // base64 to Monaco would let a student type over their own image and let
+      // autosave persist the damage.
+      if (isAssetFile(tab.file)) {
+        showAssetViewer({ name: tab.file.name, content: tab.file.content, path: tab.file.path });
+        setStatus(tab.file.name);
+        return;
+      }
+
+      hideAssetViewer();
       editor.setModel(getOrCreateModel(tab));
       const lang = getLanguage(tab.file.language);
       if (lang) {

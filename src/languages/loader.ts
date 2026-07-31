@@ -4,6 +4,7 @@
 
 import type { KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedKeywordEntry, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
+import { ASSET_LANGUAGE_ID, ASSET_TYPES } from "../workspace/assets.ts";
 
 // Import all config.json files at build time
 const configModules = import.meta.glob<{ default: LanguageConfig }>(
@@ -82,6 +83,36 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     icon: LANGUAGE_ICONS.json || '⚙️',
     versions: [{ id: 'json', name: 'JSON', default: true }],
     runner: { command: 'data' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+  {
+    /**
+     * Binary assets: images, audio, fonts, archives.
+     *
+     * One language rather than one per format, because from the workspace's point of
+     * view they are all the same thing - opaque base64 that is never edited as text.
+     * The FORMAT is carried in `version` (the validated extension), which is what
+     * the asset viewer reads to pick a media type.
+     *
+     * `monacoLanguage: 'plaintext'` is deliberate and never used: a document of this
+     * language gets no Monaco model at all, because handing base64 to a text editor
+     * would let a student corrupt an image by typing in it. See
+     * src/features/asset-viewer.ts.
+     */
+    id: ASSET_LANGUAGE_ID,
+    name: 'Asset',
+    extension: 'png',
+    extensions: ASSET_TYPES.map(type => type.extension).filter(extension => extension !== 'png'),
+    monacoLanguage: 'plaintext',
+    icon: LANGUAGE_ICONS.asset || '🖼️',
+    versions: ASSET_TYPES.map(type => ({
+      id: type.extension,
+      name: type.mediaType,
+      default: type.extension === 'png',
+    })),
+    runner: { command: 'asset' },
     starters: {},
     keywords: {},
     keywordsHe: {},

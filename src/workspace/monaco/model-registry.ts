@@ -33,6 +33,7 @@ import { MonacoBuffer } from './buffer.ts';
 import type { WorkspaceDocument } from '../document.ts';
 import type { WorkspaceService } from '../service.ts';
 import type { DocumentId } from '../types.ts';
+import { ASSET_LANGUAGE_ID, assetTypeFor } from '../assets.ts';
 
 /** Root prefix, so workspace files never collide with Monaco's own lib URIs. */
 const WORKSPACE_ROOT = 'file:///workspace';
@@ -73,6 +74,15 @@ export class MonacoModelRegistry {
    * than two that need reconciling.
    */
   acquire(document: WorkspaceDocument): monaco.editor.ITextModel {
+    if (!MonacoModelRegistry.canHaveModel(document)) {
+      // Loud rather than silent: a caller that reaches here has routed a binary
+      // asset into the text editor, and returning some empty model would hide the
+      // mistake until the file was saved back over itself.
+      throw new Error(
+        `${document.name} is a binary asset and cannot be opened in the text editor.`,
+      );
+    }
+
     const existing = this.#entries.get(document.id);
     if (existing && !existing.model.isDisposed()) {
       this.#reconcile(document, existing);
@@ -106,6 +116,22 @@ export class MonacoModelRegistry {
   }
 
   /**
+   * Whether a document may have a Monaco model at all.
+   *
+   * A binary asset must never get one. Its content is base64, and a text editor would
+   * let the student type into it, mark the document dirty, and let autosave persist a
+   * corrupted image over the original. The asset viewer takes the editor's place
+   * instead - see src/features/asset-viewer.ts.
+   *
+   * Enforced here rather than at the call sites because there are several routes into
+   * a document (a tab, quick-open, go-to-definition, the Problems panel, the eager
+   * project sync) and one that forgot to check would be the one that corrupts a file.
+   */
+  static canHaveModel(document: WorkspaceDocument): boolean {
+    return document.language !== ASSET_LANGUAGE_ID && assetTypeFor(document.name) === null;
+  }
+
+  /**
    * Make sure every document in `languageIds` has a model.
    *
    * Monaco's TypeScript worker only sees files that have models, so a project
@@ -122,6 +148,7 @@ export class MonacoModelRegistry {
     const wanted = new Set(languageIds);
     for (const document of this.#service.allDocuments()) {
       if (!wanted.has(document.language)) continue;
+      if (!MonacoModelRegistry.canHaveModel(document)) continue;
       if (this.peek(document.id)) continue;
       try {
         this.acquire(document);

@@ -6575,3 +6575,121 @@ two modules at all. It is now set from the names actually exported.
   is given real history.
 - `shapetransform` and `shearfactor` are stored and returned but the canvas renderer
   does not yet apply them to the cursor polygon.
+
+## 39. Binary assets in the workspace
+
+Closes the "PNG and other binary assets are not representable at all" gap from
+§35.4. `StoredFile.content` was a `string`, so an image could only exist as SVG text
+or as a data URI pasted into source.
+
+### 39.1 The extension is a hint, never the answer
+
+`src/workspace/assets.ts` decides what an asset is from the file's own leading
+bytes. This is the security core of the feature, not a nicety.
+
+An attacker's simplest move is renaming: `payload.html` to `avatar.png`. Trusting
+the extension would store that as an image, and the preview publisher would later
+serve it **from a real origin** - where a browser that sniffs, or an `<object>` that
+ignores the declared type, executes it. Stored XSS, delivered by the IDE itself.
+
+So a file whose content contradicts its name is **refused**, not reclassified. Both
+directions are refused deliberately: storing `avatar.png` as HTML is exploitable, and
+silently storing HTML-named-PNG as an image is surprising in the other direction.
+
+Sixteen formats, as a closed list - images (png, jpg/jpeg, gif, webp, bmp, ico,
+avif), and non-displayable binaries kept for a project to carry (pdf, mp3, wav, ttf,
+woff, woff2, zip). "Accept any binary" would mean storing and later serving content
+nobody reasoned about.
+
+Details that took a real signature table rather than a prefix check:
+
+- **WEBP and WAV share the `RIFF` prefix.** Matching on `RIFF` alone files one as
+  the other; the form type sits at offset 8 with four file-specific length bytes in
+  between, so the table needs a wildcard.
+- **AVIF's signature is at offset 4**, after a box length.
+- **The double-extension trick** - `payload.png.html` - has extension `html`, which is
+  not an asset at all.
+- **`.jpg` and `.jpeg` are compared by media type**, so the same bytes are valid under
+  either name.
+- **SVG is deliberately excluded.** It is XML text with its own editor, language
+  service and sanitiser, and it is the one image format that can carry script - so it
+  keeps going through the text path that checks it.
+- **No asset media type may be html, javascript, xml or svg.** Asserted, so a type the
+  browser will execute can never be reached through the asset path whatever the bytes
+  say.
+
+### 39.2 Base64, deliberately
+
+Content is held as base64 inside the same `content` string the domain already
+understands. A parallel `Blob` field would mean reopening the working-copy buffer, the
+revision comparison, the persistence queue, the ZIP export, the execution snapshot and
+the preview publisher - six seams that are correct today and all of which treat
+content as opaque. The 33% size cost buys not touching them.
+
+The encoder is hand-rolled rather than `btoa`/`atob`, because those are DOM globals and
+this module has to load in node for its tests. Asserted to produce byte-identical
+output to node's `Buffer`, since the client encodes and the server decodes - a
+disagreement there would corrupt every asset.
+
+### 39.3 An asset must never reach a text editor
+
+`MonacoModelRegistry.acquire` now **throws** for one. Its content is base64; Monaco
+would happily show it, let the student type in it, mark the document dirty, and let
+autosave persist a corrupted image over the original.
+
+Enforced in the registry rather than at the call sites, because there are several
+routes into a document - a tab, quick-open, go-to-definition, the Problems panel, the
+eager project sync - and the one that forgot to check would be the one that destroys a
+file. Loud rather than returning an empty model, which would hide the mistake until
+the file was saved back over itself.
+
+`src/features/asset-viewer.ts` takes the editor's place: the image in an `<img>` with
+a `data:` URL (the restricted context - no scripts, no external fetches), on a
+chequerboard so a transparent PNG reads as transparent, with name, media type, size
+and path. Monaco is hidden rather than destroyed, so switching back to code does not
+rebuild the editor. A non-displayable type says why it has no preview, since "cannot
+preview" alone reads as a missing feature.
+
+### 39.4 Two features that were quietly broken
+
+Wiring assets through the run path exposed that the execution snapshot filtered to
+"this language only", which silently broke two things that had been reported as
+working:
+
+- **`turtle.bgpic("maze.svg")` and `register_shape("cursor.svg")`** name a workspace
+  file. An `.svg` has language `svg`, so it was never sent to the sandbox; the shim
+  looked for a file that was not there and drew nothing.
+- **H4's file I/O.** `open("data.txt")` became legal and confined to the workspace -
+  but a data file in the project was never written into the job directory, so the only
+  files a program could read were ones it had just created itself. The curriculum
+  exercise the whole of H4 was for could not actually read a provided file.
+
+Companion languages (asset, svg, json, markdown, css, html) are now included in the
+snapshot as data, never compiled. The project size policy bounds the total, so a
+workspace full of large images is refused by the same limit that bounds source, with a
+message rather than a silent drop.
+
+### 39.5 Verification
+
+- 65 unit tests, passing first run. Real leading bytes for every one of the sixteen
+  formats; the spoof cases (HTML as .png, PNG as .gif, script as .pdf, ZIP as .png,
+  double extension); RIFF disambiguation; every base64 padding case; agreement with
+  node's `Buffer`; and the table coherence checks.
+- 554 unit tests, all three browser suites, clean build.
+
+### 39.6 Not done
+
+- **No dedicated upload endpoint.** Assets ride the existing JSON run body as base64,
+  which is exactly the amplification flagged in §37.7: a 4 MB image becomes ~5.5 MB of
+  JSON, parsed into memory before the concurrency gate. A multipart endpoint that
+  stores assets once and lets runs reference them by name is the right shape and is the
+  single most valuable next step here.
+- **The preview publisher has not been re-audited for these types.** It already sets
+  `nosniff` and has an active-extension list, but no test yet asserts that a published
+  `.png` is served as `image/png` with `nosniff` - and that is the path where a
+  mis-typed asset would become exploitable.
+- **The ZIP export writes base64 as text**, so exporting a project produces an
+  unusable image file. `download.ts` needs to decode assets back to bytes.
+- No drag-to-reorder, no rename validation that the new extension still matches the
+  bytes (renaming `a.png` to `a.gif` currently keeps the PNG content under a GIF name).
+- Audio and PDF are stored but have no player or viewer.

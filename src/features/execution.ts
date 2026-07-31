@@ -10,6 +10,7 @@ import { startRunLoader, stopRunLoader } from '../components/run-loader';
 import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas } from '../components/turtle';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
+import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
@@ -155,8 +156,28 @@ if (appConfig.ideMode !== 'snippet') {
 await tabManager.saveCurrentTab();
 const workspaceFiles = await collectWorkspaceSnapshot();
 
+/*
+ * Source files for this language, PLUS the companion files a program reads.
+ *
+ * The filter used to be "this language only", which quietly broke two features
+ * that depend on the workspace reaching the sandbox:
+ *
+ *   - turtle.bgpic("maze.svg") and register_shape("cursor.svg") name a workspace
+ *     file, and an .svg has language `svg`, so it was never sent. The shim then
+ *     looked for a file that was not there and silently drew nothing.
+ *   - H4 made open("data.txt") legal and confined to the workspace - but a
+ *     data file in the project was never written into the job directory, so the
+ *     only files a program could read were ones it had just created itself.
+ *
+ * Companion files are data, never compiled: the server writes them into the job
+ * directory and the entry point is still a source file. The project size policy
+ * bounds the total, so a workspace full of large images is refused by the same
+ * limit that bounds source - with a clear message rather than a silent drop.
+ */
+const COMPANION_LANGUAGES = new Set([ASSET_LANGUAGE_ID, 'svg', 'json', 'markdown', 'css', 'html']);
+
 const languageFiles = workspaceFiles.filter(file =>
-  !file.language || file.language === lang.id
+  !file.language || file.language === lang.id || COMPANION_LANGUAGES.has(file.language)
 );
 
 /*

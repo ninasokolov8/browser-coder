@@ -80,4 +80,5 @@ export const LANGUAGE_ICONS: Record<string, string> = {
   svg: '🖼️',
   json: '⚙️',
   markdown: '📝',
+  asset: '🖼️',
 };

@@ -864,6 +864,70 @@
         direction: ltr;
       }
 
+      /* ── Asset viewer ─────────────────────────────────────────────────── */
+      /* Takes the editor's place for a binary file. The editor is hidden rather
+         than destroyed, so switching back to code does not rebuild Monaco. */
+      #asset-viewer {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+        padding: 24px;
+        background: var(--bg-editor, #1e1e1e);
+        z-index: 5;
+      }
+      #asset-viewer[hidden] { display: none; }
+      .asset-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        max-width: 100%;
+      }
+      .asset-image {
+        max-width: min(100%, 900px);
+        max-height: 55vh;
+        object-fit: contain;
+        border-radius: 6px;
+        /* A chequerboard, so a transparent PNG reads as transparent rather than as
+           whatever the panel background happens to be. */
+        background-color: #2a2a2a;
+        background-image:
+          linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%),
+          linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 8px 8px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+      }
+      .asset-unavailable {
+        max-width: 460px;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-secondary, #999);
+      }
+      .asset-meta {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 3px 14px;
+        font-size: 12px;
+      }
+      .asset-meta-key { color: var(--text-secondary, #888); }
+      .asset-meta-value {
+        color: var(--text-primary, #ddd);
+        /* A file name is a name, not prose: LTR even in the Hebrew UI. */
+        direction: ltr;
+        word-break: break-all;
+      }
+      .asset-hint {
+        font-size: 11px;
+        color: var(--text-secondary, #777);
+        text-align: center;
+        direction: ltr;
+      }
+
       /* ── Breadcrumbs ──────────────────────────────────────────────────── */
       #breadcrumbs {
         display: flex;

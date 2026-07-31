@@ -8,6 +8,12 @@ import {
 import { setStatus, setOutput } from '../../components/output';
 import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core';
 import { explorerState } from './state';
+import {
+  ASSET_LANGUAGE_ID,
+  assetTypeFor,
+  bytesToBase64,
+  validateAsset,
+} from '../../workspace/assets.ts';
 import { renderFileTree, showContextMenu } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { lazyRef } from '../../app/lazy';
@@ -497,8 +503,12 @@ export async function importExternalFiles(fileList: FileList, targetParentId: st
   const skipped: string[] = [];
 
   for (const file of files) {
-    const detected = tabManager.detectLanguageByExtension(file.name);
-    if (!detected) {
+    // An asset is decided by its extension AND its bytes. A source file is decided
+    // by extension alone, because its content is text either way.
+    const asset = assetTypeFor(file.name);
+    const detected = asset ? null : tabManager.detectLanguageByExtension(file.name);
+
+    if (!asset && !detected) {
       skipped.push(`${file.name} - unsupported file type`);
       continue;
     }
@@ -512,23 +522,52 @@ export async function importExternalFiles(fileList: FileList, targetParentId: st
     }
 
     let content = '';
-    try {
-      content = await file.text();
-    } catch {
-      skipped.push(`${file.name} - could not be read`);
-      continue;
+    let language: string;
+    let versionId: string;
+
+    if (asset) {
+      // Read as BYTES and validate the signature before storing anything. Trusting
+      // the extension here is what would let `payload.html` renamed to `avatar.png`
+      // into the workspace, from where the preview publisher would serve it from a
+      // real origin. See src/workspace/assets.ts.
+      let bytes: Uint8Array;
+      try {
+        bytes = new Uint8Array(await file.arrayBuffer());
+      } catch {
+        skipped.push(`${file.name} - could not be read`);
+        continue;
+      }
+
+      const verdict = validateAsset(file.name, bytes, { maxBytes: MAX_BYTES });
+      if (!verdict.ok) {
+        skipped.push(`${file.name} - ${verdict.message.replace(`${file.name} `, '')}`);
+        continue;
+      }
+
+      content = bytesToBase64(bytes);
+      language = ASSET_LANGUAGE_ID;
+      versionId = verdict.type.extension;
+    } else {
+      try {
+        content = await file.text();
+      } catch {
+        skipped.push(`${file.name} - could not be read`);
+        continue;
+      }
+      language = detected!.id;
+      const version = detected!.versions.find(v => v.default) || detected!.versions[0];
+      versionId = version.id;
     }
 
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
     const siblings = await storage.getChildFiles(targetParentId);
     const finalName = uniqueFileName(safeName, siblings.map(s => s.name));
-    const version = detected.versions.find(v => v.default) || detected.versions[0];
 
     await storage.createFile({
       name: finalName,
       parentId: targetParentId,
-      language: detected.id,
-      version: version.id,
+      language,
+      version: versionId,
       content,
       isUserModified: true,
     });
