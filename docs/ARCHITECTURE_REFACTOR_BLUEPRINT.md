@@ -4877,3 +4877,84 @@ registered commands filtered by `isEnabled`, which now exists.
 
 **State:** 229 unit tests, 3 browser suites (24 + 26 + 25), contract 55 pass / 0
 fail / 0 todo, typecheck and build clean.
+
+---
+
+### Phase E - the IDE surface, and the compiler switched back on
+
+Commits: `8a32c79` (Problems panel, diagnostics store, palette), `e5d941f`
+(`@ts-nocheck` removal, i18n gate)
+
+#### Problems, bound to a revision
+
+The IDE reported errors in exactly one place: a pre-run gate inside `runCode` that
+inspected the **active model** and refused to run. A type error in a file the
+student was not looking at was invisible until it broke a run they had no obvious
+way to connect it to, and the status bar's error indicator was a hardcoded `0`.
+
+`src/diagnostics/store.ts` is **revision-bound**, and that is the point of it.
+Diagnostics arrive asynchronously - Monaco's worker answers on its own schedule, a
+server compile error a whole round trip later - so by the time a result lands the
+document may have changed. The same shape as V-09, with the same remedy: a producer
+states which revision it examined, and a result for a revision that is no longer
+current is discarded. Displaying it anyway means errors for code the student has
+already fixed, with line numbers pointing at the wrong lines - worse than showing
+nothing, because they trust it and go looking.
+
+Producers are keyed separately, because Monaco and the server answer at different
+times about different things. Merged into one list per document, whichever answered
+last would erase the other's findings.
+
+The panel, the status bar and the run gate all read the store, so they cannot
+disagree about what is wrong.
+
+#### The palette was nearly free
+
+A command palette is the registry's list filtered by `isEnabled`. That is what
+building Phase D first bought: without it, a palette would have been a second list
+of actions to keep in step with the buttons and the keybindings, and a third place
+to forget the policy check. Disabled commands are shown greyed rather than hidden -
+a student who cannot find "Run" concludes the IDE is broken; one who sees it greyed
+learns the task is locked.
+
+**Found by the new browser assertions:** the palette's `close()` is re-entrant.
+Removing the overlay blurs the input, whose blur handler calls `close()` again
+synchronously mid-removal, throwing *"The node to be removed is no longer a child of
+this node"*. Fixed by clearing the references before removing.
+
+#### The compiler was not protecting the UI
+
+Ten modules carried `// @ts-nocheck`, including the explorer, search, execution and
+the Step-Up integration. All ten are now checked and the directive appears nowhere
+in `src/`.
+
+Most of the 34 errors had one root cause: the lazy dependency handles were written
+`lazyRef(...) as any`, which erased the type of `storage`, `tabManager` and `editor`
+at every call site. Dropping the casts - the helper is already generic - fixed 14 at
+once and gave the explorer real `StoredFile` and `StoredFolder` types.
+
+The rest were genuine, not compiler appeasement:
+
+| Site | What was actually wrong |
+|---|---|
+| `runtime.currentLang` (6 sites) | Mutable, and read by handlers that run long after the guard at the top of `initializeWorkspace`. Those sites would have thrown if it were ever null. |
+| `resolveKeywordAtCursor` | Declared `IStandaloneCodeEditor`; Monaco hands an action callback an `ICodeEditor`. |
+| `btnClearCache` | Typed `HTMLElement` and assigned `.disabled`, which **silently did nothing** - the button was never actually disabled while clearing. |
+| `showContextMenu` | Called in `operations.ts`, defined unexported in `tree.ts`. The right-click handler on empty explorer space referenced an undefined name. |
+| `tabManager.addEventListener?.()` | A method `TabManager` has never had, guarded with `?.` so it silently did nothing. Removed rather than left as a hint that such an event exists. |
+
+Two of those - the dead `.disabled` assignment and the undefined `showContextMenu` -
+are real bugs that only the suppression was hiding.
+
+#### i18n
+
+17 new keys in both locales, plus a completeness gate. A missing key does not fail
+loudly: `t()` returns the key itself, so a Hebrew user sees `panel.problems`, or an
+English string inside an RTL layout - which reads as a rendering bug rather than a
+translation gap, so the gap survives. Five checks assert identical key sets, no
+empty values, matching `{{placeholders}}` (a dropped one renders literal braces),
+and that every `data-i18n` key in the markup exists. Verified non-vacuous: it
+validates 37 keys actually present in `index.html`.
+
+**State:** 249 unit tests, 3 browser suites (24 + 46 + 25), contract 55 pass / 0
+fail / 0 todo, typecheck clean on both configs with no suppressions, build clean.
