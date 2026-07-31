@@ -120,7 +120,12 @@ registerHealthRoutes(app, {
   // A function, not the boolean: these handlers are registered long before
   // shutdown begins and must read the value at request time.
   isShuttingDown: lifecycle.isShuttingDown,
-  hostInfo: { cpuCount: CPU_COUNT, memoryMB: TOTAL_MEMORY_MB },
+  hostInfo: {
+    cpuCount: CPU_COUNT,
+    memoryMB: TOTAL_MEMORY_MB,
+    memoryBudgetMB: MEMORY_BUDGET.megabytes,
+    memoryBudgetSource: MEMORY_BUDGET.source,
+  },
 });
 
 registerPreviewRoutes(app, { store: previewStore, log });

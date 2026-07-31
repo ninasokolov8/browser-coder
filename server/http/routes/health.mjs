@@ -67,6 +67,12 @@ export function registerHealthRoutes(app, { pipeline, sessions, config, isShutti
         maxConcurrent: config.execution.maxConcurrent,
         cpuCount: hostInfo.cpuCount,
         memoryMB: hostInfo.memoryMB,
+        // Additive, and the reason is operational: `memoryMB` is the HOST's memory,
+        // so on a container it disagrees with the budget maxConcurrent was derived
+        // from - which is exactly the confusion that let V-36 sit unnoticed. An
+        // operator reading /health can now see both numbers and which one binds.
+        memoryBudgetMB: hostInfo.memoryBudgetMB,
+        memoryBudgetSource: hostInfo.memoryBudgetSource,
       },
     });
   });

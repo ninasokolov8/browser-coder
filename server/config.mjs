@@ -51,6 +51,13 @@ export const TOTAL_MEMORY_MB = Math.floor(os.totalmem() / 1024 / 1024);
  * @returns {{megabytes: number, source: 'cgroup-v2'|'cgroup-v1'|'host'}}
  */
 export function detectMemoryBudgetMb() {
+  // An explicit statement of the real limit, for a deployment where the process is
+  // constrained by something the cgroup files do not describe - a VM sized for this
+  // service, a systemd slice, or a host where /sys/fs/cgroup is not mounted. Also
+  // the only way to exercise the small-container path without a container.
+  const declared = intFromEnv('MEMORY_BUDGET_MB', 0);
+  if (declared > 0) return { megabytes: declared, source: 'declared' };
+
   const readLimit = filePath => {
     try {
       const raw = fs.readFileSync(filePath, 'utf8').trim();
@@ -79,6 +86,59 @@ export function detectMemoryBudgetMb() {
 
 export const MEMORY_BUDGET = detectMemoryBudgetMb();
 
+/**
+ * Memory kept for the API process itself: express, the session registry, buffered
+ * output, and the V8 heap of this process. Spending the whole budget on concurrent
+ * runs leaves nothing for the thing supervising them, and the first symptom is the
+ * supervisor being killed rather than a run being refused.
+ */
+const SERVER_RESERVE_MB = intFromEnv('SERVER_RESERVE_MB', 256);
+
+/**
+ * Assumed peak resident memory of one run.
+ *
+ * Deliberately an assumption with a name rather than a magic 50 buried in a
+ * division. It is also optimistic: the Java adapter passes `-Xmx128m` and node gets
+ * `--max-old-space-size=128`, so a heavy run can exceed this. It is retained as the
+ * default because it is the value this deployment has been sized against, and
+ * lowering concurrency further is a capacity decision rather than a bug fix - but
+ * `RUN_MEMORY_MB` now exists to make that decision without editing code.
+ */
+const RUN_MEMORY_MB = intFromEnv('RUN_MEMORY_MB', 50);
+
+/**
+ * How many runs may execute at once (V-36).
+ *
+ * The previous derivation was `min(500, floor(TOTAL_MEMORY_MB / 50))` - the HOST's
+ * memory. On the production droplet that is 30 GiB against a 1 GiB container, so
+ * the limit computed to the 500 ceiling: **eight times** the memory actually
+ * available. Admission therefore never refused anything, and the kernel enforced
+ * the real limit by OOM-killing the container. A capacity control that is 8x too
+ * high is not a capacity control; it converts a clean 503 into an outage.
+ *
+ * Derived from the real budget now, minus the server's own reserve. MAX_CONCURRENT
+ * overrides it outright for an operator who has measured something better.
+ */
+export function deriveMaxConcurrent({
+  budgetMb,
+  reserveMb = SERVER_RESERVE_MB,
+  perRunMb = RUN_MEMORY_MB,
+  override = 0,
+  ceiling = 500,
+}) {
+  if (override > 0) return override;
+
+  const available = Math.max(0, budgetMb - reserveMb);
+  // At least 1: a tiny container should run one program slowly rather than refuse
+  // every request and look broken.
+  return Math.max(1, Math.min(ceiling, Math.floor(available / perRunMb)));
+}
+
+const MAX_CONCURRENT = deriveMaxConcurrent({
+  budgetMb: MEMORY_BUDGET.megabytes,
+  override: intFromEnv('MAX_CONCURRENT', 0),
+});
+
 export const CONFIG = {
   port: intFromEnv('PORT', 3001),
   isDev: process.env.NODE_ENV !== 'production',
@@ -96,17 +156,11 @@ export const CONFIG = {
     dotnet: stringFromEnv('DOTNET_BIN', 'dotnet'),
   },
 
-  // Retained verbatim. The pool these describe is unused dead code (blueprint
-  // V-35) and is removed in Phase B; the values stay here until then so this
-  // commit changes nothing.
-  scaling: {
-    minWorkers: Math.max(2, Math.floor(CPU_COUNT / 2)),
-    maxWorkers: CPU_COUNT * 2,
-    scaleUpThreshold: 0.7,
-    scaleDownThreshold: 0.3,
-    scaleCheckIntervalMs: 5000,
-    workerIdleTimeoutMs: 60000,
-  },
+  // The `scaling` block is gone (V-35). It configured a worker pool and an
+  // autoscaler that did not exist - minWorkers, maxWorkers, scaleUpThreshold and
+  // the rest were read by nothing. Configuration that describes machinery the
+  // system does not have is worse than absent: it tells the next reader there is a
+  // pool to tune, and it makes the real limit harder to find.
 
   execution: {
     timeoutMs: intFromEnv('RUN_TIMEOUT_MS', 10000),
@@ -114,11 +168,9 @@ export const CONFIG = {
     javaTimeoutMs: intFromEnv('JAVA_TIMEOUT_MS', 30000),
     csharpTimeoutMs: intFromEnv('CSHARP_TIMEOUT_MS', 45000),
 
-    // Unchanged derivation, including the incorrect memory source. See
-    // detectMemoryBudgetMb() above and blueprint V-36.
-    maxConcurrent: Math.min(500, Math.floor(TOTAL_MEMORY_MB / 50)),
-    // Configured but never read: no queue exists (blueprint V-35).
-    maxQueueSize: Math.min(10000, Math.floor(TOTAL_MEMORY_MB / 10)),
+    // Derived from the real memory budget rather than the host's (V-36). See
+    // deriveMaxConcurrent() above.
+    maxConcurrent: MAX_CONCURRENT,
     maxOutputChars: intFromEnv('MAX_OUTPUT_CHARS', 100000),
 
     // Project size policy. maxCodeChars applies to BOTH single-file `code` and
@@ -143,7 +195,16 @@ export const CONFIG = {
     // not to ration legitimate simultaneous use.
     interactiveIdleTimeoutMs: intFromEnv('INTERACTIVE_IDLE_MS', 300000),
     interactiveMaxLifetimeMs: intFromEnv('INTERACTIVE_MAX_MS', 900000),
-    maxInteractiveSessions: intFromEnv('MAX_INTERACTIVE_SESSIONS', 200),
+
+    // Bounded by the same memory budget as buffered runs, because since A3/A4
+    // every run IS a session holding a live process - the two limits describe the
+    // same resource. Leaving this at a flat 200 while `maxConcurrent` derives to
+    // 15 would mean the session cap never binds and the honest limit is bypassed
+    // by using the interactive endpoint, which is the one the IDE always uses.
+    maxInteractiveSessions: Math.min(
+      intFromEnv('MAX_INTERACTIVE_SESSIONS', 200),
+      MAX_CONCURRENT,
+    ),
     maxInteractiveSessionsPerIp: intFromEnv('MAX_INTERACTIVE_PER_IP', 50),
   },
 
