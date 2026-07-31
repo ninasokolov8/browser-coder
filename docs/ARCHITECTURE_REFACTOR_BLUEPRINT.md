@@ -6185,3 +6185,145 @@ Done:
   second while typing.
 - `tabs.ts:612` still hardcodes a file icon instead of reading `lang.icon`, which
   `explorer/tree.ts:219` does correctly.
+
+### H7 (part 1) - The Python debug adapter
+
+§35.7 called debugging "not started, and correctly identified as large". This is its
+load-bearing half: a real breakpoint debugger for Python, verified against CPython
+before any server or client plumbing exists.
+
+#### bdb, not debugpy
+
+`debugpy` is not in the production image and there is no pip in it, so using it
+means a Dockerfile change, a larger image, and a dependency whose wire protocol
+(DAP) is far larger than anything this IDE surfaces. `bdb` is in the standard
+library - it is what pdb is built on - and provides exactly the primitives needed.
+Verified in the image: Python 3.12.13, `bdb` and `sys.settrace` both present.
+
+The cost is that the protocol is ours. It is deliberately tiny: six commands in
+(`setBreakpoints`, `continue`, `next`, `stepIn`, `stepOut`, `stop`, plus
+`evaluate`), five events out (`hello`, `breakpoints`, `started`, `stopped`,
+`terminated`, plus `error`), one JSON object per line.
+
+#### Transport
+
+Loopback TCP back to the server, inside the same container. Chosen over extra file
+descriptors because Node's support for fds above 2 is unreliable on Windows, where
+development happens. The container's network is `internal: true`; loopback is
+unaffected.
+
+A per-session token is sent first. It does **not** defend against the student's own
+program, which can read the same environment variable, and is not meant to -
+impersonating your own debugger only confuses your own UI. It defends against a
+*different* session's program reaching the wrong port, which the server would
+otherwise be unable to detect.
+
+**The student's program sees nothing.** The adapter never writes to stdout or
+stderr, so program output is byte-for-byte what it would be with no debugger
+attached. Stdin still reaches the program, so a debugged program can call `input()`.
+
+#### Four bugs found by building the test first
+
+Every one of these looked correct in the code and was wrong in practice.
+
+**1. It stopped on line 1 instead of the breakpoint.** `bdb.reset()` leaves
+`stopframe = None`, and `stop_here` returns True for the first frame - so the very
+first `user_line` fires on the program's first statement. That is what pdb wants: it
+drops you at a prompt. A "Start debugging" button implies the opposite. The first
+stop is now waved through unless the student actually put a breakpoint there.
+
+**2. `bdb.set_continue` tears down tracing.** When no breakpoints are set it calls
+`sys.settrace(None)`. Sound for pdb, and here it means a breakpoint added *while the
+program runs* has no effect at all, silently. Replaced with a continue that keeps the
+trace function installed. Slower, and correct.
+
+**3. Stop-on-exception did not work, and I documented that it did.** The comment on
+the replacement claimed it preserved stopping on an unhandled exception. It does
+not: `stop_here` returns `False` once `stoplineno` is `-1`, and
+`dispatch_exception` consults `stop_here` before calling `user_exception`. Measured,
+not reasoned about - the program crashed with no stop.
+
+The fix is not to force `user_exception` to fire. During tracing, bdb cannot tell an
+exception a `try` block is about to handle from one that will escape, so stopping at
+every raise would be noise that teaches students to ignore the debugger. Instead the
+uncaught exception is caught at the top level and reported **post-mortem** off the
+traceback, whose frames keep the state alive. The student sees the program stopped at
+the line that broke, with every local still inspectable - which is the single most
+useful thing a debugger can do for a beginner, and the thing pdb makes hardest to
+reach.
+
+The comment was corrected rather than deleted, since the reasoning is the part worth
+keeping.
+
+**4. A fast client lost its first command.** The channel started its reader thread in
+its constructor, before `set_immediate_handler` had been installed, so a client that
+replied to `hello` immediately had its `setBreakpoints` queued instead of applied -
+and the paused frame later rejected it as an unknown command. The breakpoint silently
+never armed. The standalone probe was slow enough to win the race; the contract tests
+were fast enough to lose it. Reading now cannot begin until the handler exists.
+
+#### A reader thread, because paused-only reading is not enough
+
+Fix 2 was necessary but not sufficient, and I initially thought it was the whole
+story. Keeping tracing installed does nothing if nobody reads the socket while the
+program runs - a mid-run command just sits in the kernel buffer until the next pause,
+which is exactly the pause it was meant to cause. Two things the UI must offer were
+silently impossible:
+
+- adding a breakpoint while the program is running
+- the Stop button, on a program looping and never pausing
+
+One thread now owns reading. `setBreakpoints` and `stop` are dispatched the moment
+they arrive; the rest are queued for the paused frame, because they need a frame to
+act on. `stop` works mid-run because `quitting` is read by the trace function on the
+*running* thread, so setting it from another thread makes the program raise
+`BdbQuit` at its next traced event.
+
+#### Details that matter to a student
+
+- **Only their own files stop.** Frames from the standard library and from the
+  adapter's own bootstrap are stepped through invisibly; without that the debugger
+  drops into `bdb.py`, which is indistinguishable from the IDE breaking.
+- **Their traceback contains none of the debugger.** Unfiltered, the top frames are
+  the adapter's `main` and `bdb.run` - files they did not write and cannot open. The
+  printed traceback is rebuilt with those frames removed and the temporary job path
+  replaced by the file name they know. Verified: a two-frame `ZeroDivisionError`
+  prints exactly `File "main.py", line 5` / `File "main.py", line 2`.
+- **Code is not listed as data.** Modules, functions and classes are filtered out of
+  the variables panel; a student looking for their list should not have to find it
+  among their imports.
+- **`globals` is empty at module level**, because there `f_globals is f_locals` and
+  reporting both would list every name twice.
+- **A broken `__repr__` cannot kill the session** - it renders as
+  `<unreadable: TypeError>`.
+- Values are truncated at 200 characters, 100 items, 3 levels deep.
+
+#### Verification
+
+`tests/contract/python-debug.test.mjs` - 23 assertions, run against the real
+interpreter with an honest skip when none is present. Green on **Python 3.12.13 in
+the production container** and **Python 3.13.7 on the host**, which is what caught
+two Windows-only problems in the harness itself (a stdout read racing process exit,
+and an `ECONNRESET` on teardown that failed the file while every assertion passed).
+
+Covers: breakpoints before start, running to the breakpoint rather than line 1,
+variables with structure and children, the call stack, evaluation in a paused frame
+including a failing expression, step in/over/out, continue between breakpoints,
+post-mortem stop with locals and stack, refusing to step a finished program, the
+clean traceback, and a breakpoint added mid-run taking effect.
+
+#### Not done in H7 yet
+
+- **The server half.** No debug session type, no TCP listener, no control routes, no
+  forwarding of debug events into the NDJSON stream. The adapter is currently
+  reachable only from a test.
+- **The client half.** No breakpoint glyph margin, no debug toolbar, no variables or
+  call-stack panels, no current-line highlight.
+- **Python only.** Java, C#, PHP and JavaScript have no debugger. Each needs a
+  different mechanism (JDWP, `vsdbg`/`netcoredbg`, Xdebug, the V8 inspector), and
+  none reuses this adapter.
+- **Single file only.** `is_our_file` admits the whole workspace directory, so
+  frames from an imported local module are reported - but breakpoints can only be set
+  in the entry file, because `apply_breakpoints` binds every line to
+  `self._program_path`.
+- No conditional breakpoints, no watch expressions, no changing a variable's value.
