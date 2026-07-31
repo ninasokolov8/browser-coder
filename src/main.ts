@@ -145,7 +145,17 @@ async function bootstrap(): Promise<void> {
   // Execution and run-panel handlers depend on the initialized editor. Load
   // them only after initializeWorkspace() has completed. Sidebar handlers are
   // already part of the statically imported layout/policy modules.
+  // execution.ts was one 528-line module doing four unrelated jobs. It is now
+  // three, and they are imported HERE, explicitly and in order, rather than
+  // chaining imports between themselves.
+  //
+  // That order matters and is easy to break silently: `editor-commands` and
+  // `editor-context-menu` register everything as a side effect of being imported -
+  // there is no exported initialiser to call - and both read `runtime.editor` at
+  // module scope. Importing either before `initializeWorkspace()` has run throws.
   await import('./features/execution');
+  await import('./features/editor-commands');
+  await import('./features/editor-context-menu');
   const { initializeRunPanel } = await import('./features/run-panel');
   initializeRunPanel();
 

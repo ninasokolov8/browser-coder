@@ -6074,3 +6074,114 @@ their word boundaries differ.
   second while typing (debounced 500ms, over the entire file).
 - `tabs.ts:612` hardcodes a file icon instead of reading `lang.icon`, which
   `explorer/tree.ts:219` does correctly.
+
+### H6 (part 3) - execution.ts split, and eight escapers collapsed into one
+
+#### execution.ts: 528 lines, four jobs
+
+One module, imported for its side effects, held: `runCode`; three "this file is not
+a program" handlers (HTML/CSS/Markdown preview, JSON validate, SVG image window);
+the TypeScript pre-run gate; request construction for snippet vs project mode;
+run-diagnostics publication; embedded-host notification; five command registrations;
+five keybindings; and two Monaco context-menu actions.
+
+Now three modules:
+
+| Module | Lines | Job |
+|---|---|---|
+| `execution.ts` | 293 | `runCode` and the non-program handlers it dispatches to |
+| `editor-commands.ts` | 135 | the five commands, five keybindings, Run button |
+| `editor-context-menu.ts` | 156 | "Explain this keyword" and "Run selection" |
+
+**The contract the split had to preserve** is not obvious from reading any one file:
+these registrations happen as a **side effect of being imported**. There is no
+exported initialiser. Both new modules also read `runtime.editor` at module scope,
+so importing either before `initializeWorkspace()` has run throws.
+
+The tempting shape - have `execution.ts` import the other two so the single existing
+import in `main.ts` keeps working - creates a cycle (`editor-commands` needs
+`runCode`) that survives only because function declarations hoist. `main.ts` imports
+all three explicitly and in order instead, with the ordering requirement written
+down at the call site. Hidden ordering that works by accident is how the `ide:ready`
+race got in.
+
+#### Eight HTML escapers
+
+The site map said four. Grepping for the actual pattern found **eight**, with three
+behaviours:
+
+| Location | Escapes |
+|---|---|
+| `components/output.ts` (`escHtml`, exported) | `& < >` |
+| `features/execution.ts` (`esc`) | `& < >` |
+| `features/run-panel.ts` (four copies) | `& < >`, one with `"` |
+| `features/search.ts` | `& < > "` |
+| `features/explorer/tree.ts` | `& < > " '` |
+| `features/markdown.ts` | `& < > " '` |
+
+Five omitted quote escaping, and the weakest built markup for the output panel.
+
+**It was not exploitable.** Every one of those ten call sites interpolates into
+element content, never into an attribute, and quotes only matter in attribute
+position. It was a hazard, not a hole - nothing recorded which copy was the weak one,
+so the next person to interpolate one of those values into `title="..."` had no way
+to know.
+
+One escaper now, all five characters, safe in both positions. Over-escaping is
+harmless in content (`&quot;` renders as `"`), so there is no weaker variant to
+offer and no way to pick the wrong one. `tree.ts`'s `escapeHtml`/`escapeAttribute`
+pair became one function under two names; `output.ts` keeps `escHtml` as a
+delegating export.
+
+Its limits are stated in the file rather than left to be discovered: not safe for
+unquoted attributes, `<script>`/`<style>` bodies, or URL positions - none of which
+this codebase builds by interpolation, and each of which needs a different rule
+rather than a stronger version of this one.
+
+#### Verification
+
+- 13 unit tests on the escaper: the attribute-breakout cases the three-character
+  variants could not stop, ampersand-first ordering (escaping `<` first turns `<`
+  into `&amp;lt;`), and the non-string coercion `run-panel`'s copies relied on but
+  the `string`-typed ones would have rejected.
+- The split is covered by the existing app-boot assertions rather than new ones,
+  deliberately: they already drive `workspace.run` and `editor.formatDocument`
+  through the command registry, which is exactly what breaks if the side-effect
+  imports are wired wrongly. Both still pass.
+- 455 unit, 57 contract, all three browser suites, clean build.
+- `tsc --noUnusedLocals` was run over the three modules to confirm no import was
+  left behind by the move.
+
+#### H6 as a whole: what was done, and what was deliberately not
+
+Done:
+- one lexer keyed by language, with an exhaustive typed table (part 1)
+- the Python phantom-function bug fixed, and `code-analysis.ts` given its first tests
+- search taught to use the language it was already being passed; two real bugs fixed
+- a "code only" search filter that was impossible before the lexer existed
+- search/replace divergence closed, including a destructive `codeOnly` case
+- silent-success removed from `import-refactor` for svg/json/markdown (part 2)
+- `execution.ts` split three ways; eight escapers collapsed to one (part 3)
+
+**Deliberately not done, with reasons:**
+
+- **`import-refactor.ts` (1070 lines) is still one module.** Only the pure
+  reference-warning rule was extracted. Splitting the rest means separating eight
+  per-language rewriters that share five index structures (`oldPathToId`,
+  `oldPythonModuleToId`, `oldJavaQualifiedToId`, `oldCSharpNamespaceToIds`,
+  `uniqueNewPythonStemToId`), and it has **no test file at all**. Splitting an
+  untested 1070-line module that rewrites the user's source is the wrong order of
+  operations - it needs tests first, and those tests are a larger piece of work than
+  the split.
+- **No grand per-language adapter registry.** The map showed 179 "registry
+  candidate" sites, but most are genuinely different concerns that happen to switch
+  on the same value - import syntax, symbol regexes, comment syntax, run behaviour,
+  preview behaviour. Forcing them into one interface would produce a dozen optional
+  fields, each of which a new language could still forget to fill in. The lexer table
+  was unified because it is one concern with one shape and an enforceable
+  completeness property. The rest stayed where it is on purpose: a registry nothing
+  needs is worse than a switch statement.
+- `code-analysis.ts` still re-runs its whole-file regex pass on the UI thread twice a
+  second while typing.
+- `tabs.ts:612` still hardcodes a file icon instead of reading `lang.icon`, which
+  `explorer/tree.ts:219` does correctly.
