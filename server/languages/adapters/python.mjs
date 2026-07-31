@@ -31,6 +31,28 @@ const LANGUAGES_ROOT = path.resolve(
 
 const SHIM_PATH = path.join(LANGUAGES_ROOT, 'python', 'turtle_shim.py');
 const PREFLIGHT_PATH = path.join(LANGUAGES_ROOT, 'python', 'preflight.py');
+const FS_GUARD_PATH = path.join(LANGUAGES_ROOT, 'python', 'fs_guard.py');
+
+/** Environment variable naming the directory a program may open files in. */
+export const WORKSPACE_ENV = 'BROWSER_CODER_WORKSPACE';
+
+/**
+ * The filesystem guard, loaded once.
+ *
+ * Unlike the turtle shim this is NOT concatenated into the student's file. It is
+ * executed by the bootstrap before their module is loaded, which keeps it out of
+ * their namespace and leaves every traceback line number unshifted.
+ *
+ * If it cannot be read the run is refused rather than proceeding unguarded - the
+ * turtle shim can degrade to "no drawing", but a missing guard would silently mean
+ * "every file on the container is readable".
+ */
+let fsGuardSource = null;
+function fsGuard() {
+  if (fsGuardSource !== null) return fsGuardSource;
+  fsGuardSource = fs.readFileSync(FS_GUARD_PATH, 'utf8');
+  return fsGuardSource;
+}
 
 /** Separator between the shim and user code. Line count must stay in sync. */
 const USER_CODE_SEPARATOR = '\n\n# ── user code ──\n';
@@ -225,8 +247,17 @@ export const pythonAdapter = {
       ]),
     );
 
+    // The guard is written into the job directory and executed by the bootstrap.
+    // Passing it inline through -c would work but puts several kilobytes on the
+    // command line, and a file gives any traceback a real name to point at.
+    const guardPath = job.writeFile('.browser-coder-fs-guard.py', fsGuard());
+
     const bootstrap = [
       'import runpy, sys',
+      // Install the filesystem guard FIRST, so nothing the student's program can
+      // reach - including an import of one of their own modules - runs before
+      // `open` is confined to the workspace.
+      `exec(compile(open(${JSON.stringify(guardPath)}).read(), ${JSON.stringify(guardPath)}, "exec"), {"__name__": "_bc_fs_guard"})`,
       `sys.path[:0] = ${JSON.stringify(importDirs)}`,
       `runpy.run_path(${JSON.stringify(entryAbsolute)}, run_name="__main__")`,
     ].join('\n');
@@ -241,7 +272,11 @@ export const pythonAdapter = {
       args: ['-u', '-I', '-S', '-B', '-c', bootstrap],
       cwd: job.dir,
       timeoutMs: ctx.timeoutMs,
-      extraEnv: ctx.graphics ? { [GRAPHICS_OUT_ENV]: ctx.graphics.path } : undefined,
+      extraEnv: {
+        // The one directory a program may open files in. Read by fs_guard.py.
+        [WORKSPACE_ENV]: path.resolve(job.dir),
+        ...(ctx.graphics ? { [GRAPHICS_OUT_ENV]: ctx.graphics.path } : {}),
+      },
       transformStderr: text => {
         let out = stripJobPaths(text, job.dir);
         if (shimInjected) out = adjustTracebackForShim(out, offset, displayName);

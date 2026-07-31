@@ -117,7 +117,28 @@ const SECURITY = {
     // fine-grained decision: real imports and real calls only.
     python: [
       // ── Dangerous imports ────────────────────────────────────────────────
-      /\b(?:import|from)\s+(?:os|sys|subprocess|socket|ssl|select|signal|shutil|pathlib|io|codecs|base64|binascii|pickle|cPickle|marshal|ctypes|mmap|resource|pty|tty|termios|fcntl|threading|multiprocessing|asyncio|importlib|builtins|inspect|gc|dis|ast|code|types|platform|tempfile|glob|fnmatch|fileinput|getpass|webbrowser|sqlite3|http|urllib|urllib2|requests|ftplib|smtplib|telnetlib|poplib|imaplib|nntplib|xmlrpc|commands|shelve|dbm|anydbm|whichdb|zipfile|tarfile|gzip|bz2|lzma|runpy|pdb|site|sysconfig|venv|distutils|setuptools|posix|nt|pwd|grp|spwd|crypt|curses|pipes|popen2|_thread|_socket|_posixsubprocess)\b/,
+      //
+      // `sys` is absent deliberately: it is permitted, with its dangerous
+      // attributes named individually below and enforced precisely by the AST
+      // pass in languages/python/preflight.py. Keeping it here would refuse
+      // `sys.exit()` before the AST pass ever ran.
+      //
+      // `base64` and `binascii` are absent: they are pure computation and a real
+      // exercise topic. The attack that used to justify blocking them is
+      // `exec(base64.b64decode(...))`, and it is `exec` that stops it - blocking
+      // the codec as well only cost the curriculum.
+      //
+      // `platform` and `ast` were removed here and then put back. Neither has a
+      // curriculum use, and "harmless" is not the test being applied: a module
+      // comes off this list when the course needs it AND containment covers the
+      // risk, not merely when the risk looks small.
+      /\b(?:import|from)\s+(?:os|subprocess|socket|ssl|select|signal|shutil|pathlib|io|codecs|pickle|cPickle|marshal|ctypes|mmap|resource|pty|tty|termios|fcntl|threading|multiprocessing|asyncio|importlib|builtins|inspect|gc|dis|ast|code|types|platform|tempfile|glob|fnmatch|fileinput|getpass|webbrowser|sqlite3|http|urllib|urllib2|requests|ftplib|smtplib|telnetlib|poplib|imaplib|nntplib|xmlrpc|commands|shelve|dbm|anydbm|whichdb|zipfile|tarfile|gzip|bz2|lzma|runpy|pdb|site|sysconfig|venv|distutils|setuptools|posix|nt|pwd|grp|spwd|crypt|curses|pipes|popen2|_thread|_socket|_posixsubprocess)\b/,
+      // sys, restricted rather than refused. Only the attributes that reach the
+      // import machinery or the interpreter's stack.
+      // Kept in step with _ALLOWED_SYS_ATTRIBUTES in preflight.py: a name that is
+      // refused here but allowed there (or the reverse) means the two gates
+      // disagree about the same program.
+      /\bsys\s*\.\s*(?:modules|path|_getframe|settrace|setprofile|_current_frames|__stdout__|__stderr__|__stdin__|meta_path|path_hooks|path_importer_cache)\b/,
       // ── Command / process execution ──────────────────────────────────────
       /\bos\s*\.\s*(?:system|popen|spawn\w*|exec\w*|fork|kill|remove|unlink|rmdir|mkdir|makedirs|rename|chmod|chown|chdir|listdir|walk|environ|getenv|putenv)\b/,
       /\bsubprocess\s*\./,
@@ -128,8 +149,18 @@ const SECURITY = {
       /(?<![.\w])(?<!\bdef\s)(?:getattr|setattr|delattr)\s*\(/,
       /\bimportlib\s*\./,
       // ── File access ──────────────────────────────────────────────────────
-      /(?<![.\w])(?<!\bdef\s)open\s*\(/,
+      //
+      // Plain `open(...)` is NOT refused any more. It is allowed and confined to
+      // the run's own workspace directory at runtime by languages/python/
+      // fs_guard.py, which is a boundary the regex could never be: the regex
+      // cannot tell "data.txt" from "../other-job/main.py" once the path is
+      // computed rather than written literally.
+      //
+      // The routes that do NOT pass through the guarded builtin are still
+      // refused, here and by the module list above.
       /\b(?:codecs|io)\s*\.\s*open\s*\(/,
+      /\bio\s*\.\s*FileIO\s*\(/,
+      /\bos\s*\.\s*(?:open|fdopen|scandir)\s*\(/,
       /\bfileinput\s*\.\s*input\s*\(/,
       /\bgetpass\s*\./,
       // ── Interpreter internals (classic sandbox-escape chains) ────────────

@@ -5597,3 +5597,128 @@ parses it and says either "valid JSON, load it from a program with
   built-ins in the loader. Moving them is cosmetic and would not change behaviour,
   so it is deferred to H6, where the client language registry is restructured
   anyway.
+
+### H4 - Python file I/O, and a security claim that did not survive checking
+
+§35.5 concluded that the blocklist was "now redundant for the threats the kernel
+handles" and specifically that "`open()` cannot escape the job directory". Both
+the reasoning and that sentence are **wrong**, and acting on them as written would
+have opened a real hole. This is the clearest case so far of why the plan is not
+taken for granted.
+
+#### The measurement
+
+Every job runs as the **same** operating-system user. The server drops to `app`
+(uid 1001) once, at startup, and stays there. `Job` creates each directory with
+`mode: 0o700` and the comment there claimed this "is what makes cross-job reads
+impossible rather than merely unlikely".
+
+0700 restricts *other users*. It grants the owning user everything. Measured in
+the production image:
+
+```
+$ su-exec app:app ls /tmp/root
+job-run-attacker
+job-run-victim
+$ su-exec app:app cat /tmp/root/job-run-victim/main.py
+SECRET homework by another student
+```
+
+So the only thing standing between one student's program and another's source and
+output was the fact that `open()` was refused. The blocklist was **load-bearing**,
+not redundant. Deleting `open` from it - which is exactly what §35.5's priority
+line said to do - would have introduced a cross-tenant read.
+
+What was genuinely wrong was the *shape* of the rule: "no files at all" rather
+than "your own files only".
+
+#### What changed
+
+**`languages/python/fs_guard.py`** - `open` is allowed and confined. Every path is
+resolved with `realpath` (which follows symlinks and collapses `..`) and must land
+inside the run's workspace directory. `io.open` and `io.FileIO` are wrapped too,
+because both reach the operating system without passing through the builtin.
+Opening by file descriptor and supplying a custom `opener` are refused, as each
+bypasses the path check entirely.
+
+Injected by the **bootstrap**, not concatenated into the student's file like the
+turtle shim - so nothing leaks into their namespace and no traceback line numbers
+shift. Unreadable guard means the run fails rather than proceeding unguarded.
+
+Confinement is *stronger* than the old refusal, not weaker. A pre-run filter can
+only see text; it cannot tell `"data.txt"` from a path assembled at runtime from
+two harmless halves. The guard checks what the program actually asks for. Proven:
+
+```python
+name = '/etc' + '/' + 'passwd'
+print(open(name).read())      # PermissionError - the literal never appears
+```
+
+**`sys` is permitted with an attribute allowlist.** `sys.exit()` is taught in every
+introductory course and ends the student's own short-lived child process - the
+runner kills it anyway. The corpus had it filed as "Denial of Service … crash the
+application", which describes a threat that does not exist here. What stays
+refused is `sys.modules`, `sys.path`, `sys._getframe` and friends: those reach the
+import machinery and the interpreter stack, which is precisely how the guard would
+be unwrapped. The guard and the AST pass are a pair - one confines paths, the
+other keeps the unwrapped builtin unreachable.
+
+**`base64` and `binascii` unblocked.** The attack that justified them was
+`exec(base64.b64decode(...))`, and it is `exec` that stops it. Blocking the codec
+as well only cost the curriculum.
+
+**`platform` and `ast` were unblocked and then put back.** Neither has a curriculum
+use. The test being applied is "the course needs it AND containment covers the
+risk" - not "the risk looks small". Recorded because the security corpus caught it,
+which is the corpus doing its job.
+
+**The false comment in `job.mjs` was corrected** rather than left to mislead the
+next reader.
+
+#### The corpus and the CI gate
+
+Three entries asserted the old policy and had to change - one of them because it
+was simply wrong about the threat. The harness could not express the difference
+between "refused before it started" and "refused as it ran", so
+`expectRefusedAtRuntime` was added: the corpus now records **how** each attack is
+stopped, and a case that silently changes mechanism fails.
+
+Six new entries: workspace file I/O must WORK (a regression there is a lost
+curriculum topic, not a security win), the computed-path attack, and the three
+`sys` attributes.
+
+**The suite is now a CI gate.** It existed but was only ever run by hand, which is
+how the policy and the corpus drifted apart for so long. It runs against the real
+production image in the `image` job. Verified that it fails the build: forcing one
+expectation wrong exits 1.
+
+#### Verification
+
+- 322 attack cases across six languages, against the production image: all pass.
+- A 23-case probe of the new behaviour: file read/write, the word-count exercise,
+  `sys.exit` with a code, `sys.argv`, `random`; plus absolute paths, `..`
+  traversal, computed paths, cross-job paths, fd opening, custom openers, and
+  writes outside the workspace - all refused.
+- The guard proven load-bearing: the same `open('/etc/passwd')` succeeds without it
+  and raises `PermissionError` with it.
+- 300 unit, 57 contract, unchanged.
+
+#### Not done in H4
+
+- **One uid per job.** This is the fix that would make cross-job isolation a
+  property of the operating system rather than of the interpreter. It needs the
+  server to retain the privilege to change uid per spawn, which conflicts with the
+  current entrypoint dropping to `app` once at startup. Until then the guard is a
+  boundary against mistakes and casual probing, **not** against an attacker who
+  already has arbitrary code execution.
+- **`pathlib`, `glob`, `shutil`, `csv`-to-disk helpers, `zipfile`, `tempfile`
+  remain blocked.** Each is a real curriculum topic and each reaches the
+  filesystem without passing through the guarded `open`, so each needs its own
+  confinement. `pathlib` is the one worth doing next.
+- **The other five languages are untouched.** Java, C#, PHP and JavaScript still
+  refuse file I/O outright. The same argument applies to them and the same
+  mechanism does not - there is no equivalent of a Python import hook for a
+  compiled language, so it needs per-language work.
+- The `sys` allowlist is enforced in two places (the regex corpus and the AST
+  pass) that must be kept in step by hand. A single source would be better; noted
+  in the code at both sites.

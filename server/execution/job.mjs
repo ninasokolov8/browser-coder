@@ -39,9 +39,20 @@ export class Job {
     this.dir = path.join(root, `${JOB_PREFIX}${kind}-${this.id}`);
     this.disposed = false;
 
-    // mode 0o700: only the service user can traverse it. Combined with one
-    // directory per job this is what makes cross-job reads impossible rather
-    // than merely unlikely.
+    // mode 0o700: no OTHER operating-system user can traverse it.
+    //
+    // This does NOT make cross-job reads impossible, and an earlier version of
+    // this comment claimed it did. Every job runs as the same user - the server
+    // drops to `app` (uid 1001) once and stays there - so 0o700 on a directory
+    // that user owns grants that user everything. Measured in the production
+    // image: a process running as uid 1001 can list this root and read another
+    // job's files.
+    //
+    // What actually confines a program to its own directory is per-language:
+    // languages/python/fs_guard.py for Python, and the absence of any file API in
+    // what the other adapters permit. One uid per job would make it a property of
+    // the operating system instead; that needs the server to retain the privilege
+    // to change uid, and is recorded as not done.
     fs.mkdirSync(this.dir, { recursive: true, mode: 0o700 });
   }
 

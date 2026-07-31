@@ -291,43 +291,60 @@ export const pythonTests = [
   {
     name: 'Python: open function',
     code: `f = open('/etc/passwd', 'r'); print(f.read())`,
-    expectBlocked: true,
+    expectRefusedAtRuntime: true,
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Direct File Reading
-      
+
       How hackers use this:
       The built-in open() function provides unrestricted file access.
       Attackers use it to read sensitive files.
-      
+
       Real-world impact:
       - Read /etc/passwd for user enumeration
       - Access application source code
       - Read configuration files with credentials
-      - Access SSH keys and certificates
-      
-      Why blocked:
-      In a sandboxed code execution environment, file access should
-      be completely disabled to prevent information disclosure.
+      - Access another student's program while it is running
+
+      Why refused, and why the mechanism changed:
+      open() used to be refused before the program started, which also removed
+      file handling from the curriculum entirely - "read a file and count the
+      words" could not run. It is now allowed and CONFINED: every path is
+      resolved and must land inside the run's own workspace directory, so this
+      attack raises PermissionError while the program runs.
+
+      Confinement is the stronger rule, not the weaker one. A pre-run filter can
+      only see the text: it cannot tell "data.txt" from a path assembled at
+      runtime out of two harmless-looking halves. The guard resolves whatever the
+      program actually asks for.
+
+      The last item above is the one the container does NOT cover: every job runs
+      as the same uid, so directory permissions grant nothing between jobs.
     `,
   },
   {
     name: 'Python: File write',
     code: `f = open('/tmp/backdoor.py', 'w'); f.write('malicious code'); f.close()`,
-    expectBlocked: true,
+    expectRefusedAtRuntime: true,
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Writing Malicious Files
-      
+
       How hackers use this:
       Writing files enables persistent attacks - creating backdoors,
       modifying application code, or planting malware.
-      
+
       Real-world impact:
       - Create web shells for persistent access
       - Modify Python scripts to inject backdoors
       - Write cron jobs for scheduled attacks
       - Plant SSH keys for future access
+
+      Why refused:
+      Writing is confined to the run's own workspace exactly as reading is, so
+      this lands outside and raises PermissionError. Writing INSIDE the workspace
+      is allowed and expected - it is how a student saves output - and that
+      directory is deleted when the run ends, so nothing persists.
     `,
   },
   {
@@ -618,18 +635,118 @@ export const pythonTests = [
   {
     name: 'Python: sys.exit',
     code: `import sys; sys.exit(1)`,
+    expectBlocked: false,
+    category: 'system_access',
+    explanation: `
+      ✅ NOT AN ATTACK - this expectation was wrong and has been corrected.
+
+      The stated impact ("crash the application", "disrupt service for users")
+      described a threat that does not exist here. sys.exit() ends the STUDENT'S
+      OWN process, which is a short-lived child in its own directory that the
+      runner is going to terminate anyway. It cannot touch the server, and it
+      cannot affect another student's run.
+
+      Meanwhile sys.exit() is taught in every introductory course, and refusing it
+      meant a correct program was rejected with a security error.
+
+      What IS still refused is the rest of the module - sys.modules and sys.path
+      reach the import machinery, and sys._getframe walks the stack into the
+      filesystem guard's own closure. So sys is permitted with an explicit
+      attribute allowlist (_ALLOWED_SYS_ATTRIBUTES in preflight.py) rather than
+      refused wholesale. The separate cases below cover those.
+    `,
+  },
+  {
+    name: 'Python: sys.modules',
+    code: `import sys; print(sys.modules)`,
     expectBlocked: true,
     category: 'system_access',
     explanation: `
-      🎯 ATTACK: Denial of Service
-      
-      How hackers use this:
-      sys.exit() terminates the process, causing service disruption.
-      
-      Real-world impact:
-      - Crash the application
-      - Disrupt service for users
-      - Cover tracks by terminating before logging
+      🎯 ATTACK: Reaching the import machinery
+
+      sys.modules holds every loaded module object, including the ones the
+      sandbox patched. Reading it is how a program finds an unwrapped reference
+      to a guarded function.
+
+      Why blocked:
+      sys is allowed for the attributes a student actually uses; this is not one
+      of them. Blocking the attribute rather than the module is what lets
+      sys.exit() work while this does not.
+    `,
+  },
+  {
+    name: 'Python: sys._getframe',
+    code: `import sys; print(sys._getframe().f_back.f_globals)`,
+    expectBlocked: true,
+    category: 'system_access',
+    explanation: `
+      🎯 ATTACK: Walking the call stack
+
+      _getframe hands back a frame object, and from a frame you reach f_globals
+      and f_builtins - which is the standard route to the real, unwrapped open()
+      that the filesystem guard replaced.
+
+      Why blocked:
+      This is precisely the attack the guard cannot defend against by itself,
+      which is why the AST pass has to keep it out. The two are a pair: the guard
+      confines file paths, and the AST pass keeps the guard reachable only as the
+      thing it was replaced with.
+    `,
+  },
+  {
+    name: 'Python: sys.path manipulation',
+    code: `import sys; sys.path.append('/'); import os`,
+    expectBlocked: true,
+    category: 'system_access',
+    explanation: `
+      🎯 ATTACK: Widening the import path
+
+      Appending to sys.path lets a program import from anywhere on the container,
+      including a module it wrote itself a moment earlier.
+
+      Why blocked:
+      Same reason as sys.modules - an allowlisted attribute surface, and this is
+      not on it.
+    `,
+  },
+  {
+    name: 'Python: workspace file I/O is allowed',
+    code: `
+with open('notes.txt', 'w') as handle:
+    handle.write('the quick brown fox\\n')
+with open('notes.txt') as handle:
+    print('words:', len(handle.read().split()))
+`,
+    expectBlocked: false,
+    expectedOutput: 'words: 4',
+    category: 'file_system',
+    explanation: `
+      ✅ NOT AN ATTACK - and the case that motivated the whole change.
+
+      Reading and writing files in the student's own project is a standard
+      curriculum topic, and it used to be impossible: open() was refused outright,
+      so "read a file and count the words" could not be set as an exercise.
+
+      This must keep working. A regression here is not a security improvement, it
+      is a feature the course loses - which is why it is asserted alongside the
+      attacks rather than in a separate suite.
+    `,
+  },
+  {
+    name: 'Python: a computed path outside the workspace',
+    code: `name = '/etc' + '/' + 'passwd'; print(open(name).read())`,
+    expectRefusedAtRuntime: true,
+    category: 'file_system',
+    explanation: `
+      🎯 ATTACK: Assembling the path so a text filter cannot see it
+
+      The literal '/etc/passwd' never appears in the source. Any pre-run filter
+      that matches on text is blind to this by construction.
+
+      Why refused:
+      The guard checks the path the program actually asks for, after it has been
+      computed and resolved. This case is the clearest demonstration of why
+      confinement replaced the blanket refusal rather than joining it.
     `,
   },
   {

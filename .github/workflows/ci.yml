@@ -212,6 +212,18 @@ jobs:
             if (config.memoryBudgetSource === 'host') throw new Error('the container did not detect its cgroup memory limit (V-36)');
             if (config.maxConcurrent > 40) throw new Error('maxConcurrent ' + config.maxConcurrent + ' is too high for a 1 GiB budget (V-36)');
           "
+      # 322 attack cases across six languages, run against the real image.
+      #
+      # This suite existed but was only ever run by hand, which is how the policy
+      # and the corpus drifted apart: entries asserted that sys.exit() was an
+      # attack and that file access was refused outright, long after both had
+      # become deliberate product decisions. It is a gate now.
+      #
+      # It also asserts the other direction - that workspace file I/O still WORKS -
+      # so tightening the sandbox until the curriculum breaks fails here too.
+      - name: Security corpus
+        run: API_URL=http://127.0.0.1:3001 node tests/security/security-tests.mjs
+
       - name: Container logs on failure
         if: failure()
         run: docker logs ci-api || true

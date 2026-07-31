@@ -110,8 +110,19 @@ async function executeCode(language, code) {
       stderrLower.includes('not allowed') ||
       stderrLower.includes('security violation');
     
+    // An attack can also be refused while the program runs rather than before it
+    // starts - the Python filesystem guard confines open() to the workspace and
+    // raises PermissionError. That is a refusal, but it carries none of the
+    // keywords above, so without this a correctly-defended attack would be
+    // reported as a vulnerability.
+    const combined = `${data.stderr || ''}\n${data.error || ''}`;
+    const refusedAtRuntime =
+      /is outside your project folder/i.test(combined) ||
+      /not available in Browser Coder/i.test(combined);
+
     return {
       blocked: isSecurityBlocked,
+      refusedAtRuntime,
       stdout: data.stdout,
       stderr: data.stderr,
       error: data.error,
@@ -131,10 +142,19 @@ async function runTest(language, test) {
     let passed;
     let reason;
     
-    if (test.expectBlocked) {
+    if (test.expectRefusedAtRuntime) {
+      // The attack is allowed to start and is refused as it happens, by the
+      // sandbox rather than by the pre-run filter. Stated explicitly per case, so
+      // the corpus records HOW each attack is stopped instead of only that it is
+      // - and so a case that silently changes mechanism shows up as a failure.
+      passed = result.refusedAtRuntime;
+      reason = passed
+        ? `✓ Correctly refused while running: ${(result.stderr || '').trim().split('\n')[0]}`
+        : `✗ VULNERABILITY: the sandbox did not refuse it. stdout=${JSON.stringify((result.stdout || '').slice(0, 120))}`;
+    } else if (test.expectBlocked) {
       // Test expects the code to be blocked by security filter
       passed = result.blocked;
-      reason = passed 
+      reason = passed
         ? `✓ Correctly blocked: ${result.error || result.stderr || 'Security filter triggered'}`
         : `✗ VULNERABILITY: Code executed when it should be blocked!`;
     } else {
