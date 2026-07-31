@@ -58,6 +58,12 @@ export function createEditor(): monaco.editor.IStandaloneCodeEditor {
     // spare the columns - which is why it was off everywhere before.
     minimap: { enabled: appConfig.ideMode === 'full' && !appConfig.isEmbedded, renderCharacters: false },
     fontSize: 14,
+    // Required for breakpoints to exist at all: the glyph margin is where they are
+    // drawn and where the click that toggles one is delivered. Off by default in
+    // Monaco, so without this the debugger UI would render nothing and the margin
+    // click handler would never fire - the feature would be invisible rather than
+    // broken, which is harder to notice.
+    glyphMargin: true,
     fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace",
     fontLigatures: true, tabSize: 2, insertSpaces: true, wordWrap: 'on', lineNumbers: 'on',
     renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, autoClosingBrackets: 'always',

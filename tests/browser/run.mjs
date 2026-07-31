@@ -14,7 +14,7 @@
  *   node tests/browser/run.mjs
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { existsSync, rmSync } from 'node:fs';
 import { once } from 'node:events';
@@ -45,7 +45,15 @@ if (!selected) {
 const PAGE = selected.page;
 VITE_PORT = Number(process.env.SMOKE_VITE_PORT || selected.port);
 
-const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 120000);
+/*
+ * 300s, not 120s.
+ *
+ * The app-boot suite now drives a real debug session: it starts a Python process,
+ * waits for a breakpoint, steps, and waits for the program to finish. That is tens of
+ * seconds of legitimate waiting on top of everything else, and at 120s the page was
+ * killed mid-suite and reported nothing at all - which looks identical to a hang.
+ */
+const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 300000);
 
 const BROWSER_CANDIDATES = [
   process.env.SMOKE_BROWSER,
@@ -58,6 +66,25 @@ const BROWSER_CANDIDATES = [
   '/usr/bin/chromium-browser',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
 ].filter(Boolean);
+
+/**
+ * A Python that actually runs, or null.
+ *
+ * `python3` on Windows is usually the Microsoft Store app-execution alias: it prints
+ * an install hint and exits nonzero. The API server defaults to `python3`, so without
+ * this the debugger assertion fails on a developer machine for a reason that has
+ * nothing to do with the code under test.
+ */
+function findPythonBin() {
+  for (const candidate of [process.env.PYTHON_BIN, 'python3', 'python']) {
+    if (!candidate) continue;
+    const probe = spawnSync(candidate, ['-c', 'print(1)'], { encoding: 'utf8' });
+    if (!probe.error && probe.status === 0) return candidate;
+  }
+  return null;
+}
+
+const PYTHON_BIN = findPythonBin();
 
 function findBrowser() {
   for (const candidate of BROWSER_CANDIDATES) {
@@ -172,7 +199,16 @@ if (selected.needsApi) {
     const api = spawn(process.execPath, ['server.mjs'], {
       // Development mode: the dev server serves the client, so the API only has to
       // answer /api. A declared budget keeps capacity deterministic across hosts.
-      env: { ...process.env, PORT: '3001', NODE_ENV: 'development', MEMORY_BUDGET_MB: '2048' },
+      env: {
+        ...process.env,
+        PORT: '3001',
+        NODE_ENV: 'development',
+        MEMORY_BUDGET_MB: '2048',
+        // A developer whose `python3` is the Windows Store alias needs this, and the
+        // debugger assertion cannot run without a real interpreter. Only set when a
+        // working one is found, so a host where python3 IS real is left alone.
+        ...(PYTHON_BIN ? { PYTHON_BIN } : {}),
+      },
       stdio: 'ignore',
     });
     started.push(api);

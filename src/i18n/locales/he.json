@@ -74,5 +74,7 @@
   "policy.searchReplaceDisabled": "ההחלפה מושבתת במשימה הזו",
   "status.readyForInput": "אפשר להקליד ⌨️",
   "panel.endInput": "סיום קלט",
-  "panel.endInputHint": "שליחת סוף-קלט (Ctrl+D), כדי שתוכנית שקוראת עד סוף הקלט תוכל לסיים"
+  "panel.endInputHint": "שליחת סוף-קלט (Ctrl+D), כדי שתוכנית שקוראת עד סוף הקלט תוכל לסיים",
+  "titlebar.debug": "ניפוי",
+  "command.debug": "התחלת ניפוי"
 }

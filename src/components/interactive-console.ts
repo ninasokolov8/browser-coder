@@ -47,6 +47,31 @@ export interface RunConsoleOptions {
 
   /** Called once the stream is live, so a caller can stop its own spinner. */
   onStreamStart?: () => void;
+
+  /**
+   * Every `debug:` frame from the run.
+   *
+   * The debugger shares this stream deliberately - see the note in
+   * server/http/routes/run.mjs - so the console is where the frames arrive, and it
+   * hands them on rather than knowing what they mean. Injected rather than imported
+   * for the same reason `resolveImage` is: this module stays free of any dependency
+   * on the editor or the workspace.
+   */
+  onDebugEvent?: (event: DebugStreamEvent) => void;
+
+  /**
+   * Ask the server to attach a debugger to this run.
+   *
+   * A run without it is byte-identical to before, which is what keeps the v1
+   * surface frozen.
+   */
+  debug?: boolean;
+}
+
+/** One frame from the debug half of the stream, with the `debug:` prefix removed. */
+export interface DebugStreamEvent {
+  readonly type: string;
+  readonly [key: string]: unknown;
 }
 
 export interface InteractiveResult {
@@ -79,6 +104,17 @@ function compileLabel(langId: string): string {
 }
 
 /** Terminate any running interactive session (kills the server-side process). */
+/**
+ * The live session's id, or null when nothing is running.
+ *
+ * Exposed so the debugger can address its control endpoints without the console
+ * having to know what a debug command is - the console owns the stream, the debugger
+ * owns the protocol.
+ */
+export function activeSessionId(): string | null {
+  return active?.sessionId ?? null;
+}
+
 export function stopInteractive(): void {
   if (!active) return;
   const { sessionId, controller } = active;
@@ -321,6 +357,15 @@ export function runProgram(
             active = null;
             void finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
             break;
+          default:
+            // Debug frames are namespaced `debug:` by the server so they can never
+            // collide with the cases above. Anything else is a frame from a newer
+            // server than this client, and is ignored rather than logged - a v1
+            // client must not become noisy against a v2 server.
+            if (typeof msg.type === 'string' && msg.type.startsWith('debug:')) {
+              options.onDebugEvent?.({ ...msg, type: msg.type.slice('debug:'.length) });
+            }
+            break;
         }
       };
 
@@ -328,7 +373,13 @@ export function runProgram(
         const resp = await fetch('/api/run/interactive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, language: langId }),
+          body: JSON.stringify({
+            ...payload,
+            language: langId,
+            // Omitted entirely unless asked for, so the request a v1 client sends is
+            // unchanged rather than carrying `debug: false`.
+            ...(options.debug ? { debug: true } : {}),
+          }),
           signal: controller.signal,
         });
 

@@ -11,6 +11,7 @@ import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas } from '../components/turtle';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
 import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
+import { debugState, syncBreakpoints } from './debug/ui.ts';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
@@ -57,7 +58,7 @@ function showSvgPreview(filePath: string, source: string): void {
   setStatus('SVG image shown ✅');
 }
 
-export async function runCode(code: string) {
+export async function runCode(code: string, options: { debug?: boolean } = {}) {
   const { editor, tabManager, storage } = requireRuntime();
   const activeTab = tabManager.getActiveTab();
   if (!activeTab) return;
@@ -240,10 +241,23 @@ requestBody = {
     //
     // /api/run still exists and is unchanged; Step-Up calls it server-side. The
     // IDE simply no longer uses it.
+    // A debug run announces itself before the stream opens, so the toolbar appears
+    // immediately rather than only once the adapter attaches.
+    if (options.debug) debugState.starting();
+
     const result = await runProgram(lang.id, requestBody, {
       // Stop the spinner the moment the stream is live: from then on the console
       // owns the panel and shows progress by printing.
       onStreamStart: () => stopRunLoader(),
+
+      debug: options.debug === true,
+
+      onDebugEvent: event => {
+        debugState.apply(event);
+        // Breakpoints go out as soon as the adapter is listening. Earlier would race
+        // the connection; later would miss a breakpoint on the program's first lines.
+        if (event.type === 'attached') syncBreakpoints();
+      },
 
       // turtle.bgpic("maze.svg") names a workspace file. Python reports only the
       // name, so it is resolved here, where the workspace is in scope.
@@ -252,6 +266,10 @@ requestBody = {
           name,
           normalizeProjectPath(activeTab.file.path || activeTab.file.name),
         ) });
+
+    // However the run ended, the session is over: no stale current-line arrow, no
+    // step buttons left enabled.
+    if (options.debug) debugState.finished();
 
     // Compiler and runtime errors become editor markers and Problems entries, not
     // just a paragraph of text. For Python, Java, PHP and C# this is the ONLY thing

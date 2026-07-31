@@ -35,6 +35,21 @@ function watchForErrors(frameWindow: Window): void {
   });
   frameWindow.addEventListener('unhandledrejection', event => {
     const reason = (event as PromiseRejectionEvent).reason;
+
+    /*
+     * Monaco's cancellation sentinel is not an error.
+     *
+     * Monaco rejects pending `Delayer` promises with an object whose name AND message
+     * are both exactly "Canceled" when the thing that scheduled them is disposed -
+     * switching a model, closing a tab. Its own global handler recognises that shape
+     * and ignores it (`isCancellationError`), so treating it as an application
+     * failure here reports Monaco working as designed.
+     *
+     * Matched on both fields exactly rather than on a substring, so a real error that
+     * merely mentions cancellation is still caught.
+     */
+    if (reason?.name === 'Canceled' && reason?.message === 'Canceled') return;
+
     errors.push(`unhandledrejection: ${reason?.stack || reason}`);
   });
 
@@ -699,6 +714,148 @@ async function checkFormattingWorks(frameWindow: Window): Promise<void> {
 }
 
 /**
+ * The debugger, driven the way a student drives it.
+ *
+ * Everything below this point in the stack is already covered: the adapter has its own
+ * contract tests, the channel and the command boundary have unit tests, and the HTTP
+ * surface has contract tests against the production image. What none of them can show
+ * is that a student can actually debug something - that the glyph margin is on, the
+ * breakpoint reaches the adapter, the toolbar enables, and the variables appear.
+ *
+ * Requires the API, so it runs in the app-boot suite where one is already started.
+ */
+async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
+  const frameDocument = frame.contentDocument!;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the debugger check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+    isEnabled(id: string): boolean;
+  };
+
+  const document = await workspace.createDocument({
+    name: 'debug-probe.py',
+    language: 'python',
+    version: 'python3',
+    content: [
+      'total = 0',              // 1
+      'for index in range(3):', // 2
+      '    total += index',     // 3
+      'print("total", total)',  // 4
+      'print("done")',          // 5
+    ].join('\n'),
+  });
+
+  await tabManager.switchToTab(document.id);
+
+  // The glyph margin must be ON, or breakpoints are invisible AND the click that
+  // toggles one is never delivered. Monaco defaults it off, so this is the assertion
+  // that the whole feature is reachable at all.
+  const editor = runtime.editor as { getOption(id: number): unknown; getModel(): unknown };
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') }).__bcMonaco!;
+  check(
+    'the glyph margin is enabled, so breakpoints can be drawn and clicked',
+    editor.getOption(monacoApi.editor.EditorOption.glyphMargin) === true,
+  );
+
+  check('the debug command is enabled for Python', commands.isEnabled('workspace.debug'));
+
+  // Set a breakpoint through the state, as the margin click does.
+  const debugModule = (runtime as { debug?: { toggleBreakpoint(line: number): boolean } }).debug;
+  check('the debug state is reachable from the runtime seam', Boolean(debugModule));
+  if (!debugModule) return;
+
+  debugModule.toggleBreakpoint(4);
+
+  const stateBefore = (runtime as { debug?: { snapshot(): { breakpoints: number[]; documentId: string | null } } }).debug!.snapshot();
+  lines.push(`INFO before run: breakpoints=${JSON.stringify(stateBefore.breakpoints)} documentId=${stateBefore.documentId} target=${document.id}`);
+
+  /*
+   * Deliberately NOT awaited.
+   *
+   * `runCode` resolves when the program EXITS, and a debugged program paused at a
+   * breakpoint has not exited - so awaiting the command here waits for a run that is
+   * waiting for this test. The first version of this assertion did exactly that and
+   * hung the whole suite until the harness timed out.
+   *
+   * The real UI has the same shape and is fine: a click handler does not block on it.
+   */
+  const runPromise = commands.execute('workspace.debug', { source: 'api' });
+  runPromise.catch(() => { /* reported through the state below */ });
+
+  // The toolbar appears as soon as the session starts.
+  const toolbarShown = await waitFor(
+    'the debug toolbar to appear',
+    () => frameDocument.getElementById('debug-toolbar')?.hidden === false,
+    15000,
+  );
+  check('the debug toolbar appears for a debug run', toolbarShown);
+
+  const state = () => (runtime as { debug?: { snapshot(): { status: string; stop: unknown } } }).debug!.snapshot();
+
+  const paused = await waitFor(
+    'the program to stop at the breakpoint',
+    () => state().status === 'paused',
+    30000,
+  );
+  check('the program stops at the breakpoint', paused, `status ${state().status}`);
+  if (!paused) return;
+
+  const stop = state().stop as { line: number; locals: Array<{ name: string; value: { text: string } }> };
+  check('it stopped on the right line', stop.line === 4, `line ${stop.line}`);
+
+  const total = stop.locals.find(entry => entry.name === 'total');
+  // 0 + 1 + 2 by the time line 4 runs.
+  check('the loop variable is reported with its value', total?.value.text === '3', JSON.stringify(total));
+
+  // The variables panel shows it.
+  const variablesShown = await waitFor(
+    'the variables panel to render',
+    () => (frameDocument.getElementById('debug-variables')?.textContent || '').includes('total'),
+    8000,
+  );
+  check('the variables panel shows the variable', variablesShown);
+
+  const stepOver = frameDocument.getElementById('debug-step-over') as HTMLButtonElement | null;
+  check('step-over is enabled while paused', stepOver !== null && !stepOver.disabled);
+
+  const continueButton = frameDocument.getElementById('debug-continue') as HTMLButtonElement | null;
+  check('continue is enabled while paused', continueButton !== null && !continueButton.disabled);
+
+  // Step, and require the line to advance.
+  stepOver?.click();
+  const stepped = await waitFor(
+    'the program to advance a line',
+    () => state().status === 'paused' && (state().stop as { line: number }).line !== 4,
+    15000,
+  );
+  check('step-over advances the program', stepped);
+
+  // Finish, and require the session to end cleanly.
+  (frameDocument.getElementById('debug-continue') as HTMLButtonElement | null)?.click();
+  const ended = await waitFor('the debug session to end', () => state().status === 'ended', 20000);
+  check('the session ends when the program finishes', ended, `status ${state().status}`);
+
+  const toolbarGone = await waitFor(
+    'the debug panels to hide once the session ends',
+    () => frameDocument.getElementById('debug-panels')?.hidden === true,
+    8000,
+  );
+  check('the panels hide when the session ends', toolbarGone);
+
+  // Let the run settle so it cannot leak into a later assertion.
+  await Promise.race([runPromise, new Promise(resolve => setTimeout(resolve, 5000))]);
+}
+
+/**
  * Wait until the diagnostics for one document stop changing.
  *
  * Needed because the producers answer on different schedules: the run publishes
@@ -1035,6 +1192,7 @@ async function run(): Promise<void> {
   await checkWebLanguageServices(frameWindow);
   await checkFormattingWorks(frameWindow);
   await checkQuickOpenAndBreadcrumbs(frameWindow);
+  await checkDebuggerWorks(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

@@ -11,6 +11,7 @@ import { initializeProblemsPanel, showPanelTab } from './features/problems-panel
 import { initializeCommandPalette } from './features/command-palette';
 import { initializeQuickOpen } from './features/quick-open';
 import { initializeBreadcrumbs } from './features/breadcrumbs';
+import { debugState, initializeDebugUi } from './features/debug/ui';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
@@ -101,6 +102,10 @@ async function bootstrap(): Promise<void> {
     // `getModelMarkers`, and the test page runs in a different module realm, so it
     // cannot reach the app's Monaco instance any other way.
     seam.__bcMonaco = monaco;
+    // The debug session state. The browser suite has to ask whether the program is
+    // paused and what the variables are - questions the DOM only answers indirectly,
+    // and which would otherwise have to be inferred from rendered text.
+    (seam as unknown as { __bcRuntime: Record<string, unknown> }).__bcRuntime.debug = debugState;
   }
 
   createEditor();
@@ -187,6 +192,9 @@ async function bootstrap(): Promise<void> {
   // workspace and the editor, so they go here rather than in workspace-init.
   initializeQuickOpen();
   initializeBreadcrumbs(runtime.editor!);
+  // The debugger's surface. After the editor exists, because it owns decorations and
+  // margin clicks on it.
+  initializeDebugUi();
 
   initializeLayout();
   setStatus('Ready ✅ (Ctrl+Enter to run)');

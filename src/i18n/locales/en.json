@@ -74,5 +74,7 @@
   "policy.searchReplaceDisabled": "Replace is disabled for this task",
   "status.readyForInput": "Ready for input ⌨️",
   "panel.endInput": "End input",
-  "panel.endInputHint": "Send end-of-input (Ctrl+D), so a program that reads until EOF can finish"
+  "panel.endInputHint": "Send end-of-input (Ctrl+D), so a program that reads until EOF can finish",
+  "titlebar.debug": "Debug",
+  "command.debug": "Start debugging"
 }

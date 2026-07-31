@@ -864,6 +864,123 @@
         direction: ltr;
       }
 
+      /* ── Debugger ─────────────────────────────────────────────────────── */
+      #debug-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex: 0 0 auto;
+        padding: 3px 8px;
+        background: var(--bg-panel, #252526);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      #debug-toolbar[hidden] { display: none; }
+      .debug-btn {
+        width: 26px; height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        color: var(--text-primary, #ddd);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .debug-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.10); }
+      .debug-btn:disabled { opacity: 0.35; cursor: default; }
+
+      #debug-panels {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 0 0 auto;
+        max-height: 34vh;
+        overflow: auto;
+        padding: 4px 0;
+        font-size: 12px;
+        background: var(--bg-panel, #252526);
+        border-top: 1px solid var(--border-color, #3c3c3c);
+      }
+      #debug-panels[hidden] { display: none; }
+      .debug-section {
+        padding: 3px 10px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary, #888);
+      }
+      .debug-empty { padding: 10px; color: var(--text-secondary, #888); }
+      .debug-var-row {
+        display: flex;
+        gap: 8px;
+        padding: 2px 10px;
+        /* A variable name and a repr are both code: LTR even in the Hebrew UI. */
+        direction: ltr;
+      }
+      .debug-var-row:hover { background: rgba(255, 255, 255, 0.05); }
+      .debug-var-name { color: #9cdcfe; flex: 0 0 auto; }
+      .debug-var-value {
+        color: var(--text-primary, #ddd);
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .debug-var-type { color: var(--text-secondary, #777); flex: 0 0 auto; font-size: 10px; }
+      .debug-exception {
+        margin: 4px 10px;
+        padding: 6px 8px;
+        border-left: 3px solid #f14c4c;
+        background: rgba(241, 76, 76, 0.10);
+        color: #f48771;
+        direction: ltr;
+      }
+      .debug-eval-result {
+        margin: 4px 10px;
+        padding: 4px 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+        direction: ltr;
+      }
+      .debug-eval-result.error { color: #f48771; }
+      .debug-frame-row {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 2px 10px;
+        background: none;
+        border: 0;
+        font: inherit;
+        color: var(--text-secondary, #999);
+        cursor: pointer;
+        direction: ltr;
+      }
+      .debug-frame-row:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary, #ddd); }
+      .debug-frame-row.innermost { color: var(--text-primary, #ddd); }
+
+      /* These need glyphMargin: true on the editor, or they are never drawn and the
+         click that toggles a breakpoint is never delivered. */
+      .debug-breakpoint-glyph::before {
+        content: '';
+        display: block;
+        width: 11px; height: 11px;
+        margin: 3px 0 0 4px;
+        border-radius: 50%;
+        background: #e51400;
+      }
+      .debug-current-glyph::before {
+        content: '\25B6';
+        color: #ffcc00;
+        font-size: 11px;
+        margin-left: 3px;
+      }
+      .debug-exception-glyph::before {
+        content: '\26A0';
+        color: #f14c4c;
+        font-size: 11px;
+        margin-left: 3px;
+      }
+      .debug-current-line { background: rgba(255, 204, 0, 0.14); }
+
       /* ── Asset viewer ─────────────────────────────────────────────────── */
       /* Takes the editor's place for a binary file. The editor is hidden rather
          than destroyed, so switching back to code does not rebuild Monaco. */
@@ -1598,6 +1715,9 @@
           </select>
           <select id="version" title="Version"></select>
           <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
+          <!-- Debug. Greyed for a language with no adapter rather than hidden, so the
+               feature is discoverable and its absence is explained by the tooltip. -->
+          <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
           <button id="download" class="btn btn-secondary" title="Download file">↓</button>
           <select id="theme" title="Theme">
             <option value="vs-dark">Dark</option>
@@ -1708,11 +1828,21 @@
         <div id="tabs">
           <!-- Tabs rendered by TabManager -->
         </div>
+        <!-- Debugger panels: variables and the call stack. Beside the editor rather
+             than in the output panel, because a student reads them WHILE looking at
+             the paused line. -->
+        <aside id="debug-panels" hidden>
+          <div id="debug-variables" aria-label="Variables"></div>
+          <div id="debug-callstack" aria-label="Call stack"></div>
+        </aside>
         <div id="editor-container">
           <!-- Breadcrumbs: folder path plus the symbol the cursor is inside.
                Hidden until there is something to show, so an empty workspace does
                not reserve a blank strip. -->
           <nav id="breadcrumbs" aria-label="Breadcrumbs" hidden></nav>
+          <!-- Debugger controls. Hidden until a session starts, so an ordinary run
+               looks exactly as it did before. -->
+          <div id="debug-toolbar" role="toolbar" aria-label="Debugger" hidden></div>
           <div id="editor"></div>
           <div id="editor-empty-state">
             <div class="empty-state-content">

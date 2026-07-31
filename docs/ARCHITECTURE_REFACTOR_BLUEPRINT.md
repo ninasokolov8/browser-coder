@@ -6807,3 +6807,117 @@ debugger. Now wrapped, honouring `statusCode`.
   Java, C#, PHP and JavaScript each need a different mechanism (JDWP, netcoredbg,
   Xdebug, the V8 inspector) and none reuses this adapter.
 - Breakpoints still bind to the entry file only.
+
+### H7 (part 3) - The UI. Debugging is now a feature a student can use.
+
+A student can click the glyph margin to set a breakpoint, press Debug, watch the
+program stop on that line, read their variables and the call stack, step over, into
+and out, continue, and stop. F5/F10/F11/Shift+F11/Shift+F5 and Ctrl+F9 all work.
+
+#### One state, many controls
+
+`src/features/debug/state.ts` is pure - no DOM, no Monaco, no fetch - and everything
+visible is derived from it. A debugger has half a dozen states and a lot of controls
+that must agree about them: five toolbar buttons, the glyph margin, the current-line
+highlight, two panels. Deriving all of it from one place is what stops "Continue"
+being clickable while nothing is paused. Same reasoning as the command registry in
+Phase D.
+
+Two derivations are deliberately not what a first guess would give:
+
+- **Stop is enabled while RUNNING, not only while paused.** A program stuck in a loop
+  is exactly when a student reaches for it. (The server-side fix for
+  stop-while-paused was the other half of the same problem.)
+- **Evaluate is allowed post-mortem but stepping is not.** The traceback keeps the
+  frame alive, so inspecting still works; stepping a finished program cannot do
+  anything, and offering it would be a button that silently fails.
+
+Breakpoints belong to a file and are cleared when the active document changes -
+otherwise they follow the student to another file, show against lines they never
+chose, and the adapter arms them in the entry file and stops somewhere unrelated. They
+**survive** a finished session, because the workflow is run, fix, run again.
+
+The adapter has the final say on which lines armed: it refuses a blank line or a
+comment, and the margin shows what is real rather than what was asked for.
+
+#### The bug that would have made the whole feature invisible
+
+Monaco's `glyphMargin` defaults to **off**, and the editor never set it. With it off
+the breakpoint glyph is never drawn AND the click that toggles one is never delivered
+- so the feature would have been silently absent rather than broken, which is much
+harder to notice. The browser assertion checks the option directly, because that is
+the single thing everything else depends on.
+
+#### Details worth stating
+
+- **Values are rendered with `textContent`, never markup.** A variable's text is
+  `repr()` of something the student created, and a crafted `__repr__` returning HTML
+  must not be parsed.
+- **Toolbar enablement is re-checked at click time**, not trusted from the `disabled`
+  attribute - a stale button is exactly how a command reaches a session that cannot
+  serve it.
+- **An empty Globals section is omitted**, because at module level `f_globals is
+  f_locals` and the adapter deliberately leaves it blank; a visible empty heading
+  would read as a bug.
+- **The panels hide when no session is live**, since they take vertical space from the
+  editor and a permanently empty Variables pane is a worse default than the feature's
+  absence.
+- **The current-line arrow only appears on the file on screen**, compared by name, so
+  it cannot land on a different file that happens to share a line number.
+- The Debug button is greyed for a language with no adapter rather than hidden, so the
+  feature is discoverable and the tooltip explains the absence. The client's list
+  mirrors `supportsDebug` on the server, and if it ever drifts the server still
+  refuses honestly - at worst the button is offered and the run reports
+  `debug:unsupported`.
+
+#### Two mistakes I made, both found by the browser test
+
+**I truncated `index.html` to zero bytes.** A script opened it `'wb'` - which
+truncates on open - and the `.encode()` then raised on an emoji surrogate, so nothing
+was written. Restored from the last commit and redone with the Edit tool, which cannot
+truncate. The lesson is in the tooling, not the file: byte-mode rewrites of a large
+source file have no upside here.
+
+**The test awaited the debug command and hung the whole suite.** `runCode` resolves
+when the program *exits*, and a program paused at a breakpoint has not exited - so
+awaiting it waits for a run that is waiting for the test. Five minutes of nothing,
+which looks exactly like a hang in the code under test. The real UI has the same shape
+and is fine, because a click handler does not block on it.
+
+Also: the suite's page timeout was 120s and a real debug session pushes it past that.
+Raised to 300s, because being killed mid-suite reports *nothing* and is
+indistinguishable from a hang.
+
+#### Monaco's cancellation sentinel
+
+The "no uncaught errors" assertion started failing with `Canceled: Canceled`. That is
+Monaco's own sentinel: it rejects pending `Delayer` promises with an object whose name
+and message are both exactly `Canceled` when the thing that scheduled them is
+disposed, and its global handler recognises and ignores that shape. It surfaced
+because the debug check disposes models mid-suite. Filtered on both fields exactly, so
+a real error that merely mentions cancellation is still caught.
+
+#### Verification
+
+- 27 unit tests on the pure state: every capability derivation, the breakpoint rules
+  including document switching and survival across runs, the full lifecycle, the stray
+  `started` that must not un-pause, unknown frames, and subscriber behaviour.
+- 14 browser assertions driving the real IDE: the glyph margin option, command
+  enablement, breakpoint set, toolbar appearing, the stop landing on line 4 with
+  `total == 3`, the variables panel rendering it, step-over enabled and advancing, and
+  the panels hiding when the session ends.
+- 605 unit, 119 contract, all three browser suites, clean build.
+
+The browser runner now finds a working Python and passes `PYTHON_BIN` to the API,
+because `python3` on Windows is the Store alias and the assertion would otherwise fail
+for a reason unrelated to the code.
+
+#### Still to do
+
+- **Python only.** Java, C#, PHP and JavaScript need JDWP, netcoredbg, Xdebug and the
+  V8 inspector respectively; none reuses this adapter.
+- Breakpoints bind to the entry file only, so a breakpoint in an imported module does
+  not arm even though its frames appear in the stack.
+- No conditional breakpoints, no watch expressions the student types (the `evaluate`
+  command exists and is tested, but nothing in the UI sends one yet), and no
+  set-variable.

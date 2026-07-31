@@ -15,10 +15,20 @@
 import * as monaco from 'monaco-editor';
 
 import { runtime } from '../app/runtime';
-import { runBtn } from '../components/dom';
+import { debugBtn, runBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
 import { runCode } from './execution';
+/**
+ * Languages with a debug adapter on the server.
+ *
+ * Mirrors `supportsDebug` in the server adapters. Duplicated rather than fetched
+ * because the button's enablement is needed before any request is made - and the
+ * server still refuses honestly if this list is ever wrong, so the two cannot
+ * disagree in a way that misleads: at worst the button is offered and the run
+ * reports `debug:unsupported`.
+ */
+const DEBUGGABLE_LANGUAGES = new Set(['python']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 
@@ -50,6 +60,22 @@ commands.register({
   title: 'Run',
   capability: 'run',
   run: () => runCode(editor.getValue()),
+});
+
+commands.register({
+  id: 'workspace.debug',
+  title: 'Start debugging',
+  // Same capability as Run, deliberately: debugging IS running, and a task that
+  // forbids running must not be debuggable either. A separate capability would be a
+  // second switch for one permission, and the host has no way to express it.
+  capability: 'run',
+  when: () => {
+    const model = editor.getModel();
+    // Offered only where it can work. A greyed button with a tooltip is honest;
+    // a button that starts a run which silently ignores every breakpoint is not.
+    return model !== null && DEBUGGABLE_LANGUAGES.has(model.getLanguageId());
+  },
+  run: () => runCode(editor.getValue(), { debug: true }),
 });
 
 commands.register({
@@ -122,6 +148,9 @@ commands.register({
 });
 
 bindButton(commands, runBtn, 'workspace.run');
+// Bound through the registry like every other control, so its enabled state and its
+// refusal both come from the command's own declaration rather than from CSS.
+bindButton(commands, debugBtn, 'workspace.debug');
 
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'workspace.run');
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, 'workspace.saveFile');
