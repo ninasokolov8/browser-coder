@@ -22,7 +22,17 @@ export interface RunnerConfig {
 export interface LanguageConfig {
   id: string;
   name: string;
+  /** Primary extension. Used when the IDE names a new file. */
   extension: string;
+  /**
+   * Additional extensions that mean the same language.
+   *
+   * `extension` alone cannot express that `.htm` is HTML, `.mjs` is JavaScript and
+   * `.markdown` is Markdown - so an imported or host-supplied file with any of
+   * those names fell through to the default language and was stored, coloured and
+   * executed as something else.
+   */
+  extensions?: string[];
   monacoLanguage: string;
   icon?: string; // Emoji icon for file tree
   versions: VersionConfig[];
@@ -68,4 +78,6 @@ export const LANGUAGE_ICONS: Record<string, string> = {
   html: '🌐',
   css: '🎨',
   svg: '🖼️',
+  json: '⚙️',
+  markdown: '📝',
 };

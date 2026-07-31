@@ -5494,3 +5494,106 @@ With both corrected, removing the filter fails the test with
   adding a parser; there is no generic fallback, by choice - see "refuses to guess".
 - Warnings are parsed for Java and PHP only, because the other four toolchains are
   not invoked in a mode that emits them.
+
+### H3 - The web languages become first-class
+
+Closes §35.4, which was partly stale and partly understated. Verified before
+acting, and the correction matters:
+
+- **Stale:** html, css and svg *were* already registered - not as
+  `languages/*/config.json` but as `BUILTIN_LANGUAGES` in `src/languages/loader.ts`.
+  They appeared in the dropdown and `detectLanguageByExtension` resolved them.
+- **Understated, and the real defect:** `MonacoEnvironment.getWorker` returned the
+  generic `editor.worker` for every label except `typescript` and `javascript`.
+  Monaco's css, html and json language services each run in their own worker and
+  request it by label, so all three were **registered and completely inert**: no
+  CSS property validation, no JSON syntax errors, no HTML completion, and a format
+  command that returned nothing.
+
+Nothing about that state is visible from reading the code - the request goes to a
+worker that never answers, so validation simply never happens and looks
+indistinguishable from a clean file.
+
+#### What changed
+
+**Three workers wired.** `css.worker`, `html.worker` and `json.worker`, alongside
+the existing ts worker. Verified in `dist/`: five worker chunks are now emitted
+where there were two.
+
+**The three services configured explicitly** rather than left on their defaults, so
+what a student is told is a decision recorded in this repo:
+
+- CSS lint reports empty rules, duplicate properties and unknown properties as
+  warnings; `zeroUnits`, `universalSelector` and `important` are silenced because
+  they fire on correct, deliberate CSS and teach a beginner to ignore squiggles.
+- JSON is strict - no comments, trailing commas are an error. A `.json` file the
+  editor accepts is one `json.load` will accept.
+- HTML formatting is 2-space, 120-column, with `pre`/`code` left alone.
+
+**`json` and `markdown` registered.** JSON gets the full language service.
+Markdown gets Monaco's tokenizer plus a preview.
+
+**Extension aliases.** `LanguageConfig.extensions` now carries the alternatives
+(`.htm`, `.xhtml`, `.markdown`, `.mkd`, …). A single `extension` field could not
+express them, so an imported or host-supplied `page.htm` fell through to the
+default language and was stored *and* coloured as JavaScript. Primary extensions
+are matched before any alias, so a language can never lose its own extension to
+another's alias list.
+
+**Project-wide models.** `ANALYSED_IN_BROWSER` replaces `COMPILED_IN_BROWSER` and
+now includes css, html and json - a language service only sees files that have
+models, so without this their errors appeared only in the focused tab while
+TypeScript's appeared project-wide. The Problems panel now means the same thing
+whatever the language.
+
+#### Markdown preview
+
+`src/features/markdown.ts` - a self-contained renderer (headings, fenced and inline
+code, lists, blockquotes, rules, pipe tables with alignment, links, images,
+strong/em/strikethrough, autolinks). Rendered to a full page and published through
+the *existing* preview publisher, so a relative image in the notes -
+`![maze](maze.svg)` - resolves against the same workspace files an HTML page would
+see.
+
+**Raw HTML is escaped, not rendered** - a deliberate deviation from CommonMark. A
+`.md` file here is prose; `<script>` in a note should read as the characters typed.
+The cost is inline `<img>`, which is why the image syntax is supported instead.
+Students who want HTML have an HTML language with the full service.
+
+Also refused: `javascript:` and `data:` URLs in both links and images, with a
+scheme test that is not fooled by a colon later in a path (`notes/a:b` stays a
+relative link). 33 unit tests, 8 of them specifically on the property that nothing
+a student can type becomes executable.
+
+#### JSON and the Run button
+
+Running data is meaningless, but doing nothing is worse - so Run on a `.json` file
+parses it and says either "valid JSON, load it from a program with
+`json.load(...)`" or reports the parse error. Markdown Run opens the preview.
+
+#### Verification
+
+- 33 markdown unit tests; 300 unit tests total, all passing.
+- `tests/browser/app-boot.ts` creates a `.css` file with `colour: red` and a
+  `.json` file with a trailing comma, never opens either, and requires a marker on
+  each. Reported: `Unknown property: 'colour'` and `Trailing comma`. Both produced
+  nothing at all before this change.
+- Extension detection asserted for `page.htm`, `notes.markdown`, `notes.md`,
+  `data.json`, `index.html`.
+- The gate was confirmed against the bug: pointing the css label back at the
+  generic worker makes the CSS assertion time out with zero markers.
+- Production build clean; five worker chunks emitted.
+
+#### Not done in H3
+
+- **PNG and other binary assets still cannot exist.** `StoredFile.content` is a
+  `string`, so an image is representable only as SVG text or a data URI. Fixing it
+  means a binary content path through storage, the snapshot, the ZIP export and the
+  preview publisher - larger than H3 and listed separately.
+- Markdown has no in-IDE side-by-side preview; it opens a published tab like HTML.
+- The renderer is a subset: no reference links, footnotes, setext headings, nested
+  lists, or task lists. Each is additive and tested when added.
+- `languages/*/config.json` still does not exist for these five; they remain
+  built-ins in the loader. Moving them is cosmetic and would not change behaviour,
+  so it is deferred to H6, where the client language registry is restructured
+  anyway.

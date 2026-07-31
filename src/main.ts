@@ -106,15 +106,22 @@ async function bootstrap(): Promise<void> {
     refreshSearchHighlights: highlightSearchMatchesInEditor,
   });
 
-  // Keep a model for every TypeScript and JavaScript document, opened or not.
-  // Monaco's TS worker only sees files that have models, so without this an import
-  // of a module the user has not clicked on reports "Cannot find module" even
-  // though the server compiles the project fine. Re-run on every structural change,
-  // since a new or renamed file changes what the others can resolve.
-  const COMPILED_IN_BROWSER = ['typescript', 'javascript'];
+  // Keep a model for every document a Monaco language service can analyse, opened
+  // or not.
+  //
+  // A service only sees files that have models. For TypeScript that is what makes
+  // an import of a file the user has not clicked on resolve, instead of reporting
+  // "Cannot find module" for code the server compiles fine. For css, html and json
+  // it is what puts their errors in the Problems panel project-wide rather than
+  // only in the focused tab - the same rule, so the panel means the same thing
+  // whatever the language.
+  //
+  // Re-run on every structural change, since a new or renamed file changes what
+  // the others can resolve.
+  const ANALYSED_IN_BROWSER = ['typescript', 'javascript', 'css', 'html', 'json'];
   const syncProjectModels = () => {
     try {
-      workspace.models.ensureModelsFor(COMPILED_IN_BROWSER);
+      workspace.models.ensureModelsFor(ANALYSED_IN_BROWSER);
     } catch (error) {
       console.error('[IDE] Could not synchronize project models:', error);
     }

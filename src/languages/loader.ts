@@ -35,6 +35,7 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     id: 'html',
     name: 'HTML',
     extension: 'html',
+    extensions: ['htm', 'xhtml'],
     monacoLanguage: 'html',
     icon: LANGUAGE_ICONS.html || '🌐',
     versions: [{ id: 'html5', name: 'HTML5', default: true }],
@@ -66,6 +67,36 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     icon: LANGUAGE_ICONS.svg || '🖼️',
     versions: [{ id: 'svg11', name: 'SVG 1.1', default: true }],
     runner: { command: 'asset' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+  {
+    // Data, not a program. Registering it is what gives the student Monaco's JSON
+    // language service: a syntax error is underlined as they type instead of
+    // surfacing much later as a stack trace inside `json.load`.
+    id: 'json',
+    name: 'JSON',
+    extension: 'json',
+    monacoLanguage: 'json',
+    icon: LANGUAGE_ICONS.json || '⚙️',
+    versions: [{ id: 'json', name: 'JSON', default: true }],
+    runner: { command: 'data' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+  {
+    // Monaco ships a Markdown tokenizer but no language service, so this is
+    // colouring plus the preview below - which is what Markdown is for.
+    id: 'markdown',
+    name: 'Markdown',
+    extension: 'md',
+    extensions: ['markdown', 'mdown', 'mkd'],
+    monacoLanguage: 'markdown',
+    icon: LANGUAGE_ICONS.markdown || '📝',
+    versions: [{ id: 'commonmark', name: 'Markdown', default: true }],
+    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -127,6 +158,30 @@ body {
     <line x1="4" y1="500" x2="500" y2="500" />
   </g>
 </svg>
+`,
+  'json/json': `{
+  "name": "My data",
+  "items": [
+    { "id": 1, "label": "first", "done": false },
+    { "id": 2, "label": "second", "done": true }
+  ]
+}
+`,
+  'markdown/commonmark': `# My notes
+
+Write notes, a README, or an assignment answer here, then click **Open Preview**.
+
+## What you can use
+
+- **bold**, *italic* and \`inline code\`
+- lists, like this one
+- [links](https://example.com)
+
+\`\`\`python
+print("fenced code blocks are highlighted too")
+\`\`\`
+
+> Quoted text goes in a blockquote.
 `,
 };
 

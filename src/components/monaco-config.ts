@@ -1,16 +1,47 @@
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
+import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
+import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
+import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import { getAllLanguages } from "../languages";
 import type { LoadedLanguage, VersionConfig } from "../languages";
 import { langSel, versionSel } from "./dom";
 
+/**
+ * One worker per language service.
+ *
+ * Monaco bundles full language services for css, html and json - validation,
+ * completion, hover, formatting - but each runs in its OWN web worker and asks for
+ * it by label. This function used to answer every label except typescript and
+ * javascript with the generic editor worker, which does not implement any of those
+ * protocols. The services were therefore present, registered, and completely inert:
+ * no CSS property validation, no JSON syntax errors, no HTML completion, and a
+ * format command that returned nothing.
+ *
+ * Nothing fails loudly in that state - the request goes to a worker that never
+ * answers - so the only way to know is to assert that a broken file produces a
+ * marker, which `tests/browser/app-boot.ts` now does.
+ */
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
-    if (label === "typescript" || label === "javascript") {
-      return new tsWorker();
+    switch (label) {
+      case "typescript":
+      case "javascript":
+        return new tsWorker();
+      case "css":
+      case "scss":
+      case "less":
+        return new cssWorker();
+      case "html":
+      case "handlebars":
+      case "razor":
+        return new htmlWorker();
+      case "json":
+        return new jsonWorker();
+      default:
+        return new editorWorker();
     }
-    return new editorWorker();
   },
 };
 
@@ -132,6 +163,52 @@ monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
 monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
   noSemanticValidation: false,
   noSyntaxValidation: false,
+});
+
+// The other three services, configured explicitly rather than left on their
+// defaults - so what the student is told about their file is a decision recorded
+// here, not whatever a Monaco upgrade happens to ship.
+monaco.languages.css.cssDefaults.setDiagnosticsOptions({
+  validate: true,
+  lint: {
+    // Genuine mistakes, reported as warnings so they never block anything.
+    emptyRules: 'warning',
+    duplicateProperties: 'warning',
+    unknownProperties: 'warning',
+    // Silent: these fire on correct, deliberate CSS and would train a beginner to
+    // ignore the squiggle.
+    zeroUnits: 'ignore',
+    universalSelector: 'ignore',
+    important: 'ignore',
+  },
+});
+
+monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+  validate: true,
+  // Strict JSON. A .json file with comments or a trailing comma is rejected by
+  // every parser the student will meet, including `json.load` in the exercise they
+  // are about to write, so the editor says so too.
+  allowComments: false,
+  trailingCommas: 'error',
+  schemaValidation: 'error',
+});
+
+monaco.languages.html.htmlDefaults.setOptions({
+  format: {
+    tabSize: 2,
+    insertSpaces: true,
+    wrapLineLength: 120,
+    unformatted: 'code,pre',
+    contentUnformatted: 'pre,textarea',
+    indentInnerHtml: false,
+    preserveNewLines: true,
+    maxPreserveNewLines: 2,
+    indentHandlebars: false,
+    endWithNewline: true,
+    extraLiners: 'head,body,/html',
+    wrapAttributes: 'auto',
+  },
+  suggest: { html5: true },
 });
 
 // Populate language dropdown from loaded configs

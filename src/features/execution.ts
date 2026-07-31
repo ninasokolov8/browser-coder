@@ -16,7 +16,7 @@ import { runBtn } from '../components/dom';
 import { bindButton, bindKeybinding } from '../commands';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
 import { getOrCreateModel } from './editor-core';
-import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
+import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
 
@@ -69,8 +69,32 @@ export async function runCode(code: string) {
   const lang = getLanguage(activeTab.file.language);
   if (!lang) return;
 
-  if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file)) {
+  // HTML, CSS and Markdown are rendered, not executed. Markdown goes through the
+  // same publisher so relative images in the notes resolve.
+  if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file) || isMarkdownFile(activeTab.file)) {
     await openWebPreview();
+    return;
+  }
+
+  // JSON is data. Running it is meaningless, and the honest answer is to say so and
+  // report whether it parses - not to hand it to a runtime that will reject it with
+  // something less useful, and not to do nothing at all.
+  if (lang.id === 'json') {
+    try {
+      JSON.parse(code);
+      setStatus('Valid JSON ✅');
+      setOutputHtml(
+        `<span class="info">${esc(activeTab.file.name)} is valid JSON.</span>\n` +
+        `<span class="info">JSON is data, so there is nothing to run. ` +
+        `Load it from a program - in Python, json.load(open("${esc(activeTab.file.name)}")).</span>`,
+      );
+    } catch (error) {
+      setStatus('Invalid JSON ❌');
+      setOutputHtml(
+        `<span class="error">${esc(activeTab.file.name)} is not valid JSON.</span>\n` +
+        `<span class="error">${esc(error instanceof Error ? error.message : String(error))}</span>`,
+      );
+    }
     return;
   }
 

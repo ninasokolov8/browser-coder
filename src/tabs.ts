@@ -191,12 +191,25 @@ export class TabManager {
     return toOpen ? this.#viewOf(toOpen) : null;
   }
 
-  /** Resolve a language by file extension, e.g. "Hello.cs" -> csharp. */
+  /**
+   * Resolve a language by file extension, e.g. "Hello.cs" -> csharp.
+   *
+   * Aliases are checked as well as the primary extension, and only after every
+   * primary has been tried: a language must never lose its own extension to
+   * another language's alias list, whatever order the registry happens to be in.
+   */
   detectLanguageByExtension(fileName: string): LoadedLanguage | undefined {
     const dot = fileName.lastIndexOf('.');
     if (dot <= 0) return undefined;
     const extension = fileName.slice(dot + 1).toLowerCase();
-    return getAllLanguages().find(language => language.extension.toLowerCase() === extension);
+
+    const all = getAllLanguages();
+    return (
+      all.find(language => language.extension.toLowerCase() === extension) ??
+      all.find(language =>
+        (language.extensions ?? []).some(alias => alias.toLowerCase() === extension),
+      )
+    );
   }
 
   // ========== Tab operations ==========

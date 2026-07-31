@@ -358,6 +358,117 @@ async function checkEveryRunStreams(frameWindow: Window): Promise<void> {
 }
 
 /**
+ * CSS, HTML and JSON must be analysed, not merely coloured.
+ *
+ * Monaco bundles a full language service for each, but every one runs in its own
+ * web worker and asks for it by label. `getWorker` used to answer every label
+ * except typescript/javascript with the generic editor worker, which implements
+ * none of those protocols - so the services were registered and completely inert.
+ *
+ * Nothing about that state is observable from the code: the request goes to a
+ * worker that never replies, and validation simply never happens. The only honest
+ * check is to put a real error in each file and require a marker, which is what
+ * this does.
+ */
+async function checkWebLanguageServices(frameWindow: Window): Promise<void> {
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') })
+    .__bcMonaco;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!monacoApi || !runtime) {
+    check('monaco and runtime are reachable for the language-service check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const models = runtime.models as {
+    peek(id: string): { uri: { toString(): string } } | null;
+    ensureModelsFor(languageIds: readonly string[]): void;
+  };
+
+  const cases = [
+    {
+      language: 'css',
+      version: 'css3',
+      name: 'probe.css',
+      // A property that does not exist. Monaco's CSS service reports it; a
+      // tokenizer cannot.
+      content: 'body {\n  colour: red;\n}\n',
+      expect: /colour|unknown propert/i,
+    },
+    {
+      language: 'json',
+      version: 'json',
+      name: 'probe.json',
+      // A trailing comma - valid JSON5, rejected by every real JSON parser.
+      content: '{\n  "a": 1,\n}\n',
+      expect: /trailing comma|expected/i,
+    },
+  ];
+
+  const created: Array<{ id: string; name: string; expect: RegExp }> = [];
+  for (const probe of cases) {
+    const document = await workspace.createDocument({
+      name: probe.name,
+      language: probe.language,
+      version: probe.version,
+      content: probe.content,
+    });
+    created.push({ id: document.id, name: probe.name, expect: probe.expect });
+  }
+
+  // Eagerly, so this also proves the project-wide model sync covers these
+  // languages - the file is never opened in a tab.
+  models.ensureModelsFor(['css', 'html', 'json']);
+
+  for (const probe of created) {
+    const model = models.peek(probe.id);
+    check(`${probe.name} has a model without being opened`, model !== null);
+    if (!model) continue;
+
+    const markersFor = () =>
+      monacoApi.editor
+        .getModelMarkers({})
+        .filter(marker => marker.resource.toString() === model.uri.toString());
+
+    const appeared = await waitFor(`${probe.name} to be validated`, () => markersFor().length > 0, 30000);
+    check(`${probe.name} is validated by a language service`, appeared);
+
+    const messages = markersFor().map(marker => marker.message);
+    lines.push(`INFO ${probe.name}: ${messages.join(' | ') || '(none)'}`);
+    if (messages.length > 0) {
+      check(
+        `${probe.name} reports the real problem`,
+        messages.some(message => probe.expect.test(message)),
+        messages.join(' | '),
+      );
+    }
+  }
+
+  // A file extension the registry knows only as an alias must still resolve. Before
+  // `extensions`, `.htm` fell through to the default language and was stored and
+  // coloured as JavaScript.
+  const tabManager = runtime.tabManager as {
+    detectLanguageByExtension(name: string): { id: string } | undefined;
+  };
+  for (const [fileName, expected] of [
+    ['page.htm', 'html'],
+    ['notes.markdown', 'markdown'],
+    ['notes.md', 'markdown'],
+    ['data.json', 'json'],
+    ['index.html', 'html'],
+  ] as const) {
+    const detected = tabManager.detectLanguageByExtension(fileName);
+    check(
+      `${fileName} is detected as ${expected}`,
+      detected?.id === expected,
+      `got ${detected?.id ?? 'undefined'}`,
+    );
+  }
+}
+
+/**
  * Wait until the diagnostics for one document stop changing.
  *
  * Needed because the producers answer on different schedules: the run publishes
@@ -691,6 +802,7 @@ async function run(): Promise<void> {
   await checkProblemsAndPalette(frameWindow);
   await checkEveryRunStreams(frameWindow);
   await checkRunErrorsBecomeMarkers(frameWindow);
+  await checkWebLanguageServices(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.
