@@ -5065,3 +5065,69 @@ locally too. It asserts exactly the things that were previously only claimed in
 comments: the network is `internal: true`, the api service is on that network
 *only*, `pids_limit` is set, and `no-new-privileges` is on. **A comment cannot be
 tested; this can.**
+
+---
+
+### Phase G - Step-Up (`dev`)
+
+Commit: `c7bec734` on `step-up@dev`
+
+Consumer-side only: the two findings Browser Coder cannot fix from its own side.
+
+#### V-47 - one config value, two different callers
+
+`BROWSER_CODER_URL` served both the browser-facing iframe origin and this server's
+API calls. Those are different callers with different requirements, and collapsing
+them forced a compromise wrong for both:
+
+- The **browser** needs a publicly resolvable HTTPS origin. Step-Up is served over
+  HTTPS, so an `http://` iframe is mixed content - which is exactly why the `/coder`
+  same-origin proxy hack exists in `IdeHelper::url()`.
+- The **server** needs a route it can reach and authenticate. `http://167.71.63.99`
+  can be neither encrypted nor certificate-validated, and student code plus its
+  output crosses it in clear text with no way to confirm the responder.
+
+`internal_url` / `BROWSER_CODER_INTERNAL_URL` is now what `runApiUrl()` and
+`isAvailable()` use, falling back to `url` when unset so the split is opt-in and
+breaks nothing.
+
+`IdeHelper::internalTransportIsUnprotected()` reports plain HTTP to a **routable**
+IP, and `CodeRunner` logs it per run. Reported rather than blocked - refusing to run
+would take the platform down over a deployment detail. Private addresses, localhost
+and docker service names are deliberately not flagged: plain HTTP that never leaves
+the host is the documented setup, and warning about it would train people to ignore
+the warning.
+
+#### V-48 - a client-reported run stored as if it were evidence
+
+A `last_run` arriving in a submission body is written by the student's browser, so
+`exitCode: 0` and any stdout can be asserted by editing the request. It was stored
+indistinguishably from one this server produced.
+
+The observation is still kept - it is what the student saw, which is genuinely
+useful - but it is now **tagged**: client-supplied gets `source=client`,
+`trusted=false`; `CodeRunner` sets `source=server`, `trusted=true`; and an existing
+server marker is never downgraded by re-normalizing a stored record.
+
+#### A pre-existing test caught a real flaw in the first attempt
+
+The first version put the fallback in `config/services.php`:
+
+```php
+'internal_url' => env('BROWSER_CODER_INTERNAL_URL', env('BROWSER_CODER_URL', ...)),
+```
+
+That resolves at **config-load** time, so overriding `url` alone no longer moved the
+internal URL - surprising for an operator setting one variable, and it broke
+`IdeHelperTest::test_run_api_url_appends_api_run`. The fallback now happens at read
+time in `internalBaseUrl()`, which is both correct and what the existing test
+already expected. Worth recording: the right response to that failure was to fix the
+design, not the test.
+
+**11 new unit tests**, verified to detect the defects rather than merely pass -
+reverting the URL split fails two, removing the untrusted marking fails another.
+Full Step-Up Unit suite: **458 tests, 1146 assertions, all passing.**
+
+Deploy order, unchanged from 33.3: **Browser Coder accepts first, then Step-Up
+sends.** Nothing here depends on a Browser Coder change, so the two can ship
+independently.
