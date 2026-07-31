@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as monaco from 'monaco-editor';
 import { getLanguage } from '../languages';
 import { runtime } from '../app/runtime';
@@ -11,9 +10,9 @@ import { setOutput } from '../components/output';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 import { lazyRef } from '../app/lazy';
 
-const editor = lazyRef(() => runtime.editor, 'editor') as any;
-const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
-const storage = lazyRef(() => runtime.storage, 'storage') as any;
+const editor = lazyRef(() => runtime.editor, 'editor');
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
+const storage = lazyRef(() => runtime.storage, 'storage');
 const fileModels = runtime.fileModels;
 
 // ===== SEARCH FUNCTIONALITY =====

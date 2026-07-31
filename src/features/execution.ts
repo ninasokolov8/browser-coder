@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as monaco from 'monaco-editor';
 import { getLanguage, getKeywordExplanation } from '../languages';
 import { t } from '../i18n';
@@ -451,6 +450,9 @@ commands.register({
   title: 'New file',
   capability: 'structure',
   run: async () => {
+    // A command runs long after registration, so the current language is re-read
+    // and re-checked rather than captured.
+    if (!runtime.currentLang || !runtime.currentVersion) return;
     const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion);
     if (newTab) {
       editor.setModel(getOrCreateModel(newTab));
@@ -502,7 +504,11 @@ bindKeybinding(
 // a Monaco context key kept in sync on every cursor/selection/model change,
 // so adding a new entry to keywords.json makes it "just work" with no other
 // code changes, and it stays hidden for anything not in the file.
-function resolveKeywordAtCursor(ed: monaco.editor.IStandaloneCodeEditor): string {
+/**
+ * Widened to ICodeEditor, which is what Monaco hands an action callback. Only the
+ * position and the model are read, and both exist on the narrower type.
+ */
+function resolveKeywordAtCursor(ed: monaco.editor.ICodeEditor): string {
   const position = ed.getPosition();
   const model = ed.getModel();
   if (!position || !model) return "";
@@ -526,8 +532,8 @@ function updateKeywordHelpAvailability() {
     return;
   }
   const activeTab = tabManager.getActiveTab();
-  const langId = activeTab ? activeTab.file.language : runtime.currentLang.id;
-  keywordHelpAvailable.set(!!getKeywordExplanation(langId, word));
+  const langId = activeTab ? activeTab.file.language : runtime.currentLang?.id;
+  keywordHelpAvailable.set(!!langId && !!getKeywordExplanation(langId, word));
 }
 
 editor.onDidChangeCursorSelection(updateKeywordHelpAvailability);
@@ -549,7 +555,9 @@ editor.addAction({
     if (!word) return;
 
     const activeTab = tabManager.getActiveTab();
-    const langId = activeTab ? activeTab.file.language : runtime.currentLang.id;
+    const langId = activeTab ? activeTab.file.language : runtime.currentLang?.id;
+    if (!langId) return;
+
     const entry = getKeywordExplanation(langId, word, getUILang());
     if (!entry) return;
 

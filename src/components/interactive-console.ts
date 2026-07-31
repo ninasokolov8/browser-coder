@@ -1,4 +1,3 @@
-// @ts-nocheck
 //
 // Interactive console: runs a program that PAUSES for keyboard input
 // (Python input(), Java Scanner, JS readline/prompt, PHP fgets(STDIN),

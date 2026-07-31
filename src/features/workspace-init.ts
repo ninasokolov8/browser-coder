@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLanguage, getStarterAsync, preloadStarters } from '../languages';
 import { runtime } from '../app/runtime';
 import { appConfig, policyState } from '../app/config';
@@ -71,6 +70,10 @@ themeSel.addEventListener("change", () => {
 // language file exists but was changed even by one character, create a new
 // clean starter file instead.
 langSel.addEventListener("change", async () => {
+  // Re-checked inside the handler, not captured from the guard at the top of
+  // initializeWorkspace: these fields are mutable and the handler runs much later.
+  if (!runtime.currentLang) return;
+
   if (policyState.lockStructure) {
     langSel.value = runtime.currentLang.id;
     return;
@@ -125,6 +128,8 @@ langSel.addEventListener("change", async () => {
 // the write cannot land anywhere else.
 versionSel.addEventListener("change", async () => {
   const targetLang = runtime.currentLang;
+  if (!targetLang) return;
+
   const targetVersion = targetLang.versions.find(candidate => candidate.id === versionSel.value);
   if (!targetVersion) return;
 

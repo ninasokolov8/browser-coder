@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as monaco from 'monaco-editor';
 import { appConfig, policyState } from '../app/config';
 import { runtime } from '../app/runtime';

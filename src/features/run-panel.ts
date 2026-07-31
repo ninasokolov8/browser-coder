@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { runtime } from '../app/runtime';
 import { parseFunctions, extractDefinitionsOnly } from '../components/code-analysis';
 import { setOutput, setStatus, setOutputHtml } from '../components/output';
@@ -203,13 +202,13 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     const data = await res.json();
 
     if (!res.ok) {
-      const fnEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const fnEsc = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       setOutputHtml(`<span class="error">Error: ${fnEsc(data.error || 'Unknown error')}</span>\n<span class="error">[exit code: 1]</span>`);
       setStatus("Error ❌");
       return;
     }
 
-    const fnEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fnEsc = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const parts = [];
     if (data.stdout) parts.push(fnEsc(data.stdout));
     if (data.stderr) {
@@ -232,7 +231,7 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     setOutputHtml(parts.join(''));
     setStatus(data.exitCode === 0 ? `${fnName}${argsDisplay} ✅` : `${fnName}${argsDisplay} ❌`);
   } catch (e) {
-    const fnEsc2 = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fnEsc2 = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     setOutputHtml(`<span class="error">Network error: ${fnEsc2(String(e))}</span>\n<span class="error">[exit code: 1]</span>`);
     setStatus("Error ❌");
   }
@@ -261,12 +260,11 @@ export function initializeRunPanel(): void {
     functionListDebounce = setTimeout(renderFunctionList, 500);
   });
 
-  // Refresh through normal TabManager events instead of replacing methods.
-  tabManager.addEventListener?.('tabSwitch', () => setTimeout(renderFunctionList, 100));
-
-  // Current TabManager does not expose addEventListener. The editor model-change
-  // event is emitted whenever a different tab model is selected, so this covers
-  // both content edits and tab switches safely.
+  // TabManager has never exposed addEventListener; a call to it lived here,
+  // guarded with ?. so it silently did nothing. Removed rather than left as a
+  // hint that such an event exists. The editor's model-change event fires
+  // whenever a different tab's model is selected, which covers both content
+  // edits and tab switches.
   editor.onDidChangeModel(() => setTimeout(renderFunctionList, 0));
 
   renderFunctionList();

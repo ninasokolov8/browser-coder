@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { runtime } from '../app/runtime';
 import { appConfig, policyState, normalizePanels, type IdePanel } from '../app/config';
 import {
@@ -8,7 +7,7 @@ import {
 import { saveSettings } from '../components/settings';
 import { lazyRef } from '../app/lazy';
 
-const editor = lazyRef(() => runtime.editor, 'editor') as any;
+const editor = lazyRef(() => runtime.editor, 'editor');
 
 // ===== SIDEBAR PANEL SWITCHING =====
 function panelIsVisible(panelName: string): boolean {

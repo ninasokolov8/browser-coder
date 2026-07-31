@@ -1,4 +1,3 @@
-// @ts-nocheck
 import JSZip from 'jszip';
 import { runtime } from '../../app/runtime';
 import { policyState } from '../../app/config';
@@ -9,13 +8,13 @@ import {
 import { setStatus, setOutput } from '../../components/output';
 import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core';
 import { explorerState } from './state';
-import { renderFileTree } from './tree';
+import { renderFileTree, showContextMenu } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { lazyRef } from '../../app/lazy';
 
-const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
-const editor = lazyRef(() => runtime.editor, 'editor') as any;
-const storage = lazyRef(() => runtime.storage, 'storage') as any;
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
+const editor = lazyRef(() => runtime.editor, 'editor');
+const storage = lazyRef(() => runtime.storage, 'storage');
 const fileModels = runtime.fileModels;
 
 const INTERNAL_DRAG_MIME = 'application/x-browser-coder-items';
@@ -39,7 +38,10 @@ export function getInternalDraggedIds(e?: DragEvent): string[] {
 // ===== File/Folder Operations =====
 export async function createNewFileInExplorer(parentId: string | null) {
   if (policyState.lockStructure) return;
-  // Create with empty file by default when user manually creates a file (not loading from storage)
+  if (!runtime.currentLang || !runtime.currentVersion) return;
+
+  // An explorer-created file starts EMPTY rather than from the starter template:
+  // the user asked for a new file, not for a copy of the language's example.
   const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion, undefined, parentId, true);
   if (newTab) {
     const model = getOrCreateModel(newTab);

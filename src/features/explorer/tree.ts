@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLanguage } from '../../languages';
 import { runtime } from '../../app/runtime';
 import { policyState } from '../../app/config';
@@ -9,13 +8,14 @@ import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refact
 import { setOutput, setStatus } from '../../components/output';
 import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
 import { lazyRef } from '../../app/lazy';
+import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
   deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
 } from './operations';
 
-const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
-const storage = lazyRef(() => runtime.storage, 'storage') as any;
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
+const storage = lazyRef(() => runtime.storage, 'storage');
 
 // ===== File Explorer Rendering =====
 export async function renderFileTree(tm = runtime.tabManager!) {
@@ -555,7 +555,7 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
   setContextMenuActionVisible('delete', true);
 }
 
-function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
+export function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
   if (policyState.lockStructure) return;
   updateContextMenuForSelection(type);
 

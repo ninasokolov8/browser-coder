@@ -29,8 +29,8 @@ const PHP_EXTENSIONS = ['.php'];
 const HTML_EXTENSIONS = ['.html', '.htm'];
 const CSS_EXTENSIONS = ['.css'];
 
-const storage = lazyRef(() => runtime.storage, 'storage') as any;
-const tabManager = lazyRef(() => runtime.tabManager, 'tabManager') as any;
+const storage = lazyRef(() => runtime.storage, 'storage');
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 
 function splitPath(value: string): string[] {
   return String(value || '')
