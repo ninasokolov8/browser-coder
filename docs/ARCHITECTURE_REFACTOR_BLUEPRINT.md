@@ -4958,3 +4958,110 @@ validates 37 keys actually present in `index.html`.
 
 **State:** 249 unit tests, 3 browser suites (24 + 46 + 25), contract 55 pass / 0
 fail / 0 todo, typecheck clean on both configs with no suppressions, build clean.
+
+---
+
+### Phase F - operations. Verified against containers, not by reading config.
+
+Commit: `59a8288`
+
+#### V-40: the interactive console did not work behind nginx at all
+
+Recorded as "no nginx location for the interactive route", with the body-limit
+mismatch as the consequence. The real consequence is much worse.
+
+With no location of its own, `/api/run/interactive` fell through to `location /api/`
+and inherited `proxy_buffering on`. The interactive protocol is a live NDJSON stream
+whose entire purpose is to deliver a `waiting` event **while the program is blocked
+on input**. Buffered, the client sees nothing, never learns to prompt, never sends
+input, and the program never exits.
+
+Measured through a real nginx in front of the real production image:
+
+| | Result |
+|---|---|
+| `proxy_buffering off` (fixed) | `session@66ms`, `stdout@78ms` carrying `BEFORE-INPUT
+prompt: `, `waiting@329ms`, `GOT:Ada`, `exit@338ms` |
+| `proxy_buffering on` (before) | **the request timed out with zero bytes delivered** |
+
+So the input support this IDE advertises has been **non-functional behind the
+production proxy** - not slow, hung. The route also now gets the 3m body limit
+`/api/run` already had, and a 1h read timeout chosen to exceed the server's own
+15-minute session cap, so the *server* ends a session with a real terminal event
+rather than the proxy severing it mid-stream.
+
+#### The rest of nginx
+
+**V-39.** `proxy_set_header Connection ""` is right for upstream keepalive and fatal
+for a protocol upgrade. A `$connection_upgrade` map passes an upgrade through when
+one is requested and pools the connection otherwise, so moving the interactive
+protocol to a WebSocket becomes a server change rather than a proxy redeploy.
+
+**V-41.** The per-IP connection limit was **20**. A school sits behind one NAT
+address and the IDE holds several connections per user, so a class exhausted it
+before anyone ran anything - and the failure looked like the service being down.
+Now 400.
+
+**V-43.** `X-Frame-Options: SAMEORIGIN` sat at server level and *appeared* to apply
+everywhere. nginx does not accumulate `add_header` across levels: any location
+declaring its own inherits **none**. So it reached the API and health responses and
+not the IDE document - which is the only reason Step-Up embedding worked at all.
+That is a trap in both directions, and the config depended on it. Every location now
+states its headers in full.
+
+**V-42.** 443 was published; nginx listened on 80 only. A `listen 443 ssl` block
+cannot be added unconditionally, because **nginx refuses to start when a referenced
+certificate is missing** - turning "no certificate yet" into a total outage,
+including on a fresh clone and in CI. It lives in an optional
+`include /etc/nginx/tls/*.conf` with a tested template. Confirmed both ways: an
+empty directory serves port 80 normally, and a template with a missing certificate
+really does stop nginx - which is precisely why it is not in the main file.
+
+#### V-07 and N-05: containment that was claimed and absent
+
+`driver: bridge` alone is an ordinary bridge **with NAT egress**, so the comment
+*"SECURITY: Network isolation - no external network access"* described a property
+the file did not configure. `internal: true` added - and proved, from inside the
+running container:
+
+```
+wget http://93.184.216.34/   ->  Network unreachable
+fetch(...) from user code    ->  ENETUNREACH
+```
+
+Then the full contract suite was run from a sibling container on that isolated
+network: **62 pass / 0 fail / 1 skip / 0 todo**. Every language executes with no
+internet, so the isolation costs nothing - which is the question that actually
+needed answering before turning it on.
+
+`# SECURITY: Limit PIDs to prevent fork bombs` sat under `deploy.resources` with
+**nothing after it** (N-05). `pids_limit: 512` now, as both the top-level key and
+the deploy value: compose refuses a project where they disagree, and
+`docker compose up` ignores most of `deploy` outside swarm - which is part of why
+the gap went unnoticed.
+
+#### Capacity, corrected again
+
+The V-36 reserve was a flat 256 MB, which takes **half** of the 512 MB production
+limit. It is now `clamp(128, 256, budget/4)`: 512 MB -> 7 concurrent, 1 GB -> 15,
+4 GB -> 76. Confirmed live: the container reported `memoryBudgetSource: cgroup-v1`,
+`memoryBudgetMB: 1024`, `maxConcurrent: 15`.
+
+#### CI
+
+Six jobs, cheapest first, so an obvious failure reports in seconds:
+
+| Job | Gate |
+|---|---|
+| static | typecheck (both configs), build, and an assertion that the dev-only `__bcRuntime` seam is **absent from `dist/`** |
+| unit | 250 tests |
+| contract | installs the real toolchains first, so a skip cannot masquerade as coverage |
+| browser | the three suites, against an installed Chromium rather than a Playwright download |
+| ops | nginx config, the TLS template, compose validity, and `scripts/check-ops-config.mjs` |
+| image | builds the production image, boots it, and asserts capacity came from the cgroup rather than the host |
+
+`check-ops-config.mjs` is a real script rather than YAML-embedded Python, so it runs
+locally too. It asserts exactly the things that were previously only claimed in
+comments: the network is `internal: true`, the api service is on that network
+*only*, `pids_limit` is set, and `no-new-privileges` is on. **A comment cannot be
+tested; this can.**
