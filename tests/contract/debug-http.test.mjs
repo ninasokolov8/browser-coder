@@ -346,3 +346,188 @@ describe('debugging over HTTP', requires('python'), () => {
     await run.close();
   });
 });
+
+/**
+ * The same surface, in JavaScript.
+ *
+ * The point of this suite is that the DEBUGGER is a language-neutral contract: the
+ * client's state machine, glyph margin and variables panel are written against
+ * `attached` / `breakpoints` / `stopped` / `terminated`, not against Python. So the
+ * assertions here are deliberately the same ones, against a different runtime and an
+ * entirely different mechanism - V8's inspector attached from a worker thread, rather
+ * than a `bdb` trace hook.
+ */
+describe('debugging JavaScript over HTTP', requires('javascript'), () => {
+  let server;
+  let base;
+
+  const PROGRAM = [
+    'let total = 0;',              // 1
+    'for (let i = 0; i < 3; i++) {', // 2
+    '  total += i;',               // 3
+    '}',                           // 4
+    'console.log("total", total);', // 5
+    'console.log("done");',        // 6
+  ].join('\n');
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  test('a JavaScript run with no debug flag receives no debug events', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: 'console.log("plain");\n',
+    });
+
+    await run.waitFor('exit');
+    const debugEvents = run.events.filter(event => String(event.type).startsWith('debug:'));
+    assert.deepEqual(debugEvents, [], `v1 run saw: ${JSON.stringify(debugEvents)}`);
+    await run.close();
+  });
+
+  test('the debugger attaches', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: PROGRAM,
+      debug: true,
+    });
+
+    const attached = await run.waitFor('debug:attached');
+    assert.ok(attached.pid > 0, 'no pid reported');
+    await run.debug('continue');
+    await run.close();
+  });
+
+  test('a breakpoint stops the program and reports its variables', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: PROGRAM,
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    assert.equal(await run.debug('setBreakpoints', { lines: [5] }), 200);
+    await run.waitFor('debug:breakpoints');
+
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.line, 5);
+    assert.equal(stopped.file, 'main.mjs');
+
+    const named = [...(stopped.locals || []), ...(stopped.globals || [])];
+    const total = named.find(entry => entry.name === 'total');
+    assert.ok(total, `no variable named total: ${JSON.stringify(named.map(e => e.name))}`);
+    // 0 + 1 + 2 by the time line 5 runs.
+    assert.equal(total.value.text, '3');
+
+    assert.equal(await run.debug('continue'), 200);
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+    await run.close();
+  });
+
+  test('output printed before a pause arrives before the pause', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: 'console.log("before the stop");\nlet x = 1;\nconsole.log("after");\n',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    await run.debug('setBreakpoints', { lines: [2] });
+    await run.waitFor('debug:breakpoints');
+    await run.waitFor('debug:stopped');
+
+    const stdoutAt = run.events.findIndex(
+      event => event.type === 'stdout' && /before the stop/.test(event.data || ''),
+    );
+    const stoppedAt = run.events.findIndex(event => event.type === 'debug:stopped');
+
+    assert.ok(stdoutAt !== -1, 'the print never arrived');
+    assert.ok(stdoutAt < stoppedAt, `stop (${stoppedAt}) arrived before print (${stdoutAt})`);
+
+    await run.debug('continue');
+    await run.close();
+  });
+
+  test('step over advances one line', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: PROGRAM,
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    await run.debug('setBreakpoints', { lines: [5] });
+    await run.waitFor('debug:breakpoints');
+    const first = await run.waitFor('debug:stopped');
+    assert.equal(first.line, 5);
+
+    assert.equal(await run.debug('next'), 200);
+    const second = await run.waitFor('debug:stopped');
+    assert.equal(second.line, 6, 'step over did not advance to the next line');
+
+    await run.debug('continue');
+    await run.close();
+  });
+
+  test('a program that dies reports where it died, before it reports the end', async () => {
+    // The post-mortem stop. V8 does NOT consider a dynamically imported module's throw
+    // uncaught - the loader's own handler sits above it - so `setPauseOnExceptions`
+    // never fires for the case that matters most. The adapter therefore builds the
+    // stop from the real error, which is the same thing Python reports by walking a
+    // traceback, and the client renders both from one `stopped` frame.
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      code: 'const a = 1;\nthrow new RangeError("out of range");\n',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.reason, 'exception');
+    assert.equal(stopped.postMortem, true);
+    assert.equal(stopped.exception?.type, 'RangeError');
+    assert.match(stopped.exception?.message ?? '', /out of range/);
+    // Line 2 is the throw, recovered from the stack - so this assertion is what
+    // catches a stack-parsing regression.
+    assert.equal(stopped.line, 2);
+    assert.equal(stopped.file, 'main.mjs');
+
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 1);
+    await run.close();
+  });
+
+  test('the debug flag does not get a program past source validation', async () => {
+    // The first line of defence is the static filter, and it must not have a hole in
+    // the shape of `debug: true`. A JavaScript program may not reach `fs` at all -
+    // which is also why the language-level guard behind it (fs_guard.mjs, replacing
+    // the permission model the inspector cannot coexist with) is defence in depth
+    // rather than the defence, and is tested directly in tests/unit/js-fs-guard.
+    const response = await fetch(`${base}/api/run/interactive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: 'javascript',
+        version: 'es2022',
+        code: 'import fs from "node:fs";\nconsole.log(fs.readFileSync("/etc/passwd", "utf8"));\n',
+        debug: true,
+      }),
+    });
+
+    assert.equal(response.status, 403, 'a debug run bypassed the source filter');
+    await response.body?.cancel();
+  });
+});

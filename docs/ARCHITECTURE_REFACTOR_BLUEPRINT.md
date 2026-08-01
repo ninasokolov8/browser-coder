@@ -7316,3 +7316,121 @@ is never cached.
 - The editor chunk is 3.3 MB raw. Splitting Monaco further (the language services are
   already separate chunks) would help a first visit, but every subsequent visit is a
   304 against an immutable URL, so the win is smaller than the number suggests.
+
+---
+
+## 43. H7 (part 4) - Debugging JavaScript
+
+The debugger was Python-only. This adds JavaScript, and the interesting part is that it
+adds nothing to the client: the state machine, the glyph margin, the toolbar, the
+variables panel and the call stack are all unchanged, because the adapter speaks the
+same frames the Python one does. That was the point of making the channel a
+language-neutral contract rather than a Python transport.
+
+### 43.1 Why not `--inspect-brk`
+
+The obvious design is `node --inspect-brk` plus a supervising process speaking the
+Chrome DevTools Protocol over a WebSocket. It was rejected: it puts a grandchild
+process under the run, and an orphan per timed-out debug session is a leak at the scale
+this service is sized for. (The pipeline does kill the whole process group, so the leak
+is smaller than it first appears - but the extra process still buys nothing.)
+
+`Session.connectToMainThread()` gives the same separation with no extra process: a
+**worker thread** attaches to the main thread's inspector, and the worker's event loop
+keeps running while the main thread is stopped. That is the whole trick. V8 pauses the
+isolate, so an in-process session cannot report its own pause - the thread that would
+report it is the thread that is stopped.
+
+So: main thread runs the student's program, worker thread owns both the CDP session and
+the NDJSON socket, and the debugger lives inside the process the pipeline already owns.
+
+### 43.2 The permission model and the inspector cannot coexist
+
+A normal JavaScript run is confined by
+`--experimental-permission --allow-fs-read=<job dir>`. A debug run cannot use it. Node
+22 treats the inspector as a permission of its own and denies it outright - **both**
+`Session.connectToMainThread()` and the `--inspect-brk` flag fail with:
+
+```
+code: 'ERR_ACCESS_DENIED', permission: 'Inspector',
+resource: 'PauseOnNextJavascriptStatement'
+```
+
+and there is no `--allow-inspector` in this version. Measured on v22.18.0, both ways,
+before believing it.
+
+Dropping the confinement was not an option. `server/execution/job.mjs` says plainly that
+every job runs as the same uid and that 0o700 does not stop cross-job reads - what
+confines a program is per-language. Debug being the looser of the two ways to run a
+program is exactly what the Python adapter refuses to allow, on the grounds that
+students find out which one is looser.
+
+So the grant is **replaced**, not dropped: `languages/javascript/fs_guard.mjs` confines
+the program from inside, which is how Python has always done it. Two details make it
+work:
+
+- **`createRequire`, never `import`.** Node builds a builtin's ES-module facade on its
+  first `import`, copying the function values that exist at that moment. Patching after
+  that leaves `import { readFile } from 'node:fs'` holding the originals. Reaching `fs`
+  through `require` means the facade does not exist yet, so the student's first import
+  builds it from the patched values.
+- **`realpath`, not a string prefix.** A symlink inside the job pointing out of it is
+  the obvious way around a prefix test, and a path that does not exist yet is checked by
+  its nearest existing ancestor so creating a file cannot escape either. The prefix test
+  that remains is `=== root || startsWith(root + sep)`, because `/tmp/job` must not
+  admit `/tmp/job-other`.
+
+It is worth less than the permission model, which is enforced in C++, and the module
+says so. It is also not the first line of defence: the static source filter already
+refuses `node:fs`, `child_process` and the network modules to JavaScript outright, and a
+contract test asserts that `debug: true` does not get a program past it.
+
+### 43.3 Two things V8 does that the obvious code gets wrong
+
+**Call frames of an exception pause have an empty `url`.** Filtering the stack by
+`frame.url === programUrl` therefore dropped every frame at exactly the moment the stack
+mattered. Frames are matched by **script id** instead, recorded from `Debugger.scriptParsed`,
+which always carries the url.
+
+**A dynamically imported module's throw is not "uncaught".** V8 decides at throw time
+whether a handler exists, and the loader's own handler sits above the module - so
+`setPauseOnExceptions: 'uncaught'` never fires for a program that dies, which is the one
+case a student most needs. Removing the adapter's own `try/catch` and letting the
+rejection go unhandled did not change it either; it was measured, not assumed.
+
+The answer is a **post-mortem stop built from the real error**: the adapter hands the
+worker the error, the worker recovers the frames from its stack, and sends the same
+`stopped` frame with `postMortem: true` that Python sends after walking a traceback. The
+client renders both identically. Variables are not available there - recorded below
+rather than faked.
+
+### 43.4 Verification
+
+- 8 contract tests over the real HTTP surface: a run with no debug flag receives no
+  debug events at all; the debugger attaches; a breakpoint stops on the right line and
+  reports `total == 3`; output printed before a pause arrives before the pause; step
+  over advances exactly one line; a dying program reports where it died and then exits
+  1; and the source filter still refuses a debug run that asks for `fs`.
+- 15 unit tests on the filesystem guard, each running in a fresh process: reads inside
+  the job, subdirectories, relative paths and file URLs still work; another job's files
+  are refused by absolute path, by traversal, by `readdir`, by `opendir`, by `stat`,
+  through the promises API and through a symlink; writes outside are refused; and a
+  sibling directory whose name merely starts with the job path is outside. Confirmed
+  against a control run with no guard, where the same read succeeds.
+- 751 unit tests, 137 contract tests, all three browser suites, clean typecheck.
+
+### 43.5 What this does not cover
+
+- **TypeScript is deliberately excluded** from the debuggable set. It is compiled before
+  it runs, so a breakpoint on a `.ts` line would arm against the emitted `.js` and stop
+  somewhere else. That needs source maps, not another entry in a list.
+- **No variables in the post-mortem stop.** Python's walks a live traceback and has
+  them; this one is built from a stack string after the frames are gone.
+- **Java, C# and PHP are still not debuggable.** Each needs a different mechanism and
+  none reuses either adapter: JDWP is a binary protocol needing a client written from
+  scratch; C# needs `netcoredbg`, which is not in the image; PHP needs the Xdebug
+  extension, which is not either. The Debug button is correctly disabled for all three
+  rather than offering a run that ignores every breakpoint.
+- Breakpoints still bind to the entry file only, in both languages.
+- No conditional breakpoints, no watch expressions, no set-variable. The `evaluate`
+  command exists and works in both adapters; nothing in the UI sends one yet.

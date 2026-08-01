@@ -28,7 +28,10 @@ import { runCode } from './execution';
  * disagree in a way that misleads: at worst the button is offered and the run
  * reports `debug:unsupported`.
  */
-const DEBUGGABLE_LANGUAGES = new Set(['python']);
+// TypeScript is deliberately absent: it is compiled before it runs, so a breakpoint on
+// a .ts line would arm against the emitted .js and stop somewhere else. That needs
+// source maps, not another entry here.
+const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';
