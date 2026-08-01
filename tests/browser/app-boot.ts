@@ -1216,6 +1216,132 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
   );
 }
 
+/**
+ * The IDE must be usable without a mouse, and audible to a screen reader.
+ *
+ * Before this the explorer rows were plain divs: no role, no tab stop, no key handling,
+ * so a student who cannot use a mouse could not open a file at all. These assertions
+ * drive the real tree in the real app, because the whole feature is DOM behaviour.
+ */
+async function checkKeyboardAndScreenReader(frameWindow: Window): Promise<void> {
+  const frameDocument = frame.contentDocument!;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the accessibility check', false);
+    return;
+  }
+
+  // ── Live regions ──────────────────────────────────────────────────────────
+  const status = frameDocument.getElementById('status');
+  check('the status line is a live region', status?.getAttribute('aria-live') === 'polite');
+  check('it is announced as a whole', status?.getAttribute('aria-atomic') === 'true');
+
+  const announcer = frameDocument.getElementById('a11y-announcer');
+  check('there is an announcer for run outcomes', announcer !== null);
+  check('the announcer is polite', announcer?.getAttribute('aria-live') === 'polite');
+
+  const panel = frameDocument.getElementById('panel-content');
+  check('the output panel is a log', panel?.getAttribute('role') === 'log');
+  check(
+    'the output panel is NOT live, so a long run is not read line by line',
+    panel?.getAttribute('aria-live') === null,
+  );
+  check('the output panel is reachable by keyboard', panel?.getAttribute('tabindex') === '0');
+
+  // ── The tree ──────────────────────────────────────────────────────────────
+  const tree = frameDocument.getElementById('file-tree');
+  check('the file tree is a tree', tree?.getAttribute('role') === 'tree');
+
+  const rows = [...frameDocument.querySelectorAll('.tree-item')] as HTMLElement[];
+  check('the tree has rows to navigate', rows.length > 0, `${rows.length} rows`);
+  if (rows.length === 0) return;
+
+  check('every row is a treeitem', rows.every(row => row.getAttribute('role') === 'treeitem'));
+  check('every row declares its depth', rows.every(row => !!row.getAttribute('aria-level')));
+
+  const tabbable = rows.filter(row => row.getAttribute('tabindex') === '0');
+  check(
+    'exactly one row is tabbable, so the tree is ONE tab stop',
+    tabbable.length === 1,
+    `${tabbable.length} tabbable rows of ${rows.length}`,
+  );
+
+  // ── Arrow-key navigation ──────────────────────────────────────────────────
+  //
+  // This suite runs the IDE in snippet mode, which hides the whole sidebar
+  // (`body.mode-snippet #sidebar { display: none }`) as well as the explorer panel -
+  // and an element inside `display: none` cannot take focus, so the keyboard contract
+  // could not be exercised at all. The tree's key handling does not depend on the
+  // layout mode, so both classes are lifted for the duration of the check and put back
+  // afterwards.
+  const hidden = ['mode-snippet', 'hide-explorer-panel'].filter(name =>
+    frameDocument.body.classList.contains(name),
+  );
+  for (const name of hidden) frameDocument.body.classList.remove(name);
+
+  const first = tabbable[0] ?? rows[0];
+  first.focus();
+  check('a row can take focus', frameDocument.activeElement === first);
+
+  const press = (key: string) => {
+    (frameDocument.activeElement as HTMLElement).dispatchEvent(
+      new (frameWindow as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent(
+        'keydown',
+        { key, bubbles: true, cancelable: true },
+      ),
+    );
+  };
+
+  if (rows.length > 1) {
+    const before = frameDocument.activeElement;
+    press('ArrowDown');
+    check(
+      'ArrowDown moves to the next row',
+      frameDocument.activeElement !== before
+        && (frameDocument.activeElement as HTMLElement)?.classList.contains('tree-item'),
+      String((frameDocument.activeElement as HTMLElement)?.className),
+    );
+
+    const afterDown = frameDocument.activeElement;
+    press('ArrowUp');
+    check('ArrowUp moves back', frameDocument.activeElement !== afterDown);
+
+    press('End');
+    check(
+      'End jumps to the last row',
+      frameDocument.activeElement === rows[rows.length - 1],
+    );
+    press('Home');
+    check('Home jumps back to the first', frameDocument.activeElement === rows[0]);
+  }
+
+  for (const name of hidden) frameDocument.body.classList.add(name);
+
+  // ── High contrast ─────────────────────────────────────────────────────────
+  const themeSelect = frameDocument.getElementById('theme') as HTMLSelectElement | null;
+  check(
+    'a high-contrast theme can be chosen',
+    !!themeSelect && [...themeSelect.options].some(option => option.value === 'hc-black'),
+  );
+
+  if (themeSelect) {
+    const original = themeSelect.value;
+    themeSelect.value = 'hc-black';
+    themeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor('high contrast to apply', () => frameDocument.body.classList.contains('hc-theme'), 5000);
+    check('choosing it applies the theme', frameDocument.body.classList.contains('hc-theme'));
+    check(
+      'and it layers on dark, so an unrestated variable is not light',
+      frameDocument.body.classList.contains('dark-theme'),
+    );
+
+    themeSelect.value = original;
+    themeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor('the theme to go back', () => !frameDocument.body.classList.contains('hc-theme'), 5000);
+    check('switching away removes it', !frameDocument.body.classList.contains('hc-theme'));
+  }
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -1375,6 +1501,7 @@ async function run(): Promise<void> {
   await checkHoverTeaches(frameWindow);
   await checkRunSelection(frameWindow);
   await checkErrorsAreExplained(frameWindow);
+  await checkKeyboardAndScreenReader(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

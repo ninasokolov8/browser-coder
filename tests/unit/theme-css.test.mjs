@@ -45,6 +45,16 @@ function definedNames(block) {
 
 const LIGHT = variableBlock(':root');
 const DARK = variableBlock('.dark-theme');
+const HIGH_CONTRAST = variableBlock('.hc-theme');
+
+/**
+ * Where the variable blocks end and the component rules begin.
+ *
+ * Taken from the LAST variable block, not the first: adding high contrast put a third
+ * block of legitimate literals after `.dark-theme`, and a scan anchored on the first
+ * `color-scheme: dark` would have read that block as a wall of dark-only components.
+ */
+const COMPONENT_CSS = STYLE.slice(STYLE.indexOf('}', STYLE.indexOf(HIGH_CONTRAST)));
 
 describe('the two themes are symmetric', () => {
   test('every variable defined in one is defined in the other', () => {
@@ -70,6 +80,29 @@ describe('the two themes are symmetric', () => {
       assert.ok(definedNames(LIGHT).has(name), `light is missing ${name}`);
       assert.ok(definedNames(DARK).has(name), `dark is missing ${name}`);
     }
+  });
+
+  test('high contrast defines no variable the base themes do not have', () => {
+    // It is an OVERRIDE layered on dark, so it may restate a subset - but a name that
+    // exists nowhere else is a typo producing a variable nothing reads, which is
+    // exactly how --bg-input came to be used and never declared.
+    const stray = [...definedNames(HIGH_CONTRAST)].filter(name => !definedNames(DARK).has(name));
+    assert.deepEqual(stray, [], `high contrast declares unknown variables: ${stray.join(', ')}`);
+  });
+
+  test('high contrast restates every colour that carries meaning', () => {
+    // A semantic colour left at its dark value would be the one unreadable thing in a
+    // theme whose entire purpose is readability.
+    for (const name of [
+      '--fg-error', '--fg-success', '--fg-info', '--fg-warning',
+      '--focus-ring', '--border-subtle', '--bg-selected', '--glyph-current',
+    ]) {
+      assert.ok(definedNames(HIGH_CONTRAST).has(name), `high contrast is missing ${name}`);
+    }
+  });
+
+  test('the theme selector offers it, or nobody can choose it', () => {
+    assert.match(HTML, /<option value="hc-black">/);
   });
 
   test('the activity bar icons are legible, because that bar is dark in BOTH themes', () => {
@@ -118,7 +151,7 @@ describe('no component may be dark-only again', () => {
   ];
 
   test('white-alpha overlays outside the variable blocks are accounted for', () => {
-    const componentCss = STYLE.slice(STYLE.indexOf('color-scheme: dark;'));
+    const componentCss = COMPONENT_CSS;
     const offenders = componentCss
       .split('\n')
       .map(line => line.trim())
@@ -134,7 +167,7 @@ describe('no component may be dark-only again', () => {
 
   test('the dark-theme palette literals are gone from component rules', () => {
     // The exact values that made light mode unreadable. Each is now a variable.
-    const componentCss = STYLE.slice(STYLE.indexOf('color-scheme: dark;'));
+    const componentCss = COMPONENT_CSS;
     for (const literal of ['#f48771', '#89d185', '#75beff', '#ce9178', '#9cdcfe', '#ffcc00', '#e8ab6a', '#6a9955']) {
       assert.ok(
         !componentCss.includes(literal),

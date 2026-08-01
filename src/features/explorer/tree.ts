@@ -238,6 +238,7 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
+             role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" aria-expanded="${isExpanded}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="folder" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent}px">
           <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
@@ -247,7 +248,7 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
             : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
         </div>
-        ${isExpanded ? `<div class="tree-children">${childrenHtml}</div>` : ''}
+        ${isExpanded ? `<div class="tree-children" role="group">${childrenHtml}</div>` : ''}
       `;
     } else {
       // Icon reflects the file's own language, whether or not a tab is open
@@ -257,6 +258,7 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
+             role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="file" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent + 16}px">
           <span class="tree-item-icon">${icon}</span>
@@ -282,6 +284,50 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
 
   // Attach event handlers
   attachTreeEventHandlers(tm);
+  applyRovingTabindex();
+}
+
+/**
+ * Exactly one row is tabbable, and focus survives a re-render.
+ *
+ * A tree is ONE tab stop, not one per file - Tab should move past the explorer, and
+ * the arrow keys move within it. That is the roving-tabindex pattern every accessible
+ * tree uses, and without it a 300-file project puts 300 stops between the sidebar and
+ * the editor.
+ *
+ * Focus also has to be restored by hand, because the tree is rebuilt with `innerHTML`
+ * on every change: the focused element is destroyed, and the browser drops focus to
+ * `<body>` - so a student navigating with the keyboard would be thrown out of the tree
+ * every time autosave fired.
+ */
+function applyRovingTabindex(): void {
+  const rows = [...fileTreeEl.querySelectorAll<HTMLElement>('.tree-item')];
+  if (rows.length === 0) return;
+
+  const wanted =
+    rows.find(row => row.dataset.id === explorerState.focusedId)
+    ?? rows.find(row => row.dataset.id === explorerState.selectedItemId)
+    ?? rows.find(row => row.classList.contains('active'))
+    ?? rows[0];
+
+  for (const row of rows) row.tabIndex = row === wanted ? 0 : -1;
+
+  // Only take focus back if the tree HAD it. Stealing focus from the editor because a
+  // file was saved would be far worse than losing it.
+  if (explorerState.treeHadFocus && document.activeElement !== wanted) {
+    wanted.focus({ preventScroll: false });
+  }
+  explorerState.focusedId = wanted.dataset.id ?? null;
+}
+
+/** Move focus to a row and make it the tabbable one. */
+function focusRow(id: string): void {
+  const row = fileTreeEl.querySelector<HTMLElement>(`.tree-item[data-id="${CSS.escape(id)}"]`);
+  if (!row) return;
+  for (const other of fileTreeEl.querySelectorAll<HTMLElement>('.tree-item')) other.tabIndex = -1;
+  row.tabIndex = 0;
+  explorerState.focusedId = id;
+  row.focus();
 }
 
 function attachTreeEventHandlers(tm: TabManager) {
@@ -514,6 +560,127 @@ function attachTreeEventHandlers(tm: TabManager) {
   }
 }
 
+
+/*
+ * The keyboard contract for a tree.
+ *
+ * Before this the explorer was reachable only with a mouse: rows were plain divs with
+ * no role, no tab stop and no key handling, so a keyboard or screen-reader user could
+ * not open a file at all. These are the bindings the ARIA tree pattern specifies, and
+ * they are what a student who cannot use a mouse needs in order to use the IDE.
+ *
+ * Registered on the container rather than per row, so a re-render cannot drop it.
+ */
+fileTreeEl.addEventListener('focusin', () => {
+  explorerState.treeHadFocus = true;
+  const row = (document.activeElement as HTMLElement | null)?.closest?.('.tree-item') as HTMLElement | null;
+  if (row?.dataset.id) explorerState.focusedId = row.dataset.id;
+});
+
+fileTreeEl.addEventListener('focusout', event => {
+  // Only when focus actually leaves the tree, not when it moves between rows.
+  const next = (event as FocusEvent).relatedTarget as Node | null;
+  if (!next || !fileTreeEl.contains(next)) explorerState.treeHadFocus = false;
+});
+
+fileTreeEl.addEventListener('keydown', event => {
+  const target = event.target as HTMLElement;
+  // A rename input owns its own keys - Enter commits, Escape cancels.
+  if (target.classList.contains('tree-item-input')) return;
+
+  const row = target.closest('.tree-item') as HTMLElement | null;
+  if (!row) return;
+
+  const order = explorerState.visibleNodeOrder;
+  const id = row.dataset.id ?? '';
+  const type = row.dataset.type as 'file' | 'folder';
+  const at = order.indexOf(id);
+  if (at === -1) return;
+
+  const move = (to: number): void => {
+    const next = order[Math.max(0, Math.min(order.length - 1, to))];
+    if (next) focusRow(next);
+  };
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault();
+      move(at + 1);
+      return;
+
+    case 'ArrowUp':
+      event.preventDefault();
+      move(at - 1);
+      return;
+
+    case 'Home':
+      event.preventDefault();
+      move(0);
+      return;
+
+    case 'End':
+      event.preventDefault();
+      move(order.length - 1);
+      return;
+
+    case 'ArrowRight':
+      event.preventDefault();
+      // On a collapsed folder, open it. On an open one, step into its first child.
+      // On a file, nothing - which is what the pattern says.
+      if (type === 'folder' && !explorerState.expandedFolders.has(id)) {
+        explorerState.expandedFolders.add(id);
+        explorerState.focusedId = id;
+        void renderFileTree(tabManager);
+      } else if (type === 'folder') {
+        move(at + 1);
+      }
+      return;
+
+    case 'ArrowLeft': {
+      event.preventDefault();
+      // On an open folder, close it. Otherwise go up to the parent, which is how a
+      // student climbs back out of a deep folder without arrowing through everything
+      // inside it.
+      if (type === 'folder' && explorerState.expandedFolders.has(id)) {
+        explorerState.expandedFolders.delete(id);
+        explorerState.focusedId = id;
+        void renderFileTree(tabManager);
+        return;
+      }
+      const parentId = row.dataset.parent;
+      if (parentId && order.includes(parentId)) focusRow(parentId);
+      return;
+    }
+
+    case 'Enter':
+    case ' ':
+      event.preventDefault();
+      // Same effect as a click, and deliberately routed through it so the two cannot
+      // drift: one place decides what opening a row means.
+      row.click();
+      return;
+
+    case 'F2':
+      if (policyState.lockStructure) return;
+      event.preventDefault();
+      explorerState.selectedItemId = id;
+      explorerState.selectedItemType = type;
+      explorerState.renamingItemId = id;
+      void renderFileTree(tabManager);
+      return;
+
+    case 'Delete':
+      if (policyState.lockStructure) return;
+      event.preventDefault();
+      explorerState.selectedItemId = id;
+      explorerState.selectedItemType = type;
+      explorerState.selectedIds = new Set([id]);
+      void deleteSelectedItems();
+      return;
+
+    default:
+  }
+});
 
 // Right-click on empty explorer space opens the root context menu.
 fileTreeEl.addEventListener('contextmenu', (e) => {

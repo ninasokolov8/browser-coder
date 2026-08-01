@@ -19,6 +19,7 @@ import { escapeHtml } from '../components/html-escape.ts';
 import { parseCompilerOutput } from '../diagnostics/compiler-output.ts';
 import { buildErrorHelpBlock, selectErrorKey } from './error-help.ts';
 import { getUILang } from './wrapped-i18n';
+import { announce, describeRunOutcome } from '../components/announce.ts';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -39,6 +40,21 @@ function requireRuntime() {
  * copies in the codebase. Now the shared one; see src/components/html-escape.ts.
  */
 const esc = escapeHtml;
+
+/**
+ * The one sentence a screen reader should hear about what went wrong.
+ *
+ * The parser's message, trimmed to its first line and given a location. Everything
+ * after that first line is a stack trace, which is not something to read aloud.
+ */
+function firstErrorSentence(languageId: string, output: string): string | null {
+  const [diagnostic] = parseCompilerOutput(languageId, output);
+  if (!diagnostic) return null;
+
+  const message = diagnostic.message.split('\n')[0].trim();
+  if (!message) return null;
+  return `${message} on line ${diagnostic.line} of ${diagnostic.file}.`;
+}
 
 /**
  * Explain the error a failed run produced, under the run's own output.
@@ -371,9 +387,22 @@ ${result.stdout || ''}`,
     // After the program's own output and its exit line, never instead of them. Only
     // for a run that actually failed: explaining an error to someone whose program
     // worked is noise.
+    const combinedOutput = `${result.stderr || ''}\n${result.stdout || ''}`;
     if (result.exitCode !== 0) {
-      explainRunFailure(lang.id, `${result.stderr || ''}\n${result.stdout || ''}`);
+      explainRunFailure(lang.id, combinedOutput);
     }
+
+    // Said once, to a screen reader. The panel itself is not a live region because a
+    // program that prints two hundred lines would read all two hundred aloud.
+    announce(
+      describeRunOutcome({
+        exitCode: result.exitCode,
+        errorSummary: result.exitCode === 0
+          ? null
+          : firstErrorSentence(lang.id, combinedOutput),
+        problemCount: runtime.diagnostics?.counts().total ?? 0,
+      }),
+    );
 
     if (appConfig.isEmbedded) {
       notifyRunResult({

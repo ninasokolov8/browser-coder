@@ -102,6 +102,68 @@
         color-scheme: dark;
       }
 
+      /*
+       * High contrast.
+       *
+       * Layered ON TOP of .dark-theme rather than replacing it - applyTheme adds both
+       * classes - so a variable this block does not restate keeps a dark value instead
+       * of falling through to the light set. That is the whole reason the old
+       * two-branch applyTheme could not have a third theme added to it.
+       *
+       * Every pair here clears 7:1, the WCAG AAA threshold, against the surface it sits
+       * on. Borders become solid and full-strength because the subtle overlays that
+       * work on a grey panel disappear entirely on pure black.
+       */
+      .hc-theme {
+        --bg-main: #000000;
+        --bg-sidebar: #000000;
+        --bg-activitybar: #000000;
+        --bg-editor: #000000;
+        --bg-panel: #000000;
+        --bg-titlebar: #000000;
+        --bg-statusbar: #000000;
+        --bg-tab: #000000;
+        --bg-tab-active: #000000;
+        --bg-tab-hover: #1a1a1a;
+        --border-color: #ffffff;
+        --text-primary: #ffffff;
+        --text-secondary: #ffffff;
+        --text-muted: #d4d4d4;
+        --accent: #1aebff;
+        --icon-color: #ffffff;
+        --icon-active: #1aebff;
+
+        --fg-error: #ff8a80;
+        --fg-success: #7ee787;
+        --fg-info: #79c0ff;
+        --fg-warning: #ffd479;
+        --fg-symbol: #9cdcfe;
+        --fg-dirty: #ffd479;
+        --fg-annotation: #7ee787;
+        --fg-danger: #ff8a80;
+        --fg-exception: #ff8a80;
+        --glyph-current: #ffff00;
+        --bg-current-line: rgba(255, 255, 0, 0.25);
+        --bg-hover: rgba(255, 255, 255, 0.22);
+        --bg-hover-strong: rgba(255, 255, 255, 0.32);
+        --bg-selected: rgba(26, 235, 255, 0.30);
+        --bg-danger-soft: rgba(255, 138, 128, 0.30);
+        --border-subtle: #ffffff;
+        --border-faint: #ffffff;
+        --focus-ring: #ffff00;
+        --bg-input: #000000;
+        --bg-checker: #000000;
+        --bg-checker-alt: #3f3f3f;
+        --shadow-strong: rgba(0, 0, 0, 0.9);
+        color-scheme: dark;
+      }
+
+      /* A focus ring that cannot be missed, which is the point of the theme. */
+      .hc-theme :focus-visible {
+        outline: 3px solid var(--focus-ring) !important;
+        outline-offset: 1px;
+      }
+
       * { box-sizing: border-box; }
       html, body { 
         height: 100%; margin: 0; 
@@ -292,6 +354,21 @@
       .tree-item:hover { background: var(--bg-tab-hover); }
       .tree-item.active { background: var(--accent); color: white; }
       .tree-item.selected { background: rgba(0, 122, 204, 0.25); }
+      /*
+       * Keyboard focus in the file tree.
+       *
+       * The tree is one tab stop with the arrow keys moving inside it, so without a
+       * visible ring a keyboard user has no idea which row they are on - the feature
+       * would be there and unusable.
+       */
+      .tree-item:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: -2px;
+      }
+      #panel-content:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: -2px;
+      }
       .tree-item.dragging { opacity: 0.5; }
       .tree-item.drop-target { background: rgba(0, 122, 204, 0.3); outline: 1px solid var(--accent); outline-offset: -1px; }
       .tree-item-chevron {
@@ -1800,7 +1877,14 @@
           <span>📟</span>
           <span data-i18n="app.logo">Browser Coder</span>
         </div>
-        <span id="status" style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
+        <!--
+          The status line is the one place almost every action reports itself -
+          "Ready", "Moved 2 items", "Runtime error", "Downloaded logo.png" - so making
+          it a live region gives a screen-reader user nearly the whole UI at once.
+          `aria-atomic` because the text is replaced wholesale, not appended to.
+        -->
+        <span id="status" role="status" aria-live="polite" aria-atomic="true"
+              style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
         <div class="controls">
           <button id="btn-hack-lab" class="btn btn-hack" data-i18n-title="titlebar.hackLab" onclick="window.open('/reports/', '_blank')">🔓 <span data-i18n="titlebar.hackLab">Hack Lab</span></button>
           <span class="titlebar-separator"></span>
@@ -1819,6 +1903,7 @@
           <select id="theme" title="Theme">
             <option value="vs-dark">Dark</option>
             <option value="vs">Light</option>
+            <option value="hc-black">High contrast</option>
           </select>
           <span class="titlebar-separator"></span>
           <div id="lang-selector">
@@ -1844,7 +1929,12 @@
             </div>
           </div>
           <div class="sidebar-content">
-            <div class="file-tree" id="file-tree">
+            <!--
+              One tab stop for the whole tree, with the arrow keys moving inside it -
+              see applyRovingTabindex in src/features/explorer/tree.ts. Without a role
+              here the rows are announced as anonymous groups of text.
+            -->
+            <div class="file-tree" id="file-tree" role="tree" aria-label="Project files">
               <!-- Files rendered dynamically -->
             </div>
           </div>
@@ -1968,10 +2058,29 @@
               <button id="togglePanel" class="panel-btn" data-i18n-title="panel.toggle">⌃</button>
             </div>
           </div>
-          <div id="panel-content" data-i18n="panel.placeholder">(Run code to see output here)</div>
-          <div id="problems-content" hidden></div>
+          <!--
+            `role="log"` and focusable, but deliberately NOT aria-live. A running
+            program can print hundreds of lines, and a live log would read every one of
+            them aloud - which is worse than silence. The outcome is announced once,
+            through #a11y-announcer below, and a screen-reader user can Tab here to read
+            the output itself at their own pace.
+          -->
+          <div id="panel-content" role="log" tabindex="0" aria-label="Program output"
+               data-i18n="panel.placeholder">(Run code to see output here)</div>
+          <div id="problems-content" role="region" aria-label="Problems" hidden></div>
         </div>
       </div>
+
+      <!--
+        The one place the IDE speaks to a screen reader on purpose.
+
+        Off-screen rather than `display:none`, because a hidden element is not
+        announced at all. Everything routed here is a SUMMARY - "Run finished, exit
+        code 1. ReferenceError on line 2." - never the output itself, which is what
+        makes it useful rather than a flood.
+      -->
+      <div id="a11y-announcer" role="status" aria-live="polite" aria-atomic="true"
+           style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;"></div>
 
       <!-- Status Bar -->
       <div id="statusbar">

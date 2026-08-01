@@ -254,12 +254,29 @@ export function populateVersionDropdown(lang: LoadedLanguage, selectedVersionId?
 }
 
 // Apply theme to body class
+/**
+ * Apply a theme to the whole IDE - Monaco and the surrounding chrome.
+ *
+ * Three now, not two. The old version added `dark-theme` for exactly the string
+ * "vs-dark" and removed it for anything else, so adding a third option would have
+ * silently applied the LIGHT variable set to it - the audit called this out as the
+ * reason a high-contrast theme could not simply be added to the dropdown.
+ *
+ * The mapping is explicit and total, so a value that is not one of the three falls back
+ * to dark rather than to whatever the else-branch happened to be.
+ */
 export function applyTheme(theme: string) {
-  if (theme === "vs-dark") {
-    document.body.classList.add("dark-theme");
-  } else {
-    document.body.classList.remove("dark-theme");
+  const body = document.body.classList;
+  body.remove("dark-theme", "hc-theme");
+
+  if (theme === "hc-black") {
+    // Both: the high-contrast set is defined as an override on top of dark, so a
+    // variable it does not restate still has a dark value rather than a light one.
+    body.add("dark-theme", "hc-theme");
+  } else if (theme !== "vs") {
+    body.add("dark-theme");
   }
-  monaco.editor.setTheme(theme);
+
+  monaco.editor.setTheme(theme === "hc-black" || theme === "vs" ? theme : "vs-dark");
 }
 
