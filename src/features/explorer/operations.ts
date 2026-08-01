@@ -11,12 +11,16 @@ import { explorerState } from './state';
 import { downloadBlob, fileBytesFor } from '../../components/download.ts';
 import {
   ASSET_LANGUAGE_ID,
+  DEFAULT_ASSET_LIMITS,
   assetTypeFor,
   bytesToBase64,
   validateAsset,
 } from '../../workspace/assets.ts';
 import { renderFileTree, showContextMenu } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
+import { isWorkspaceEntryHidden } from '../workspace-visibility';
+import { importSafeName, uniqueFileName } from './naming.ts';
+import { descendantFolderIds, topLevelItems } from './selection-scope.ts';
 import { lazyRef } from '../../app/lazy';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
@@ -116,34 +120,16 @@ async function getTopLevelSelectionItems(items: ExplorerSelectionItem[]): Promis
   if (selectedFolderIds.size === 0) return items;
 
   const allFolders = await storage.getAllFolders();
-  const folderById = new Map(allFolders.map(folder => [folder.id, folder]));
+  const folderParentById = new Map(allFolders.map(folder => [folder.id, folder.parentId ?? null]));
 
-  return items.filter(item => {
-    let parentId = item.parentId;
-    while (parentId) {
-      if (selectedFolderIds.has(parentId)) return false;
-      parentId = folderById.get(parentId)?.parentId ?? null;
-    }
-    return true;
-  });
+  return topLevelItems(items, selectedFolderIds, folderParentById);
 }
 
 async function getDescendantIdsForFolders(folderIds: Set<string>): Promise<{ folderIds: Set<string>; fileIds: Set<string> }> {
   const allFolders = await storage.getAllFolders();
   const allFiles = await storage.getAllFiles();
-  const foldersToInclude = new Set(folderIds);
+  const foldersToInclude = descendantFolderIds(folderIds, allFolders);
   const filesToInclude = new Set<string>();
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const folder of allFolders) {
-      if (folder.parentId && foldersToInclude.has(folder.parentId) && !foldersToInclude.has(folder.id)) {
-        foldersToInclude.add(folder.id);
-        changed = true;
-      }
-    }
-  }
 
   for (const file of allFiles) {
     if (file.parentId && foldersToInclude.has(file.parentId)) {
@@ -152,6 +138,28 @@ async function getDescendantIdsForFolders(folderIds: Set<string>): Promise<{ fol
   }
 
   return { folderIds: foldersToInclude, fileIds: filesToInclude };
+}
+
+/**
+ * Record which folders the drag now in progress may not be dropped into.
+ *
+ * Called from `dragstart` without awaiting - see `explorerState.invalidDropTargetIds`.
+ * The dragged folders themselves are included, because dropping a folder onto itself
+ * and into itself are the same refusal.
+ */
+export async function markInvalidDropTargets(draggedIds: string[]): Promise<void> {
+  const draggedFolderIds = new Set<string>();
+  const allFolders = await storage.getAllFolders();
+  const known = new Set(allFolders.map(folder => folder.id));
+  for (const id of draggedIds) if (known.has(id)) draggedFolderIds.add(id);
+
+  if (draggedFolderIds.size === 0) {
+    explorerState.invalidDropTargetIds = new Set();
+    return;
+  }
+
+  const { folderIds } = await getDescendantIdsForFolders(draggedFolderIds);
+  explorerState.invalidDropTargetIds = folderIds;
 }
 
 function uniqueFolderName(baseName: string, existingNames: string[]): string {
@@ -374,9 +382,14 @@ btnDownloadProject.addEventListener('click', async () => {
     setStatus('Preparing ZIP...');
     setOutput('Creating ZIP file...');
     
-    const files = await storage.getAllFiles();
-    const folders = await storage.getAllFolders();
-    
+    // Hidden entries are excluded, exactly as they are from the tree and the tab
+    // strip. X_HIDDEN_ is how a teacher ships a solution file or a marking harness
+    // alongside a task; storage and execution still see them, but the Download
+    // button used to hand the student X_HIDDEN_solution.py in a ZIP. The one
+    // student-facing surface that leaked them was the one that writes to disk.
+    const files = (await storage.getAllFiles()).filter(file => !isWorkspaceEntryHidden(file));
+    const folders = (await storage.getAllFolders()).filter(folder => !isWorkspaceEntryHidden(folder));
+
     if (files.length === 0) {
       setOutput('No files to download');
       setStatus('No files');
@@ -424,22 +437,17 @@ btnDownloadProject.addEventListener('click', async () => {
   }
 });
 
-// Right-click on empty area of file tree
-fileTreeEl.addEventListener('contextmenu', (e) => {
-  if (policyState.lockStructure) return;
-  if (e.target === fileTreeEl) {
-    e.preventDefault();
-    explorerState.selectedItemId = null;
-    explorerState.selectedItemType = null;
-    explorerState.selectedIds = new Set();
-    explorerState.lastClickedId = null;
-    showContextMenu(e.clientX, e.clientY, 'folder');
-  }
-});
+// Right-clicking blank explorer space is handled in tree.ts, with a `closest`
+// guard that also covers the gaps between rows. A second listener here fired the
+// same handler twice for the same click - harmless while both are idempotent, and
+// exactly the kind of duplicate that diverges the first time one of them is edited.
 
 // Dropping onto empty explorer space moves items to the workspace root,
 // and also accepts external files dragged from the OS/desktop.
 fileTreeEl.addEventListener('dragover', (e) => {
+  // Same reasoning as the per-item handler: a read-only workspace must not paint a
+  // drop target for a write it is going to refuse.
+  if (policyState.lockStructure) return;
   const external = isExternalFileDrag(e);
   if (getInternalDraggedIds(e).length === 0 && !external) return;
   // Only treat blank area / the container itself as a root drop target
@@ -455,6 +463,7 @@ fileTreeEl.addEventListener('dragleave', (e) => {
   if (e.target === fileTreeEl) fileTreeEl.classList.remove('root-drop-target');
 });
 fileTreeEl.addEventListener('drop', async (e) => {
+  if (policyState.lockStructure) return;
   const overItem = (e.target as HTMLElement).closest('.tree-item');
   fileTreeEl.classList.remove('root-drop-target');
   if (overItem) return; // item drops are handled by the item's own handler
@@ -475,24 +484,16 @@ export function isExternalFileDrag(e: DragEvent): boolean {
   return !!types && Array.prototype.indexOf.call(types, 'Files') !== -1;
 }
 
-// Make a file name unique within a set of existing sibling names.
-function uniqueFileName(name: string, existing: string[]): string {
-  const set = new Set(existing);
-  if (!set.has(name)) return name;
-  const dot = name.lastIndexOf('.');
-  const base = dot > 0 ? name.slice(0, dot) : name;
-  const ext = dot > 0 ? name.slice(dot) : '';
-  let i = 1;
-  let candidate = `${base}_${i}${ext}`;
-  while (set.has(candidate)) { i++; candidate = `${base}_${i}${ext}`; }
-  return candidate;
-}
-
 // Import files dragged from the desktop into a target folder (or root).
 // Only supported-language files are accepted; everything else is reported
 // and skipped. Enforces the same limits Step-Up uses (≤8 MB/file, ≤300 files).
 export async function importExternalFiles(fileList: FileList, targetParentId: string | null) {
   if (policyState.lockStructure) return;
+  // Source files may be up to 8 MB; an ASSET is held to the smaller documented cap.
+  // The importer used to pass 8 MB to validateAsset, overriding the 4 MB that exists
+  // because assets ride the run payload as base64 - two 6 MB photos would have made
+  // every Run fail on the server's JSON body limit rather than on anything the
+  // student did.
   const MAX_BYTES = 8 * 1024 * 1024;
   const MAX_FILES = 300;
 
@@ -539,7 +540,7 @@ export async function importExternalFiles(fileList: FileList, targetParentId: st
         continue;
       }
 
-      const verdict = validateAsset(file.name, bytes, { maxBytes: MAX_BYTES });
+      const verdict = validateAsset(file.name, bytes, DEFAULT_ASSET_LIMITS);
       if (!verdict.ok) {
         skipped.push(`${file.name} - ${verdict.message.replace(`${file.name} `, '')}`);
         continue;
@@ -560,7 +561,7 @@ export async function importExternalFiles(fileList: FileList, targetParentId: st
       versionId = version.id;
     }
 
-    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const safeName = importSafeName(file.name);
     const siblings = await storage.getChildFiles(targetParentId);
     const finalName = uniqueFileName(safeName, siblings.map(s => s.name));
 
@@ -596,24 +597,72 @@ export function clearDropHighlights() {
   fileTreeEl.classList.remove('root-drop-target');
 }
 
-// Move the current drag selection into a target folder (or root when null).
-// Skips no-op moves and invalid folder-into-descendant moves (storage guards).
+/**
+ * Move the current drag selection into a target folder (or the root when null).
+ *
+ * Three things this has to get right, each of which it used to get wrong:
+ *
+ *  - **Only top-level items move.** Selecting a folder AND something inside it (one
+ *    Shift-click away, since the range runs down the visible rows) used to move both:
+ *    the folder went into the target, then the descendant was moved in beside it,
+ *    tearing the file out of the folder the student dragged. `createFolderFromSelection`
+ *    and `deleteSelectedItems` already reduce to top-level items; this did not.
+ *  - **A refused move says so.** Dropping a folder into its own descendant is correctly
+ *    refused by the service, but nothing was reported: the highlight vanished and the
+ *    tree did not change, which reads as "drag and drop is broken".
+ *  - **A no-op is not a success.** Dropping an item back into the folder it is already
+ *    in reported "Moved 1 item" while nothing happened - which is also how an attempted
+ *    reorder looks, because the tree is sorted by name and has no drop positions.
+ */
 export async function moveItemsInto(targetFolderId: string | null, draggedIds?: string[]) {
   if (policyState.lockStructure) return;
   const ids = Array.from(new Set(draggedIds?.length ? draggedIds : explorerState.draggingIds));
   if (ids.length === 0) return;
 
+  const allFolders = await storage.getAllFolders();
+  const folderById = new Map(allFolders.map(folder => [folder.id, folder]));
+
+  const items: ExplorerSelectionItem[] = [];
+  for (const id of ids) {
+    const folder = folderById.get(id);
+    if (folder) {
+      items.push({ id, type: 'folder', name: folder.name, parentId: folder.parentId ?? null });
+      continue;
+    }
+    const file = await storage.getFile(id);
+    if (file) items.push({ id, type: 'file', name: file.name, parentId: file.parentId ?? null });
+  }
+
+  const toMove = await getTopLevelSelectionItems(items);
+  if (toMove.length === 0) {
+    explorerState.draggingIds = [];
+    return;
+  }
+
   const beforePaths = await captureWorkspacePaths();
   let movedAny = false;
-  for (const id of ids) {
-    // Don't drop a folder onto itself
-    if (id === targetFolderId) continue;
-    const folder = await storage.getFolder(id);
-    if (folder) {
-      const res = await storage.moveFolder(id, targetFolderId);
+  let refusedCycle = false;
+  let alreadyThere = 0;
+
+  for (const item of toMove) {
+    // Dropping a folder onto itself is the same gesture as dropping it into itself.
+    if (item.id === targetFolderId) {
+      refusedCycle = true;
+      continue;
+    }
+    if (item.parentId === targetFolderId) {
+      alreadyThere++;
+      continue;
+    }
+
+    if (item.type === 'folder') {
+      const res = await storage.moveFolder(item.id, targetFolderId);
+      // `null` here means the service refused a cycle - the only reason it can fail
+      // once the parent is known to differ.
       if (res) movedAny = true;
+      else refusedCycle = true;
     } else {
-      const res = await storage.moveFile(id, targetFolderId);
+      const res = await storage.moveFile(item.id, targetFolderId);
       if (res) movedAny = true;
       // No tab metadata to fix up: a tab's path is derived from the folder tree,
       // so the move is already visible everywhere it is read.
@@ -623,23 +672,42 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
   // Clear drag state only after all asynchronous storage moves finish.
   explorerState.draggingIds = [];
 
-  if (movedAny) {
-    // A moved folder changes the path of every descendant file. Refresh every
-    // open tab from storage so tab metadata and future entry-point selection
-    // cannot retain stale paths. Unsaved model contents are preserved.
-    await syncOpenTabsFromStorage();
-    const refactorResult = await refactorWorkspaceImports(beforePaths);
+  if (!movedAny) {
+    if (refusedCycle) setStatus('A folder cannot be moved inside itself');
+    else if (alreadyThere > 0) setStatus('Already in that folder');
+    return;
+  }
 
-    if (targetFolderId) explorerState.expandedFolders.add(targetFolderId);
-    await renderFileTree(tabManager);
-    runtime.notifyWorkspaceChanged();
-    const refactorSuffix = refactorResult.replacements > 0
-      ? `; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`
-      : '';
-    setStatus(`Moved ${ids.length} item${ids.length === 1 ? '' : 's'}${refactorSuffix}`);
-    if (refactorResult.warnings.length > 0) {
-      setOutput(refactorResult.warnings.join('\n'));
-    }
+  // A moved folder changes the path of every descendant file. Refresh every
+  // open tab from storage so tab metadata and future entry-point selection
+  // cannot retain stale paths. Unsaved model contents are preserved.
+  await syncOpenTabsFromStorage();
+
+  // The writes have already committed, so the tree MUST be redrawn even if the import
+  // rewrite fails - otherwise the file has really moved and the explorer still shows
+  // it in the old place, with no error and nothing to click.
+  let refactorResult: { replacements: number; warnings: string[] } = { replacements: 0, warnings: [] };
+  let refactorError: unknown = null;
+  try {
+    refactorResult = await refactorWorkspaceImports(beforePaths);
+  } catch (error) {
+    refactorError = error;
+  }
+
+  if (targetFolderId) explorerState.expandedFolders.add(targetFolderId);
+  await renderFileTree(tabManager);
+  runtime.notifyWorkspaceChanged();
+
+  const moved = toMove.length - alreadyThere - (refusedCycle ? 1 : 0);
+  const refactorSuffix = refactorResult.replacements > 0
+    ? `; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`
+    : '';
+  setStatus(`Moved ${moved} item${moved === 1 ? '' : 's'}${refactorSuffix}`);
+
+  if (refactorError) {
+    setOutput(`Files moved, but imports could not be updated: ${refactorError}`);
+  } else if (refactorResult.warnings.length > 0) {
+    setOutput(refactorResult.warnings.join('\n'));
   }
 }
 

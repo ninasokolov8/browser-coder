@@ -13,6 +13,7 @@ import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
   deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
+  markInvalidDropTargets,
 } from './operations';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
@@ -331,6 +332,10 @@ function attachTreeEventHandlers(tm: TabManager) {
       }
 
       explorerState.draggingIds = Array.from(explorerState.selectedIds);
+      // Started, not awaited: dragstart must stay synchronous or the native drag is
+      // cancelled. It resolves off the in-memory folder maps long before a pointer
+      // can travel to a target.
+      void markInvalidDropTargets(explorerState.draggingIds);
       const payload = explorerState.draggingIds.join(',');
       e.dataTransfer?.setData('application/x-browser-coder-items', payload);
       e.dataTransfer?.setData('text/plain', payload);
@@ -341,7 +346,10 @@ function attachTreeEventHandlers(tm: TabManager) {
     itemEl.addEventListener('dragend', () => {
       // Drop handlers may perform asynchronous IndexedDB work. Delay cleanup
       // one task so the drop event can first copy the DataTransfer payload.
-      setTimeout(() => { explorerState.draggingIds = []; }, 0);
+      setTimeout(() => {
+        explorerState.draggingIds = [];
+        explorerState.invalidDropTargetIds = new Set();
+      }, 0);
       clearDropHighlights();
       itemEl.classList.remove('dragging');
     });
@@ -352,8 +360,15 @@ function attachTreeEventHandlers(tm: TabManager) {
     //                         so dropping on a root-level file lands in root
     // Works for both internal moves and external OS-file drops.
     itemEl.addEventListener('dragover', (e) => {
+      // A locked workspace must not advertise a drop it will silently discard. Without
+      // preventDefault the browser shows the not-allowed cursor, which is the honest
+      // answer. Internal drags are already blocked at the source, but an external file
+      // dragged from the desktop reaches here.
+      if (policyState.lockStructure) return;
       const external = isExternalFileDrag(e);
       if (getInternalDraggedIds(e).length === 0 && !external) return;
+      // A folder cannot go inside itself, so do not paint it as somewhere it can go.
+      if (!external && explorerState.invalidDropTargetIds.has(id)) return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = external ? 'copy' : 'move';
       clearDropHighlights();
@@ -374,6 +389,7 @@ function attachTreeEventHandlers(tm: TabManager) {
       itemEl.classList.remove('drop-target');
     });
     itemEl.addEventListener('drop', async (e) => {
+      if (policyState.lockStructure) return;
       const external = isExternalFileDrag(e);
       if (getInternalDraggedIds(e).length === 0 && !external) return;
       e.preventDefault();

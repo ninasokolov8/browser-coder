@@ -7,6 +7,7 @@ import { langSel, versionSel, themeSel, downloadBtn } from '../components/dom';
 import { downloadFile } from '../components/download';
 import { saveSettings } from '../components/settings';
 import { getOrCreateModel, updateEmptyState } from './editor-core';
+import { isAssetFile, showAssetViewer } from './asset-viewer.ts';
 import { renderFileTree } from './explorer';
 
 export async function initializeWorkspace(): Promise<void> {
@@ -29,7 +30,23 @@ if (appConfig.isEmbedded) {
 } else {
   const initialTab = await tabManager.init(runtime.currentLang, runtime.currentVersion);
 
-  if (initialTab) {
+  if (initialTab && isAssetFile(initialTab.file)) {
+    // A restored binary asset gets the viewer, not the editor - the same rule
+    // `onTabSwitch` applies on every switch. Without it, reopening the IDE while an
+    // image was the active tab threw out of `getOrCreateModel` (the registry refuses
+    // a model for an asset, deliberately) and the rejection killed the whole of
+    // bootstrap: no run panel, no palette, no layout, and a status line reading
+    // "Initialization failed" that a student cannot recover from without clearing
+    // site data. The most-recently-clicked file being an image is not an edge case.
+    editor.setModel(null);
+    showAssetViewer({
+      name: initialTab.file.name,
+      content: initialTab.file.content,
+      path: initialTab.file.path,
+    });
+    updateEmptyState(false);
+    setStatus(`${initialTab.file.name}`);
+  } else if (initialTab) {
     const lang = getLanguage(initialTab.file.language);
     if (lang) {
       runtime.currentLang = lang;
@@ -160,10 +177,15 @@ versionSel.addEventListener("change", async () => {
 // Download file
 downloadBtn.addEventListener("click", () => {
   const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    downloadFile(activeTab.file.name, editor.getValue());
-    setStatus(`Downloaded ${activeTab.file.name}`);
-  }
+  if (!activeTab) return;
+
+  // The FILE's content, never `editor.getValue()`. For an asset the editor does not
+  // hold this file at all - `onTabSwitch` returns before `setModel` - so the old
+  // version base64-decoded whichever source file was open last and saved 14 bytes of
+  // noise as logo.png (or nothing at all, when the asset was the only tab). `file`
+  // reads through to the live document buffer, so unsaved edits are still included.
+  downloadFile(activeTab.file.name, activeTab.file.content);
+  setStatus(`Downloaded ${activeTab.file.name}`);
 });
 
 // Run button
