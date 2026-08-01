@@ -19,8 +19,48 @@ import {
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 const storage = lazyRef(() => runtime.storage, 'storage');
 
+/**
+ * Redraw the explorer, at most once per turn of the event loop.
+ *
+ * There are 26 call sites, and several fire together: a tab update calls it, the
+ * workspace-changed notification calls it, and the operation that caused both calls it
+ * again itself. Each call re-reads every folder and every file, rebuilds the entire
+ * tree as HTML, and re-attaches eight drag/click listeners to every row - so a single
+ * save could rebuild a 300-row explorer three times.
+ *
+ * Coalescing here rather than at the call sites keeps every caller's contract: the
+ * returned promise still resolves after the DOM has been rebuilt, which the rename
+ * flow depends on (it focuses an input that only exists after the render).
+ */
+let renderInFlight: Promise<void> | null = null;
+let renderAgain = false;
+
+export function renderFileTree(tm = runtime.tabManager!): Promise<void> {
+  if (renderInFlight) {
+    // A change that arrived while we were drawing needs one more pass, but only one.
+    renderAgain = true;
+    return renderInFlight;
+  }
+
+  renderInFlight = (async () => {
+    try {
+      // Yield once so the other calls in this same turn collapse into this render.
+      await Promise.resolve();
+      do {
+        renderAgain = false;
+        await renderFileTreeNow(tm);
+      } while (renderAgain);
+    } finally {
+      renderInFlight = null;
+      renderAgain = false;
+    }
+  })();
+
+  return renderInFlight;
+}
+
 // ===== File Explorer Rendering =====
-export async function renderFileTree(tm = runtime.tabManager!) {
+async function renderFileTreeNow(tm = runtime.tabManager!) {
   const tabs = tm.getAllTabs();
   const activeTab = tm.getActiveTab();
   const folders = await storage.getAllFolders();

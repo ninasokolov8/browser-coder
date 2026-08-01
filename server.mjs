@@ -35,6 +35,8 @@ import { PreviewStore } from './server/previews/store.mjs';
 
 import { applyRequestContext } from './server/http/middleware/request-context.mjs';
 import { createCorsMiddleware } from './server/http/middleware/cors.mjs';
+import { createCapacityGate } from './server/http/middleware/capacity-gate.mjs';
+import { createPrecompressedStatic } from './server/http/middleware/precompressed.mjs';
 import { RateLimiter, createRateLimitMiddleware } from './server/http/middleware/rate-limit.mjs';
 import { registerHealthRoutes } from './server/http/routes/health.mjs';
 import { registerLanguageRoutes } from './server/http/routes/languages.mjs';
@@ -104,11 +106,22 @@ previewStore.start();
 
 // ── Request pipeline. Order is behaviour. ───────────────────────────────────
 
-applyRequestContext(app, { config: CONFIG, runBodyLimitBytes: RUN_BODY_LIMIT_BYTES });
+const cors = createCorsMiddleware({ isDev: CONFIG.isDev, log });
+
+// The capacity gate rides INSIDE applyRequestContext, before the /api/run body
+// parser: at capacity the old order buffered a multi-megabyte project into memory
+// and only then answered 503, which is the wrong way round precisely when a burst
+// of students all press Run. CORS goes with it, or the refusal is unreadable to an
+// embedded IDE on another origin.
+applyRequestContext(app, {
+  config: CONFIG,
+  runBodyLimitBytes: RUN_BODY_LIMIT_BYTES,
+  runGate: [cors, createCapacityGate({ pipeline, config: CONFIG, log })],
+});
 
 // Both guard /api and must be registered before any /api route, or that route is
 // simply not covered by them.
-app.use('/api', createCorsMiddleware({ isDev: CONFIG.isDev, log }));
+app.use('/api', cors);
 app.use('/api', createRateLimitMiddleware({ limiter: rateLimiter }));
 
 // ── Routes ──────────────────────────────────────────────────────────────────
@@ -150,6 +163,20 @@ if (!CONFIG.isDev) {
   const distPath = path.join(__dirname, 'dist');
 
   if (fs.existsSync(distPath)) {
+    // Before express.static, so a pre-compressed variant wins. See
+    // scripts/precompress-dist.mjs: compressing these on the fly costs 179 ms of CPU
+    // per cache-cold client, on the container that also runs student code.
+    app.use(
+      createPrecompressedStatic({
+        root: distPath,
+        urlPrefix: '/assets/',
+        setHeaders(res) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+        },
+      }),
+    );
+
     app.use(
       '/assets',
       express.static(path.join(distPath, 'assets'), {

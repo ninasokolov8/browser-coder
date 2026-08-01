@@ -15,8 +15,11 @@ import express from 'express';
  * @param {object} options
  * @param {object} options.config              CONFIG
  * @param {number} options.runBodyLimitBytes   RUN_BODY_LIMIT_BYTES
+ * @param {Array<import('express').RequestHandler>} [options.runGate]
+ *        Middleware for /api/run that must see the request BEFORE its body is
+ *        buffered - the capacity gate, and the CORS headers its refusal needs.
  */
-export function applyRequestContext(app, { config, runBodyLimitBytes }) {
+export function applyRequestContext(app, { config, runBodyLimitBytes, runGate = [] }) {
   // N-01: `trust proxy: true` told Express to trust EVERY hop, so `req.ip` was
   // taken from the leftmost X-Forwarded-For entry - a value the client writes.
   // A hop COUNT makes Express count inward from the socket, so entries a client
@@ -46,6 +49,11 @@ export function applyRequestContext(app, { config, runBodyLimitBytes }) {
   //   - a few KB slack for language/version/entryPoint and JSON punctuation
   // Derived from the size policy in server/config.mjs, so raising a limit there
   // raises the transport allowance with it.
+  // Registered BEFORE the parser, deliberately: the whole point is to answer without
+  // buffering several megabytes. Express runs middleware in registration order, so
+  // moving this line below the parser would silently undo it.
+  for (const middleware of runGate) app.use('/api/run', middleware);
+
   app.use('/api/run', express.json({ limit: runBodyLimitBytes }));
 
   app.use(express.json({ limit: '100kb' }));

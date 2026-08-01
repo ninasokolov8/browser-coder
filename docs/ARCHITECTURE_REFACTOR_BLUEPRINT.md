@@ -7193,3 +7193,126 @@ to pass.
 - The audit itself was nine parallel agents; three returned before the session limit cut
   the rest off. The performance audit for thousands of concurrent users and the
   teaching-platform gap research are still outstanding.
+
+---
+
+## 42. Performance, measured
+
+"Thousands of students at once" is a claim that has to be checked rather than believed.
+Much of the server side had already been sized deliberately - `deriveMaxConcurrent`
+(V-36) computes admission from the container's real memory budget, the NDJSON stream
+sets `no-transform` so `compression()` cannot buffer a paused program's output, hashed
+assets are `immutable, max-age=1y`, and `index.html` is `no-store`. What follows is what
+that pass did not cover.
+
+### 42.1 A 24 MB body was buffered before the 503
+
+`/api/run` carries a whole multi-file project as JSON, and the transport limit is
+derived from the size policy: several megabytes once escaping and base64 assets are
+counted. `express.json` parses that body **before any route handler runs**, and the
+admission check is in the handler. So at capacity the server read and buffered the
+entire upload and only then answered "at capacity".
+
+That is the wrong order precisely when it matters. The moment the run slots are full is
+the moment a class all presses Run, and every one of those requests took a
+multi-megabyte buffer before being told no. The refusal is the cheap part.
+
+`capacity-gate.mjs` runs before the parser and refuses a large body outright when the
+pipeline is full. Two details:
+
+- **Only above 256 KB.** A small body costs almost nothing to buffer, and buffering it
+  leaves the request a chance of finding a freed slot by the time the handler runs -
+  runs are short, so that happens. Below the threshold, behaviour is unchanged.
+- **CORS moves with it.** A 503 with no `Access-Control-Allow-Origin` is a network error
+  to an embedded IDE on another origin, not a readable status, so the gate is registered
+  behind the same CORS middleware.
+
+`Content-Length` is client-controlled, but a lie can only make the gate more permissive,
+and the transport limit is the control that actually bounds memory. Nothing security
+relevant is decided there.
+
+### 42.2 Compressing the same 12 MB for every cold client
+
+Measured on the real `dist/` of this repo:
+
+| Chunk | Raw | gzip | CPU to gzip |
+| --- | --- | --- | --- |
+| `ts.worker` | 5882 KB | 1335 KB | 75.5 ms |
+| `monaco-editor` | 3254 KB | 837 KB | 43.6 ms |
+| `index` | 835 KB | 234 KB | 12.4 ms |
+| `css.worker` | 988 KB | 223 KB | 13.7 ms |
+| **all 99 files** | **12.6 MB** | **3.1 MB** | **179 ms** |
+
+nginx proxies `/assets/` to the node process rather than serving from disk, so
+`compression()` was doing that work per cache-cold browser - on the container that also
+runs student code, competing for the libuv thread pool that does the execution
+pipeline's filesystem work. A class of thirty opening the IDE together is a couple of
+seconds of CPU for nothing; a school of a thousand is about a minute of a core.
+
+`scripts/precompress-dist.mjs` now runs as part of `npm run build` and writes `.gz`
+(level 9) and `.br` (quality 11) beside each asset, and `precompressed.mjs` serves them
+from `Accept-Encoding`. Brotli is included because it is free at build time and 22%
+smaller: **665,754 bytes against gzip's 853,869** for the editor chunk.
+
+Verified against a real production server, not just unit-tested:
+
+```
+Accept-Encoding: br     -> 665,754 bytes, Content-Encoding: br,
+                           decompresses to exactly 3,331,895 bytes of real JavaScript
+Accept-Encoding: gzip   -> 853,869 bytes, Content-Encoding: gzip
+(no Accept-Encoding)    -> 3,331,895 bytes, uncompressed
+```
+
+Build output: **12.77 MB -> 3.17 MB gzip, 2.43 MB brotli.**
+
+The one thing worth getting exactly right is the boundary. The middleware matches on the
+`/assets/` prefix but resolves the whole path, so `/assets/../secret.js` still lands
+inside `dist/` - a root-only check would serve it. The resolved path has to stay under
+the directory the prefix names, which is what the tests assert, encoded traversals
+included.
+
+### 42.3 Two client-side passes that ran far more often than they needed to
+
+**Breadcrumbs.** `heuristicSpine` was called synchronously on every keystroke *and*
+every cursor movement. Each call did `getLinesContent()` - which allocates an array
+holding every line in the file - and then ran a regex against every line above the
+cursor. In a 1000-line file with the cursor near the bottom that is a thousand regex
+executions and a thousand-element allocation per arrow-key press, for a bar whose
+contents almost never changed. Holding an arrow key was doing more work than editing.
+
+Now coalesced to one pass per animation frame, and skipped entirely when
+`(model, content version, line)` is unchanged - those are exactly the three inputs, so
+an unchanged key means an identical result.
+
+**The explorer.** `renderFileTree` has 26 call sites and several fire together: a tab
+update calls it, the workspace-changed notification calls it, and the operation that
+caused both calls it again. Each call re-reads every folder and every file, rebuilds the
+whole tree as HTML, and re-attaches eight drag and click listeners to every row - so one
+save could rebuild a 300-row explorer three times. It is now coalesced to at most one
+render per turn of the event loop, with a second pass only if something changed while it
+was drawing. The returned promise still resolves after the DOM exists, which the rename
+flow depends on.
+
+### 42.4 What was already right
+
+Worth recording so the next pass does not redo it: admission is a synchronous
+reserve-before-await (V-27), the interactive session registry has per-IP and global
+caps, nginx has four separate `limit_req` zones, the run stream is exempt from
+compression so a paused program's output is not held in a buffer, job directories are
+reaped, and static assets are content-hashed with immutable caching while `index.html`
+is never cached.
+
+### 42.5 Not done
+
+- No load test. Every figure above is a measurement of one operation, not of the system
+  under concurrent load; `MAX_CONCURRENT` derives to roughly 15-18 on a 1 GiB container,
+  and whether that is the right number for a class of thirty pressing Run together is a
+  capacity question that needs a real run.
+- Assets still ride the run payload as base64 rather than a multipart upload, so a
+  project with images is re-uploaded in full on every Run.
+- nginx still proxies `/assets/` to node rather than serving `dist/` directly with
+  `gzip_static`/`brotli_static`; the pre-compressed files are what would make that a
+  one-line change if the volume is ever mounted.
+- The editor chunk is 3.3 MB raw. Splitting Monaco further (the language services are
+  already separate chunks) would help a first visit, but every subsequent visit is a
+  304 against an immutable URL, so the win is smaller than the number suggests.

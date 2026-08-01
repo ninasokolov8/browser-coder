@@ -115,8 +115,36 @@ export function initializeBreadcrumbs(editor: monaco.editor.IStandaloneCodeEdito
     render(segments);
   };
 
+  /**
+   * Coalesce to one pass per animation frame, and skip the pass entirely when
+   * nothing it reads has changed.
+   *
+   * This ran synchronously on every keystroke AND every cursor movement, and each
+   * run called `getLinesContent()` - which allocates an array holding every line in
+   * the file - then executed a regex against every line above the cursor. In a
+   * 1000-line file with the cursor near the bottom that is a thousand regex
+   * executions and a thousand-element allocation per arrow-key press, for a bar
+   * whose contents usually did not change. Holding an arrow key was doing more work
+   * than the edit itself.
+   *
+   * The key is (model, content version, line): those are exactly the three inputs,
+   * so an unchanged key means an identical result.
+   */
+  let frame = 0;
+  let lastKey = '';
+
   const schedule = (): void => {
-    void update();
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const model = editor.getModel();
+      const key = model
+        ? `${model.uri.toString()}:${model.getVersionId()}:${editor.getPosition()?.lineNumber ?? 1}`
+        : '';
+      if (key === lastKey) return;
+      lastKey = key;
+      void update();
+    });
   };
 
   const subscriptions = [
@@ -130,6 +158,9 @@ export function initializeBreadcrumbs(editor: monaco.editor.IStandaloneCodeEdito
   return {
     dispose: () => {
       for (const subscription of subscriptions) subscription.dispose();
+      // A frame already queued would run against a disposed editor.
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
       bar.textContent = '';
     },
   };
