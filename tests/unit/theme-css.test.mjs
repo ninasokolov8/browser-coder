@@ -160,4 +160,18 @@ describe('the theme is decided before the first paint', () => {
     // the gap the flash lives in.
     assert.ok(!/<script[^>]*src=/.test(bootstrap), 'the theme bootstrap must not be an external script');
   });
+
+  test('an EMBEDDED IDE keeps the dark default and ignores the OS', () => {
+    // The host page controls how a lesson looks and never sends a theme. Inheriting
+    // the student's OS would silently turn every embedded task light for everyone on a
+    // light-mode laptop - a change the host never asked for. An explicit stored choice
+    // still wins, because that is the student deciding.
+    const bootstrap = HTML.slice(HTML.indexOf('<body>'), HTML.indexOf('<div id="app">'));
+    assert.match(bootstrap, /embed'\) === '1'/, 'the pre-paint script does not check for an embed');
+    assert.match(
+      bootstrap,
+      /!embedded[\s\S]{0,80}prefers-color-scheme: light/,
+      'the OS preference is not gated on being standalone',
+    );
+  });
 });

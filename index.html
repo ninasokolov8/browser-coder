@@ -1757,7 +1757,14 @@
           /* private mode, or a corrupt value - fall through to the OS preference */
         }
         if (!theme) {
-          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+          // The OS preference decides only for the STANDALONE IDE. An embedded IDE
+          // keeps the dark default it has always had: the host page controls how the
+          // lesson looks, never passes a theme, and would otherwise have every task
+          // turn light for every student whose laptop is in light mode - a change
+          // nobody asked for. An explicit stored choice still wins, above.
+          var embedded = new URLSearchParams(window.location.search).get('embed') === '1';
+          theme = !embedded && window.matchMedia
+            && window.matchMedia('(prefers-color-scheme: light)').matches
             ? 'vs'
             : 'vs-dark';
         }

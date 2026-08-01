@@ -17,15 +17,21 @@ export interface IDESettings {
 /**
  * The theme to use when nothing has been chosen yet.
  *
- * Follows the operating system, which is what every other editor does and what a
- * student expects. The pre-paint script in index.html makes the same decision from
- * the same inputs, so the two cannot disagree - it publishes its answer on
- * `__bcInitialTheme`, and that is preferred here so a single read of matchMedia
- * decides the whole session.
+ * Follows the operating system in the standalone IDE, which is what every other editor
+ * does. NOT when embedded: the host page controls how a lesson looks and never sends a
+ * theme, so inheriting the student's OS would silently turn every task in Step-Up light
+ * for everyone whose laptop is in light mode.
+ *
+ * The pre-paint script in index.html makes the same decision from the same inputs, so
+ * the two cannot disagree - it publishes its answer on `__bcInitialTheme`, and that is
+ * preferred here so one read of matchMedia decides the whole session.
  */
 export function preferredTheme(): string {
   const decidedBeforePaint = (window as unknown as { __bcInitialTheme?: string }).__bcInitialTheme;
   if (decidedBeforePaint === 'vs' || decidedBeforePaint === 'vs-dark') return decidedBeforePaint;
+
+  const embedded = new URLSearchParams(window.location.search).get('embed') === '1';
+  if (embedded) return 'vs-dark';
 
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-color-scheme: light)').matches

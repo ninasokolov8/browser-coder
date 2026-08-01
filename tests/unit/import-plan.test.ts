@@ -16,7 +16,7 @@ import { archiveFolderName, planImport } from '../../src/features/explorer/impor
 
 const LIMITS = { existingFileCount: 0, maxFiles: 300, maxBytesPerFile: 8 * 1024 * 1024 };
 
-const paths = (input) => input.map(path => ({ path }));
+const paths = (input: readonly string[]) => input.map(path => ({ path }));
 
 describe('the folders an import needs', () => {
   test('a flat set needs none', () => {

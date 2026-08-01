@@ -7647,3 +7647,101 @@ nothing else does.
 - **The extractors were written against captured fixtures, not against a live run of
   every toolchain.** PHP in particular has no interpreter on the development host, so
   its rules are derived from the fixtures and from documented formats.
+
+---
+
+## 46. Checking the work against Step-Up before publishing
+
+Everything above was verified against browser-coder's own tests. This section is the
+other half: does it still work as the thing Step-Up embeds. Step-Up was pulled on `dev`
+(`c7bec734`, already up to date) and read, not modified.
+
+### 46.1 What Step-Up actually depends on
+
+Four surfaces, and they are narrower than they look:
+
+| Surface | Where | Status |
+| --- | --- | --- |
+| iframe URL params: `embed, mode, uilang, lang, version, readonly, nooutput` | `IdeHelper::url()` | all four shapes return 200 |
+| postMessage vocabulary | `viewer.blade.php` | every message it sends is handled |
+| `POST /api/run` server-to-server | `CodeRunner::run()` | frozen v1 envelope, verified |
+| `GET /health` | `IdeHelper::isAvailable()` | 200 |
+
+The message vocabulary is a superset in our favour: Step-Up sends `init`, `run`,
+`set-code`, `set-files`, `get-files`, `set-readonly` - all handled - plus
+`paint-blank-hints`, which is a deliberate no-op and says so in Step-Up's own comment.
+
+### 46.2 The change that would have hit every embedded student
+
+`index.html` used to ship `<body class="dark-theme">`, and `DEFAULT_SETTINGS.theme` was
+`vs-dark`, so **every** embedded IDE was dark. Section 41.4 replaced that with a
+pre-paint script that follows `prefers-color-scheme` when nothing is stored.
+
+Step-Up never passes a theme. So that change would have turned every task in the
+platform light for every student whose laptop is in light mode - a visible change to the
+product that nobody asked for, shipped as a side effect of fixing contrast.
+
+The OS preference is now scoped to the STANDALONE IDE. An embed keeps the dark default
+it has always had; an explicit stored choice still wins, because that is the student
+deciding rather than their operating system. Both the pre-paint script and
+`preferredTheme()` make the same check, and a test asserts the script contains it -
+they must not be able to disagree, because one runs before paint and the other after.
+
+### 46.3 Three things that were checked and turned out fine
+
+- **The inline theme script and Step-Up's CSP.** `SecurityHeaders.php` sets
+  `script-src 'self' 'unsafe-inline' …`, so the pre-paint script runs. Had it not, the
+  IDE would have come up light for everyone with no way to notice from this repo.
+- **Pre-compressed assets versus `sub_filter`.** Step-Up's nginx proxies `/coder/` and
+  rewrites `"/assets/`, `"/api/` and `"/languages/` inside the response body - which
+  requires an UNCOMPRESSED body, so it sends `proxy_set_header Accept-Encoding ""`.
+  Verified against a real production server: with no `Accept-Encoding`, the new
+  middleware falls through, no `Content-Encoding` is set, and the body arrives as plain
+  text with its 16 rewritable `/api/` references intact. Section 42's optimisation is
+  simply unused on that path, which is correct rather than broken.
+- **The new server-side adapter files.** `debug_adapter.mjs`, `debug_worker.mjs`,
+  `fs_guard.mjs` and the new `errors.json` files all live under `languages/`, and that
+  directory name appears in nginx's rewrite list. They are **404** over HTTP: the
+  language route serves only `/api/languages` and `/api/starter/:language/:version`,
+  the latter with a `path.resolve` containment check. Nothing new is exposed.
+
+### 46.4 One piece of dead configuration, worth knowing about
+
+Step-Up's nginx carries:
+
+```
+sub_filter '["stepup.school","step-up.co.il"]' '["stepup.school","step-up.co.il","arcacademy.co"]';
+```
+
+That string does not occur in the built bundle - `ALLOWED_BASE_DOMAINS` in
+`src/integrations/stepup-bus.ts` is now four entries and already includes
+`arcacademy.co`. So the rewrite matches nothing and the behaviour is correct, but the
+config reads as though it is what grants that domain. Removing `arcacademy.co` from the
+source array believing nginx adds it would break every embed on that domain silently.
+Left alone here because it is Step-Up's file, and recorded so the next person knows.
+
+### 46.5 A gap in this session's own verification
+
+`npm run typecheck` runs `tsc` twice - once for the app, once for
+`tsconfig.tests.json`, which is stricter. Every check during this session used
+`npx tsc --noEmit`, which is only the first of the two, so an untyped helper in
+`import-plan.test.ts` sat there through several "clean typecheck" claims until the full
+`npm test` was run. Fixed; the lesson is that the project's own script is the check, not
+a shorter command that resembles it.
+
+### 46.6 Verified, and not
+
+**Verified on this host:** the complete `npm test` - typecheck (both configs), 807 unit
+tests, all three browser suites, 137 contract tests (126 run, 11 skipped for absent
+toolchains) - plus a clean production build, and the Step-Up surfaces above driven
+against a real production server.
+
+**Not verified, and cannot be from here:**
+
+- Step-Up's own PHP test suite, including `BrowserCoderTransportTest`. There is no PHP
+  and no Docker on this machine.
+- The embed running inside a live Step-Up instance. Everything above tests the IDE's
+  half of the contract against the requests Step-Up's code is written to make; it does
+  not replace loading a real task page once.
+- Java, C# and PHP execution. Their contract tests skip on this host, so those adapters
+  are covered by their tests only where a toolchain exists.
