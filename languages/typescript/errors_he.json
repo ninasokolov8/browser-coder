@@ -1,0 +1,98 @@
+{
+  "TS2322": {
+    "type": "type error",
+    "explanation": "ערך מסוג אחד הוכנס למקום שדורש סוג אחר. TypeScript בודקת את זה לפני שהתוכנית רצה, כך שלא ניתנת לזה הזדמנות להשתבש.",
+    "cause": "השמת טקסט למשתנה מספרי, או פונקציה שמחזירה משהו אחר ממה שהבטיחה.",
+    "example": "let age: number = \"12\";               // text into a number\nlet age: number = Number(\"12\");"
+  },
+  "TS2345": {
+    "type": "type error",
+    "explanation": "ארגומנט שהועבר לפונקציה אינו מהסוג שהפונקציה מקבלת.",
+    "cause": "העברת ערך היישר מהקלט, שהוא תמיד טקסט, לפונקציה שמצפה למספר.",
+    "example": "function double(n: number) { return n * 2; }\ndouble(\"4\");            // a string\ndouble(Number(\"4\"));"
+  },
+  "TS2304": {
+    "type": "name error",
+    "explanation": "TypeScript הגיעה לשם שהיא לא מכירה. כל שם חייב להיות מוצהר או מיובא קודם.",
+    "cause": "שגיאת כתיב, או ייבוא חסר.",
+    "example": "console.log(totl);      // never declared\nlet total = 10;\nconsole.log(total);"
+  },
+  "TS2339": {
+    "type": "type error",
+    "explanation": "התכונה לא קיימת בסוג הזה. TypeScript יודעת מה צורת הערך והשם הזה אינו חלק ממנה.",
+    "cause": "שגיאת כתיב, או הנחה שלאובייקט יש שדה שמעולם לא ניתן לו.",
+    "example": "const user = { name: \"Ada\" };\nconsole.log(user.age);        // no age on this object\nconsole.log(user.name);"
+  },
+  "TS2531": {
+    "type": "type error",
+    "explanation": "הערך עשוי להיות null, והשתמשתם בו כאילו בוודאות אינו. TypeScript עוצרת את הקריסה לפני שהיא קורית.",
+    "cause": "קריאת תוצאה של משהו שיכול להחזיר null בלי לבדוק קודם.",
+    "example": "const el = document.getElementById(\"app\");\nel.textContent = \"hi\";           // el might be null\nif (el) el.textContent = \"hi\";   // check first"
+  },
+  "TS18048": {
+    "type": "type error",
+    "explanation": "הערך עשוי להיות undefined, והשתמשתם בו כאילו בוודאות אינו.",
+    "cause": "תכונה אופציונלית, או חיפוש במערך שאולי לא ימצא כלום.",
+    "example": "const first = names[0];\nconsole.log(first.length);      // there might be no first item\nconsole.log(first?.length);     // ?. gives undefined instead of crashing"
+  },
+  "TS2554": {
+    "type": "type error",
+    "explanation": "פונקציה נקראה עם מספר ארגומנטים שגוי.",
+    "cause": "שכחת ארגומנט, או שינוי הפרמטרים של פונקציה בלי לעדכן את הקריאות.",
+    "example": "function greet(name: string, greeting: string) { }\ngreet(\"Ada\");                                          // one short\nfunction greetOk(name: string, greeting = \"Hi\") { }    // a default makes it optional"
+  },
+  "TS7006": {
+    "type": "type error",
+    "explanation": "לפרמטר אין סוג ו-TypeScript לא הצליחה להסיק אחד, ולכן הוא היה הופך בשקט ל-any - מה שמכבה את הבדיקה עבור הערך הזה.",
+    "cause": "כתיבת פונקציה בלי לציין סוגים לפרמטרים שלה.",
+    "example": "function double(n) { return n * 2; }          // n has no type\nfunction doubleOk(n: number) { return n * 2; }"
+  },
+  "TS2367": {
+    "type": "type error",
+    "explanation": "מושווים שני ערכים שלעולם לא יוכלו להיות שווים, כי אין לסוגים שלהם שום דבר משותף. ההשוואה תמיד שקרית.",
+    "cause": "השוואת מספר עם מחרוזת, לעיתים קרובות אחרי ששכחו המרה.",
+    "example": "const age: number = 12;\nif (age === \"12\") { }        // never true\nif (age === 12) { }"
+  },
+  "TS2451": {
+    "type": "compile error",
+    "explanation": "אותו שם מוצהר פעמיים באותו תחום.",
+    "cause": "העתקת בלוק קוד ושכחה לשנות את שם המשתנה, או let שחוזר על קודם.",
+    "example": "let total = 1;\nlet total = 2;    // already declared\ntotal = 2;        // assign, do not redeclare"
+  },
+  "TS2552": {
+    "type": "name error",
+    "explanation": "TypeScript לא מכירה את השם הזה, אבל מצאה אחד שנראה דומה מאוד ומציעה אותו.",
+    "cause": "שגיאת כתיב. קראו את ההצעה בהודעה - היא בדרך כלל נכונה.",
+    "example": "const message = \"hi\";\nconsole.log(mesage);     // TypeScript suggests 'message'\nconsole.log(message);"
+  },
+  "TS1005": {
+    "type": "syntax error",
+    "explanation": "צפוי היה תו מסוים כאן ונמצא משהו אחר. ההודעה מציינת את התו שהיה חסר.",
+    "cause": "סוגר, פסיק או נקודה-פסיק חסרים - לעיתים קרובות מאוד בשורה שמעל.",
+    "example": "const nums = [1, 2, 3;   // ] missing\nconst nums = [1, 2, 3];"
+  },
+  "TS1109": {
+    "type": "syntax error",
+    "explanation": "צפוי היה ערך במקום הזה ואין שם שום דבר שמיש.",
+    "cause": "ביטוי לא גמור, למשל השמה בלי שום דבר אחרי סימן השוויון.",
+    "example": "const x = ;    // nothing to assign\nconst x = 0;"
+  },
+  "TS2740": {
+    "type": "type error",
+    "explanation": "ניתן אובייקט במקום שדורש סוג עם יותר שדות חובה, וכמה מהשדות האלה חסרים.",
+    "cause": "בניית אובייקט ידנית ושכחה של חלק מהשדות שהסוג דורש.",
+    "example": "type User = { name: string; age: number };\nconst u: User = { name: \"Ada\" };           // age is missing\nconst u2: User = { name: \"Ada\", age: 36 };"
+  },
+  "ReferenceError": {
+    "type": "name error",
+    "explanation": "בזמן ריצה, הג'אווהסקריפט המהודרת הגיעה לשם שאינו קיים. TypeScript תופסת את רוב אלה לפני ההרצה, ולכן זה בדרך כלל מגיע מקוד שהיא לא יכלה לבדוק.",
+    "cause": "שימוש בערך שסוגו any, או שם שקיים רק בסביבות מסוימות.",
+    "example": "// Give values real types instead of any, and TypeScript will catch\n// this class of mistake before the program runs at all."
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "בזמן ריצה הג'אווהסקריפט המהודרת עשתה משהו עם ערך שלא תומך בזה - בדרך כלל קריאת תכונה של undefined.",
+    "cause": "ערך שסוגו any, או נתונים מחוץ לתוכנית שלא הייתה להם הצורה שהסוגים הבטיחו.",
+    "example": "const data = JSON.parse(text) as User;   // 'as' is a promise, not a check\n// Check the shape yourself before trusting it."
+  }
+}

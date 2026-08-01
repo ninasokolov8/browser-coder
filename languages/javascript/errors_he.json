@@ -1,0 +1,92 @@
+{
+  "ReferenceError": {
+    "type": "name error",
+    "explanation": "ג'אווהסקריפט הגיעה לשם שהיא לא מכירה. כל שם חייב להיווצר לפני שמשתמשים בו - עם let, const, function או import.",
+    "cause": "שגיאת כתיב, או שימוש במשתנה let/const בשורה שרצה לפני שורת ההצהרה.",
+    "example": "console.log(totl);      // never declared\nlet total = 10;\nconsole.log(total);     // works, and comes after the declaration"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "עשיתם משהו עם ערך שלא תומך בזה - קריאת תכונה של undefined, או קריאה למשהו שאינו פונקציה.",
+    "cause": "כמעט תמיד ערך שהוא undefined או null כשציפיתם לאובייקט. משהו קודם החזיר כלום.",
+    "example": "const user = users.find(u => u.id === 9);   // no match, so undefined\nconsole.log(user.name);                    // undefined has no .name\nconsole.log(user?.name);                   // ?. gives undefined instead of failing"
+  },
+  "SyntaxError": {
+    "type": "syntax error",
+    "explanation": "ג'אווהסקריפט לא הצליחה להבין את צורת הקוד ועצרה לפני שהריצה משהו. שום דבר בקובץ לא רץ.",
+    "cause": "סוגר, סוגר מסולסל או מרכאה שלא נסגרו, או פסיק חסר באובייקט או במערך. בדקו את השורה שמעל זו שצוינה - סוגר שלא נסגר מתגלה מאוחר יותר.",
+    "example": "const nums = [1, 2, 3;   // ] missing\nconst nums = [1, 2, 3];"
+  },
+  "RangeError": {
+    "type": "value error",
+    "explanation": "ערך היה מחוץ לטווח שהפעולה מרשה.",
+    "cause": "לרוב רקורסיה אינסופית, או יצירת מערך באורך שלילי או מוגזם.",
+    "example": "new Array(-1);       // an array cannot have -1 items\nnew Array(3);        // fine\n// \"Maximum call stack size exceeded\" means a function calls itself forever."
+  },
+  "RangeError: Maximum call stack size exceeded": {
+    "type": "runtime error",
+    "explanation": "פונקציה קראה לעצמה שוב ושוב עד שנגמר לג'אווהסקריפט המקום לזכור את הקריאות.",
+    "cause": "פונקציה רקורסיבית שתנאי העצירה שלה חסר או לא מושג לעולם.",
+    "example": "function count(n) { return count(n - 1); }        // never stops\nfunction countOk(n) { return n <= 0 ? 0 : countOk(n - 1); }"
+  },
+  "SyntaxError: Unexpected end of JSON input": {
+    "type": "value error",
+    "explanation": "הפונקציה JSON.parse קיבלה טקסט שנקטע באמצע - לרוב מחרוזת ריקה.",
+    "cause": "ניתוח תשובה או קובץ שהתברר כריק.",
+    "example": "JSON.parse(\"\");        // nothing to parse\nJSON.parse(\"{}\");      // an empty object is valid JSON"
+  },
+  "SyntaxError: Unexpected token": {
+    "type": "syntax error",
+    "explanation": "ג'אווהסקריפט מצאה תו במקום שבו הוא לא יכול להופיע. התו שצוין הוא המקום שבו היא שמה לב, ולעיתים קרובות הוא מיד אחרי הטעות האמיתית.",
+    "cause": "פסיק או סוגר חסרים, או JSON.parse שקיבל משהו שאינו JSON כלל.",
+    "example": "const person = { name: \"Ada\" age: 36 };   // comma missing\nconst person = { name: \"Ada\", age: 36 };"
+  },
+  "Error": {
+    "type": "runtime error",
+    "explanation": "התוכנית נעצרה כי משהו זרק כשל כללי. ההודעה שאחרי הנקודתיים נכתבה על ידי מי שזרק אותה, והיא החלק השימושי.",
+    "cause": "קוד שבדק תנאי וויתר בכוונה, או ספרייה שמדווחת על בעיה.",
+    "example": "if (!name) {\n  throw new Error(\"name is required\");   // this message is what you see\n}"
+  },
+  "EvalError": {
+    "type": "runtime error",
+    "explanation": "משהו השתבש בתוך eval(). ג'אווהסקריפט מודרנית כמעט אף פעם לא מייצרת את זה.",
+    "cause": "שימוש ב-eval בכלל, שהוא לעיתים רחוקות מאוד הכלי הנכון.",
+    "example": "eval(\"2 +\");        // not complete code\n// Prefer a real function to eval - it is easier to read and safer."
+  },
+  "URIError": {
+    "type": "value error",
+    "explanation": "פונקציית קידוד או פענוח של כתובת קיבלה טקסט שהיא לא יכולה לטפל בו.",
+    "cause": "decodeURIComponent על טקסט שמכיל % בודד שאינו חלק מרצף בריחה.",
+    "example": "decodeURIComponent(\"100%\");     // % must be followed by two hex digits\ndecodeURIComponent(\"100%25\");   // %25 is an encoded %"
+  },
+  "ERR_MODULE_NOT_FOUND": {
+    "type": "import error",
+    "explanation": "הקובץ או החבילה שייבאתם לא נמצאו.",
+    "cause": "נתיב שלא תואם קובץ אמיתי - במודולים הסיומת נדרשת - או חבילה שאינה זמינה בסביבה הזו.",
+    "example": "import { add } from \"./math\";        // no extension\nimport { add } from \"./math.mjs\";    // this resolves"
+  },
+  "ERR_REQUIRE_ESM": {
+    "type": "import error",
+    "explanation": "השתמשתם ב-require() כדי לטעון קובץ שכתוב כמודול ES. אי אפשר לערבב את שתי שיטות המודולים כך.",
+    "cause": "העתקת require() מדוגמה ישנה לפרויקט שמשתמש ב-import/export.",
+    "example": "const math = require(\"./math.mjs\");   // not allowed for an ES module\nimport * as math from \"./math.mjs\";   // use import instead"
+  },
+  "ERR_UNSUPPORTED_DIR_IMPORT": {
+    "type": "import error",
+    "explanation": "ייבאתם תיקייה. ייבוא של מודול ES חייב לציין קובץ.",
+    "cause": "ייבוא \"./utils\" בציפייה שיימצא \"./utils/index.mjs\" כפי שקוד ישן היה עושה.",
+    "example": "import helpers from \"./utils\";             // a folder\nimport helpers from \"./utils/index.mjs\";   // name the file"
+  },
+  "EACCES": {
+    "type": "runtime error",
+    "explanation": "התוכנית ניסתה לקרוא או לכתוב קובץ שאסור לה לגעת בו. תוכניות כאן רשאיות להשתמש רק בקבצים בתוך הפרויקט שלהן.",
+    "cause": "נתיב שמוביל אל מחוץ לפרויקט, למשל כזה שמתחיל ב-/ או מכיל ..",
+    "example": "// Only project files are reachable:\n// \"data.txt\" - yes\n// \"../other/data.txt\" - no"
+  },
+  "ENOENT": {
+    "type": "runtime error",
+    "explanation": "הקובץ לא נמצא. התוכנית חיפשה אותו ולא היה שם כלום.",
+    "cause": "הקובץ עדיין לא בפרויקט, או שהשם לא תואם בדיוק, כולל אותיות גדולות.",
+    "example": "// The project has data.txt\n// \"Data.txt\" - not found\n// \"data.txt\" - found"
+  }
+}

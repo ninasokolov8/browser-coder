@@ -39,6 +39,20 @@ export function appendOutput(text: string) {
 }
 
 /**
+ * Append pre-formatted HTML after whatever the panel already holds.
+ *
+ * Same contract as `setOutputHtml`: the CALLER escapes every user-controlled string.
+ * Appending rather than replacing is what lets the error explanation sit UNDER the
+ * program's own output and its exit line, instead of taking their place - a student
+ * has to learn to read the real message eventually, so it stays on screen.
+ */
+export function appendOutputHtml(html: string) {
+  panelContentEl.dir = 'ltr';
+  panelContentEl.innerHTML = panelContentEl.innerHTML + (html || '');
+  panelContentEl.scrollTop = panelContentEl.scrollHeight;
+}
+
+/**
  * Set pre-formatted HTML output in the panel.
  * The CALLER is responsible for HTML-escaping every user-controlled string
  * using escHtml() before embedding it in the html argument.

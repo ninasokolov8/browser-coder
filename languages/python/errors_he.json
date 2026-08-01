@@ -1,0 +1,158 @@
+{
+  "NameError": {
+    "type": "name error",
+    "explanation": "פייתון הגיעה למילה שהיא לא מכירה. כל שם צריך להיווצר לפני שמשתמשים בו - על ידי השמה, הגדרת פונקציה, או ייבוא.",
+    "cause": "בדרך כלל שגיאת כתיב, או שימוש במשתנה בשורה שרצה לפני השורה שיוצרת אותו.",
+    "example": "print(totl)      # Python has never seen 'totl'\ntotal = 10\nprint(total)     # this works, and it comes after the line that made it"
+  },
+  "UnboundLocalError": {
+    "type": "name error",
+    "explanation": "קראתם משתנה בתוך פונקציה, אבל אותה פונקציה גם מבצעת לו השמה בהמשך. השמה לשם בכל מקום בפונקציה הופכת אותו למקומי לאורך כל הפונקציה, ולכן הקריאה המוקדמת לא מוצאת כלום.",
+    "cause": "ניסיון לשנות משתנה מבחוץ בלי להצהיר על כך.",
+    "example": "count = 0\ndef add():\n    count = count + 1   # 'count' is local here, and empty\ndef add_ok():\n    global count\n    count = count + 1"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "ביקשתם מפייתון לעשות משהו עם ערך שלא תומך בזה - למשל לחבר מספר לטקסט, או לקרוא למשהו שאינו פונקציה.",
+    "cause": "לעיתים קרובות מספר שהוא בעצם טקסט: הפונקציה input() תמיד מחזירה טקסט, גם כשהקלידו ספרות.",
+    "example": "age = input(\"Age? \")\nprint(age + 1)        # text + number\nprint(int(age) + 1)   # turn the text into a number first"
+  },
+  "ValueError": {
+    "type": "value error",
+    "explanation": "סוג הערך היה נכון אבל הערך עצמו לא שמיש. פייתון הבינה מה ביקשתם ולא הצליחה לעשות זאת עם הערך הזה.",
+    "cause": "לרוב int() או float() שמקבלות טקסט שאינו מספר.",
+    "example": "int(\"twelve\")   # the right kind of thing, the wrong value\nint(\"12\")       # this works"
+  },
+  "SyntaxError": {
+    "type": "syntax error",
+    "explanation": "פייתון לא הצליחה להבין את צורת הקוד, ולכן עצרה לפני שהריצה משהו. שום דבר בקובץ לא רץ בכלל.",
+    "cause": "נקודתיים חסרות, סוגר או מרכאה שלא נסגרו, או = במקום ==. הסתכלו גם על השורה שמעל זו שפייתון מציינת - סוגר שלא נסגר מתגלה רק בשורה הבאה.",
+    "example": "if x > 5      # missing colon\n    print(x)\nif x > 5:\n    print(x)"
+  },
+  "IndentationError": {
+    "type": "syntax error",
+    "explanation": "פייתון משתמשת בהזחה כדי להחליט אילו שורות שייכות זו לזו. הרווחים בתחילת השורה הזו לא מתיישרים עם כלום.",
+    "cause": "ערבוב של כמויות הזחה שונות, או שכחה להזיח את גוף ה-if, ה-for או ה-def.",
+    "example": "def greet():\nprint(\"hi\")       # not indented, so it is not inside greet\n\ndef greet_ok():\n    print(\"hi\")   # four spaces: inside the function"
+  },
+  "TabError": {
+    "type": "syntax error",
+    "explanation": "חלק מהשורות מוזחות בתווי טאב ואחרות ברווחים. הן יכולות להיראות זהות על המסך ולהיות שונות עבור פייתון.",
+    "cause": "הדבקת קוד ממקום אחר לתוך קובץ שמשתמש בסוג ההזחה השני.",
+    "example": "def f():\n    print(1)   # spaces\n\tprint(2)   # a tab - looks the same, is not\n# Use spaces everywhere. This editor inserts spaces when you press Tab."
+  },
+  "IndexError": {
+    "type": "index error",
+    "explanation": "ביקשתם פריט במיקום שלא קיים. ברשימה עם 3 פריטים המיקומים הם 0, 1 ו-2 - אין מיקום 3.",
+    "cause": "ספירה שמתחילה מ-1 במקום מ-0, או לולאה שרצה צעד אחד יותר מדי.",
+    "example": "items = [\"a\", \"b\", \"c\"]\nprint(items[3])    # there is no fourth item\nprint(items[-1])   # the last one, whatever the length"
+  },
+  "KeyError": {
+    "type": "key error",
+    "explanation": "ביקשתם ממילון מפתח שאין לו. בניגוד לרשימה, מילון לא ימציא ערך למפתח שמעולם לא נוסף.",
+    "cause": "שגיאת כתיב במפתח, או קריאה למפתח לפני שמשהו הכניס אותו.",
+    "example": "ages = {\"sam\": 12}\nprint(ages[\"Sam\"])          # capital S is a different key\nprint(ages.get(\"Sam\", 0))   # .get returns a default instead of failing"
+  },
+  "AttributeError": {
+    "type": "type error",
+    "explanation": "השתמשתם בנקודה כדי לבקש מערך משהו שאין לו. הערך משמאל לנקודה אינו מהסוג שחשבתם.",
+    "cause": "לעיתים קרובות פונקציה שהחזירה None: מתודה שמשנה רשימה במקום בדרך כלל מחזירה None ולא את הרשימה.",
+    "example": "names = [\"b\", \"a\"]\nnames = names.sort()   # sort() returns None, so names is now None\nnames.append(\"c\")      # None has no append\nnames.sort()           # sort in place, and keep the list"
+  },
+  "ZeroDivisionError": {
+    "type": "runtime error",
+    "explanation": "משהו חולק באפס, שאין לו תוצאה גם במתמטיקה.",
+    "cause": "ספירה או אורך שהתגלו כ-0 - לעיתים קרובות ממוצע של רשימה ריקה.",
+    "example": "scores = []\nprint(sum(scores) / len(scores))   # len is 0\nif scores:\n    print(sum(scores) / len(scores))"
+  },
+  "ModuleNotFoundError": {
+    "type": "import error",
+    "explanation": "פייתון לא מצאה את המודול שניסיתם לייבא. או שהשם שגוי, או שהמודול לא זמין כאן.",
+    "cause": "שגיאת כתיב, או ספרייה חיצונית שאינה מותקנת בסביבה הזו.",
+    "example": "import radnom      # spelled wrong\nimport random      # this one exists\n# random, turtle, math, json and datetime all work here."
+  },
+  "ImportError": {
+    "type": "import error",
+    "explanation": "המודול נמצא, אבל הדבר הספציפי שביקשתם לא קיים בתוכו.",
+    "cause": "ייבוא של שם שהמודול לא מגדיר, בדרך כלל שגיאת כתיב.",
+    "example": "from math import squareroot   # no such name\nfrom math import sqrt         # this is what it is called"
+  },
+  "FileNotFoundError": {
+    "type": "runtime error",
+    "explanation": "פייתון חיפשה את הקובץ והוא לא היה שם. התוכנית שלכם רואה רק קבצים שנמצאים בפרויקט.",
+    "cause": "הקובץ עוד לא נוסף לפרויקט, או שהשם לא תואם בדיוק - כולל אותיות גדולות.",
+    "example": "open(\"Data.txt\")   # the file in the project is called data.txt\nopen(\"data.txt\")   # names must match exactly"
+  },
+  "PermissionError": {
+    "type": "runtime error",
+    "explanation": "לפייתון לא הותר לפתוח את הקובץ הזה. תוכניות כאן רשאיות לקרוא ולכתוב רק קבצים בתוך הפרויקט שלהן.",
+    "cause": "ניסיון להגיע לנתיב מחוץ לפרויקט, למשל כזה שמתחיל ב-/ או מכיל ..",
+    "example": "open(\"/etc/passwd\")   # outside the project\nopen(\"notes.txt\")     # a file in your own project"
+  },
+  "EOFError": {
+    "type": "runtime error",
+    "explanation": "הפונקציה input() חיכתה שמישהו יקליד שורה, והקלט נגמר במקום זאת. לא נשאר מה לקרוא.",
+    "cause": "בקשה ליותר קלט ממה שסופק, לעיתים קרובות input() בתוך לולאה שלא נעצרת.",
+    "example": "while True:\n    line = input()   # nothing left to read on the second turn\n# Ask once, or stop when the answer is empty."
+  },
+  "RecursionError": {
+    "type": "runtime error",
+    "explanation": "פונקציה קראה לעצמה שוב ושוב עד שפייתון ויתרה. כל קריאה תופסת מעט זיכרון, ולכן יש גבול.",
+    "cause": "פונקציה רקורסיבית בלי מקרה עצירה, או כזו שמקרה העצירה שלה לא מושג לעולם.",
+    "example": "def count(n):\n    return count(n - 1)   # never stops\n\ndef count_ok(n):\n    if n <= 0:\n        return 0          # the base case\n    return count_ok(n - 1)"
+  },
+  "AssertionError": {
+    "type": "runtime error",
+    "explanation": "פקודת assert בדקה משהו והוא היה שקרי. assert היא דרך לומר \"בנקודה הזו זה חייב להיות נכון\", וזה לא היה.",
+    "cause": "התוכנית הגיעה למצב שהכותב לא ציפה לו - בדיוק מה שה-assert נועד לתפוס.",
+    "example": "total = -5\nassert total >= 0, \"total should never be negative\"\n# The message after the comma is shown, so write one."
+  },
+  "StopIteration": {
+    "type": "runtime error",
+    "explanation": "הפונקציה next() נקראה על משהו שנגמרו לו הפריטים. לולאת for מטפלת בזה עבורכם; קריאה ידנית ל-next() לא.",
+    "cause": "קריאה ל-next() יותר פעמים ממספר הפריטים.",
+    "example": "numbers = iter([1, 2])\nnext(numbers)\nnext(numbers)\nnext(numbers)                  # nothing left\nnext(numbers, None)            # give a default instead"
+  },
+  "OverflowError": {
+    "type": "value error",
+    "explanation": "התוצאה הייתה גדולה מדי עבור סוג המספר שבשימוש. מספרים שלמים בפייתון יכולים להיות עצומים, אבל מספרים עשרוניים לא.",
+    "cause": "כפל או חזקה חוזרים עם מספרים עשרוניים.",
+    "example": "10.0 ** 1000    # too big for a decimal\n10 ** 1000      # whole numbers have no such limit"
+  },
+  "MemoryError": {
+    "type": "runtime error",
+    "explanation": "התוכנית ביקשה יותר זיכרון ממה שמותר לה להשתמש.",
+    "cause": "בניית רשימה שגדלה בלי גבול, בדרך כלל בלולאה בלי תנאי עצירה.",
+    "example": "items = []\nwhile True:\n    items.append(\"x\")   # grows forever\n# Give the loop a condition that eventually becomes false."
+  },
+  "UnicodeDecodeError": {
+    "type": "value error",
+    "explanation": "קובץ נקרא כטקסט, אבל הבתים שלו אינם טקסט בקידוד שפייתון הניחה.",
+    "cause": "פתיחת תמונה, קובץ שמע או קובץ בינארי אחר כאילו היה טקסט.",
+    "example": "open(\"logo.png\").read()          # not text\nopen(\"logo.png\", \"rb\").read()    # read the raw bytes instead"
+  },
+  "JSONDecodeError": {
+    "type": "value error",
+    "explanation": "הטקסט שהעברתם למודול json אינו JSON תקין, ולכן לא ניתן היה להפוך אותו לערכים של פייתון.",
+    "cause": "פסיק או סוגר חסרים, מרכאות בודדות במקום כפולות, או קובץ ריק.",
+    "example": "json.loads(\"{'a': 1}\")    # JSON needs double quotes\njson.loads('{\"a\": 1}')    # valid"
+  },
+  "KeyboardInterrupt": {
+    "type": "runtime error",
+    "explanation": "התוכנית נעצרה מבחוץ בזמן שרצה. אין שום דבר שגוי בקוד שלכם.",
+    "cause": "לחיצה על עצירה, או הרצה שהגיעה למגבלת הזמן שלה.",
+    "example": "# Nothing to fix. If the program was in a loop that never ends,\n# give the loop a condition that eventually becomes false."
+  },
+  "NotImplementedError": {
+    "type": "runtime error",
+    "explanation": "נקראה פונקציה שהושארה במכוון לא גמורה - גוף הפונקציה זורק את השגיאה הזו בכוונה.",
+    "cause": "בדרך כלל מתודה שמחלקת בסיס מצפה שמחלקה יורשת תמלא, או מציין מקום ששכחו לחזור אליו.",
+    "example": "class Shape:\n    def area(self):\n        raise NotImplementedError   # subclasses must provide this\n\nclass Square(Shape):\n    def area(self):\n        return self.side ** 2"
+  },
+  "OSError": {
+    "type": "runtime error",
+    "explanation": "משהו שמערכת ההפעלה התבקשה לעשות נכשל - פתיחת קובץ, יצירת תיקייה, וכדומה.",
+    "cause": "נתיב שאינו תקין כאן, או פעולת קובץ שאינה מותרת בתוך הפרויקט.",
+    "example": "open(\"C:/Windows/notepad.exe\")   # not reachable from here\nopen(\"my_notes.txt\", \"w\")        # a file in your own project"
+  }
+}

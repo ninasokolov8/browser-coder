@@ -7542,3 +7542,108 @@ data-protection decision for the school, not a feature for an IDE to ship by def
 Sources consulted: the CS1 enhanced-error-message study and the error-message
 readability work (ACM CHI 2021, ACE 2021), CodeDive's process-transparency design
 (Applied Sciences 15(19)), and Monaco's own accessibility integrator guide.
+
+---
+
+## 45. Explaining the error, not just reporting it
+
+Section 44 named this as the highest-value teaching feature left, on the strength of the
+evidence: an enhanced-error-message intervention across 200 CS1 students cut total
+errors by 32% - 109 average errors per student against 132 in the control - and the
+readability work names the specific failures as length, jargon, sentence structure and
+vocabulary.
+
+A student who reads `NameError: name 'y' is not defined` and does not already know what
+a "name" is in Python has been told nothing at all.
+
+### 45.1 The traceback stays
+
+The explanation goes UNDER the program's own output and its exit line, never instead of
+it. A student has to learn to read the real thing eventually, and hiding it would trade
+one dependency for another. `appendOutputHtml` exists for exactly this.
+
+### 45.2 The key is extracted, never searched for
+
+The obvious implementation searches the message for each known error name. That matches
+substrings - an entry for `TypeError` fires on `NotATypeError`, an entry for `Error`
+fires on everything - so instead each language has ONE deterministic rule that pulls a
+key out of the message, and the key is looked up exactly.
+
+Every rule is written against the message strings `compiler-output.ts` really produces:
+the fixtures captured from the production image. The test parses that real output and
+feeds the parser's own result to the extractor, so what is tested is what will run.
+
+Resolution has two stages, and the ORDER of them was wrong at first:
+
+1. the first extractor candidate the dictionary has - candidates are ordered
+   most-specific-first, which is what makes `ERR_MODULE_NOT_FOUND` win over the `Error`
+   node prints on the same line;
+2. a longer dictionary key that both starts with that answer and matches the start of
+   the message - which lets `RangeError: Maximum call stack size exceeded` have its own
+   entry while a bare `RangeError` keeps the general one.
+
+Doing the prefix match first meant `Error [ERR_MODULE_NOT_FOUND]: …` resolved to the
+least useful entry in the file, for every node error code.
+
+### 45.3 Four dead entries, caught by a test rather than by a student
+
+The data was written before the test that checks it, and the check found four whole
+classes of entry that no student could ever have seen:
+
+- **Compound JavaScript keys** (`RangeError: Maximum call stack size exceeded`) that the
+  extractor could not produce - the reason the prefix stage exists at all.
+- **A Java message containing a variable name.** javac writes
+  `variable total might not have been initialized`, so an entry could only ever match
+  the one variable it was written for. The identifier is now removed from the key.
+- **C# runtime exceptions.** The extractor only read `CS####` codes, but .NET writes
+  `Unhandled exception. System.NullReferenceException: …` - not a code, and not at the
+  start, so every runtime entry was unreachable.
+- **PHP phrases wrapped in a class.** Real PHP is
+  `Fatal error: Uncaught Error: Call to undefined function foo()`. Keying on the class
+  gives one answer for a dozen different mistakes, so the phrase is now extracted first
+  and the class kept as a fallback.
+
+That check is `tests/unit/error-data.test.ts`: for every key in every file it builds a
+message a runtime could really produce and asserts the resolver selects that key. An
+entry nobody can reach looks like coverage in the file and is invisible on screen, which
+is precisely the failure this codebase keeps producing.
+
+### 45.4 The data
+
+108 curated entries across the six languages, each with a category, a plain-language
+explanation, the usual CAUSE, and a short before/after example - and each fully
+translated into Hebrew.
+
+The `cause` field is the one thing an error dictionary needs that a keyword dictionary
+does not. "NameError means Python could not find that name" restates the message;
+"usually a spelling mistake, or using it before the line that creates it" is the
+sentence that unblocks the student.
+
+Tests enforce what the research says matters: no explanation may open by restating its
+own key, none may use the jargon list, every entry must have a cause and an example, an
+example must fit in eight lines, the Hebrew must cover exactly the same keys, its
+examples must be byte-identical to the English ones (they are code), and its prose must
+actually contain Hebrew letters - a file copied but never translated passes a
+key-coverage check and helps nobody.
+
+### 45.5 Verification
+
+807 unit tests (56 new across the two error files), all three browser suites, clean
+typecheck and build. The browser suite runs a real failing program and asserts three
+things: the explanation appears, the runtime's own `ReferenceError` is still on screen,
+and the text shown is the entry for THAT error rather than any entry. Confirmed to fail
+against the bug - with the call disabled, exactly those three assertions fail and
+nothing else does.
+
+### 45.6 Not done
+
+- **Python and JavaScript are far better covered than the rest.** 26 and 15 entries
+  against 12-19 elsewhere, and those two are where the teaching happens here.
+- **The Problems panel does not show it.** The explanation is in the output panel only;
+  a hover over a marker would be the natural second home and reuses the same block.
+- **No entry knows anything about the student's actual code.** It explains the error
+  class, not this instance - so `KeyError: 'Sam'` does not say which key. Naming the
+  value would need the message parsed per error type, which is a much larger surface.
+- **The extractors were written against captured fixtures, not against a live run of
+  every toolchain.** PHP in particular has no interpreter on the development host, so
+  its rules are derived from the fixtures and from documented formats.

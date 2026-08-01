@@ -1,0 +1,98 @@
+{
+  "TS2322": {
+    "type": "type error",
+    "explanation": "A value of one type was put where a different type is required. TypeScript checks this before the program runs, so it never gets the chance to go wrong.",
+    "cause": "Assigning text to a number variable, or a function returning something other than what it promised.",
+    "example": "let age: number = \"12\";               // text into a number\nlet age: number = Number(\"12\");"
+  },
+  "TS2345": {
+    "type": "type error",
+    "explanation": "An argument passed to a function is not the type that function accepts.",
+    "cause": "Passing a value straight from input, which is always text, into a function expecting a number.",
+    "example": "function double(n: number) { return n * 2; }\ndouble(\"4\");            // a string\ndouble(Number(\"4\"));"
+  },
+  "TS2304": {
+    "type": "name error",
+    "explanation": "TypeScript reached a name it does not know. Every name must be declared or imported first.",
+    "cause": "A spelling mistake, or a missing import.",
+    "example": "console.log(totl);      // never declared\nlet total = 10;\nconsole.log(total);"
+  },
+  "TS2339": {
+    "type": "type error",
+    "explanation": "The property does not exist on that type. TypeScript knows the shape of the value and this name is not part of it.",
+    "cause": "A spelling mistake, or assuming an object has a field it was never given.",
+    "example": "const user = { name: \"Ada\" };\nconsole.log(user.age);        // no age on this object\nconsole.log(user.name);"
+  },
+  "TS2531": {
+    "type": "type error",
+    "explanation": "The value might be null, and you used it as if it definitely is not. TypeScript is stopping the crash before it happens.",
+    "cause": "Reading the result of something that can return null without checking it first.",
+    "example": "const el = document.getElementById(\"app\");\nel.textContent = \"hi\";           // el might be null\nif (el) el.textContent = \"hi\";   // check first"
+  },
+  "TS18048": {
+    "type": "type error",
+    "explanation": "The value might be undefined, and you used it as if it definitely is not.",
+    "cause": "An optional property, or an array lookup that might find nothing.",
+    "example": "const first = names[0];\nconsole.log(first.length);      // there might be no first item\nconsole.log(first?.length);     // ?. gives undefined instead of crashing"
+  },
+  "TS2554": {
+    "type": "type error",
+    "explanation": "A function was called with the wrong number of arguments.",
+    "cause": "Forgetting an argument, or changing a function's parameters without updating the calls.",
+    "example": "function greet(name: string, greeting: string) { }\ngreet(\"Ada\");                                          // one short\nfunction greetOk(name: string, greeting = \"Hi\") { }    // a default makes it optional"
+  },
+  "TS7006": {
+    "type": "type error",
+    "explanation": "A parameter has no type and TypeScript could not work one out, so it would silently be `any` - which turns off checking for that value.",
+    "cause": "Writing a function without annotating its parameters.",
+    "example": "function double(n) { return n * 2; }          // n has no type\nfunction doubleOk(n: number) { return n * 2; }"
+  },
+  "TS2367": {
+    "type": "type error",
+    "explanation": "Two values are being compared that can never be equal, because their types have nothing in common. The comparison is always false.",
+    "cause": "Comparing a number with a string, often after forgetting a conversion.",
+    "example": "const age: number = 12;\nif (age === \"12\") { }        // never true\nif (age === 12) { }"
+  },
+  "TS2451": {
+    "type": "compile error",
+    "explanation": "The same name is declared twice in the same scope.",
+    "cause": "Copying a block of code and forgetting to rename the variable, or a let that repeats an earlier one.",
+    "example": "let total = 1;\nlet total = 2;    // already declared\ntotal = 2;        // assign, do not redeclare"
+  },
+  "TS2552": {
+    "type": "name error",
+    "explanation": "TypeScript does not know that name, but it found one that looks very similar and suggests it.",
+    "cause": "A typo. Read the suggestion in the message - it is usually right.",
+    "example": "const message = \"hi\";\nconsole.log(mesage);     // TypeScript suggests 'message'\nconsole.log(message);"
+  },
+  "TS1005": {
+    "type": "syntax error",
+    "explanation": "A particular character was expected here and something else was found. The message names the character it wanted.",
+    "cause": "A missing bracket, comma or semicolon - very often on the line above.",
+    "example": "const nums = [1, 2, 3;   // ] missing\nconst nums = [1, 2, 3];"
+  },
+  "TS1109": {
+    "type": "syntax error",
+    "explanation": "A value was expected at that spot and there is nothing usable there.",
+    "cause": "An unfinished expression, such as an assignment with nothing after the equals sign.",
+    "example": "const x = ;    // nothing to assign\nconst x = 0;"
+  },
+  "TS2740": {
+    "type": "type error",
+    "explanation": "An object was given where a type with more required fields was expected, and several of those fields are missing.",
+    "cause": "Building an object literal by hand and forgetting some of the fields the type requires.",
+    "example": "type User = { name: string; age: number };\nconst u: User = { name: \"Ada\" };           // age is missing\nconst u2: User = { name: \"Ada\", age: 36 };"
+  },
+  "ReferenceError": {
+    "type": "name error",
+    "explanation": "At run time, the compiled JavaScript reached a name that does not exist. TypeScript catches most of these before running, so this usually comes from code it could not check.",
+    "cause": "Using a value typed as `any`, or a name that only exists in some environments.",
+    "example": "// Give values real types instead of any, and TypeScript will catch\n// this class of mistake before the program runs at all."
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "At run time the compiled JavaScript did something to a value that does not support it - usually reading a property of undefined.",
+    "cause": "A value typed as `any`, or data from outside the program that did not have the shape the types claimed.",
+    "example": "const data = JSON.parse(text) as User;   // 'as' is a promise, not a check\n// Check the shape yourself before trusting it."
+  }
+}

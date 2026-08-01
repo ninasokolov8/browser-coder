@@ -1,11 +1,11 @@
 import * as monaco from 'monaco-editor';
-import { getLanguage } from '../languages';
+import { getErrorExplanation, getLanguage } from '../languages';
 import { runtime } from '../app/runtime';
 import { appConfig } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
 import { notifyRunResult } from '../integrations/stepup-bus';
-import { setStatus, setOutputHtml } from '../components/output';
+import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
 import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas } from '../components/turtle';
@@ -16,6 +16,9 @@ import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
 import { escapeHtml } from '../components/html-escape.ts';
+import { parseCompilerOutput } from '../diagnostics/compiler-output.ts';
+import { buildErrorHelpBlock, selectErrorKey } from './error-help.ts';
+import { getUILang } from './wrapped-i18n';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -36,6 +39,48 @@ function requireRuntime() {
  * copies in the codebase. Now the shared one; see src/components/html-escape.ts.
  */
 const esc = escapeHtml;
+
+/**
+ * Explain the error a failed run produced, under the run's own output.
+ *
+ * The traceback stays on screen - a student has to learn to read the real thing
+ * eventually - and the explanation goes below it. The message explained is the one the
+ * FIRST diagnostic carries, which is also the one the editor marker points at, so the
+ * squiggle and the paragraph are always about the same line.
+ *
+ * Silent when there is no entry. A confidently wrong explanation in a teaching tool is
+ * worse than none: it teaches the student the wrong model of what their program did.
+ */
+function explainRunFailure(languageId: string, output: string): void {
+  const language = getLanguage(languageId);
+  const entries = language?.errors;
+  if (!entries) return;
+
+  const [diagnostic] = parseCompilerOutput(languageId, output);
+  if (!diagnostic) return;
+
+  const key = selectErrorKey(languageId, diagnostic.message, Object.keys(entries));
+  if (!key) return;
+
+  const help = getErrorExplanation(languageId, key, getUILang());
+  if (!help) return;
+
+  const block = buildErrorHelpBlock(key, help);
+  // Hebrew is right-to-left inside a panel that is deliberately forced LTR, because
+  // the panel's other content is raw program output. Only the prose is turned round.
+  const dir = block.rtl ? ' dir="rtl"' : '';
+
+  const lines = [
+    '',
+    `<span class="info">── What this means ─────────────────────────────────────────</span>`,
+    `<span class="info">${esc(block.heading)}</span>`,
+    `<span${dir}>${esc(block.explanation)}</span>`,
+  ];
+  if (block.cause) lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
+  if (block.example) lines.push('', `<span class="success">${esc(block.example)}</span>`);
+
+  appendOutputHtml(`\n${lines.join('\n')}`);
+}
 
 /**
  * "Run" an SVG file: open the picture in its own floating window — the same kind
@@ -321,6 +366,13 @@ ${result.stdout || ''}`,
         documentCount: Array.isArray(requestBody.files)
           ? (requestBody.files as unknown[]).length
           : 1 });
+    }
+
+    // After the program's own output and its exit line, never instead of them. Only
+    // for a run that actually failed: explaining an error to someone whose program
+    // worked is noise.
+    if (result.exitCode !== 0) {
+      explainRunFailure(lang.id, `${result.stderr || ''}\n${result.stdout || ''}`);
     }
 
     if (appConfig.isEmbedded) {

@@ -1,0 +1,116 @@
+{
+  "cannot find symbol": {
+    "type": "compile error",
+    "explanation": "המהדר הגיע לשם שהוא לא מכיר. צריך לומר לג'אווה על כל שם לפני השימוש בו - על ידי הצהרת משתנה, הגדרת מתודה, או ייבוא מחלקה.",
+    "cause": "שגיאת כתיב, ייבוא חסר, או שימוש במשתנה מחוץ לסוגריים המסולסלים שבהם הוצהר.",
+    "example": "int total = 0;\nSystem.out.println(totl);    // no such name\nSystem.out.println(total);   // the name that was declared"
+  },
+  "'<token>' expected": {
+    "type": "compile error",
+    "explanation": "ג'אווה ציפתה לתו מסוים במקום הזה ומצאה משהו אחר. ההודעה של המהדר עצמו מציינת את התו שהוא רצה - נקודה-פסיק, סוגר, סוגר מסולסל או פסיק.",
+    "cause": "נקודה-פסיק שנשכחה או סוגר שלא נסגר - בדרך כלל בסוף השורה שלפני זו שהמהדר מציין.",
+    "example": "int x = 5\nint y = 6;   // reported here; the semicolon is missing above\nint x = 5;"
+  },
+  "illegal start of expression": {
+    "type": "compile error",
+    "explanation": "ג'אווה מצאה משהו במקום שבו ציפתה לערך, ואינה מצליחה להבין אותו.",
+    "cause": "סוגר מסולסל שלא נסגר קודם בקובץ, או מתודה שהוגדרה בתוך מתודה אחרת.",
+    "example": "int x = ;      // nothing to assign\nint x = 0;"
+  },
+  "class, interface, enum, or record expected": {
+    "type": "compile error",
+    "explanation": "ברמה העליונה של קובץ ג'אווה יכולות להופיע רק הצהרות class, interface, enum או record. נמצא שם משהו אחר.",
+    "cause": "סוגר מסולסל סוגר אחד יותר מדי, שמסיים את המחלקה מוקדם ומשאיר את שאר הקובץ מחוצה לה.",
+    "example": "public class Main {\n    public static void main(String[] a) {\n        System.out.println(1);\n    }\n}\n}   // one brace too many - everything after this is outside the class"
+  },
+  "incompatible types": {
+    "type": "type error",
+    "explanation": "ערך מסוג אחד הוכנס למקום שדורש סוג אחר. ג'אווה בודקת את זה לפני שהתוכנית רצה.",
+    "cause": "השמת טקסט למשתנה מספרי, או שכחה להמיר ערך.",
+    "example": "int age = \"12\";                  // text into a number\nint age = Integer.parseInt(\"12\"); // convert first"
+  },
+  "missing return statement": {
+    "type": "compile error",
+    "explanation": "מתודה מבטיחה להחזיר ערך, ויש דרך להגיע לסופה בלי להחזיר אחד.",
+    "cause": "return בתוך if בלי return עבור המסלול השני.",
+    "example": "int sign(int n) {\n    if (n > 0) return 1;\n}                       // what if n <= 0?\nint signOk(int n) {\n    if (n > 0) return 1;\n    return -1;\n}"
+  },
+  "variable might not have been initialized": {
+    "type": "compile error",
+    "explanation": "משתנה מקומי נקרא לפני שנשמר בו משהו. ג'אווה מסרבת לנחש ערך התחלתי.",
+    "cause": "הצהרה על משתנה והשמה אליו רק בתוך if שאולי לא ירוץ.",
+    "example": "int total;\nif (ready) total = 5;\nSystem.out.println(total);   // maybe never assigned\nint totalOk = 0;             // give it a starting value"
+  },
+  "unreachable statement": {
+    "type": "compile error",
+    "explanation": "יש קוד שלעולם לא יוכל לרוץ, כי השורה שלפניו תמיד יוצאת מהמתודה או מהלולאה.",
+    "cause": "משפט אחרי return, break או continue.",
+    "example": "return total;\nSystem.out.println(total);   // can never run"
+  },
+  "method does not override or implement a method from a supertype": {
+    "type": "compile error",
+    "explanation": "מתודה מסומנת ב-@Override, אבל אין במחלקת האב או בממשק מתודה עם אותה חתימה בדיוק כדי לדרוס.",
+    "cause": "איות שונה, מספר פרמטרים שונה, או סוגי פרמטרים שונים מהמתודה שנדרסת.",
+    "example": "@Override\npublic String tostring() { return \"x\"; }   // wrong capitals\n@Override\npublic String toString() { return \"x\"; }"
+  },
+  "NullPointerException": {
+    "type": "runtime error",
+    "explanation": "משהו השתמש בנקודה על משתנה שמחזיק null. המשמעות של null היא \"אין אובייקט בכלל\", ולכן אין את מי לשאול.",
+    "cause": "משתנה שמעולם לא קיבל אובייקט, או מתודה שהחזירה null כשלא נמצא כלום.",
+    "example": "String name = null;\nSystem.out.println(name.length());   // null has no length\nif (name != null) System.out.println(name.length());"
+  },
+  "ArrayIndexOutOfBoundsException": {
+    "type": "index error",
+    "explanation": "ביקשתם מיקום שלא קיים במערך. במערך של 3 המיקומים הם 0, 1 ו-2.",
+    "cause": "ספירה מ-1 במקום מ-0, או תנאי לולאה עם <= במקום <.",
+    "example": "int[] nums = {1, 2, 3};\nfor (int i = 0; i <= nums.length; i++)   // one step too far\nfor (int i = 0; i < nums.length; i++)"
+  },
+  "StringIndexOutOfBoundsException": {
+    "type": "index error",
+    "explanation": "ביקשתם תו במיקום שאין למחרוזת.",
+    "cause": "charAt או substring עם מיקום מעבר לסוף - התו האחרון נמצא ב-length() - 1.",
+    "example": "String s = \"abc\";\ns.charAt(3);          // positions are 0, 1, 2\ns.charAt(s.length() - 1);"
+  },
+  "NumberFormatException": {
+    "type": "value error",
+    "explanation": "טקסט הומר למספר והטקסט לא היה מספר.",
+    "cause": "Integer.parseInt על קלט שמכיל אותיות, רווחים, או שהוא ריק.",
+    "example": "Integer.parseInt(\"12 \");    // the space is not a digit\nInteger.parseInt(\"12 \".trim());"
+  },
+  "ArithmeticException": {
+    "type": "runtime error",
+    "explanation": "בוצע חישוב בלתי אפשרי - כמעט תמיד חלוקה של מספר שלם באפס.",
+    "cause": "ספירה או אורך שהתגלו כ-0.",
+    "example": "int average = total / count;   // count is 0\nif (count != 0) average = total / count;"
+  },
+  "ClassCastException": {
+    "type": "type error",
+    "explanation": "אובייקט הומר לסוג שהוא אינו. ההמרה עברה הידור, אבל בזמן ריצה התברר שהאובייקט הוא משהו אחר.",
+    "cause": "הוצאת משהו מאוסף והנחה לגבי הסוג שלו.",
+    "example": "Object o = \"hello\";\nInteger n = (Integer) o;         // it is a String\nif (o instanceof Integer n2) { }  // check before casting"
+  },
+  "InputMismatchException": {
+    "type": "value error",
+    "explanation": "Scanner התבקש לקרוא ערך מסוג אחד והקלט הכיל סוג אחר.",
+    "cause": "nextInt() כשהמשתמש הקליד מילה, או תו שורה חדשה שנשאר מקריאה קודמת.",
+    "example": "int age = scanner.nextInt();      // the input was \"twelve\"\nString line = scanner.nextLine();  // read it as text and convert yourself"
+  },
+  "NoSuchElementException": {
+    "type": "runtime error",
+    "explanation": "משהו נקרא ממקור שלא נשאר בו כלום.",
+    "cause": "Scanner שקורא מעבר לסוף הקלט, או next() על איטרטור שנגמר.",
+    "example": "while (scanner.hasNextLine()) {    // ask before reading\n    String line = scanner.nextLine();\n}"
+  },
+  "ConcurrentModificationException": {
+    "type": "runtime error",
+    "explanation": "אוסף שונה בזמן שלולאת for-each עברה עליו. הלולאה לא יכולה להמשיך בבטחה.",
+    "cause": "קריאה ל-add או remove על הרשימה בתוך לולאה על אותה רשימה.",
+    "example": "for (String s : items) {\n    if (s.isEmpty()) items.remove(s);   // changed while looping\n}\nitems.removeIf(String::isEmpty);        // do it in one step instead"
+  },
+  "StackOverflowError": {
+    "type": "runtime error",
+    "explanation": "מתודה קראה לעצמה שוב ושוב עד שנגמר לג'אווה המקום לזכור את הקריאות.",
+    "cause": "מתודה רקורסיבית שתנאי העצירה שלה חסר או לא מושג לעולם.",
+    "example": "int count(int n) { return count(n - 1); }   // never stops\nint countOk(int n) { return n <= 0 ? 0 : countOk(n - 1); }"
+  }
+}

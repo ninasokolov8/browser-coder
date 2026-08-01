@@ -2,7 +2,7 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedKeywordEntry, VersionConfig } from "./types";
+import type { ErrorEntry, KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
 import { ASSET_LANGUAGE_ID, ASSET_TYPES } from "../workspace/assets.ts";
 
@@ -25,6 +25,20 @@ const keywordHeModules = import.meta.glob<{ default: Record<string, KeywordEntry
   { eager: true }
 );
 
+// Curated explanations for the errors a language produces, and their Hebrew
+// translations. Same shape and same optionality as the keyword dictionaries above: a
+// language with no errors.json explains nothing, and the raw compiler message is still
+// shown on its own.
+const errorModules = import.meta.glob<{ default: Record<string, ErrorEntry> }>(
+  "/languages/*/errors.json",
+  { eager: true }
+);
+
+const errorHeModules = import.meta.glob<{ default: Record<string, ErrorEntry> }>(
+  "/languages/*/errors_he.json",
+  { eager: true }
+);
+
 // Extract the language id from a glob path like "/languages/python/keywords.json"
 function languageIdFromPath(path: string): string {
   const match = path.match(/\/languages\/([^/]+)\//);
@@ -44,6 +58,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     id: 'css',
@@ -56,6 +72,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     // SVG images are XML text, so they live in the normal text file storage and
@@ -71,6 +89,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     // Data, not a program. Registering it is what gives the student Monaco's JSON
@@ -86,6 +106,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     /**
@@ -116,6 +138,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     /**
@@ -142,6 +166,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     // Monaco ships a Markdown tokenizer but no language service, so this is
@@ -157,6 +183,8 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
 ];
 
@@ -266,6 +294,8 @@ function loadLanguages(): Map<string, LoadedLanguage> {
       starters: {},
       keywords: {},
       keywordsHe: {},
+      errors: {},
+      errorsHe: {},
     });
   }
 
@@ -286,6 +316,17 @@ function loadLanguages(): Map<string, LoadedLanguage> {
     if (lang) {
       lang.keywordsHe = module.default || {};
     }
+  }
+
+  // Attach curated error explanations, exactly as the keyword dictionaries above.
+  for (const [path, module] of Object.entries(errorModules)) {
+    const lang = languages.get(languageIdFromPath(path));
+    if (lang) lang.errors = module.default || {};
+  }
+
+  for (const [path, module] of Object.entries(errorHeModules)) {
+    const lang = languages.get(languageIdFromPath(path));
+    if (lang) lang.errorsHe = module.default || {};
   }
 
   for (const language of BUILTIN_LANGUAGES) {
@@ -483,6 +524,44 @@ export function getKeywordExplanation(langId: string, word: string, uiLang?: str
     const heExplanation = lang.keywordsHe?.[matchedKey]?.explanation;
     if (heExplanation) {
       return { ...entry, explanation: heExplanation, rtl: true };
+    }
+  }
+  return { ...entry, rtl: false };
+}
+
+/**
+ * Look up what one error MEANS, keyed by the identifier `errorKeyFrom` extracted.
+ *
+ * Exact match only, unlike the keyword lookup. An error key is not something a student
+ * typed - it came out of a parser reading the runtime's own output - so a
+ * case-insensitive fallback could only ever turn a miss into a WRONG explanation, and a
+ * confidently wrong explanation in a teaching tool is worse than none: it teaches the
+ * student the wrong model of what their program did.
+ *
+ * Hebrew is resolved the same way as for keywords, and per FIELD rather than per entry:
+ * an entry translated but missing its `cause` falls back to the English cause instead of
+ * dropping the sentence that actually helps.
+ */
+export function getErrorExplanation(
+  langId: string,
+  key: string,
+  uiLang?: string,
+): ResolvedErrorEntry | null {
+  const lang = languages.get(langId);
+  if (!lang || !key) return null;
+
+  const entry = lang.errors?.[key];
+  if (!entry) return null;
+
+  if (uiLang === "he") {
+    const translated = lang.errorsHe?.[key];
+    if (translated?.explanation) {
+      return {
+        ...entry,
+        explanation: translated.explanation,
+        cause: translated.cause || entry.cause,
+        rtl: true,
+      };
     }
   }
   return { ...entry, rtl: false };

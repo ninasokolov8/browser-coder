@@ -1157,6 +1157,65 @@ async function checkRunSelection(frameWindow: Window): Promise<void> {
   );
 }
 
+/**
+ * A failed run must EXPLAIN itself, not just report itself.
+ *
+ * The traceback has to stay - a student has to learn to read the real thing - so this
+ * asserts both halves: the runtime's own message is still there, and the plain-language
+ * explanation is underneath it. Driven through a real run, because the whole feature
+ * lives in the seam between the parser, the dictionary and the panel.
+ */
+async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the error-explanation check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
+
+  const doc = await workspace.createDocument({
+    name: 'explain-probe.mjs',
+    language: 'javascript',
+    version: 'es2022',
+    content: 'console.log("starting");\nnotDeclaredAnywhere();\n',
+  });
+  await tabManager.switchToTab(doc.id);
+
+  const outcome = await commands.execute('workspace.run', { source: 'api' });
+  check('the failing run executed', outcome.status === 'ran', `status ${outcome.status}`);
+
+  const output = () => frame.contentDocument?.getElementById('panel-content')?.textContent ?? '';
+  const explained = await waitFor(
+    'the explanation to appear',
+    () => /What this means/.test(output()),
+    30000,
+  );
+  check('a failed run explains the error', explained, output().slice(-300));
+
+  const panel = output();
+  check(
+    'the runtime message is still shown, not replaced',
+    /ReferenceError/.test(panel),
+    panel.slice(-300),
+  );
+  check(
+    'the explanation is the one for THIS error',
+    /never seen|declared/i.test(panel.slice(panel.indexOf('What this means'))),
+    panel.slice(panel.indexOf('What this means'), panel.indexOf('What this means') + 200),
+  );
+  check(
+    'it says what usually causes it',
+    /spelling mistake|typo/i.test(panel.slice(panel.indexOf('What this means'))),
+  );
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -1315,6 +1374,7 @@ async function run(): Promise<void> {
   await checkDebuggerWorks(frameWindow);
   await checkHoverTeaches(frameWindow);
   await checkRunSelection(frameWindow);
+  await checkErrorsAreExplained(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.
