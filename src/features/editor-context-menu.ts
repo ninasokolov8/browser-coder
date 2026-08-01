@@ -14,6 +14,13 @@ import { getUILang } from './wrapped-i18n';
 import { runtime } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runCode } from './execution';
+import {
+  canRunSelection,
+  coversWholeLines,
+  dedent,
+  selectedLineRange,
+  type LineRange,
+} from './selection-run.ts';
 
 function requireEditor(): monaco.editor.IStandaloneCodeEditor {
   const editor = runtime.editor;
@@ -69,9 +76,11 @@ function updateKeywordHelpAvailability() {
 editor.onDidChangeCursorSelection(updateKeywordHelpAvailability);
 editor.onDidChangeModel(updateKeywordHelpAvailability);
 
-editor.addAction({
+const explainKeywordAction: monaco.editor.IActionDescriptor = {
   id: "explainKeyword",
-  label: t("editor.explainKeyword") || "💡 Explain this keyword",
+  // No `|| 'fallback'`: t() returns the key when a translation is missing, never an
+  // empty string, so the alternative was dead code that read as a safety net.
+  label: t("editor.explainKeyword"),
   contextMenuGroupId: "9_cutcopypaste",
   contextMenuOrder: 1.5,
   precondition: "keywordHelpAvailable",
@@ -101,54 +110,112 @@ editor.addAction({
     const y = (editorRect?.top || 0) + (coords?.top || 0) + (coords?.height || 18);
 
     showKeywordHelpPopup(word, entry.type, entry.explanation, entry.example, entry.rtl, x, y);
-  } });
+  } };
 
 // "Run Selected" - right-click a selection to execute just those lines.
-// Only appears when the selection covers at least one full line: either a
-// multi-line selection, or a single line selected in its entirety (e.g.
-// triple-click, or Home then Shift+End) - not for a plain cursor or a
-// partial in-line text selection like a variable name.
+//
+// Offered only when the selection covers at least one whole line AND the active
+// language can actually run a fragment. The decisions are in `selection-run.ts`,
+// which is pure and tested; this half only reads the editor.
 const runSelectionAvailable = editor.createContextKey<boolean>("runSelectionAvailable", false);
 
-function updateRunSelectionAvailability() {
+function activeLanguageId(): string | undefined {
+  return tabManager.getActiveTab()?.file.language ?? runtime.currentLang?.id;
+}
+
+/**
+ * One rule, read by three things: the context key that shows the menu item, the
+ * command's own enablement, and the command's guard when it actually runs.
+ *
+ * They must not disagree. A command enabled by a looser rule than the menu means the
+ * keybinding runs something the menu would not offer - here, the whole line the cursor
+ * merely rests on.
+ */
+function hasRunnableSelection(): boolean {
   const selection = editor.getSelection();
   const model = editor.getModel();
-  if (!selection || !model || selection.isEmpty()) {
-    runSelectionAvailable.set(false);
-    return;
-  }
-  if (selection.startLineNumber !== selection.endLineNumber) {
-    runSelectionAvailable.set(true);
-    return;
-  }
-  // Single line selected - only counts if the whole line is covered
-  const lineMaxColumn = model.getLineMaxColumn(selection.startLineNumber);
-  runSelectionAvailable.set(selection.startColumn === 1 && selection.endColumn === lineMaxColumn);
+  if (!selection || !model || !canRunSelection(activeLanguageId())) return false;
+  return coversWholeLines(selection, line => model.getLineMaxColumn(line));
+}
+
+function updateRunSelectionAvailability() {
+  runSelectionAvailable.set(hasRunnableSelection());
 }
 
 editor.onDidChangeCursorSelection(updateRunSelectionAvailability);
 editor.onDidChangeModel(updateRunSelectionAvailability);
 
-editor.addAction({
+/**
+ * The code a "Run Selected" would execute, or null when there is nothing to run.
+ *
+ * Whole lines, because a fragment of a line is not a statement - but the *lines the
+ * student actually highlighted*, which is not the same as the selection's end line.
+ */
+function selectedProgram(): { code: string; range: LineRange } | null {
+  const selection = editor.getSelection();
+  const model = editor.getModel();
+  if (!selection || !model || !hasRunnableSelection()) return null;
+
+  const range = selectedLineRange(selection);
+  const raw = model.getValueInRange(
+    new monaco.Range(range.startLine, 1, range.endLine, model.getLineMaxColumn(range.endLine)),
+  );
+  // Sending an indented block verbatim is an IndentationError for code that is
+  // correct where it sits.
+  const code = dedent(raw);
+  return code.trim() ? { code, range } : null;
+}
+
+// Through the registry, like every other way of running code. This was the one
+// caller that reached `runCode` directly, so a task with `allowRun: false` refused
+// the Run button and Ctrl+Enter and then executed anything the student right-clicked.
+runtime.commands?.register({
+  id: 'workspace.runSelection',
+  title: 'Run selection',
+  capability: 'run',
+  when: () => selectedProgram() !== null,
+  run: () => {
+    const selected = selectedProgram();
+    if (!selected) return;
+    // The pre-run diagnostics gate is scoped to these lines: an error on line 40 of a
+    // file being edited must not refuse a run of line 1, which is the main reason to
+    // run a fragment at all.
+    return runCode(selected.code, { markerRange: selected.range });
+  },
+});
+
+const runSelectionAction: monaco.editor.IActionDescriptor = {
   id: "runSelectedLines",
-  label: t("editor.runSelected") || "▶ Run Selected",
+  label: t("editor.runSelected"),
   contextMenuGroupId: "1_run",
   contextMenuOrder: 1,
   precondition: "runSelectionAvailable",
-  run: (ed) => {
-    const selection = ed.getSelection();
-    const model = ed.getModel();
-    if (!selection || !model) return;
+  // Ctrl+Shift+Enter, so the feature is reachable without the right-click menu -
+  // which is switched off entirely in a readonly embed, and which the app's own
+  // command palette never listed because this was not a registry command.
+  keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
+  run: () => {
+    void runtime.commands?.execute('workspace.runSelection', { source: 'ui' });
+  } };
 
-    // Always execute the FULL lines touched by the selection, not just the
-    // exact (possibly partial-column) selected text - matches how the
-    // context menu becomes available in the first place.
-    const startLine = selection.startLineNumber;
-    const endLine = selection.endLineNumber;
-    const code = model.getValueInRange(
-      new monaco.Range(startLine, 1, endLine, model.getLineMaxColumn(endLine))
-    );
-    if (!code.trim()) return;
+/**
+ * (Re-)register both context-menu actions.
+ *
+ * Monaco has no API for relabelling an action that has already been added, and the
+ * labels were captured once at import time - so a student who switched the UI to
+ * Hebrew went on right-clicking into an English menu for the rest of the session.
+ * `languageChanged` is dispatched by the i18n module and, until now, nothing listened
+ * to it at all.
+ */
+let contextActions: monaco.IDisposable[] = [];
 
-    runCode(code);
-  } });
+function registerContextMenuActions(): void {
+  for (const action of contextActions) action.dispose();
+  contextActions = [
+    editor.addAction({ ...explainKeywordAction, label: t("editor.explainKeyword") }),
+    editor.addAction({ ...runSelectionAction, label: t("editor.runSelected") }),
+  ];
+}
+
+registerContextMenuActions();
+window.addEventListener('languageChanged', registerContextMenuActions);

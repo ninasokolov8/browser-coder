@@ -1094,6 +1094,69 @@ async function checkRunErrorsBecomeMarkers(frameWindow: Window): Promise<void> {
   check('JavaScript is also checked statically, before any run', staticallyCaught);
 }
 
+/**
+ * Running only the selected lines must run only the selected lines.
+ *
+ * The gesture the feature advertises - triple-click, or a click in the line-number
+ * gutter - produces a selection ending at column 1 of the NEXT line, and the old code
+ * expanded that to the whole next line. So "run this one line" ran two, and the extra
+ * line was executed with no indication. Asserted against a real run, because the
+ * failure is in what reaches the sandbox, not in what the editor shows.
+ */
+async function checkRunSelection(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the selection-run check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    isEnabled(id: string): boolean;
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
+  const editor = runtime.editor as {
+    setSelection(range: {
+      startLineNumber: number;
+      startColumn: number;
+      endLineNumber: number;
+      endColumn: number;
+    }): void;
+  };
+
+  const doc = await workspace.createDocument({
+    name: 'selection-probe.js',
+    language: 'javascript',
+    version: 'es2022',
+    content: 'console.log("only-this-line");\nconsole.log("not-this-one");\n',
+  });
+  await tabManager.switchToTab(doc.id);
+
+  check(
+    'run-selection is disabled with no selection',
+    !commands.isEnabled('workspace.runSelection'),
+  );
+
+  // Exactly the shape Monaco produces for a triple-click on line 1.
+  editor.setSelection({ startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 1 });
+  check('run-selection is enabled for a whole-line selection', commands.isEnabled('workspace.runSelection'));
+
+  const outcome = await commands.execute('workspace.runSelection', { source: 'api' });
+  check('the selection ran', outcome.status === 'ran', `status ${outcome.status}`);
+
+  const output = () => frame.contentDocument?.getElementById('panel-content')?.textContent ?? '';
+  const printed = await waitFor('the selection output', () => /only-this-line/.test(output()), 30000);
+  check('the selected line ran', printed, output().slice(0, 200));
+  check(
+    'the line AFTER the selection did NOT run',
+    !/not-this-one/.test(output()),
+    output().slice(0, 200),
+  );
+}
+
 async function run(): Promise<void> {
   await new Promise<void>(resolve => {
     if (frame.contentDocument?.readyState === 'complete') return resolve();
@@ -1251,6 +1314,7 @@ async function run(): Promise<void> {
   await checkQuickOpenAndBreadcrumbs(frameWindow);
   await checkDebuggerWorks(frameWindow);
   await checkHoverTeaches(frameWindow);
+  await checkRunSelection(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

@@ -58,7 +58,20 @@ function showSvgPreview(filePath: string, source: string): void {
   setStatus('SVG image shown ✅');
 }
 
-export async function runCode(code: string, options: { debug?: boolean } = {}) {
+export async function runCode(
+  code: string,
+  options: {
+    debug?: boolean;
+    /**
+     * The lines being run, when this is a selection rather than the whole file.
+     *
+     * Used to scope the pre-run diagnostics gate. Without it, an error anywhere in a
+     * file blocks running any part of it - which defeats the point of running a
+     * fragment while the rest is mid-edit.
+     */
+    markerRange?: { startLine: number; endLine: number };
+  } = {},
+) {
   const { editor, tabManager, storage } = requireRuntime();
   const activeTab = tabManager.getActiveTab();
   if (!activeTab) return;
@@ -111,8 +124,14 @@ export async function runCode(code: string, options: { debug?: boolean } = {}) {
     const model = editor.getModel();
     if (model) {
       const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+      const range = options.markerRange;
       const errors = markers.filter(
-        (m: monaco.editor.IMarker) => m.severity === monaco.MarkerSeverity.Error
+        (m: monaco.editor.IMarker) =>
+          m.severity === monaco.MarkerSeverity.Error &&
+          // Scoped to the lines actually being run. A selection run is not blocked by
+          // an error elsewhere in the file; a whole-file run has no range and so is
+          // gated exactly as before.
+          (!range || (m.startLineNumber >= range.startLine && m.startLineNumber <= range.endLine))
       );
       if (errors.length > 0) {
         const errLines = errors
