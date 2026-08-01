@@ -118,6 +118,32 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     keywordsHe: {},
   },
   {
+    /**
+     * Plain text data files.
+     *
+     * Programs read them - `open("data.txt")` is a documented capability of the run
+     * layer, and the whole workspace is copied into the sandbox - but until now a
+     * student could not get one IN. The importer resolves a language by extension and
+     * there was none for `.txt`, so dragging the data file an exercise depends on
+     * answered "data.txt - unsupported file type".
+     *
+     * One language for every plain-text data extension, the same way one Asset
+     * language covers every binary format: from the workspace's point of view they
+     * are all just text that is read, never run.
+     */
+    id: 'text',
+    name: 'Text / data',
+    extension: 'txt',
+    extensions: ['csv', 'tsv', 'log', 'dat', 'ini', 'cfg', 'conf', 'properties'],
+    monacoLanguage: 'plaintext',
+    icon: LANGUAGE_ICONS.text || '📄',
+    versions: [{ id: 'text', name: 'Plain text', default: true }],
+    runner: { command: 'data' },
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+  },
+  {
     // Monaco ships a Markdown tokenizer but no language service, so this is
     // colouring plus the preview below - which is what Markdown is for.
     id: 'markdown',

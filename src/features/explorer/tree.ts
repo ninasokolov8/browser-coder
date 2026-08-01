@@ -12,8 +12,8 @@ import { lazyRef } from '../../app/lazy';
 import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
-  deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
-  markInvalidDropTargets,
+  deleteSelectedItems, clearDropHighlights, importDroppedItems, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
+  markInvalidDropTargets, importFromPicker, downloadSelectedItem,
 } from './operations';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
@@ -397,7 +397,9 @@ function attachTreeEventHandlers(tm: TabManager) {
       clearDropHighlights();
       const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
       if (external) {
-        await importExternalFiles(e.dataTransfer!.files, targetParentId);
+        // The entry API, so a dropped FOLDER arrives with its structure. It has to be
+        // read from the event synchronously, which importDroppedItems does first.
+        await importDroppedItems(e.dataTransfer!, targetParentId);
       } else {
         await moveItemsInto(targetParentId, getInternalDraggedIds(e));
       }
@@ -519,6 +521,9 @@ function setContextMenuActionLabel(action: string, label?: string): void {
   const icons: Record<string, string> = {
     'new-file': '📄',
     'new-folder': '📁',
+    'import-files': '⬆️',
+    'import-folder': '📥',
+    download: '⬇️',
     rename: '✏️',
     delete: '🗑️',
   };
@@ -530,8 +535,17 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
 
   setContextMenuActionLabel('new-file');
   setContextMenuActionLabel('new-folder');
+  setContextMenuActionLabel('import-files');
+  setContextMenuActionLabel('import-folder');
+  setContextMenuActionLabel('download');
   setContextMenuActionLabel('rename');
   setContextMenuActionLabel('delete');
+
+  // Importing is always available: it targets the selected folder, or the root.
+  setContextMenuActionVisible('import-files', true);
+  setContextMenuActionVisible('import-folder', true);
+  // Downloading needs exactly one thing to download - a file, or a folder as a ZIP.
+  setContextMenuActionVisible('download', selectedCount === 1);
 
   if (selectedCount === 0) {
     // Empty explorer area: only creation actions are relevant.
@@ -619,6 +633,21 @@ contextMenuEl.querySelectorAll('.context-menu-item').forEach(item => {
           explorerState.renamingItemId = explorerState.selectedItemId;
           renderFileTree(tabManager);
         }
+        break;
+      case 'import-files':
+        await importFromPicker(
+          { directory: false },
+          explorerState.selectedItemType === 'folder' ? explorerState.selectedItemId : null,
+        );
+        break;
+      case 'import-folder':
+        await importFromPicker(
+          { directory: true },
+          explorerState.selectedItemType === 'folder' ? explorerState.selectedItemId : null,
+        );
+        break;
+      case 'download':
+        await downloadSelectedItem();
         break;
       case 'delete':
         await deleteSelectedItems();

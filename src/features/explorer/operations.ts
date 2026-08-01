@@ -8,7 +8,7 @@ import {
 import { setStatus, setOutput } from '../../components/output';
 import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core';
 import { explorerState } from './state';
-import { downloadBlob, fileBytesFor } from '../../components/download.ts';
+import { downloadBlob, downloadFile, fileBytesFor } from '../../components/download.ts';
 import {
   ASSET_LANGUAGE_ID,
   DEFAULT_ASSET_LIMITS,
@@ -20,6 +20,7 @@ import { renderFileTree, showContextMenu } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { isWorkspaceEntryHidden } from '../workspace-visibility';
 import { importSafeName, uniqueFileName } from './naming.ts';
+import { archiveFolderName, planImport } from './import-plan.ts';
 import { descendantFolderIds, topLevelItems } from './selection-scope.ts';
 import { lazyRef } from '../../app/lazy';
 
@@ -376,6 +377,56 @@ btnClearCache.addEventListener('click', async () => {
   }
 });
 
+/**
+ * Download whichever explorer item is selected.
+ *
+ * There was no way to export one file: the toolbar arrow acts on the active TAB, and
+ * the explorer had no download at all - so exporting a file meant opening it first,
+ * and exporting a folder was impossible.
+ */
+export async function downloadSelectedItem(): Promise<void> {
+  const id = explorerState.selectedItemId;
+  if (!id) return;
+
+  const file = await storage.getFile(id);
+  if (file) {
+    // `fileBytesFor` decides text-or-bytes from the name, so an image exports as an
+    // image here too.
+    downloadFile(file.name, file.content);
+    setStatus(`Downloaded ${file.name}`);
+    return;
+  }
+
+  const folder = await storage.getFolder(id);
+  if (!folder) return;
+
+  const prefix = `${folder.path}/`;
+  const contents = (await storage.getAllFiles())
+    .filter(candidate => !isWorkspaceEntryHidden(candidate))
+    .filter(candidate => candidate.path.startsWith(prefix));
+
+  if (contents.length === 0) {
+    setStatus(`${folder.name} is empty`);
+    return;
+  }
+
+  const zip = new JSZip();
+  for (const candidate of contents) {
+    const { data } = fileBytesFor(candidate.name, candidate.content);
+    // Relative to the folder being exported, so unpacking gives that folder back
+    // rather than the whole path from the workspace root.
+    zip.file(candidate.path.slice(prefix.length), data, { binary: typeof data !== 'string' });
+  }
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+  downloadBlob(`${folder.name}.zip`, blob);
+  setStatus(`Downloaded ${folder.name}.zip`);
+}
+
 // Download Project - downloads all files as a proper ZIP
 btnDownloadProject.addEventListener('click', async () => {
   try {
@@ -471,7 +522,9 @@ fileTreeEl.addEventListener('drop', async (e) => {
   if (getInternalDraggedIds(e).length === 0 && !external) return;
   e.preventDefault();
   if (external) {
-    await importExternalFiles(e.dataTransfer!.files, null);
+    // `importDroppedItems`, not `importExternalFiles`: only the entry API can see
+    // inside a dropped folder, and it must be read before this handler yields.
+    await importDroppedItems(e.dataTransfer!, null);
   } else {
     await moveItemsInto(null, getInternalDraggedIds(e));
   }
@@ -484,111 +537,400 @@ export function isExternalFileDrag(e: DragEvent): boolean {
   return !!types && Array.prototype.indexOf.call(types, 'Files') !== -1;
 }
 
-// Import files dragged from the desktop into a target folder (or root).
-// Only supported-language files are accepted; everything else is reported
-// and skipped. Enforces the same limits Step-Up uses (≤8 MB/file, ≤300 files).
-export async function importExternalFiles(fileList: FileList, targetParentId: string | null) {
+/**
+ * One file on its way into the workspace, wherever it came from.
+ *
+ * The three sources - a dragged or picked file, a walked directory, a ZIP entry -
+ * differ only in how the bytes are obtained and what the path looks like, so they are
+ * normalised to this and share one importer. They used to share nothing: only flat
+ * `FileList` drops were supported at all.
+ */
+interface IncomingFile {
+  /** Path relative to the import root. A bare name for a flat drop. */
+  readonly path: string;
+  readonly size: number;
+  bytes(): Promise<Uint8Array>;
+  text(): Promise<string>;
+}
+
+const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
+const MAX_WORKSPACE_FILES = 300;
+
+function incomingFromFile(file: File, path?: string): IncomingFile {
+  return {
+    // `webkitRelativePath` is set by a directory picker and is the only place the
+    // chosen folder's structure survives.
+    path: path ?? (file.webkitRelativePath || file.name),
+    size: file.size,
+    bytes: async () => new Uint8Array(await file.arrayBuffer()),
+    text: () => file.text(),
+  };
+}
+
+/**
+ * Create the folder chain a planned import needs, and answer where each path lives.
+ *
+ * Existing folders are reused rather than duplicated, so importing `src/a.py` into a
+ * workspace that already has `src/` puts the file in the folder the student can see.
+ */
+async function ensureImportFolders(
+  directories: readonly string[],
+  rootParentId: string | null,
+): Promise<Map<string, string | null>> {
+  const idByPath = new Map<string, string | null>([['', rootParentId]]);
+
+  for (const directory of directories) {
+    const segments = directory.split('/');
+    const name = segments[segments.length - 1];
+    const parentPath = segments.slice(0, -1).join('/');
+    const parentId = idByPath.get(parentPath) ?? rootParentId;
+
+    const siblings = await storage.getChildFolders(parentId);
+    const existing = siblings.find(folder => folder.name === name);
+    if (existing) {
+      idByPath.set(directory, existing.id);
+      continue;
+    }
+
+    const created = await storage.createFolder({ name, parentId });
+    idByPath.set(directory, created.id);
+  }
+
+  return idByPath;
+}
+
+/**
+ * Store one incoming file, deciding how to read it from its name.
+ *
+ * An asset is decided by its extension AND its bytes; text is decided by extension
+ * alone, because its content is text either way. Returns the stored name, or a
+ * "name - reason" line when it was refused.
+ */
+async function storeIncoming(
+  incoming: IncomingFile,
+  name: string,
+  parentId: string | null,
+): Promise<{ ok: true; name: string } | { ok: false; reason: string }> {
+  const asset = assetTypeFor(name);
+  const detected = asset ? null : tabManager.detectLanguageByExtension(name);
+
+  if (!asset && !detected) {
+    return { ok: false, reason: `${name} - unsupported file type` };
+  }
+
+  let content: string;
+  let language: string;
+  let versionId: string;
+
+  if (asset) {
+    // Read as BYTES and validate the signature before storing anything. Trusting
+    // the extension here is what would let `payload.html` renamed to `avatar.png`
+    // into the workspace, from where the preview publisher would serve it from a
+    // real origin. See src/workspace/assets.ts.
+    let bytes: Uint8Array;
+    try {
+      bytes = await incoming.bytes();
+    } catch {
+      return { ok: false, reason: `${name} - could not be read` };
+    }
+
+    const verdict = validateAsset(name, bytes, DEFAULT_ASSET_LIMITS);
+    if (!verdict.ok) {
+      return { ok: false, reason: `${name} - ${verdict.message.replace(`${name} `, '')}` };
+    }
+
+    content = bytesToBase64(bytes);
+    language = ASSET_LANGUAGE_ID;
+    versionId = verdict.type.extension;
+  } else {
+    try {
+      content = await incoming.text();
+    } catch {
+      return { ok: false, reason: `${name} - could not be read` };
+    }
+    language = detected!.id;
+    const version = detected!.versions.find(v => v.default) || detected!.versions[0];
+    versionId = version.id;
+  }
+
+  const siblings = await storage.getChildFiles(parentId);
+  const finalName = uniqueFileName(name, siblings.map(sibling => sibling.name));
+
+  await storage.createFile({
+    name: finalName,
+    parentId,
+    language,
+    version: versionId,
+    content,
+    isUserModified: true,
+  });
+
+  return { ok: true, name: finalName };
+}
+
+/**
+ * Import a set of files, preserving whatever folder structure their paths describe.
+ *
+ * The single entry point for every source. The plan is computed first, in a pure
+ * module, so an illegal path is refused before anything has been written - which
+ * matters most for a ZIP, where the paths come from a file the student did not
+ * necessarily make.
+ */
+async function importIncomingFiles(
+  incoming: readonly IncomingFile[],
+  targetParentId: string | null,
+): Promise<void> {
   if (policyState.lockStructure) return;
-  // Source files may be up to 8 MB; an ASSET is held to the smaller documented cap.
-  // The importer used to pass 8 MB to validateAsset, overriding the 4 MB that exists
-  // because assets ride the run payload as base64 - two 6 MB photos would have made
-  // every Run fail on the server's JSON body limit rather than on anything the
-  // student did.
-  const MAX_BYTES = 8 * 1024 * 1024;
-  const MAX_FILES = 300;
+  if (incoming.length === 0) return;
 
-  const files = Array.from(fileList);
-  if (files.length === 0) return;
+  const existingFileCount = (await storage.getAllFiles()).length;
+  const plan = planImport(
+    incoming.map(file => ({ path: file.path, size: file.size })),
+    {
+      existingFileCount,
+      maxFiles: MAX_WORKSPACE_FILES,
+      maxBytesPerFile: MAX_IMPORT_BYTES,
+    },
+  );
 
-  let workspaceCount = (await storage.getAllFiles()).length;
+  const byPath = new Map(incoming.map(file => [file.path.replace(/\\/g, '/'), file]));
+  const folderIds = await ensureImportFolders(plan.directories, targetParentId);
+
   const imported: string[] = [];
-  const skipped: string[] = [];
+  const skipped: string[] = [...plan.skipped];
 
-  for (const file of files) {
-    // An asset is decided by its extension AND its bytes. A source file is decided
-    // by extension alone, because its content is text either way.
-    const asset = assetTypeFor(file.name);
-    const detected = asset ? null : tabManager.detectLanguageByExtension(file.name);
+  for (const planned of plan.files) {
+    const source = byPath.get(planned.path);
+    if (!source) continue;
 
-    if (!asset && !detected) {
-      skipped.push(`${file.name} - unsupported file type`);
-      continue;
-    }
-    if (workspaceCount >= MAX_FILES) {
-      skipped.push(`${file.name} - workspace file limit (${MAX_FILES}) reached`);
-      continue;
-    }
-    if (file.size > MAX_BYTES) {
-      skipped.push(`${file.name} - larger than 8 MB`);
-      continue;
-    }
+    const parentPath = planned.directories[planned.directories.length - 1] ?? '';
+    const parentId = folderIds.get(parentPath) ?? targetParentId;
 
-    let content = '';
-    let language: string;
-    let versionId: string;
-
-    if (asset) {
-      // Read as BYTES and validate the signature before storing anything. Trusting
-      // the extension here is what would let `payload.html` renamed to `avatar.png`
-      // into the workspace, from where the preview publisher would serve it from a
-      // real origin. See src/workspace/assets.ts.
-      let bytes: Uint8Array;
-      try {
-        bytes = new Uint8Array(await file.arrayBuffer());
-      } catch {
-        skipped.push(`${file.name} - could not be read`);
-        continue;
-      }
-
-      const verdict = validateAsset(file.name, bytes, DEFAULT_ASSET_LIMITS);
-      if (!verdict.ok) {
-        skipped.push(`${file.name} - ${verdict.message.replace(`${file.name} `, '')}`);
-        continue;
-      }
-
-      content = bytesToBase64(bytes);
-      language = ASSET_LANGUAGE_ID;
-      versionId = verdict.type.extension;
-    } else {
-      try {
-        content = await file.text();
-      } catch {
-        skipped.push(`${file.name} - could not be read`);
-        continue;
-      }
-      language = detected!.id;
-      const version = detected!.versions.find(v => v.default) || detected!.versions[0];
-      versionId = version.id;
-    }
-
-    const safeName = importSafeName(file.name);
-    const siblings = await storage.getChildFiles(targetParentId);
-    const finalName = uniqueFileName(safeName, siblings.map(s => s.name));
-
-    await storage.createFile({
-      name: finalName,
-      parentId: targetParentId,
-      language,
-      version: versionId,
-      content,
-      isUserModified: true,
-    });
-    workspaceCount++;
-    imported.push(finalName);
+    const result = await storeIncoming(source, importSafeName(planned.name), parentId);
+    if (result.ok) imported.push(result.name);
+    else skipped.push(result.reason);
   }
 
   if (imported.length > 0) {
     if (targetParentId) explorerState.expandedFolders.add(targetParentId);
-    renderFileTree(tabManager);
+    for (const id of folderIds.values()) if (id) explorerState.expandedFolders.add(id);
+    await renderFileTree(tabManager);
     runtime.notifyWorkspaceChanged();
     setStatus(`Imported ${imported.length} file${imported.length === 1 ? '' : 's'}`);
   }
 
   if (skipped.length > 0) {
-    const lines = ['Some files were not imported:', ...skipped.map(s => '  • ' + s)];
+    const lines = ['Some files were not imported:', ...skipped.map(reason => '  • ' + reason)];
     if (imported.length > 0) lines.unshift(`Imported ${imported.length} file(s).`, '');
     setOutput(lines.join('\n'));
+  } else if (imported.length === 0) {
+    setStatus('Nothing to import');
   }
+}
+
+/**
+ * Unpack a ZIP into the workspace.
+ *
+ * Into a folder named after the archive, not into the drop target: extracting a
+ * hundred files straight into a student's project leaves nothing to undo, and a single
+ * folder can be deleted in one action. It also means a project exported by the
+ * Download button can be brought back - before this, re-dropping that ZIP stored it as
+ * an opaque asset whose viewer said "this file type has no preview", with the whole
+ * project inside a file the IDE could not open.
+ */
+export async function importArchive(file: File, targetParentId: string | null): Promise<void> {
+  if (policyState.lockStructure) return;
+
+  setStatus(`Reading ${file.name}…`);
+
+  let archive: JSZip;
+  try {
+    archive = await JSZip.loadAsync(await file.arrayBuffer());
+  } catch (error) {
+    setStatus('Could not read the archive');
+    setOutput(`${file.name} could not be opened as a ZIP: ${error}`);
+    return;
+  }
+
+  const incoming: IncomingFile[] = [];
+  archive.forEach((path, entry) => {
+    if (entry.dir) return;
+    incoming.push({
+      path,
+      // `_data.uncompressedSize` is jszip's own metadata; absent for an entry it has
+      // not indexed, in which case the cap is applied after reading instead.
+      size: (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0,
+      bytes: async () => new Uint8Array(await entry.async('arraybuffer')),
+      text: () => entry.async('string'),
+    });
+  });
+
+  if (incoming.length === 0) {
+    setStatus('The archive is empty');
+    return;
+  }
+
+  const siblings = await storage.getChildFolders(targetParentId);
+  const folderName = uniqueFolderName(
+    archiveFolderName(importSafeName(file.name)),
+    siblings.map(folder => folder.name),
+  );
+  const folder = await storage.createFolder({ name: folderName, parentId: targetParentId });
+
+  await importIncomingFiles(incoming, folder.id);
+}
+
+// Import files dragged from the desktop into a target folder (or root).
+// Only supported-language files are accepted; everything else is reported
+// and skipped. Enforces the same limits Step-Up uses (<=8 MB/file, <=300 files).
+export async function importExternalFiles(fileList: FileList, targetParentId: string | null) {
+  if (policyState.lockStructure) return;
+
+  const files = Array.from(fileList);
+  if (files.length === 0) return;
+
+  // A lone ZIP is unpacked rather than stored. Dropping several files that happen to
+  // include an archive keeps the old behaviour for the rest.
+  if (files.length === 1 && /\.zip$/i.test(files[0].name)) {
+    await importArchive(files[0], targetParentId);
+    return;
+  }
+
+  await importIncomingFiles(files.map(file => incomingFromFile(file)), targetParentId);
+}
+
+/**
+ * Walk a directory dropped from the desktop.
+ *
+ * `webkitGetAsEntry` is the only way to see inside a dropped folder: `dataTransfer
+ * .files` contains one extension-less entry for the directory itself, which is why
+ * dragging a folder used to report "project - unsupported file type" and import
+ * nothing at all.
+ *
+ * The entries must be taken from the DataTransfer synchronously - the item list is
+ * neutered as soon as the event handler yields - so this is called with entries that
+ * the caller has already collected.
+ */
+async function collectDirectory(
+  directory: FileSystemDirectoryEntry,
+  prefix: string,
+  into: IncomingFile[],
+): Promise<void> {
+  const reader = directory.createReader();
+
+  for (;;) {
+    // readEntries returns at most 100 at a time and signals the end with an empty
+    // batch, so a folder of 250 files needs three calls. Reading once is a bug that
+    // only shows up on big folders.
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+      reader.readEntries(resolve, reject);
+    });
+    if (batch.length === 0) return;
+
+    for (const entry of batch) {
+      const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isFile) {
+        const file = await new Promise<File>((resolve, reject) => {
+          (entry as FileSystemFileEntry).file(resolve, reject);
+        });
+        into.push(incomingFromFile(file, path));
+      } else if (entry.isDirectory) {
+        await collectDirectory(entry as FileSystemDirectoryEntry, path, into);
+      }
+    }
+  }
+}
+
+/**
+ * Import an OS drop that may contain folders.
+ *
+ * Falls back to the flat path when the browser does not offer entries, so nothing is
+ * lost on a browser without the API.
+ */
+export async function importDroppedItems(
+  transfer: DataTransfer,
+  targetParentId: string | null,
+): Promise<void> {
+  if (policyState.lockStructure) return;
+
+  // Collected synchronously, before the first await: DataTransferItemList does not
+  // survive the handler yielding.
+  const entries: FileSystemEntry[] = [];
+  for (const item of Array.from(transfer.items)) {
+    if (item.kind !== 'file') continue;
+    const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
+    if (entry) entries.push(entry);
+  }
+
+  if (entries.length === 0) {
+    await importExternalFiles(transfer.files, targetParentId);
+    return;
+  }
+
+  if (entries.length === 1 && entries[0].isFile && /\.zip$/i.test(entries[0].name)) {
+    const file = await new Promise<File>((resolve, reject) => {
+      (entries[0] as FileSystemFileEntry).file(resolve, reject);
+    });
+    await importArchive(file, targetParentId);
+    return;
+  }
+
+  const incoming: IncomingFile[] = [];
+  try {
+    for (const entry of entries) {
+      if (entry.isFile) {
+        const file = await new Promise<File>((resolve, reject) => {
+          (entry as FileSystemFileEntry).file(resolve, reject);
+        });
+        incoming.push(incomingFromFile(file, entry.name));
+      } else if (entry.isDirectory) {
+        await collectDirectory(entry as FileSystemDirectoryEntry, entry.name, incoming);
+      }
+    }
+  } catch (error) {
+    setOutput(`Could not read the dropped folder: ${error}`);
+  }
+
+  await importIncomingFiles(incoming, targetParentId);
+}
+
+/**
+ * Import from a file picker, so importing does not require knowing to drag.
+ *
+ * There was no picker at all: no `<input type="file">` anywhere in the app, and no
+ * Import command in the palette, the sidebar or any context menu.
+ */
+export async function importFromPicker(
+  options: { directory: boolean },
+  targetParentId: string | null,
+): Promise<void> {
+  if (policyState.lockStructure) return;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  if (options.directory) input.webkitdirectory = true;
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  const chosen = await new Promise<FileList | null>(resolve => {
+    // `cancel` is not universally supported, so the promise is also resolved by
+    // change; whichever fires first wins and the other is a no-op.
+    input.addEventListener('change', () => resolve(input.files), { once: true });
+    input.addEventListener('cancel', () => resolve(null), { once: true });
+    input.click();
+  });
+
+  input.remove();
+  if (!chosen || chosen.length === 0) return;
+
+  const files = Array.from(chosen);
+  if (!options.directory && files.length === 1 && /\.zip$/i.test(files[0].name)) {
+    await importArchive(files[0], targetParentId);
+    return;
+  }
+
+  await importIncomingFiles(files.map(file => incomingFromFile(file)), targetParentId);
 }
 
 // Clear every drop-target visual state (folders + root zone)

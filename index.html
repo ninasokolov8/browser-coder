@@ -1548,6 +1548,8 @@
       body.structure-locked #btn-new-file,
       body.structure-locked #btn-new-folder,
       body.structure-locked #empty-state-new-file,
+      body.structure-locked .context-menu-item[data-action="import-files"],
+      body.structure-locked .context-menu-item[data-action="import-folder"],
       body.structure-locked .context-menu-item[data-action="new-file"],
       body.structure-locked .context-menu-item[data-action="new-folder"],
       body.structure-locked .context-menu-item[data-action="rename"],
@@ -1906,6 +1908,10 @@
       <div id="context-menu" class="context-menu hidden">
         <div class="context-menu-item" data-action="new-file">📄 <span data-i18n="context.newFile">New File</span></div>
         <div class="context-menu-item" data-action="new-folder">📁 <span data-i18n="context.newFolder">New Folder</span></div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="import-files">⬆️ <span data-i18n="context.importFiles">Import files…</span></div>
+        <div class="context-menu-item" data-action="import-folder">📥 <span data-i18n="context.importFolder">Import folder…</span></div>
+        <div class="context-menu-item" data-action="download">⬇️ <span data-i18n="context.download">Download</span></div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="rename">✏️ <span data-i18n="context.rename">Rename</span></div>
         <div class="context-menu-item danger" data-action="delete">🗑️ <span data-i18n="context.delete">Delete</span></div>

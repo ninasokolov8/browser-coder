@@ -5,6 +5,7 @@ import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import { getAllLanguages } from "../languages";
+import { ASSET_LANGUAGE_ID } from "../workspace/assets.ts";
 import type { LoadedLanguage, VersionConfig } from "../languages";
 import { langSel, versionSel } from "./dom";
 
@@ -215,6 +216,13 @@ monaco.languages.html.htmlDefaults.setOptions({
 export function populateLanguageDropdown() {
   langSel.innerHTML = "";
   for (const lang of getAllLanguages()) {
+    // "Asset" is a registered language so imported images have somewhere to live,
+    // but a binary asset is imported, never created from a starter. Choosing it in
+    // this dropdown created an empty `main.png` and then threw out of
+    // `getOrCreateModel` - the registry refuses a model for an asset - leaving a file
+    // in storage that could not be opened.
+    if (lang.id === ASSET_LANGUAGE_ID) continue;
+
     const opt = document.createElement("option");
     opt.value = lang.id;
     opt.textContent = lang.name;

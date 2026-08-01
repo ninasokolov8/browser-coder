@@ -7010,3 +7010,186 @@ name would be written as garbage. The shape is therefore *checked* before decodi
 - html, css, json, markdown and svg have no curated help; Monaco's own language
   services now provide hovers for them (H3), so this is a decision rather than an
   oversight - also asserted.
+
+---
+
+## 41. Auditing the features that were assumed to work
+
+Everything in section 40 was a gap someone had named. This section is the opposite:
+four features the IDE already advertised - drag and drop, import/export, light mode,
+and running a selection - read end to end against the running code, to find out whether
+they do what they claim.
+
+None of them was dead. All four were partly wrong, and the wrong parts were invisible:
+every one of them reported success.
+
+### 41.1 The two that could not be recovered from
+
+**An image as the active tab killed the IDE.** `TabManager.init` restores the last
+active document with no asset filter, and `initializeWorkspace` called
+`getOrCreateModel` on it. The model registry refuses a model for a binary asset - that
+refusal is deliberate, from section 39 - so `initializeWorkspace` rejected, and with it
+the whole of `bootstrap`: no execution module, no run panel, no problems panel, no
+command palette, no layout. The student got a dead editor reading "Initialization
+failed" and no way back except clearing site data. Clicking an image and reloading is
+not an edge case.
+
+**Downloading an asset saved a different file's bytes.** The handler passed
+`editor.getValue()`, and for an asset the editor does not hold that file at all -
+`onTabSwitch` returns before `setModel`. So `logo.png` was whichever source file was
+open last, base64-decoded into 14 bytes of noise; or 0 bytes when the asset was the
+only tab. The fix is to read the document buffer, which is where the content lives.
+
+### 41.2 The export handed over the answers
+
+`X_HIDDEN_` entries are hidden from the tree and the tab strip - that is how a teacher
+ships a solution or a marking harness alongside a task. The project ZIP applied no
+visibility filter, so the one student-facing surface that writes to disk was the one
+that leaked them.
+
+### 41.3 Drag and drop, five ways
+
+- Selecting a folder **and something inside it** - one Shift-click, since the range
+  runs down the visible rows - moved both, so the inner file was torn out of the folder
+  the student dragged. Status: "Moved 2 items". `createFolderFromSelection` and
+  `deleteSelectedItems` already reduce to top-level items; this did not.
+- Dropping a folder into its own descendant is correctly refused by the service and
+  reported **nothing at all** - and the impossible target was highlighted as valid
+  first. The highlight now excludes it and the refusal is spoken.
+- Dropping something back where it already is reported a successful move. So did an
+  attempted reorder, which cannot work: the tree is sorted by name and there are no
+  drop positions. Both now say what actually happened.
+- A locked workspace painted drop targets for writes it would silently discard.
+- The import rewrite ran between the committed move and the re-render, so a throw there
+  left the file moved in IndexedDB and the tree showing the old location.
+
+### 41.4 Light mode was unmaintained, not broken
+
+The switch works. What was broken is every component drawn after the original layout.
+`index.html` has exactly one `.dark-theme` selector and no dark-scoped component
+overrides, so a literal chosen against `#1e1e1e` applies in **both** themes.
+
+Measured against the light backgrounds they actually sit on:
+
+| What | Contrast |
+| --- | --- |
+| The success line of every run | 1.6:1 |
+| Debugger variable names | 1.3:1 |
+| The paused-line arrow | 1.5:1 |
+| Activity-bar icons (Explorer, Search, Run) | 1.4:1 |
+| Every `rgba(255,255,255,alpha)` overlay | ~1.01:1 |
+
+The last row is the interesting one: it means the command palette's selection
+highlight, every hover, every subtle border and the breadcrumb separators were not
+faint - they were *absent*. Pressing Enter in the palette ran a command the student
+could not see was selected.
+
+Both variable blocks now carry semantic pairs and 43 component literals reference them.
+Two variables that were *used and never declared anywhere* (`--bg-input`,
+`--font-mono`) are declared, so the Run-panel argument fields have a background and a
+monospace font for the first time - an undefined custom property is invalid at
+computed-value time, which fails silently.
+
+Also: `color-scheme` in both blocks; the theme decided before the first paint by an
+inline script (stored choice, else `prefers-color-scheme`) instead of flashing dark on
+every load; the Markdown preview following the IDE rather than the OS; and the dead
+second theme-persistence path deleted - `storage.getWorkspaceState` /
+`saveWorkspaceState` had no callers, so `WorkspaceState.theme` was permanently
+`vs-dark` and anyone "fixing" theming there would have seen no effect at all.
+
+The guard is nine unit tests that read the real stylesheet: the two blocks must define
+the same names, every `var()` with no fallback must resolve in both, no new white-alpha
+overlay may appear outside the two always-dark surfaces, and none of the eight
+dark-only palette literals may reappear in a component rule.
+
+### 41.5 Run Selected ran the wrong lines, and skipped the one enforcement point
+
+The gesture the feature advertises is the one that misfired. Triple-clicking a line, or
+clicking it in the gutter, gives Monaco's line select: a selection ending at **column 1
+of the next line**. The handler expanded that end line to its full width, so
+triple-clicking `print("a")` printed `a` and `b`.
+
+Worse, it was the only path to `runCode` that did not go through the command registry.
+A task opened with `allowRun: false` refused the Run button and Ctrl+Enter - and then
+executed whatever the student right-clicked, reporting stdout back to the host from a
+panel that `display: none` had hidden. `stepup.ts` routes the host's own run through
+the registry with a comment calling it "one enforcement point"; this was the hole.
+
+Two more: an indented block was sent verbatim, so selecting a function body gave
+CPython an `IndentationError` for code that is correct where it sits; and the
+TypeScript pre-run gate checked markers for the **whole file**, refusing to run line 1
+because line 40 was mid-edit - which defeats the main reason to run a fragment.
+
+`selection-run.ts` holds all four decisions, pure and tested. The item is no longer
+offered where Run ignores the argument (html/css/markdown render the whole document,
+json validates the fragment as a document, svg shows an image) or where a fragment
+cannot compile (Java needs a class declaring `main`). It has a keybinding, so it is
+reachable where the context menu is switched off. And both context-menu labels are
+re-registered on `languageChanged` - nothing had ever listened to that event, so a
+student who switched to Hebrew kept an English right-click menu for the session.
+
+### 41.6 Import: the export could never be re-imported
+
+The largest gap the audit found was not a defect but an absence. `JSZip.loadAsync`
+appeared nowhere in the repo, and `zip` is a listed asset type - so dragging back the
+project ZIP the Download button had just produced stored it as an opaque base64 asset
+whose viewer says "this file type has no preview". The student's whole project, inside
+a file the IDE cannot open.
+
+Alongside it: no directory-enumeration API was called anywhere, so dragging a folder
+imported nothing at all (`dataTransfer.files` holds one extension-less entry for the
+directory, which resolves to no language: "project - unsupported file type"). And there
+was no `<input type="file">` in the app, no Import command, and no menu item - so
+importing required knowing to drag, and on a tablet it was impossible.
+
+What exists now:
+
+- **One importer for every source.** A dragged file, a walked directory, a picked
+  folder and a ZIP entry all reduce to `{path, size, bytes(), text()}`, so the
+  classification, validation and limits cannot differ between them.
+- **The plan is computed before anything is written** (`import-plan.ts`, pure): illegal
+  paths refused rather than repaired, `__MACOSX` / `.DS_Store` / `.git` /
+  `node_modules` dropped, duplicates reported, the folder chain resolved
+  outermost-first, caps applied with the existing file count included.
+- **A ZIP unpacks into a folder named after itself**, so a mistaken import is one
+  delete rather than a hundred files scattered through a project.
+- **Directories are walked with `webkitGetAsEntry`**, with the entries taken from the
+  `DataTransfer` *synchronously* - the item list does not survive the handler yielding -
+  and `readEntries` called in a loop, because it returns at most 100 at a time and a
+  single call silently truncates a large folder.
+- **A file picker and a folder picker**, on the explorer context menu and in the
+  command palette.
+- **Downloading one file, or one folder as a ZIP**, from the explorer. Before this the
+  only export was the toolbar arrow acting on the active *tab*.
+- **`.txt`, `.csv`, `.log`, `.tsv`, `.dat`, `.ini`, `.cfg`, `.conf` and `.properties`
+  are importable.** The run layer has documented `open("data.txt")` as a shipped
+  capability since H4, and the student could not get the file in. A `text` language now
+  exists, is sent to the sandbox as a companion file, and reports "this is a data file"
+  rather than being handed to a compiler.
+- **"Asset" is no longer in the language dropdown.** Choosing it created an empty
+  `main.png` and then threw, leaving a file in storage that could not be opened.
+
+### 41.7 Verification
+
+712 unit tests (65 new), all three browser suites, clean typecheck and build. The
+browser suite drives a real selection run and asserts that the selected line prints and
+the line after it does not - confirmed to fail against the bug before being confirmed
+to pass.
+
+### 41.8 Not done, recorded
+
+- **Reordering inside a folder.** The tree is sorted by name on every render, throwing
+  away the `order` field the storage layer faithfully maintains. A same-parent drop now
+  says "Already in that folder" instead of claiming a move, but there are still no drop
+  positions and no drop indicator.
+- **Copy-on-drag** (Ctrl-drag to duplicate) and **dragging items out** of the explorer
+  onto the desktop or the editor.
+- **Undo for a completed move.** The only reversal is to drag it back.
+- No test exercises the DOM drag handlers themselves: the `DataTransfer` round-trip,
+  the dragover fallback and the external-file path are covered by reading, not running.
+- `.xml`, `.yml`, `.sql`, `.jsx`, `.tsx` and `.c` / `.cpp` are still not importable;
+  each wants its own language entry for colouring rather than being folded into `text`.
+- Assets still ride the run payload as base64 rather than a multipart upload.
+- The audit itself was nine parallel agents; three returned before the session limit cut
+  the rest off. The performance audit for thousands of concurrent users and the
+  teaching-platform gap research are still outstanding.

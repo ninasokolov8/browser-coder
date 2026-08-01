@@ -31,6 +31,8 @@ import { runCode } from './execution';
 const DEBUGGABLE_LANGUAGES = new Set(['python']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
+import { downloadSelectedItem, importFromPicker } from './explorer/operations';
+import { explorerState } from './explorer/state';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -145,6 +147,32 @@ commands.register({
     // and the silent no-op this command used to be.
     setStatus(describeFormatResult(fileName, takeLastFormatResult(model)));
   },
+});
+
+// Import and export, in the palette.
+//
+// Importing used to require knowing to drag a file from the desktop: there was no
+// <input type="file"> in the app, no Import command, and no menu item - so on a tablet,
+// or for anyone who did not think to try dragging, getting a file in was impossible.
+commands.register({
+  id: 'workspace.importFiles',
+  title: 'Import files from your computer',
+  capability: 'structure',
+  run: () => importFromPicker({ directory: false }, null),
+});
+
+commands.register({
+  id: 'workspace.importFolder',
+  title: 'Import a folder from your computer',
+  capability: 'structure',
+  run: () => importFromPicker({ directory: true }, null),
+});
+
+commands.register({
+  id: 'workspace.downloadItem',
+  title: 'Download the selected file or folder',
+  when: () => explorerState.selectedIds.size === 1,
+  run: () => downloadSelectedItem(),
 });
 
 bindButton(commands, runBtn, 'workspace.run');

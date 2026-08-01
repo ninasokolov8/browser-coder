@@ -86,6 +86,20 @@ export async function runCode(
     return;
   }
 
+  // A plain-text data file is not a program either. Same reasoning as JSON below:
+  // saying so beats forwarding it to a sandbox that answers with a syntax error from
+  // a language the student never chose. There is nothing to validate, so it only
+  // explains how the file is meant to be used.
+  if (lang.id === 'text') {
+    setStatus('Data file');
+    setOutputHtml(
+      `<span class="info">${esc(activeTab.file.name)} is a data file, so there is nothing to run.</span>\n` +
+      `<span class="info">Read it from a program - in Python, ` +
+      `open("${esc(activeTab.file.name)}").read().</span>`,
+    );
+    return;
+  }
+
   // JSON is data. Running it is meaningless, and the honest answer is to say so and
   // report whether it parses - not to hand it to a runtime that will reject it with
   // something less useful, and not to do nothing at all.
@@ -194,7 +208,7 @@ const workspaceFiles = await collectWorkspaceSnapshot();
  * bounds the total, so a workspace full of large images is refused by the same
  * limit that bounds source - with a clear message rather than a silent drop.
  */
-const COMPANION_LANGUAGES = new Set([ASSET_LANGUAGE_ID, 'svg', 'json', 'markdown', 'css', 'html']);
+const COMPANION_LANGUAGES = new Set([ASSET_LANGUAGE_ID, 'svg', 'json', 'markdown', 'css', 'html', 'text']);
 
 const languageFiles = workspaceFiles.filter(file =>
   !file.language || file.language === lang.id || COMPANION_LANGUAGES.has(file.language)
