@@ -21,8 +21,40 @@
         --text-secondary: #6e6e6e;
         --text-muted: #999999;
         --accent: #007acc;
-        --icon-color: #424242;
-        --icon-active: #007acc;
+        --icon-color: #858585;
+        --icon-active: #ffffff;
+
+        /* Semantic colours. Everything below used to be a hardcoded VS-Code-dark
+           literal in a component rule, so light mode inherited values chosen for a
+           #1e1e1e background: the Output panel's success line was 1.6:1 on #f3f3f3,
+           the debugger's paused-line arrow 1.5:1, and every white-alpha overlay
+           1.01:1 - invisible. These pairs are chosen to clear 4.5:1 for text and
+           3:1 for glyphs on BOTH themes' backgrounds. */
+        --fg-error: #b5250e;
+        --fg-success: #1a7f37;
+        --fg-info: #0a5aa8;
+        --fg-warning: #8a5300;
+        --fg-symbol: #0b6fa4;
+        --fg-dirty: #9a5b00;
+        --fg-annotation: #24713a;
+        --fg-danger: #b3261e;
+        --fg-exception: #c42b1c;
+        --glyph-current: #b58900;
+        --bg-current-line: rgba(181, 137, 0, 0.20);
+        --bg-hover: rgba(0, 0, 0, 0.06);
+        --bg-hover-strong: rgba(0, 0, 0, 0.09);
+        --bg-selected: rgba(0, 122, 204, 0.16);
+        --bg-danger-soft: rgba(220, 53, 69, 0.14);
+        --border-subtle: rgba(0, 0, 0, 0.14);
+        --border-faint: rgba(0, 0, 0, 0.08);
+        --focus-ring: #0a5aa8;
+        --bg-input: #ffffff;
+        --bg-checker: #f0f0f0;
+        --bg-checker-alt: #dcdcdc;
+        --shadow-strong: rgba(0, 0, 0, 0.18);
+        --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+        /* Native scrollbars and form controls follow the theme rather than the OS. */
+        color-scheme: light;
       }
 
       .dark-theme {
@@ -43,6 +75,31 @@
         --accent: #007acc;
         --icon-color: #858585;
         --icon-active: #ffffff;
+
+        --fg-error: #f48771;
+        --fg-success: #89d185;
+        --fg-info: #75beff;
+        --fg-warning: #ce9178;
+        --fg-symbol: #9cdcfe;
+        --fg-dirty: #e8ab6a;
+        --fg-annotation: #6a9955;
+        --fg-danger: #ff6b6b;
+        --fg-exception: #f14c4c;
+        --glyph-current: #ffcc00;
+        --bg-current-line: rgba(255, 204, 0, 0.14);
+        --bg-hover: rgba(255, 255, 255, 0.06);
+        --bg-hover-strong: rgba(255, 255, 255, 0.10);
+        --bg-selected: rgba(255, 255, 255, 0.12);
+        --bg-danger-soft: rgba(220, 53, 69, 0.20);
+        --border-subtle: rgba(255, 255, 255, 0.12);
+        --border-faint: rgba(255, 255, 255, 0.07);
+        --focus-ring: #75beff;
+        --bg-input: #3c3c3c;
+        --bg-checker: #2a2a2a;
+        --bg-checker-alt: #333333;
+        --shadow-strong: rgba(0, 0, 0, 0.45);
+        --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+        color-scheme: dark;
       }
 
       * { box-sizing: border-box; }
@@ -216,7 +273,7 @@
         border-radius: 3px; font-size: 14px;
       }
       .sidebar-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
-      .sidebar-btn.danger:hover { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; }
+      .sidebar-btn.danger:hover { background: var(--bg-danger-soft); color: var(--fg-danger); }
       .sidebar-content { flex: 1; overflow: auto; padding: 4px 0; }
       .sidebar-panel { display: none; flex-direction: column; height: 100%; }
       .sidebar-panel.active { display: flex; }
@@ -437,7 +494,7 @@
       }
       .run-item-type {
         font-size: 10px;
-        color: #6a9955;
+        color: var(--fg-annotation);
         margin-left: auto;
         margin-right: 8px;
         font-style: italic;
@@ -635,7 +692,7 @@
       }
       .tab-icon { font-size: 14px; flex-shrink: 0; }
       .tab-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-      .tab-dirty { color: #e8ab6a; font-size: 16px; line-height: 1; margin-left: -2px; }
+      .tab-dirty { color: var(--fg-dirty); font-size: 16px; line-height: 1; margin-left: -2px; }
       .tab-close {
         width: 18px; height: 18px;
         display: flex; align-items: center; justify-content: center;
@@ -646,7 +703,7 @@
         flex-shrink: 0;
       }
       .tab:hover .tab-close { opacity: 1; }
-      .tab-close:hover { background: rgba(255,80,80,0.2); color: #f44; }
+      .tab-close:hover { background: var(--bg-danger-soft); color: var(--fg-danger); }
 
       .tab-add {
         width: 32px; height: 35px;
@@ -823,7 +880,7 @@
       .palette-box {
         width: min(620px, 92vw);
         background: var(--bg-panel, #252526);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--border-subtle);
         border-radius: 6px;
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
         overflow: hidden;
@@ -834,9 +891,9 @@
         padding: 10px 12px;
         font-size: 14px;
         color: var(--text-primary, #ddd);
-        background: var(--bg-input, #3c3c3c);
+        background: var(--bg-input);
         border: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 1px solid var(--border-subtle);
         outline: none;
       }
       .palette-list { max-height: 46vh; overflow-y: auto; }
@@ -848,7 +905,7 @@
         font-size: 13px;
         cursor: pointer;
       }
-      .palette-row.selected { background: rgba(255, 255, 255, 0.10); }
+      .palette-row.selected { background: var(--bg-selected); }
       .palette-row.disabled { opacity: 0.45; cursor: default; }
       .palette-note { color: var(--text-secondary); font-size: 11px; }
       .palette-empty { padding: 12px; color: var(--text-secondary); font-size: 13px; }
@@ -872,7 +929,7 @@
         flex: 0 0 auto;
         padding: 3px 8px;
         background: var(--bg-panel, #252526);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        border-bottom: 1px solid var(--border-faint);
       }
       #debug-toolbar[hidden] { display: none; }
       .debug-btn {
@@ -885,7 +942,7 @@
         font-size: 13px;
         cursor: pointer;
       }
-      .debug-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.10); }
+      .debug-btn:hover:not(:disabled) { background: var(--bg-hover-strong); }
       .debug-btn:disabled { opacity: 0.35; cursor: default; }
 
       #debug-panels {
@@ -916,8 +973,8 @@
         /* A variable name and a repr are both code: LTR even in the Hebrew UI. */
         direction: ltr;
       }
-      .debug-var-row:hover { background: rgba(255, 255, 255, 0.05); }
-      .debug-var-name { color: #9cdcfe; flex: 0 0 auto; }
+      .debug-var-row:hover { background: var(--bg-hover); }
+      .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
       .debug-var-value {
         color: var(--text-primary, #ddd);
         flex: 1 1 auto;
@@ -929,19 +986,19 @@
       .debug-exception {
         margin: 4px 10px;
         padding: 6px 8px;
-        border-left: 3px solid #f14c4c;
+        border-left: 3px solid var(--fg-exception);
         background: rgba(241, 76, 76, 0.10);
-        color: #f48771;
+        color: var(--fg-error);
         direction: ltr;
       }
       .debug-eval-result {
         margin: 4px 10px;
         padding: 4px 6px;
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--bg-hover);
         border-radius: 3px;
         direction: ltr;
       }
-      .debug-eval-result.error { color: #f48771; }
+      .debug-eval-result.error { color: var(--fg-error); }
       .debug-frame-row {
         display: block;
         width: 100%;
@@ -954,7 +1011,7 @@
         cursor: pointer;
         direction: ltr;
       }
-      .debug-frame-row:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary, #ddd); }
+      .debug-frame-row:hover { background: var(--bg-hover); color: var(--text-primary); }
       .debug-frame-row.innermost { color: var(--text-primary, #ddd); }
 
       /* These need glyphMargin: true on the editor, or they are never drawn and the
@@ -969,17 +1026,17 @@
       }
       .debug-current-glyph::before {
         content: '\25B6';
-        color: #ffcc00;
+        color: var(--glyph-current);
         font-size: 11px;
         margin-left: 3px;
       }
       .debug-exception-glyph::before {
         content: '\26A0';
-        color: #f14c4c;
+        color: var(--fg-exception);
         font-size: 11px;
         margin-left: 3px;
       }
-      .debug-current-line { background: rgba(255, 204, 0, 0.14); }
+      .debug-current-line { background: var(--bg-current-line); }
 
       /* ── Asset viewer ─────────────────────────────────────────────────── */
       /* Takes the editor's place for a binary file. The editor is hidden rather
@@ -1010,13 +1067,13 @@
         border-radius: 6px;
         /* A chequerboard, so a transparent PNG reads as transparent rather than as
            whatever the panel background happens to be. */
-        background-color: #2a2a2a;
+        background-color: var(--bg-checker);
         background-image:
-          linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%),
-          linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%);
+          linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%),
+          linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%);
         background-size: 16px 16px;
         background-position: 0 0, 8px 8px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+        box-shadow: 0 6px 24px var(--shadow-strong);
       }
       .asset-unavailable {
         max-width: 460px;
@@ -1056,7 +1113,7 @@
         overflow-x: auto;
         white-space: nowrap;
         background: var(--bg-panel, #252526);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        border-bottom: 1px solid var(--border-faint);
         /* A file path is a path, not prose: it stays LTR even in the Hebrew UI. */
         direction: ltr;
         scrollbar-width: none;
@@ -1072,11 +1129,11 @@
         color: var(--text-secondary, #999);
       }
       button.breadcrumb-segment { cursor: pointer; }
-      button.breadcrumb-segment:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary, #ddd); }
-      button.breadcrumb-segment:focus-visible { outline: 1px solid #75beff; outline-offset: -1px; }
+      button.breadcrumb-segment:hover { background: var(--bg-hover); color: var(--text-primary); }
+      button.breadcrumb-segment:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
       .breadcrumb-file { color: var(--text-primary, #ddd); }
-      .breadcrumb-symbol { color: #9cdcfe; }
-      .breadcrumb-separator { color: rgba(255, 255, 255, 0.25); }
+      .breadcrumb-symbol { color: var(--fg-symbol); }
+      .breadcrumb-separator { color: var(--text-muted); }
       #problems-content {
         flex: 1;
         overflow-y: auto;
@@ -1103,12 +1160,12 @@
         padding: 3px 14px 3px 28px;
         cursor: pointer;
       }
-      .problem-row:hover { background: rgba(255,255,255,0.06); }
-      .problem-row:focus-visible { outline: 1px solid #75beff; outline-offset: -1px; }
+      .problem-row:hover { background: var(--bg-hover); }
+      .problem-row:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
       .problem-icon { flex: 0 0 auto; }
-      .problem-row.severity-error .problem-icon { color: #f48771; }
-      .problem-row.severity-warning .problem-icon { color: #ce9178; }
-      .problem-row.severity-info .problem-icon { color: #75beff; }
+      .problem-row.severity-error .problem-icon { color: var(--fg-error); }
+      .problem-row.severity-warning .problem-icon { color: var(--fg-warning); }
+      .problem-row.severity-info .problem-icon { color: var(--fg-info); }
       .problem-message { flex: 1 1 auto; }
       .problem-location {
         flex: 0 0 auto;
@@ -1116,10 +1173,10 @@
         font-variant-numeric: tabular-nums;
       }
       .problem-source { flex: 0 0 auto; color: var(--text-secondary); opacity: 0.75; }
-      #panel-content .error { color: #f48771; }
-      #panel-content .success { color: #89d185; }
-      #panel-content .info { color: #75beff; }
-      #panel-content .warning { color: #ce9178; }
+      #panel-content .error { color: var(--fg-error); }
+      #panel-content .success { color: var(--fg-success); }
+      #panel-content .info { color: var(--fg-info); }
+      #panel-content .warning { color: var(--fg-warning); }
 
 /* Interactive stdin console (programs that call input()/Scanner/etc.) */
 #panel-content .term-input-line {
@@ -1130,7 +1187,7 @@
 }
 
 #panel-content .term-caret {
-  color: #89d185;
+  color: var(--fg-success);
   flex: 0 0 auto;
   user-select: none;
 }
@@ -1146,7 +1203,7 @@
   font-size: inherit;
   line-height: inherit;
   padding: 0;
-  caret-color: #89d185;
+  caret-color: var(--fg-success);
 }
       .term-eof {
         margin-inline-start: 8px;
@@ -1155,12 +1212,12 @@
         font-family: inherit;
         color: var(--text-secondary);
         background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.22);
+        border: 1px solid var(--border-subtle);
         border-radius: 3px;
         cursor: pointer;
         flex: 0 0 auto;
       }
-      .term-eof:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.45); }
+      .term-eof:hover { color: var(--text-primary); border-color: var(--focus-ring); }
 
 /* ===== GRAPHICS POPUP WINDOWS ===== */
 /* Graphics output, including Turtle drawings and SVG images, lives in its
@@ -1675,7 +1732,38 @@
       }
     </style>
   </head>
-  <body class="dark-theme">
+  <body>
+    <!--
+      Theme, before the first paint.
+
+      The body used to ship with class="dark-theme" and the saved theme was applied in
+      initializeLayout() - after the editor was created and four dynamic imports had
+      resolved, every one of which lets the browser paint. A student who chose Light
+      got a full-window dark flash on every single load.
+
+      Inline and synchronous on purpose: an external module would be fetched, and the
+      flash is exactly the gap between parse and fetch. Kept to the one decision it
+      needs to make, with the same key and shape settings.ts uses.
+    -->
+    <script>
+      (function () {
+        var theme = null;
+        try {
+          var saved = localStorage.getItem('browser-coder-settings');
+          if (saved) theme = JSON.parse(saved).theme || null;
+        } catch (error) {
+          /* private mode, or a corrupt value - fall through to the OS preference */
+        }
+        if (!theme) {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'vs'
+            : 'vs-dark';
+        }
+        // Read back by editor-core so Monaco is constructed in the right theme too.
+        window.__bcInitialTheme = theme;
+        if (theme === 'vs-dark') document.body.classList.add('dark-theme');
+      })();
+    </script>
     <div id="app">
       <!-- Activity Bar -->
       <div id="activitybar">

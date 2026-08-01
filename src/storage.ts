@@ -247,16 +247,13 @@ class StorageFacade {
 
   // ===== workspace state =====
 
-  async getWorkspaceState(): Promise<WorkspaceState> {
-    const { activeFileId, theme } = require().state;
-    return { activeFileId, theme };
-  }
-
-  async saveWorkspaceState(state: WorkspaceState): Promise<void> {
-    const workspace = require();
-    await workspace.setActiveDocument(state.activeFileId);
-    await workspace.setTheme(state.theme);
-  }
+  // There used to be getWorkspaceState/saveWorkspaceState here, and nothing in the
+  // app ever called either one - so the WorkspaceState.theme field they wrote was
+  // permanently 'vs-dark' while the real theme lived in localStorage. Anyone
+  // fixing a theming bug by writing to the workspace would have seen no effect at
+  // all. The theme is per-browser, not per-project (a project must not carry a
+  // theme into someone else's IDE), so localStorage is the right home and this
+  // path is deleted rather than wired up. See src/components/settings.ts.
 
   async clearAll(): Promise<void> {
     await require().clearAll();

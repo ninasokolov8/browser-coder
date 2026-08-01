@@ -243,7 +243,13 @@ export async function openWebPreview(): Promise<void> {
       const rendered: WorkspaceFile = {
         path: renderedPath,
         language: 'html',
-        content: markdownToPage(source.content, activePath.split('/').pop() || activePath),
+        // The IDE's theme, not the machine's: a light IDE on a dark laptop used to
+        // render the notes dark beside a light editor.
+        content: markdownToPage(
+          source.content,
+          activePath.split('/').pop() || activePath,
+          document.body.classList.contains('dark-theme'),
+        ),
       };
       files.push(rendered);
       entry = rendered;

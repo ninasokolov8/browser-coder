@@ -6,6 +6,7 @@ import { appConfig, policyState } from '../app/config';
 import { tabsEl, editorEmptyState, emptyStateNewFileBtn, statusLangEl, langSel, versionSel } from '../components/dom';
 import { configureMonacoForVersion, populateVersionDropdown } from '../components/monaco-config';
 import { setOutput, setStatus } from '../components/output';
+import { loadSettings } from '../components/settings';
 import { hideAssetViewer, isAssetFile, showAssetViewer } from './asset-viewer.ts';
 
 export function updateEmptyState(show: boolean): void {
@@ -52,7 +53,10 @@ export function applyFileLanguage(fileId: string): void {
 
 export function createEditor(): monaco.editor.IStandaloneCodeEditor {
   const editor = monaco.editor.create(document.getElementById('editor')!, {
-    theme: 'vs-dark', automaticLayout: true,
+    // The saved (or OS-preferred) theme, not a literal. Constructing dark and then
+    // switching in initializeLayout - many awaits later - is what made a light-theme
+    // student watch the editor repaint on every load.
+    theme: loadSettings().theme, automaticLayout: true,
     // Minimap on in the full IDE, off when embedded. It is a navigation aid for a
     // long file, and an embedded snippet pane is neither long nor wide enough to
     // spare the columns - which is why it was off everywhere before.
