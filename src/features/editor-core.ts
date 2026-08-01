@@ -68,6 +68,20 @@ export function createEditor(): monaco.editor.IStandaloneCodeEditor {
     // click handler would never fire - the feature would be invisible rather than
     // broken, which is harder to notice.
     glyphMargin: true,
+    /*
+     * Accessibility, which had none of this.
+     *
+     * `accessibilitySupport: 'auto'` is Monaco's default and does detect a screen
+     * reader, but the editor was left with Monaco's generic aria label - so a student
+     * using one heard "Editor content" with no idea which file, and no pointer to the
+     * help. Alt+F1 opens Monaco's own accessibility help; saying so in the label is
+     * the documented way to make it discoverable, because a screen-reader user cannot
+     * see a tooltip.
+     *
+     * A school platform has students who need this, and it is two lines.
+     */
+    accessibilitySupport: 'auto',
+    ariaLabel: 'Code editor. Press Alt+F1 for accessibility options.',
     fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace",
     fontLigatures: true, tabSize: 2, insertSpaces: true, wordWrap: 'on', lineNumbers: 'on',
     renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, autoClosingBrackets: 'always',

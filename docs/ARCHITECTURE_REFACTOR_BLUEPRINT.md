@@ -7434,3 +7434,111 @@ rather than faked.
 - Breakpoints still bind to the entry file only, in both languages.
 - No conditional breakpoints, no watch expressions, no set-variable. The `evaluate`
   command exists and works in both adapters; nothing in the UI sends one yet.
+
+---
+
+## 44. What a learning-platform IDE still needs
+
+Everything up to here has been about making the IDE correct. This section is about what
+it is still missing *as a teaching tool* - reasoned from what the code actually has,
+and checked against the education research where there is any.
+
+Ordered by what would help a student most per unit of work.
+
+### 44.1 Explain the error, not just report it
+
+**The single highest-value thing left.** The IDE shows the runtime's own message: a
+Python traceback, node's stack, javac's complaint. Those messages are written for
+professionals, and the research on this is unusually clear - an enhanced-error-message
+intervention with 200 CS1 students cut total errors by 32% (109 average errors per
+student against 132 in the control), and readability studies identify the specific
+culprits: length, jargon, sentence structure and vocabulary.
+
+The IDE is already most of the way there and does not know it. `languages/*/keywords.json`
+is exactly the right shape - a curated, per-language, fully Hebrew-translated table with
+an explanation and a worked example - and section 40 built a renderer for it. An
+`errors.json` keyed by error type (`IndentationError`, `NameError`, `TypeError`,
+`NullPointerException`, `SyntaxError: unexpected token`) would reuse the renderer, the
+translation pipeline, the tests and the hover surface unchanged.
+
+Concretely: when a run fails, match the error type, and put a plain-language paragraph
+plus "the usual cause" under the traceback in the output panel - not replacing it, since
+a student has to learn to read the real thing eventually.
+
+### 44.2 Accessibility
+
+Partly addressed in this commit: the editor now declares `accessibilitySupport` and
+carries an aria label naming Alt+F1, Monaco's own accessibility help. Before that a
+screen-reader user heard "Editor content" and had no route to the help at all.
+
+Still missing, and each is small:
+
+- The Problems panel, the output panel and the run status are not live regions, so a
+  screen reader announces nothing when a run finishes or an error appears.
+- No keyboard route to the explorer tree (it is mouse-and-context-menu driven; the tree
+  rows are `div`s with no `role="tree"`, no `tabindex`, no arrow-key navigation).
+- Focus is never moved to the output after a run, so a keyboard user has to hunt for it.
+- The contrast work in section 41 fixed the *colours*; it did not add a high-contrast
+  theme, and `applyTheme` treats anything that is not exactly `vs-dark` as light, so
+  adding `hc-black` would silently apply the light variables.
+
+### 44.3 Undo that survives a mistake
+
+The workspace has no undo above the editor. Monaco undoes text; nothing undoes a
+delete, a rename, a move or an import. A student who deletes the wrong folder has lost
+it, and the drag-and-drop audit in section 41 found that a completed move can only be
+reversed by dragging it back. A single-level "Undo delete" on a soft-deleted item, kept
+for the session, would cover the case that actually hurts.
+
+### 44.4 What the teacher cannot see
+
+Step-Up gets the final code. It cannot see that a student ran the program 40 times, got
+the same `NameError` each time, and stopped - which is precisely the moment a teacher
+would want to intervene. Research platforms in this space (CodeDive is the current
+example) capture edits, executions and pauses to give exactly that signal.
+
+The IDE already produces every event this needs: run started, exit code, diagnostics
+published, session opened. Nothing collects them. A per-task event summary posted to the
+host - counts and error types, not keystrokes - would be a genuine addition, and the
+line to hold is that it must be a summary rather than a recording: a keystroke log of a
+minor is a very different thing to store than a count of failed runs, legally and
+ethically.
+
+### 44.5 Tests the student can run
+
+A teaching IDE without a "check my work" button leaves grading either manual or
+invisible. The pieces are already here: `X_HIDDEN_` files exist so a teacher can ship a
+marking harness alongside a task, the run pipeline takes an entry point, and the run
+panel can already run a chosen function with arguments. What is missing is the surface:
+a "Run tests" action that runs the hidden harness and reports pass/fail per case, rather
+than dumping its stdout.
+
+### 44.6 Smaller things, in order
+
+- **Reordering in the explorer.** The `order` field is maintained by storage and thrown
+  away by the tree's alphabetical sort (section 41.8).
+- **Multi-file breakpoints.** Both debuggers bind to the entry file only.
+- **Watch expressions and conditional breakpoints.** The `evaluate` command exists in
+  both adapters and is tested; nothing in the UI sends one.
+- **Operator help.** A beginner asking what `//` or `%` means gets nothing; the hover
+  data covers words, not symbols (section 40.5).
+- **Source maps for TypeScript debugging**, which is the only thing keeping TypeScript
+  out of the debuggable set.
+- **A multipart upload for assets**, so a project with images is not re-uploaded in full
+  on every Run.
+- **Collaboration.** Every commercial teaching IDE has some form of shared session or
+  teacher-can-see-my-screen. This architecture has no CRDT, no presence and no shared
+  document; it would be a large piece of work and should be a deliberate decision rather
+  than something that arrives by accident.
+
+### 44.7 What was deliberately not recommended
+
+Copy-paste blocking and keystroke-level activity monitoring appear in several commercial
+teaching IDEs as anti-cheating features. They are not recommended here. Blocking paste
+breaks a legitimate workflow (moving code between one's own files) far more often than
+it stops anyone determined, and keystroke recording of school-age students is a
+data-protection decision for the school, not a feature for an IDE to ship by default.
+
+Sources consulted: the CS1 enhanced-error-message study and the error-message
+readability work (ACM CHI 2021, ACE 2021), CodeDive's process-transparency design
+(Applied Sciences 15(19)), and Monaco's own accessibility integrator guide.
