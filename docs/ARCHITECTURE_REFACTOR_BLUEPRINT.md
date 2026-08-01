@@ -6921,3 +6921,92 @@ for a reason unrelated to the code.
 - No conditional breakpoints, no watch expressions the student types (the `evaluate`
   command exists and is tested, but nothing in the UI sends one yet), and no
   set-variable.
+
+---
+
+## 40. Teaching on hover, and the export that wrote the wrong bytes
+
+Two things the IDE claimed to have and did not: help a student could actually reach,
+and an export that produced the file it named.
+
+### 40.1 The explanations existed all along
+
+`languages/<id>/keywords.json` holds between 189 and 305 curated entries per language -
+each with a plain-English explanation, a worked example and a category - and
+`keywords_he.json` translates every one of them. The only way to reach any of it was to
+know to right-click a word and pick "Explain this keyword".
+
+A student who does not know what `range` means does not know to right-click it either.
+That is the whole defect: the data was fine, the affordance was unreachable.
+
+So the same data is now a Monaco hover provider, registered for python, javascript,
+typescript, java, php and csharp - `src/features/hover-help.ts`.
+
+- **Additive, not a replacement.** Monaco merges every registered hover provider for a
+  language. TypeScript and JavaScript already contribute type information; the teaching
+  note now appears beside it. Python, Java, PHP and C# had no hover at all.
+- **Not inside comments or strings.** `isInCode()` reuses the shared lexer from H6:
+  masking preserves offsets exactly, so a character that survives unchanged is code. A
+  hover explaining the keyword `for` because the pointer rested on the word "for" in
+  `# wait for input` is noise.
+- **Cost is zero per keystroke.** A hover provider runs only when the pointer rests on
+  a word - unlike the outline pass and the breadcrumbs, which already do per-edit work.
+
+### 40.2 The rendering is where this is silently wrong
+
+Split into `src/features/hover-content.ts`, pure and node-testable, for the usual
+reason: `hover-help.ts` imports Monaco and the Vite-glob language loader, so node
+cannot load it. Same split as `format-core`/`formatting` and
+`breadcrumb-symbols`/`breadcrumbs`.
+
+The decisions that needed it:
+
+- **Markdown mangles exactly the terms worth teaching.** An explanation mentioning
+  `*args` opens an italic run that swallows the rest of the sentence; `__init__` renders
+  as a bold "init" - destroying the identifier the student is trying to learn. So prose
+  is escaped over the full Markdown character set.
+- **The example is deliberately NOT escaped.** It sits in a fence, which is already
+  literal; escaping there would show the student backslashes through their own code.
+- **Hebrew gets a U+200F mark.** A Markdown block inherits the surrounding direction, so
+  without it a translated sentence renders with its full stop stranded on the left.
+- **`isTrusted: false, supportHtml: false`.** A teaching note is data from a JSON file
+  and has no reason to be able to render markup.
+
+### 40.3 The export wrote base64 text into a .png
+
+Once the workspace could hold binary assets (section 39), both export paths were wrong,
+in different ways: the project ZIP wrote `zip.file(path, file.content)` - the base64
+*text* - and the single-file download wrapped the same text in a `text/plain` blob.
+Extracting the archive gave a 92-byte "PNG" beginning `iVBORw0KGgo`.
+
+`src/components/download.ts` now answers one question - what should this file's bytes
+be - and both paths call it, so they cannot diverge again.
+
+The part that needed care: `base64ToBytes` is permissive by design and **never throws**,
+so the obvious `try/catch` fallback would be dead code and a text file under an asset
+name would be written as garbage. The shape is therefore *checked* before decoding
+(`isBase64`), and content that fails the check is written as text.
+
+### 40.4 Verification
+
+- 11 unit tests on `fileBytesFor`: a PNG round-trips byte-for-byte, source stays text,
+  a text file under an asset name falls back rather than decoding to noise, whitespace
+  in base64 is tolerated, an unknown asset extension gets `application/octet-stream`.
+- 22 unit tests on the hover rendering, run against **the real curated files on disk**:
+  every taught language has =150 entries, every entry has a non-placeholder
+  explanation, over 90% carry an example, every English word is present in the Hebrew
+  file, and every real entry renders without throwing.
+- One browser assertion: the lookup is reachable from the running IDE and returns the
+  fenced example for `range` in a real Python document. Monaco's standalone build gives
+  no supported way to *execute* a hover provider - the widget is driven internally - so
+  the rendering is covered by the unit tests and the wiring by the seam.
+- 638 unit tests, app-boot browser suite all passing, clean build.
+
+### 40.5 Recorded gaps
+
+- **Operators are not covered.** A beginner asking what `//` or `%` means still gets
+  nothing. That is a data change, not a code change, and there is a test asserting the
+  absence so it stays visible.
+- html, css, json, markdown and svg have no curated help; Monaco's own language
+  services now provide hovers for them (H3), so this is a decision rather than an
+  oversight - also asserted.

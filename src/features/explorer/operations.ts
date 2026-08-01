@@ -8,6 +8,7 @@ import {
 import { setStatus, setOutput } from '../../components/output';
 import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core';
 import { explorerState } from './state';
+import { downloadBlob, fileBytesFor } from '../../components/download.ts';
 import {
   ASSET_LANGUAGE_ID,
   assetTypeFor,
@@ -395,7 +396,13 @@ btnDownloadProject.addEventListener('click', async () => {
     for (const file of files) {
       // Remove leading slash for ZIP paths
       const zipPath = file.path.startsWith('/') ? file.path.slice(1) : file.path;
-      zip.file(zipPath, file.content);
+      // Binary assets are decoded back to bytes. Passing `file.content` straight in
+      // wrote the BASE64 TEXT of an image under a `.png` name, producing an archive
+      // whose pictures open in nothing - a corrupt-looking export rather than an
+      // obviously wrong one. Source files are unaffected: fileBytesFor returns the
+      // string untouched for anything that is not an asset.
+      const { data } = fileBytesFor(file.name, file.content);
+      zip.file(zipPath, data, { binary: typeof data !== 'string' });
     }
 
     // Generate ZIP blob
@@ -405,15 +412,9 @@ btnDownloadProject.addEventListener('click', async () => {
       compressionOptions: { level: 6 }
     });
 
-    // Download the ZIP
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `project-${new Date().toISOString().slice(0,10)}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Through the shared helper, so the ZIP download and a single-file download
+    // cannot drift again - and so the Safari revoke timing fix applies to both.
+    downloadBlob(`project-${new Date().toISOString().slice(0, 10)}.zip`, zipBlob);
 
     setOutput(`Downloaded ${files.length} files in ${folders.length} folders as ZIP`);
     setStatus('Downloaded ✅');

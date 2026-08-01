@@ -27,6 +27,9 @@ import { updateGridForRTL } from './features/ui-layout';
 import { initializeGoToDefinition } from './features/go-to-definition';
 import { initializeWebPreview } from './features/live-preview';
 import { initializeFormatting } from './features/formatting';
+import { initializeHoverHelp } from './features/hover-help';
+import { renderHover } from './features/hover-content';
+import { getKeywordExplanation as getKeywordExplanationForSeam } from './languages';
 
 async function bootstrap(): Promise<void> {
   setStatus('Loading languages…');
@@ -106,6 +109,14 @@ async function bootstrap(): Promise<void> {
     // paused and what the variables are - questions the DOM only answers indirectly,
     // and which would otherwise have to be inferred from rendered text.
     (seam as unknown as { __bcRuntime: Record<string, unknown> }).__bcRuntime.debug = debugState;
+    // The hover text for a word, so the browser suite can assert the teaching note
+    // without invoking Monaco's hover widget - the standalone build exposes no
+    // supported way to execute a hover provider.
+    (seam as unknown as { __bcRuntime: Record<string, unknown> }).__bcRuntime.hoverHelp =
+      (language: string, word: string) => {
+        const entry = getKeywordExplanationForSeam(language, word);
+        return entry ? renderHover(language, word, entry) : null;
+      };
   }
 
   createEditor();
@@ -146,6 +157,9 @@ async function bootstrap(): Promise<void> {
   // Before the editor features load, so `Format document` is enabled correctly on
   // the very first document rather than after the first language switch.
   initializeFormatting();
+  // Teaching hovers, from the same curated explanations the right-click menu uses.
+  // Registered before any document opens, so the very first file already teaches.
+  initializeHoverHelp();
 
   // Execution and run-panel handlers depend on the initialized editor. Load
   // them only after initializeWorkspace() has completed. Sidebar handlers are
