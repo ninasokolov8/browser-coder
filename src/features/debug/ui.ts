@@ -60,10 +60,31 @@ async function sendCommand(command: string, body: Record<string, unknown> = {}):
   }
 }
 
-/** Push the current breakpoint set to the running adapter. */
+/**
+ * Push EVERY breakpoint to the running adapter, in every file.
+ *
+ * `lines` still carries the entry file, because that is the shape the first version of
+ * the protocol spoke and a client or adapter that only knows it must keep working.
+ * `files` carries the rest, keyed by workspace PATH - the only name the two sides
+ * share, since a document id means nothing to a process running in a job directory.
+ */
 export function syncBreakpoints(): void {
   if (!activeSessionId()) return;
-  void sendCommand('setBreakpoints', { lines: debugState.breakpointLines() });
+
+  const workspace = runtime.workspace;
+  const files: Record<string, number[]> = {};
+  let entryLines: number[] = [];
+
+  const activeId = runtime.tabManager?.getActiveTab()?.file.id ?? null;
+
+  for (const [documentId, lines] of debugState.allBreakpoints()) {
+    const path = workspace?.pathOf(documentId);
+    if (!path) continue;
+    files[path] = lines;
+    if (documentId === activeId) entryLines = lines;
+  }
+
+  void sendCommand('setBreakpoints', { lines: entryLines, files });
 }
 
 // ── Editor decorations ──────────────────────────────────────────────────────
@@ -99,10 +120,23 @@ function renderDecorations(snapshot: DebugSnapshot): void {
   // highlight left behind after the program ended reads as "still paused".
   const stop = snapshot.stop;
   if (stop && stop.line >= 1 && stop.line <= lineCount) {
-    const activeName = runtime.tabManager?.getActiveTab()?.file.name;
-    // The adapter reports a basename; comparing against the open tab keeps the arrow
-    // off a file that merely shares a line number.
-    if (!stop.file || !activeName || stop.file === activeName) {
+    /*
+     * Is the program stopped in the file on screen?
+     *
+     * The adapter reports a workspace-relative PATH now that a breakpoint can be in any
+     * file - it used to report a bare basename, and comparing a path against a name
+     * would leave the arrow off every stop in a subfolder. Both are accepted: the path
+     * when the workspace can resolve one, and the name as the fallback that keeps a
+     * v1-shaped answer working.
+     */
+    const activeTab = runtime.tabManager?.getActiveTab();
+    const activePath = activeTab ? runtime.workspace?.pathOf(activeTab.file.id) : null;
+    const activeName = activeTab?.file.name;
+    const sameFile = !stop.file
+      || (activePath ? stop.file === activePath : false)
+      || (activeName ? stop.file === activeName : false);
+
+    if (sameFile) {
       wanted.push({
         range: new monaco.Range(stop.line, 1, stop.line, 1),
         options: {
@@ -423,7 +457,25 @@ export function initializeDebugUi(): Disposable {
     syncBreakpoints();
   });
 
-  // Breakpoints belong to a file, so the set follows the active document.
+  /*
+   * Teach the state how to turn the adapter's paths back into documents.
+   *
+   * The adapter answers `breakpoints` keyed by workspace path, because that is the only
+   * name it and the IDE both know. Without this the answer cannot be attributed to a
+   * file, and the margin would go on showing what was REQUESTED rather than what was
+   * actually armed - which is the difference between a mark that means something and a
+   * mark that is a guess.
+   */
+  debugState.resolvePathsWith(path => {
+    const workspace = runtime.workspace;
+    if (!workspace) return null;
+    for (const document of workspace.allDocuments()) {
+      if (workspace.pathOf(document.id) === path) return document.id;
+    }
+    return null;
+  });
+
+  // Breakpoints belong to a file, so the margin follows the active document.
   const trackDocument = (): void => {
     debugState.setDocument(runtime.tabManager?.getActiveTab()?.file.id ?? null);
   };
@@ -449,7 +501,7 @@ export function initializeDebugUi(): Disposable {
       return;
     }
 
-    const key = `${snapshot.stop?.file}:${snapshot.stop?.line}:${snapshot.watches.join(' ')}`;
+    const key = `${snapshot.stop?.file}:${snapshot.stop?.line}:${snapshot.watches.join(',')}`;
     if (key === lastStopKey) return;
     lastStopKey = key;
 

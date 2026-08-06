@@ -37,6 +37,9 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 
 import { log } from '../logging.mjs';
+// The same path rule a run payload goes through. A debug command must not be able to
+// name a file a run could not.
+import { normalizeWorkspacePath } from '../domain/paths.mjs';
 
 /** Environment variables the adapter reads. */
 export const DEBUG_PORT_ENV = 'BROWSER_CODER_DEBUG_PORT';
@@ -250,16 +253,36 @@ const COMMAND_SHAPES = {
   stop: () => ({ command: 'stop' }),
 
   setBreakpoints: body => {
-    const lines = Array.isArray(body?.lines) ? body.lines : [];
-    const clean = [];
-    for (const value of lines) {
-      const line = Number(value);
-      // A line number must be a positive integer. Anything else is dropped rather
-      // than passed to the adapter to reject, so the boundary is here.
-      if (Number.isInteger(line) && line > 0 && line <= MAX_BREAKPOINT_LINE) clean.push(line);
-      if (clean.length >= MAX_BREAKPOINTS) break;
+    const clean = cleanLines(body?.lines);
+
+    /*
+     * Breakpoints in files OTHER than the entry file.
+     *
+     * `lines` alone is the v1 shape and still means the entry file, so a client that
+     * has not learned about this keeps working unchanged. `files` maps a workspace path
+     * to its lines, which is what makes a breakpoint in an imported module possible.
+     *
+     * Each path goes through the SAME rule the run payload uses, so a debug command
+     * cannot name a file a run could not - a traversal here would ask the adapter to
+     * arm a breakpoint outside the job directory.
+     */
+    const files = {};
+    let paths = 0;
+    if (body?.files && typeof body.files === 'object' && !Array.isArray(body.files)) {
+      for (const [rawPath, rawLines] of Object.entries(body.files)) {
+        if (paths >= MAX_BREAKPOINT_FILES) break;
+        const normalized = normalizeWorkspacePath(rawPath);
+        if (!normalized.ok) continue;
+
+        const lines = cleanLines(rawLines);
+        if (lines.length === 0) continue;
+
+        files[normalized.path] = lines;
+        paths += 1;
+      }
     }
-    return { command: 'setBreakpoints', lines: clean };
+
+    return { command: 'setBreakpoints', lines: clean, files };
   },
 
   evaluate: body => {
@@ -273,6 +296,25 @@ const COMMAND_SHAPES = {
 const MAX_BREAKPOINT_LINE = 1000000;
 const MAX_BREAKPOINTS = 500;
 const MAX_EXPRESSION_CHARS = 2000;
+/** Files that may carry breakpoints in one command. The project cap is 300. */
+const MAX_BREAKPOINT_FILES = 100;
+
+/**
+ * The line numbers in one list, validated.
+ *
+ * Dropped here rather than passed to the adapter to reject, so the boundary between an
+ * HTTP body and a running program is in one place.
+ */
+function cleanLines(value) {
+  const lines = Array.isArray(value) ? value : [];
+  const clean = [];
+  for (const raw of lines) {
+    const line = Number(raw);
+    if (Number.isInteger(line) && line > 0 && line <= MAX_BREAKPOINT_LINE) clean.push(line);
+    if (clean.length >= MAX_BREAKPOINTS) break;
+  }
+  return clean;
+}
 
 /**
  * Validate a client command, returning the frame to send or null.

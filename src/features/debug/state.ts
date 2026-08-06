@@ -125,13 +125,35 @@ export function capabilitiesFor(status: DebugStatus): DebugCapabilities {
 export class DebugSessionState {
   #status: DebugStatus = 'idle';
   #stop: DebugStop | null = null;
-  #breakpoints = new Set<number>();
+  /**
+   * Breakpoints per DOCUMENT, not one set for the file being debugged.
+   *
+   * A single set was the reason breakpoints had to be cleared whenever the student
+   * opened another file: with nowhere to keep the other file's lines, showing them
+   * against the wrong document was the only alternative. Keying by document is what
+   * makes a breakpoint in an imported module possible at all.
+   */
+  #breakpoints = new Map<string, Set<number>>();
   #documentId: string | null = null;
   #lastError: string | null = null;
   #evaluated: DebugSnapshot['evaluated'] = null;
   #watches: string[] = [];
   #watchValues = new Map<string, { text: string | null; error: string | null }>();
   #listeners = new Set<(snapshot: DebugSnapshot) => void>();
+  /**
+   * Turn a workspace path back into a document id.
+   *
+   * Supplied by the caller because this module is pure and knows nothing about the
+   * workspace. Without it an adapter's per-file answer cannot be matched to the file it
+   * is about, so the margin would keep showing the lines that were REQUESTED rather
+   * than the ones actually armed.
+   */
+  #documentIdForPath: ((path: string) => string | null) | null = null;
+
+  /** Tell the state how to resolve the paths the adapter reports. */
+  resolvePathsWith(resolve: (path: string) => string | null): void {
+    this.#documentIdForPath = resolve;
+  }
 
   subscribe(listener: (snapshot: DebugSnapshot) => void): () => void {
     this.#listeners.add(listener);
@@ -143,7 +165,7 @@ export class DebugSessionState {
     return {
       status: this.#status,
       stop: this.#stop,
-      breakpoints: [...this.#breakpoints].sort((a, b) => a - b),
+      breakpoints: this.breakpointLines(),
       documentId: this.#documentId,
       lastError: this.#lastError,
       evaluated: this.#evaluated,
@@ -202,33 +224,71 @@ export class DebugSessionState {
    * `main.py` to `helper.py` and appear against lines they never chose - and the
    * adapter would then arm them in the entry file, stopping somewhere unrelated.
    */
+  /**
+   * Follow the student to another file.
+   *
+   * No longer clears anything. It used to, because there was one breakpoint set and
+   * showing it against a different file would have marked lines nobody chose - the
+   * comment on the old test said exactly that. Now each document keeps its own, so
+   * switching simply changes which set the margin draws.
+   */
   setDocument(documentId: string | null): void {
     if (documentId === this.#documentId) return;
     this.#documentId = documentId;
-    this.#breakpoints.clear();
     this.#emit();
+  }
+
+  #linesFor(documentId: string | null): Set<number> {
+    if (documentId === null) return new Set();
+    let lines = this.#breakpoints.get(documentId);
+    if (!lines) {
+      lines = new Set();
+      this.#breakpoints.set(documentId, lines);
+    }
+    return lines;
   }
 
   toggleBreakpoint(line: number): boolean {
     if (!Number.isInteger(line) || line < 1) return false;
-    if (this.#breakpoints.has(line)) this.#breakpoints.delete(line);
-    else this.#breakpoints.add(line);
+    if (this.#documentId === null) return false;
+
+    const lines = this.#linesFor(this.#documentId);
+    if (lines.has(line)) lines.delete(line);
+    else lines.add(line);
     this.#emit();
-    return this.#breakpoints.has(line);
+    return lines.has(line);
   }
 
   hasBreakpoint(line: number): boolean {
-    return this.#breakpoints.has(line);
+    return this.#breakpoints.get(this.#documentId ?? '')?.has(line) ?? false;
   }
 
+  /** Clear every breakpoint, in every file. */
   clearBreakpoints(): void {
     if (this.#breakpoints.size === 0) return;
     this.#breakpoints.clear();
     this.#emit();
   }
 
+  /** The breakpoints for the file on screen, which is what the margin draws. */
   breakpointLines(): number[] {
-    return [...this.#breakpoints].sort((a, b) => a - b);
+    return [...(this.#breakpoints.get(this.#documentId ?? '') ?? [])].sort((a, b) => a - b);
+  }
+
+  /**
+   * Every breakpoint in every file, keyed by document id.
+   *
+   * This is what gets sent to the adapter. Documents with no breakpoints are omitted
+   * rather than sent as empty lists, so the payload stays proportional to what the
+   * student actually set.
+   */
+  allBreakpoints(): Map<string, number[]> {
+    const all = new Map<string, number[]>();
+    for (const [documentId, lines] of this.#breakpoints) {
+      if (lines.size === 0) continue;
+      all.set(documentId, [...lines].sort((a, b) => a - b));
+    }
+    return all;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -284,10 +344,40 @@ export class DebugSessionState {
         // The adapter reports which lines it actually armed. A line it refused - a
         // blank line, a comment - is dropped here too, so the margin shows what is
         // real rather than what was asked for.
-        if (Array.isArray(event.lines)) {
-          this.#breakpoints = new Set(
-            (event.lines as unknown[]).map(Number).filter(line => Number.isInteger(line) && line > 0),
-          );
+        {
+          /*
+           * The adapter reports which lines it actually armed, per file, and the margin
+           * shows that rather than what was asked for - a blank line or a comment is
+           * refused, and a mark against one would be a lie.
+           *
+           * Keyed by PATH on the wire and by document id here, so the caller supplies
+           * the mapping. Without it an answer cannot be matched to a file at all.
+           */
+          const accepted = event.files as Record<string, unknown> | undefined;
+          if (accepted && typeof accepted === 'object') {
+            for (const [path, lines] of Object.entries(accepted)) {
+              const documentId = this.#documentIdForPath?.(path);
+              if (!documentId) continue;
+              this.#breakpoints.set(
+                documentId,
+                new Set(
+                  (Array.isArray(lines) ? lines : [])
+                    .map(Number)
+                    .filter(line => Number.isInteger(line) && line > 0),
+                ),
+              );
+            }
+          } else if (Array.isArray(event.lines) && this.#documentId) {
+            // The v1 shape: bare lines, meaning the entry file.
+            this.#breakpoints.set(
+              this.#documentId,
+              new Set(
+                (event.lines as unknown[])
+                  .map(Number)
+                  .filter(line => Number.isInteger(line) && line > 0),
+              ),
+            );
+          }
         }
         break;
 

@@ -64,53 +64,104 @@ describe('what the toolbar may offer', () => {
 });
 
 describe('breakpoints', () => {
-  test('toggle on and off', () => {
+  /** A state with a document open, which is the only way a breakpoint can exist. */
+  const inDocument = (id = 'a') => {
     const state = new DebugSessionState();
+    state.setDocument(id);
+    return state;
+  };
+
+  test('toggle on and off', () => {
+    const state = inDocument();
     assert.equal(state.toggleBreakpoint(5), true);
     assert.equal(state.hasBreakpoint(5), true);
     assert.equal(state.toggleBreakpoint(5), false);
     assert.equal(state.hasBreakpoint(5), false);
   });
 
-  test('lines are reported ascending', () => {
+  test('a breakpoint with no document open is refused', () => {
+    // It would belong to nothing: there is no file to arm it in and no margin to draw
+    // it on. Previously it was accepted into a single set and silently attributed to
+    // whichever file was debugged next.
     const state = new DebugSessionState();
+    assert.equal(state.toggleBreakpoint(5), false);
+    assert.deepEqual(state.breakpointLines(), []);
+  });
+
+  test('lines are reported ascending', () => {
+    const state = inDocument();
     for (const line of [9, 2, 7, 1]) state.toggleBreakpoint(line);
     assert.deepEqual(state.breakpointLines(), [1, 2, 7, 9]);
   });
 
   test('a non-line is refused', () => {
-    const state = new DebugSessionState();
+    const state = inDocument();
     for (const line of [0, -3, 1.5, NaN]) {
       assert.equal(state.toggleBreakpoint(line), false, String(line));
     }
     assert.deepEqual(state.breakpointLines(), []);
   });
 
-  test('switching document clears them', () => {
-    // Breakpoints belong to a file. Following the student to another file would show
-    // marks against lines they never chose, and the adapter would arm them in the
-    // entry file and stop somewhere unrelated.
-    const state = new DebugSessionState();
-    state.setDocument('a');
+  test('switching document KEEPS the other file\'s breakpoints', () => {
+    // This test used to assert the opposite, and the reason was a limitation rather
+    // than a decision: there was one breakpoint set, so following the student to
+    // another file would have shown marks against lines they never chose. Each
+    // document has its own set now, which is what makes a breakpoint in an imported
+    // module possible at all.
+    const state = inDocument('a');
     state.toggleBreakpoint(3);
     state.toggleBreakpoint(8);
-    assert.deepEqual(state.breakpointLines(), [3, 8]);
 
     state.setDocument('b');
-    assert.deepEqual(state.breakpointLines(), []);
+    assert.deepEqual(state.breakpointLines(), [], 'file b has none of its own');
+
+    state.setDocument('a');
+    assert.deepEqual(state.breakpointLines(), [3, 8], 'file a lost its breakpoints');
+  });
+
+  test('each file keeps its own, and all of them are sent', () => {
+    const state = inDocument('a');
+    state.toggleBreakpoint(3);
+    state.setDocument('b');
+    state.toggleBreakpoint(11);
+
+    const all = state.allBreakpoints();
+    assert.deepEqual(all.get('a'), [3]);
+    assert.deepEqual(all.get('b'), [11]);
+    assert.equal(all.size, 2);
+  });
+
+  test('a file with none is not sent at all', () => {
+    // The payload stays proportional to what the student set, rather than listing
+    // every file they have ever opened.
+    const state = inDocument('a');
+    state.toggleBreakpoint(3);
+    state.setDocument('b');
+    state.toggleBreakpoint(1);
+    state.toggleBreakpoint(1);
+
+    assert.deepEqual([...state.allBreakpoints().keys()], ['a']);
   });
 
   test('re-selecting the same document keeps them', () => {
-    const state = new DebugSessionState();
-    state.setDocument('a');
+    const state = inDocument('a');
     state.toggleBreakpoint(3);
     state.setDocument('a');
     assert.deepEqual(state.breakpointLines(), [3]);
   });
 
+  test('clearing removes them from every file, not just the open one', () => {
+    const state = inDocument('a');
+    state.toggleBreakpoint(3);
+    state.setDocument('b');
+    state.toggleBreakpoint(4);
+
+    state.clearBreakpoints();
+    assert.equal(state.allBreakpoints().size, 0);
+  });
+
   test('they survive a finished session, because a student runs again', () => {
-    const state = new DebugSessionState();
-    state.setDocument('a');
+    const state = inDocument('a');
     state.toggleBreakpoint(4);
     state.starting();
     state.apply({ type: 'attached' });
@@ -121,12 +172,37 @@ describe('breakpoints', () => {
   test('the adapter has the final say on which lines armed', () => {
     // It refuses a blank line or a comment. The margin must show what is real, not
     // what was asked for.
-    const state = new DebugSessionState();
-    state.setDocument('a');
+    const state = inDocument('a');
     state.toggleBreakpoint(2);
     state.toggleBreakpoint(3);
     state.apply({ type: 'breakpoints', lines: [3] });
     assert.deepEqual(state.breakpointLines(), [3]);
+  });
+
+  test('a per-file answer is matched back to the right file', () => {
+    // The adapter reports PATHS; the state holds document ids. Without the resolver
+    // the answer cannot be attributed at all, and the margin would keep showing what
+    // was requested rather than what was armed.
+    const state = inDocument('doc-main');
+    state.resolvePathsWith(path => (path === 'lib/util.py' ? 'doc-util' : 'doc-main'));
+    state.toggleBreakpoint(2);
+    state.setDocument('doc-util');
+    state.toggleBreakpoint(5);
+    state.toggleBreakpoint(6);
+
+    state.apply({ type: 'breakpoints', files: { 'main.py': [2], 'lib/util.py': [5] } });
+
+    assert.deepEqual(state.breakpointLines(), [5], 'line 6 was refused and should be gone');
+    state.setDocument('doc-main');
+    assert.deepEqual(state.breakpointLines(), [2]);
+  });
+
+  test('an answer for a file that is no longer open is ignored, not crashed on', () => {
+    const state = inDocument('a');
+    state.resolvePathsWith(() => null);
+    state.toggleBreakpoint(1);
+
+    assert.doesNotThrow(() => state.apply({ type: 'breakpoints', files: { 'gone.py': [9] } }));
   });
 });
 

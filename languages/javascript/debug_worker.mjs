@@ -15,14 +15,16 @@
 
 import net from 'node:net';
 import inspector from 'node:inspector';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
 
-const { port, token, program, pid } = workerData;
+const { port, token, program, pid, workspace } = workerData;
 
 const PROGRAM_URL = pathToFileURL(program).href;
 const PROGRAM_NAME = path.basename(program);
+/** The one directory a breakpoint may name, matching the filesystem guard. */
+const WORKSPACE = path.resolve(workspace || path.dirname(program));
 
 /** Longest rendering of one value. A student's variable, not a data dump. */
 const MAX_VALUE_CHARS = 200;
@@ -101,6 +103,28 @@ function post(method, params = {}) {
 const breakpoints = new Map();
 
 /**
+ * The file URL for a workspace-relative path, or null when it escapes the job.
+ *
+ * Re-checked here even though the server validated it: this is the process that arms
+ * the breakpoint, and a path that arrived over a socket is not something to trust on
+ * someone else's word. Same reasoning as fs_guard.mjs.
+ */
+function urlForWorkspacePath(relativePath) {
+  const absolute = path.resolve(WORKSPACE, relativePath);
+  if (absolute !== WORKSPACE && !absolute.startsWith(WORKSPACE + path.sep)) return null;
+  return pathToFileURL(absolute).href;
+}
+
+/** The path as the IDE knows it: relative to the job, with forward slashes. */
+function workspaceRelative(url) {
+  try {
+    return path.relative(WORKSPACE, fileURLToPath(url)).split(path.sep).join('/');
+  } catch {
+    return PROGRAM_NAME;
+  }
+}
+
+/**
  * Arm the requested lines and report which ones took.
  *
  * V8 answers with the location it actually bound to, which is not always the line that
@@ -108,32 +132,53 @@ const breakpoints = new Map();
  * V8's answer rather than the request is what keeps the margin honest, and it is the
  * same contract the Python adapter has.
  */
-async function setBreakpoints(lines) {
-  for (const [, id] of breakpoints) {
+async function setBreakpoints(lines, files) {
+  for (const id of breakpoints.values()) {
     await post('Debugger.removeBreakpoint', { breakpointId: id });
   }
   breakpoints.clear();
 
-  const accepted = [];
-  for (const line of lines) {
-    const { result, error } = await post('Debugger.setBreakpointByUrl', {
-      lineNumber: line - 1,
-      url: PROGRAM_URL,
-    });
-    if (error || !result?.breakpointId) continue;
+  // `lines` alone means the entry file - the shape this spoke first. `files` names
+  // any workspace file, which is what lets a student stop inside a module they
+  // imported; V8 has always accepted a breakpoint in any script.
+  const wanted = new Map();
+  if (Array.isArray(lines) && lines.length > 0) wanted.set(PROGRAM_URL, [...lines]);
 
-    // `locations` is empty when the script has not been parsed yet - which is the
-    // normal case, because breakpoints are armed before the program is imported. The
-    // breakpoint is still registered and binds on parse, so the requested line is
-    // reported.
-    const bound = result.locations?.[0]?.lineNumber;
-    const at = typeof bound === 'number' ? bound + 1 : line;
-    breakpoints.set(at, result.breakpointId);
-    accepted.push(at);
+  for (const [relativePath, fileLines] of Object.entries(files ?? {})) {
+    const url = urlForWorkspacePath(relativePath);
+    if (!url) continue;
+    wanted.set(url, [...(wanted.get(url) ?? []), ...(fileLines ?? [])]);
   }
 
-  accepted.sort((a, b) => a - b);
-  send({ type: 'breakpoints', lines: accepted });
+  const acceptedByPath = {};
+  for (const [url, fileLines] of wanted) {
+    const armed = [];
+    for (const line of fileLines) {
+      const { result, error } = await post('Debugger.setBreakpointByUrl', {
+        lineNumber: line - 1,
+        url,
+      });
+      if (error || !result?.breakpointId) continue;
+
+      // `locations` is empty when the script has not been parsed yet - which is the
+      // normal case, because breakpoints are armed before the program is imported.
+      // The breakpoint is still registered and binds on parse, so the requested line
+      // is reported.
+      const bound = result.locations?.[0]?.lineNumber;
+      const at = typeof bound === 'number' ? bound + 1 : line;
+      breakpoints.set(`${url}:${at}`, result.breakpointId);
+      armed.push(at);
+    }
+    if (armed.length > 0) acceptedByPath[workspaceRelative(url)] = armed.sort((a, b) => a - b);
+  }
+
+  // `lines` is still reported for the entry file, so a client that only understands
+  // the first shape keeps working.
+  send({
+    type: 'breakpoints',
+    lines: acceptedByPath[workspaceRelative(PROGRAM_URL)] ?? [],
+    files: acceptedByPath,
+  });
 }
 
 /**
@@ -144,14 +189,34 @@ async function setBreakpoints(lines) {
  * dropped every frame exactly when the stack mattered most. `scriptParsed` always
  * carries the url, so it is recorded once and the id is used from then on.
  */
-const programScripts = new Set();
+const programScripts = new Map();
 
 session.on('Debugger.scriptParsed', message => {
-  if (message.params.url === PROGRAM_URL) programScripts.add(message.params.scriptId);
+  const { url, scriptId } = message.params;
+  if (!url || !url.startsWith('file:')) return;
+
+  // Any script inside the JOB, not only the entry file. A breakpoint in an imported
+  // module is only useful if a stop inside that module is reported as belonging to it,
+  // and that means knowing which of the student's files each script is.
+  let absolute;
+  try {
+    absolute = fileURLToPath(url);
+  } catch {
+    return;
+  }
+  if (absolute !== WORKSPACE && !absolute.startsWith(WORKSPACE + path.sep)) return;
+
+  programScripts.set(scriptId, workspaceRelative(url));
 });
 
 function isProgramFrame(frame) {
   return programScripts.has(frame.location?.scriptId) || frame.url === PROGRAM_URL;
+}
+
+/** Which of the student's files a frame is in. */
+function fileOfFrame(frame) {
+  return programScripts.get(frame.location?.scriptId)
+    ?? (frame.url ? workspaceRelative(frame.url) : PROGRAM_NAME);
 }
 
 async function arm() {
@@ -265,7 +330,7 @@ session.on('Debugger.paused', async message => {
 
   const stack = own.slice(0, MAX_STACK).map(frame => ({
     name: frame.functionName || '(module)',
-    file: PROGRAM_NAME,
+    file: fileOfFrame(frame),
     line: frame.location.lineNumber + 1,
   }));
 
@@ -285,7 +350,7 @@ session.on('Debugger.paused', async message => {
   const event = {
     type: 'stopped',
     reason: params.reason === 'exception' ? 'exception' : (params.hitBreakpoints?.length ? 'breakpoint' : 'step'),
-    file: PROGRAM_NAME,
+    file: fileOfFrame(top),
     line: top.location.lineNumber + 1,
     stack,
     locals,
@@ -344,7 +409,7 @@ async function evaluate(expression) {
 function handleCommand(command) {
   switch (command?.command) {
     case 'setBreakpoints':
-      void setBreakpoints(Array.isArray(command.lines) ? command.lines : []);
+      void setBreakpoints(Array.isArray(command.lines) ? command.lines : [], command.files);
       return;
     case 'continue':
       resumeIfPaused();

@@ -54,7 +54,7 @@ if (!PORT || !TOKEN || !PROGRAM || !WORKSPACE) {
 installFsGuard(WORKSPACE);
 
 const worker = new Worker(new URL('./debug_worker.mjs', import.meta.url), {
-  workerData: { port: PORT, token: TOKEN, program: PROGRAM, pid: process.pid },
+  workerData: { port: PORT, token: TOKEN, program: PROGRAM, pid: process.pid, workspace: WORKSPACE },
 });
 
 /**

@@ -487,21 +487,69 @@ class BrowserCoderDebugger(bdb.Bdb):
             # look like a spontaneous continue.
             self._channel.send({'type': 'error', 'message': 'unknown command: %s' % action})
 
-    def apply_breakpoints(self, lines):
-        """Replace the breakpoint set for the program file."""
+    def _resolve_in_workspace(self, relative_path):
+        """Absolute path for a workspace-relative one, or None if it escapes.
+
+        The server has already validated the path, but this is the process that
+        actually opens files - so it checks again rather than trusting a value that
+        arrived over a socket. Same reasoning as fs_guard.py.
+        """
+        candidate = os.path.realpath(os.path.join(self._workspace, relative_path))
+        if candidate == self._workspace or candidate.startswith(self._workspace + os.sep):
+            return candidate
+        return None
+
+    def apply_breakpoints(self, lines, files=None):
+        """Replace the breakpoint set across every file it names.
+
+        `lines` alone means the entry file and is the shape the first version of this
+        spoke. `files` maps a workspace-relative path to its lines, which is what lets
+        a student stop inside a module they imported - bdb has always supported a
+        breakpoint in any file, and only this method was hardcoded to one.
+        """
         self.clear_all_breaks()
-        accepted = []
-        for line in lines:
-            try:
-                # set_break returns an error STRING on failure, not an exception,
-                # and returns None on success - the opposite of the usual convention,
-                # which is easy to get backwards.
-                problem = self.set_break(self._program_path, int(line))
-            except (TypeError, ValueError):
-                problem = 'not a line number'
-            if problem is None:
-                accepted.append(int(line))
-        self._channel.send({'type': 'breakpoints', 'lines': accepted})
+
+        wanted = {}
+        if lines:
+            wanted[self._program_path] = list(lines)
+
+        for relative_path, file_lines in (files or {}).items():
+            resolved = self._resolve_in_workspace(relative_path)
+            if resolved is None:
+                continue
+            wanted.setdefault(resolved, []).extend(file_lines or [])
+
+        accepted_by_path = {}
+        for absolute, file_lines in wanted.items():
+            armed = []
+            for line in file_lines:
+                try:
+                    # set_break returns an error STRING on failure, not an exception,
+                    # and returns None on success - the opposite of the usual
+                    # convention, which is easy to get backwards.
+                    problem = self.set_break(absolute, int(line))
+                except (TypeError, ValueError):
+                    problem = 'not a line number'
+                if problem is None:
+                    armed.append(int(line))
+            if armed:
+                accepted_by_path[self._relative_to_workspace(absolute)] = sorted(armed)
+
+        # `lines` is still reported for the entry file, so a client that only
+        # understands the first shape keeps working.
+        entry_relative = self._relative_to_workspace(self._program_path)
+        self._channel.send({
+            'type': 'breakpoints',
+            'lines': accepted_by_path.get(entry_relative, []),
+            'files': accepted_by_path,
+        })
+
+    def _relative_to_workspace(self, absolute):
+        """The path as the IDE knows it: relative, with forward slashes."""
+        try:
+            return os.path.relpath(absolute, self._workspace).replace(os.sep, '/')
+        except ValueError:
+            return os.path.basename(absolute)
 
     def _evaluate(self, frame, expression):
         """Evaluate an expression in the paused frame, for a watch or hover."""
@@ -566,6 +614,39 @@ def _install_fs_guard_for_debug():
     exec(compile(source, guard, 'exec'), {'__name__': '_bc_fs_guard'})    # noqa: S102
 
 
+def _add_import_dirs(program):
+    """Put the student's own folders on sys.path, deterministically.
+
+    Mirrors `importDirs` in server/languages/adapters/python.mjs: the entry file's
+    directory first, then the job root, then every folder beneath it in sorted order.
+    Sorted so two runs of the same project resolve an ambiguous import the same way.
+    """
+    workspace = os.environ.get('BROWSER_CODER_WORKSPACE') or os.path.dirname(program)
+    workspace = os.path.realpath(workspace)
+
+    directories = [os.path.dirname(os.path.realpath(program)), workspace]
+
+    nested = []
+    for root, folder_names, _files in os.walk(workspace):
+        # Never descend into generated output; the run adapter does not either.
+        folder_names[:] = sorted(
+            name for name in folder_names
+            if name not in ('__pycache__', 'node_modules', '.git')
+        )
+        for name in folder_names:
+            nested.append(os.path.join(root, name))
+    directories.extend(sorted(nested))
+
+    seen = set()
+    ordered = []
+    for directory in directories:
+        if directory and directory not in seen:
+            seen.add(directory)
+            ordered.append(directory)
+
+    sys.path[:0] = ordered
+
+
 def main():
     port = int(os.environ.get('BROWSER_CODER_DEBUG_PORT') or 0)
     token = os.environ.get('BROWSER_CODER_DEBUG_TOKEN') or ''
@@ -596,6 +677,20 @@ def main():
     # must have one security posture.
     _install_fs_guard_for_debug()
 
+    # Make the student's own modules importable, exactly as the ordinary bootstrap
+    # does with `sys.path[:0] = importDirs`.
+    #
+    # This was missing, and it meant a multi-file Python project could not be debugged
+    # at all: `from helper import twice` raised ModuleNotFoundError the moment the
+    # debugger was attached, while the same program ran fine without it. It went
+    # unnoticed because every debug test until now used a single file.
+    #
+    # The directories are derived here rather than passed in, so the two launches
+    # cannot drift: the entry file's own directory, the job root, and every folder
+    # beneath it - which is what supports both `from helper import x` and
+    # `from pkg.helper import x`.
+    _add_import_dirs(program)
+
     sock = socket.create_connection(('127.0.0.1', port), timeout=10)
     sock.settimeout(None)
     channel = _Channel(sock, token)
@@ -608,7 +703,7 @@ def main():
         """setBreakpoints and stop, honoured whatever the program is doing."""
         action = command.get('command')
         if action == 'setBreakpoints':
-            debugger.apply_breakpoints(command.get('lines') or [])
+            debugger.apply_breakpoints(command.get('lines') or [], command.get('files') or {})
             started.set()
         elif action == 'stop':
             # Two halves, and both are needed.

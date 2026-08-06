@@ -531,3 +531,134 @@ describe('debugging JavaScript over HTTP', requires('javascript'), () => {
     await response.body?.cancel();
   });
 });
+
+/**
+ * A breakpoint in a file the program IMPORTS.
+ *
+ * The adapters could always stop in any workspace file - bdb and V8 both allow it, and
+ * the Python adapter's `is_our_file` has always accepted the whole job directory. Only
+ * the breakpoint-setting call was hardcoded to the entry file, so a student could put a
+ * mark on a line in a module they wrote and the program would run straight past it.
+ *
+ * The wire had the same limit: `setBreakpoints` carried bare line numbers with no way
+ * to say which file they belonged to.
+ */
+describe('breakpoints in more than one file', () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  test('python stops inside an imported module', requires('python'), async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'python',
+      version: 'python3',
+      files: [
+        {
+          path: 'main.py',
+          content: ['from helper import twice', 'print(twice(4))', 'print("done")'].join('\n'),
+          isMain: true,
+        },
+        {
+          path: 'helper.py',
+          content: ['def twice(n):', '    doubled = n * 2', '    return doubled'].join('\n'),
+        },
+      ],
+      entryPoint: 'main.py',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+
+    // Line 3 of helper.py - `return doubled` - which the entry file cannot name.
+    assert.equal(
+      await run.debug('setBreakpoints', { lines: [], files: { 'helper.py': [3] } }),
+      200,
+    );
+    const armed = await run.waitFor('debug:breakpoints');
+    assert.deepEqual(armed.files?.['helper.py'], [3], JSON.stringify(armed));
+
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.file, 'helper.py', 'stopped in the wrong file');
+    assert.equal(stopped.line, 3);
+
+    // And the local from the imported module is reported, not the caller's.
+    const doubled = (stopped.locals || []).find(entry => entry.name === 'doubled');
+    assert.ok(doubled, `no 'doubled' local: ${JSON.stringify(stopped.locals)}`);
+    assert.equal(doubled.value.text, '8');
+
+    await run.debug('continue');
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+    await run.close();
+  });
+
+  test('javascript stops inside an imported module', requires('javascript'), async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'javascript',
+      version: 'es2022',
+      files: [
+        {
+          path: 'main.mjs',
+          content: ['import { twice } from "./helper.mjs";', 'console.log(twice(4));'].join('\n'),
+          isMain: true,
+        },
+        {
+          path: 'helper.mjs',
+          content: ['export function twice(n) {', '  const doubled = n * 2;', '  return doubled;', '}'].join('\n'),
+        },
+      ],
+      entryPoint: 'main.mjs',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+
+    assert.equal(
+      await run.debug('setBreakpoints', { lines: [], files: { 'helper.mjs': [3] } }),
+      200,
+    );
+    await run.waitFor('debug:breakpoints');
+
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.file, 'helper.mjs', 'stopped in the wrong file');
+    assert.equal(stopped.line, 3);
+
+    await run.debug('continue');
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+    await run.close();
+  });
+
+  test('a path that escapes the job is refused, not armed', requires('python'), async () => {
+    // The server validates it with the same rule a run payload goes through, and the
+    // adapter checks again before opening anything - a value that arrived over a socket
+    // is not something to trust on someone else's word.
+    const run = await new StreamedRun(base).start({
+      language: 'python',
+      version: 'python3',
+      code: 'print("safe")\n',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    assert.equal(
+      await run.debug('setBreakpoints', { lines: [], files: { '../../escape.py': [1] } }),
+      200,
+    );
+
+    const armed = await run.waitFor('debug:breakpoints');
+    assert.deepEqual(armed.files ?? {}, {}, `a traversal was armed: ${JSON.stringify(armed)}`);
+
+    await run.debug('continue');
+    await run.waitFor('exit');
+    await run.close();
+  });
+});

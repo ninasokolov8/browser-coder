@@ -49,6 +49,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
     assert.deepEqual(buildDebugCommand('setBreakpoints', { lines: [1, 5, 200] }), {
       command: 'setBreakpoints',
       lines: [1, 5, 200],
+      files: {},
     });
   });
 
@@ -56,6 +57,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
     assert.deepEqual(buildDebugCommand('setBreakpoints', { lines: [] }), {
       command: 'setBreakpoints',
       lines: [],
+      files: {},
     });
   });
 
@@ -63,6 +65,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
     assert.deepEqual(buildDebugCommand('setBreakpoints', {}), {
       command: 'setBreakpoints',
       lines: [],
+      files: {},
     });
   });
 
@@ -288,5 +291,72 @@ describe('the channel handshake', () => {
 
     channel.close();
     probe.destroy();
+  });
+});
+
+/**
+ * Breakpoints in files other than the entry file.
+ *
+ * `lines` alone is the shape the first version of the protocol spoke and still means
+ * the entry file, so a client that has not learned about `files` keeps working. The
+ * paths in `files` are the interesting part: they name a file the ADAPTER will open, so
+ * they go through the same rule a run payload does.
+ */
+describe('setBreakpoints across several files', () => {
+  test('a per-file map is carried through', () => {
+    const built = buildDebugCommand('setBreakpoints', {
+      lines: [2],
+      files: { 'main.py': [2], 'lib/util.py': [7, 9] },
+    });
+
+    assert.deepEqual(built.lines, [2], 'the v1 field must still carry the entry file');
+    assert.deepEqual(built.files['lib/util.py'], [7, 9]);
+  });
+
+  test('a traversal is refused, so a breakpoint cannot name a file outside the job', () => {
+    // The same rule a run payload goes through. A debug command must not be able to
+    // reach a file a run could not.
+    for (const hostile of ['../../etc/passwd.py', '/etc/passwd.py', 'C:/Windows/x.py']) {
+      const built = buildDebugCommand('setBreakpoints', { files: { [hostile]: [1] } });
+      assert.deepEqual(built.files, {}, `${hostile} was accepted`);
+    }
+  });
+
+  test('a Windows separator is normalised rather than refused', () => {
+    // Built from a char code so the backslash cannot be eaten in transit - a literal
+    // `'lib\util.py'` is also an invalid unicode escape, which is how this was noticed.
+    const windowsPath = `lib${String.fromCharCode(92)}util.py`;
+    const built = buildDebugCommand('setBreakpoints', { files: { [windowsPath]: [3] } });
+    assert.deepEqual(built.files, { 'lib/util.py': [3] });
+  });
+
+  test('a file with no valid lines is dropped, not sent empty', () => {
+    const built = buildDebugCommand('setBreakpoints', {
+      files: { 'a.py': [], 'b.py': [0, -1, 'x'], 'c.py': [4] },
+    });
+    assert.deepEqual(Object.keys(built.files), ['c.py']);
+  });
+
+  test('line numbers inside a file get the same validation as the entry file', () => {
+    const built = buildDebugCommand('setBreakpoints', {
+      files: { 'a.py': [0, -1, 1.5, '3', 7] },
+    });
+    assert.deepEqual(built.files['a.py'], [3, 7]);
+  });
+
+  test('the number of files is bounded', () => {
+    const many = {};
+    for (let index = 0; index < 500; index++) many[`file${index}.py`] = [1];
+    const built = buildDebugCommand('setBreakpoints', { files: many });
+
+    assert.ok(Object.keys(built.files).length <= 100, Object.keys(built.files).length);
+  });
+
+  test('a non-object files field is ignored rather than crashing', () => {
+    for (const junk of [null, 'nope', 42, ['a.py']]) {
+      const built = buildDebugCommand('setBreakpoints', { lines: [1], files: junk });
+      assert.deepEqual(built.files, {}, JSON.stringify(junk));
+      assert.deepEqual(built.lines, [1]);
+    }
   });
 });
