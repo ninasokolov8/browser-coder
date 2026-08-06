@@ -12,8 +12,23 @@
  * Having one adapter makes that class of drift impossible.
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { runToCompletion } from '../../execution/process-runner.mjs';
 import { diagnostics, stripJobPaths } from '../adapter-kit.mjs';
+import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
+// The same variable Python's guard reads. One name for "the directory a program may
+// touch", so the languages cannot describe confinement differently.
+import { WORKSPACE_ENV } from './python.mjs';
+
+/** Where the DBGp debug adapter lives in the image, next to the language's other files. */
+export const PHP_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/php/', import.meta.url));
+
+/** Environment the debug adapter reads to know what to launch and how. */
+export const PHP_BIN_ENV = 'BROWSER_CODER_PHP_BIN';
+/** The interpreter flags a normal run would have used, as a JSON array. */
+export const PHP_ARGS_ENV = 'BROWSER_CODER_PHP_ARGS';
 
 /**
  * Functions disabled at the interpreter level.
@@ -57,6 +72,16 @@ export const phpAdapter = {
     return code.trimStart().startsWith('<?php') ? code : `<?php\n${code}`;
   },
 
+  /**
+   * PHP can be debugged.
+   *
+   * Through Xdebug, over DBGp, spoken by a client written for this project - see
+   * languages/php/dbgp.mjs. The one structural oddity is that Xdebug DIALS OUT: the
+   * debugger listens and the program connects to it, which is why the debug launch
+   * starts a supervising Node process rather than the interpreter.
+   */
+  supportsDebug: true,
+
   async prepare(ctx) {
     const { job, entryPoint } = ctx;
     const entryAbsolute = job.absolute(entryPoint);
@@ -95,6 +120,33 @@ export const phpAdapter = {
         .trim();
 
       return diagnostics(cleaned || combined, lint.durationMs);
+    }
+
+    /*
+     * A debug run launches Node, not PHP.
+     *
+     * Xdebug connects OUT to a listening debugger, so something has to be listening
+     * before the interpreter starts. The adapter binds a port, passes it to PHP, and
+     * supervises the result. It is handed the same interpreter flags a normal run
+     * would have used, so `open_basedir` and `disable_functions` are identical under
+     * the debugger - a debug run must not be looser than an ordinary one, or students
+     * find out which one is.
+     */
+    if (ctx.debug?.enabled === true) {
+      return {
+        kind: 'launch',
+        command: ctx.config.tools.node,
+        args: ['--no-warnings', path.join(PHP_ADAPTER_DIR, 'debug_adapter.mjs')],
+        cwd: job.dir,
+        timeoutMs: ctx.timeoutMs,
+        extraEnv: {
+          [DEBUG_PROGRAM_ENV]: entryAbsolute,
+          [WORKSPACE_ENV]: path.resolve(job.dir),
+          [PHP_BIN_ENV]: ctx.config.tools.php,
+          [PHP_ARGS_ENV]: JSON.stringify(baseArgs(job.dir)),
+        },
+        transformStderr: text => stripJobPaths(text, job.dir),
+      };
     }
 
     return {

@@ -3,7 +3,10 @@ FROM node:20-alpine
 
 # Install language runtimes for code execution
 # dotnet8-sdk provides C# (.NET 8) compilation/execution support
-RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk
+# php-pecl-xdebug is the PHP debugger. It is NOT loaded by default - nothing here
+# enables it in php.ini - so an ordinary run pays nothing for it. The debug adapter
+# turns it on per process with -dzend_extension=xdebug.
+RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sdk
 
 # .NET environment
 ENV DOTNET_NOLOGO=1 \

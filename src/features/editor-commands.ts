@@ -35,7 +35,11 @@ import { runCode } from './execution';
 // Java is here now too, through JDWP - the JVM's own debug protocol, spoken by a
 // client written for this project rather than a dependency. Breakpoints, stepping,
 // locals and field-path watches all work; see languages/java/jdwp.mjs.
-const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript', 'java']);
+//
+// And PHP, through Xdebug over DBGp (languages/php/dbgp.mjs). That one needs the
+// extension present in the image; it is installed but not enabled, and the adapter
+// loads it per process, so an ordinary PHP run is unaffected.
+const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript', 'java', 'php']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';

@@ -16,7 +16,10 @@ FROM node:20-alpine
 # Install language runtimes
 # su-exec: lets the entrypoint start as root (to fix bind-mounted volume
 # permissions) and then drop down to the unprivileged "app" user
-RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk su-exec && rm -rf /var/cache/apk/*
+# php-pecl-xdebug: the PHP debugger. Deliberately NOT enabled in php.ini - an
+# ordinary run must not pay for a debugger it is not using - so the debug adapter
+# loads it per process with -dzend_extension=xdebug and nothing else ever sees it.
+RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sdk su-exec && rm -rf /var/cache/apk/*
 
 # .NET environment
 ENV DOTNET_NOLOGO=1 \
