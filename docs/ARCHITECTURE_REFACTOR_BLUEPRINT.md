@@ -7745,3 +7745,218 @@ against a real production server.
   not replace loading a real task page once.
 - Java, C# and PHP execution. Their contract tests skip on this host, so those adapters
   are covered by their tests only where a toolchain exists.
+
+---
+
+## 47. Closing the outstanding list
+
+Section 44 ended with a list of things a learning-platform IDE still needed, and
+section 44.6 with a list of smaller ones. This section records what happened to each of
+them. Everything below is committed and tested; the items still open are named at the
+end rather than left implied.
+
+### 47.1 Accessibility: the explorer, the announcement, and a third theme
+
+Three separate problems, all of them things a student who needs them cannot work around
+by trying harder.
+
+**The explorer was mouse-only.** Rows were plain `div`s: no role, no tab stop, no key
+handling, so a keyboard or screen-reader user could not open a file at all. It now
+implements the ARIA tree pattern - `role=tree`, `treeitem` rows with `aria-level`,
+`aria-selected` and `aria-expanded`, one roving tab stop so Tab moves past the explorer
+rather than through three hundred files, and Arrow/Home/End/Enter/F2/Delete inside it.
+ArrowRight opens a folder then steps into it and ArrowLeft closes it then climbs to the
+parent, which is how a keyboard user gets out of a deep folder without arrowing through
+its contents.
+
+Focus is restored by hand after each re-render, because the tree is rebuilt with
+`innerHTML` and that destroys the focused element. It is restored **only when the tree
+already had focus** - stealing focus from the editor when autosave fires would be worse
+than losing it.
+
+**Nothing was audible.** A run finished, the panel filled, and a screen reader said
+nothing. The panel is deliberately *not* a live region: a program printing two hundred
+lines would read all two hundred aloud. It is `role=log` and focusable, and one sentence
+is announced instead - what happened, the first error with its line, the problem count.
+A killed run is "stopped before it finished", not "exit code -1".
+
+**High contrast could not simply be added.** `applyTheme` added the dark class for
+exactly the string `vs-dark` and removed it otherwise, so a third option would have
+silently applied the *light* variable set. The mapping is now explicit and total, and
+`.hc-theme` layers on top of dark so a variable it does not restate keeps a dark value
+rather than falling through to light. Every pair clears 7:1, and borders become solid
+because subtle overlays disappear against pure black.
+
+### 47.2 Reordering in the explorer
+
+Reordering never existed: the tree sorted by name on every render, so there was no such
+thing as a position to drop at. A same-parent drag reported "Moved 1 item" while doing
+nothing, because `moveDocument` returned the unchanged document and a truthy return read
+as success.
+
+The trap in "just sort by `order`" is that storage has always assigned `order` by
+*creation sequence*. Honouring it outright would have reshuffled every existing project
+from alphabetical into whatever sequence its files happened to be made in - which reads
+as corruption. So **a parent stays name-sorted until something inside it is actually
+dragged**. The first drag records that parent and renumbers all of its children densely
+in the order they were already displayed, so nothing else appears to move. The flag is
+keyed by parent id (the empty string being the root, which has no folder record to hang
+it on) and is optional, so a workspace written before this existed has no arrangement
+rather than throwing.
+
+Dropping is positional: quarter-height edge zones decide between "into this folder" and
+"between these two rows", and a file has no inside, so its halves are before and after.
+A line is drawn where the item will land, deliberately different from the filled
+highlight that means *into*.
+
+### 47.3 Watch expressions
+
+The `evaluate` command had existed in the Python adapter since the debugger was written
+and in the JavaScript one since it was added, both covered by contract tests - and
+nothing in the UI ever sent one.
+
+Two details decide whether a watch list helps or misleads:
+
+- **Values are cleared on every stop.** A value from the previous line looks exactly
+  like a current one, which is the most misleading thing a debugger can show.
+- **"No value yet" renders differently from an error and from a value of `None`.** An
+  empty cell is something the student has to interpret.
+
+An ad-hoc evaluation does not add a row; only a result whose expression *is* a watch
+lands in the list.
+
+### 47.4 A breakpoint in any file
+
+Both adapters could always *stop* in any workspace file. Only the call that set a
+breakpoint was hardcoded to the entry file, so a student could mark a line in their own
+module and watch the program run past it.
+
+`setBreakpoints` now also carries `files`, a map of workspace path to lines. `lines`
+still means the entry file, so the frozen v1 shape is untouched and a client or adapter
+that knows only the first form keeps working. Each path goes through the same rule a run
+payload does, and the adapter checks again before opening anything - a value that
+arrived over a socket is not something to trust on someone else's word.
+
+The client keeps one breakpoint set **per document**, which is what removes the old
+"switching file clears them" behaviour.
+
+Found by the new test, and worse than the feature it was testing: **under the debugger,
+a multi-file Python project could not import its own modules.** The normal launch does
+`sys.path[:0] = importDirs`; the debug launch runs the adapter instead of that bootstrap
+and never did it, so `from helper import twice` raised `ModuleNotFoundError` the moment
+the debugger attached, while the same program ran fine without it. Every debug test
+until then had used a single file.
+
+### 47.5 TypeScript, and a server crash found on the way
+
+TypeScript was excluded from the debuggable set for a real reason: a breakpoint on a
+`.ts` line would arm against the emitted `.js` and stop somewhere the student did not
+click. The compiler now emits a source map for a debug run - only for a debug run - and
+the debugger knows about **maps**, not about TypeScript: a `.ts` breakpoint is
+translated to the `.js` line it became, and every stop, stack frame and armed-breakpoint
+answer is translated back. Anything else that compiles to JavaScript with a map beside
+it works the same way.
+
+The decoder is written here rather than taken from a package, because these files are
+copied into the image and loaded by the student's own process, and the two lookups
+needed are a base64 VLQ decode. `source-map` brings a WASM blob and an async API for
+sixty lines of work.
+
+And the thing that matters more, found while getting the contract test to pass:
+
+> **A compile failure on a debug run killed the server process.**
+
+The route sent its `debug:unsupported` notice before the response headers were written.
+`send()` calls `res.write()`, and writing before `writeHead` makes Node commit default
+headers; the compile-diagnostics branch then called `res.json()`, which threw
+`ERR_HTTP_HEADERS_SENT` from an async continuation where Express cannot catch it. An
+uncaught exception ends the process - and with it every other student's run on that
+replica. Reaching it took one student clicking Debug on a program with a syntax error.
+
+### 47.6 Java, through a JDWP client written from scratch
+
+This is the largest item on the list and the one with no dependency to reach for. Java
+debugging means JDWP - the JVM's own debug protocol - and the options were a `jdb`
+process to screen-scrape, a JVM-side JDI helper to compile and ship, or a client. The
+client is `languages/java/jdwp.mjs`: about 470 lines, no dependencies, and the only
+thing in this repository that speaks a binary protocol.
+
+**The protocol, briefly.** Fourteen raw ASCII bytes each way (`JDWP-Handshake`) with no
+framing at all, and after that every message is `length(4) id(4) flags(1)` followed by
+either `set(1) cmd(1)` for a command or `errorCode(2)` for a reply. Big-endian. The
+widths of object, method, field, reference-type and frame ids are **not fixed** - they
+are read from `VirtualMachine.IDSizes`, which is therefore the one command that must be
+parsed without knowing them.
+
+**Why a supervising process.** Python's adapter runs inside the program and JavaScript's
+runs in a worker of the same process. Java can do neither: the JVM is a different
+runtime and JDWP is a socket, so somebody has to be on the other end of it. An external
+supervisor was rejected for JavaScript and is right here, because the run pipeline kills
+the process *group*, so the grandchild JVM dies with its supervisor rather than
+outliving the job.
+
+**The ordering that makes it work.** The JVM starts `suspend=y`, before it has loaded a
+single class, and a breakpoint cannot be set on a class that does not exist. So: ask for
+`CLASS_PREPARE`, wait for the IDE's first `setBreakpoints`, resume once, and arm each
+breakpoint as its class arrives.
+
+Eight bugs were found by building it, each now pinned by a test:
+
+| What went wrong | Why |
+| --- | --- |
+| The first packet's length read as ~1.2 billion | The handshake bytes were consumed twice - the greeting needs a one-shot listener, so the framed parser must not be attached until it is done |
+| Startup took seconds | `ClassMatch '*'` round-trips every class the JDK loads |
+| The program ran to completion without stopping | `VM_START` was auto-resumed before the `CLASS_PREPARE` request existed |
+| The program ran before its breakpoints were armed | The startup resume did not wait for the IDE's first `setBreakpoints` |
+| Every stop reported nothing | `ThreadReference.Frames` was asked for 50 frames, which is `INVALID_LENGTH` on any shallower stack - that is, on every student program |
+| A breakpoint in a packaged class never armed | `ClassMatch` takes a *binary* name: `app.Main`, not `Main` |
+| A breakpoint in an outer class stopped arming | One source file was assumed to declare one class, so `Main$Node` replaced `Main` in the source-name map |
+| `terminated` never reached the IDE | `VM_DEATH` closed the channel before the JVM's exit code was known, leaving the toolbar live over a dead session |
+
+Two smaller things, recorded because they are not obvious:
+
+- **`javac -g` is not optional for a debug run.** The default is `-g:source,lines`,
+  which is enough to name a line in a stack trace and not enough to name a local.
+  Without it the debugger stops on exactly the right line and shows an empty variables
+  panel, which reads as "this program has no variables".
+- **Inner classes need two patterns, registered at different times.** `*Main` catches
+  `app.Main` in any package; `app.Main$*` catches its inner classes but cannot be
+  written until the package is known, so it is registered when the outer class prepares.
+  `*Main$*` is not a pattern - JDWP's restricted regular expression allows one wildcard,
+  at one end.
+
+**Watch expressions for Java are deliberately partial.** Evaluating `list.size() + 1`
+means compiling an expression against a live frame: a compiler front end, a class loader
+and an invocation protocol. What is supported is what a watch panel is actually used
+for - a variable, a field, a chain of fields (`node.next.value`), an array's `length`,
+and a static of the enclosing class - resolved through JDWP directly. Anything else is
+refused **by name** ("Java watches support a variable or a field path"), so a student is
+told the shape is unsupported rather than shown a wrong answer or a protocol error code.
+
+**Tests.** 18 unit tests on the wire format with no JVM at all: id widths per kind,
+64-bit ids as BigInt so the low bits survive, UTF-8 string lengths in bytes, a reply
+split across three chunks including inside its length prefix, two replies in one chunk
+answered out of order, an event interleaved with a command in flight, and a closed
+socket failing every pending command instead of hanging. Then 18 contract tests against
+a real JVM, covering the plain case and the one that broke the first implementation: a
+package, two files, an inner class, a cross-file stack, and field-path watches. Each of
+the eight bugs above was re-introduced and the suite confirmed to fail before the fix
+was restored.
+
+The contract test picks its `--release` level from the *runtime's* version rather than
+the compiler's, because `javac` and `java` on a developer's PATH are routinely different
+majors - this was written on a host with javac 21 and java 8 - and it proves the pair by
+compiling and running something before any test depends on it. Where no matching pair
+exists it skips, honestly.
+
+### 47.7 Still open at the end of this section
+
+- **C# debugging.** `netcoredbg` is the only realistic debugger and the runtime image is
+  `node:20-alpine` (musl), while every published `netcoredbg` build is glibc. That is an
+  image decision before it is a code one.
+- **PHP debugging.** Xdebug is not in the image either, and it is a PHP extension rather
+  than a binary that can be dropped in beside the interpreter.
+- **Conditional breakpoints.** The watch work added expression evaluation to the client;
+  attaching one to a breakpoint is a separate surface and is not built.
+- **Operator help**, **multipart asset upload**, **tests the student can run**, and
+  **collaboration**, all as described in section 44 and none of them started.

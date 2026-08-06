@@ -19,12 +19,21 @@
  */
 
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { runToCompletion } from '../../execution/process-runner.mjs';
 import { diagnostics, filesWithExtension, stripJobPaths } from '../adapter-kit.mjs';
 
 /** Directory the compiler writes classes into, kept apart from sources. */
 const CLASSES_DIR = '.classes';
+
+/** Where the JDWP debug adapter lives in the image, next to the language's other files. */
+export const JAVA_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/java/', import.meta.url));
+
+/** Environment the debug adapter reads to know what to launch and how. */
+export const JAVA_MAIN_ENV = 'BROWSER_CODER_JAVA_MAIN';
+export const JAVA_CLASSPATH_ENV = 'BROWSER_CODER_JAVA_CLASSPATH';
+export const JAVA_BIN_ENV = 'BROWSER_CODER_JAVA_BIN';
 
 /**
  * The declared package of a compilation unit, or null for the default package.
@@ -80,9 +89,20 @@ export const javaAdapter = {
     return `${declaredPublicClass(code) || 'Main'}.java`;
   },
 
+  /**
+   * Java can be debugged.
+   *
+   * Through JDWP, the JVM's own debug protocol, spoken by a client written for this
+   * project - see languages/java/jdwp.mjs for the wire format and
+   * languages/java/debug_adapter.mjs for why a supervising process rather than an
+   * in-process hook. No JDI, no jdb, no third-party dependency.
+   */
+  supportsDebug: true,
+
   async prepare(ctx) {
     const { job, files, entryPoint, profile } = ctx;
     const startedAt = Date.now();
+    const debugging = ctx.debug?.enabled === true;
 
     const javaFiles = filesWithExtension(files, '.java');
     if (javaFiles.length === 0) {
@@ -101,6 +121,11 @@ export const javaAdapter = {
       args: [
         '-J-Xmx128m',
         ...releaseArgs,
+        // javac's default is `-g:source,lines`: enough to name a line in a stack
+        // trace, NOT enough to name a local variable. Without the full `-g` the
+        // debugger stops on the right line and then reports no locals at all,
+        // because there is no LocalVariableTable to read them from.
+        ...(debugging ? ['-g'] : []),
         '-encoding',
         'UTF-8',
         // Sources may declare packages, so -d lets javac build the required
@@ -143,6 +168,35 @@ export const javaAdapter = {
       );
     }
 
+    const mainClass = binaryNameFor(entryFile);
+
+    /*
+     * A debug run launches Node, not Java.
+     *
+     * The debug adapter is the process the pipeline supervises; it spawns the JVM
+     * itself with `-agentlib:jdwp=...,suspend=y` and attaches. That indirection is
+     * unavoidable - JDWP is a socket protocol, so somebody has to be on the other end
+     * of the socket, and it cannot be the JVM under test.
+     *
+     * It is safe because the run pipeline kills the process GROUP, so the grandchild
+     * JVM dies with its supervisor rather than outliving the job.
+     */
+    if (debugging) {
+      return {
+        kind: 'launch',
+        command: ctx.config.tools.node,
+        args: ['--no-warnings', path.join(JAVA_ADAPTER_DIR, 'debug_adapter.mjs')],
+        cwd: job.dir,
+        timeoutMs: ctx.config.execution.javaTimeoutMs,
+        extraEnv: {
+          [JAVA_MAIN_ENV]: mainClass,
+          [JAVA_CLASSPATH_ENV]: classesDir,
+          [JAVA_BIN_ENV]: ctx.config.tools.java,
+        },
+        transformStderr: text => stripJobPaths(text, job.dir),
+      };
+    }
+
     return {
       kind: 'launch',
       command: ctx.config.tools.java,
@@ -153,7 +207,7 @@ export const javaAdapter = {
         '-Dfile.encoding=UTF-8',
         '-cp',
         classesDir,
-        binaryNameFor(entryFile),
+        mainClass,
       ],
       cwd: job.dir,
       timeoutMs: ctx.config.execution.javaTimeoutMs,

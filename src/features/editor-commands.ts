@@ -32,7 +32,10 @@ import { runCode } from './execution';
 // a source map for a debug run and the JavaScript debugger uses it in both directions -
 // a .ts breakpoint arms against the .js line it became, and a stop is reported back in
 // the file the student wrote.
-const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript']);
+// Java is here now too, through JDWP - the JVM's own debug protocol, spoken by a
+// client written for this project rather than a dependency. Breakpoints, stepping,
+// locals and field-path watches all work; see languages/java/jdwp.mjs.
+const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript', 'java']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';
