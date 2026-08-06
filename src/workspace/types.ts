@@ -96,6 +96,18 @@ export interface WorkspaceEntry {
 export interface WorkspaceState {
   readonly activeFileId: DocumentId | null;
   readonly theme: string;
+  /**
+   * Parents whose children the student has arranged by hand.
+   *
+   * The empty string means the workspace root, which has no folder record to hang a
+   * flag on. Everything else is a folder id.
+   *
+   * This exists because `order` has always been assigned by creation sequence, so
+   * sorting by it outright would reshuffle every project that nobody ever reordered.
+   * A parent stays name-sorted until it appears here. Optional, because a workspace
+   * written before this existed has no such field.
+   */
+  readonly manuallyOrderedParents?: readonly string[];
 }
 
 export interface Disposable {

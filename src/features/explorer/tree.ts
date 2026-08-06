@@ -9,11 +9,12 @@ import { setOutput, setStatus } from '../../components/output';
 import { escapeHtml } from '../../components/html-escape.ts';
 import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
 import { lazyRef } from '../../app/lazy';
+import { dropPositionFor, sortSiblings, type DropPosition } from './ordering.ts';
 import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
   deleteSelectedItems, clearDropHighlights, importDroppedItems, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
-  markInvalidDropTargets, importFromPicker, downloadSelectedItem,
+  markInvalidDropTargets, importFromPicker, downloadSelectedItem, placeItemsBeside,
 } from './operations';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
@@ -72,6 +73,8 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
     name: string;
     type: 'file' | 'folder';
     parentId: string | null;
+    /** The stored sibling order, honoured only for a parent the student arranged. */
+    order: number;
     language?: string;
     children?: TreeNode[];
     tab?: typeof tabs[0];
@@ -135,6 +138,7 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       name: folder.name,
       type: 'folder',
       parentId: folder.parentId,
+      order: folder.order,
       folder,
       children: [],
     });
@@ -168,6 +172,7 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       name: file.name,
       type: 'file',
       parentId: file.parentId,
+      order: file.order,
       language: file.language,
       tab,
     };
@@ -203,17 +208,37 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
     explorerState.renamingItemId = null;
   }
 
-  // Sort: folders first, then files, both alphabetically
-  const sortNodes = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+  /*
+   * Sort each parent by the student's arrangement when they have made one, and by name
+   * otherwise.
+   *
+   * The `order` field has always been maintained by storage and always discarded here.
+   * Honouring it unconditionally would have reshuffled every existing project from
+   * alphabetical to creation sequence, so a parent switches to `order` only once
+   * something inside it has actually been dragged into place - see ordering.ts.
+   */
+  const workspace = runtime.workspace;
+  const sortNodes = (nodes: TreeNode[], parentId: string | null) => {
+    const manual = workspace?.isManuallyOrdered(parentId) ?? false;
+    const sorted = sortSiblings(
+      nodes.map(node => ({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        order: node.order,
+      })),
+      manual,
+    );
+
+    const byId = new Map(nodes.map(node => [node.id, node]));
+    nodes.length = 0;
+    for (const entry of sorted) nodes.push(byId.get(entry.id)!);
+
     for (const node of nodes) {
-      if (node.children) sortNodes(node.children);
+      if (node.children) sortNodes(node.children, node.id);
     }
   };
-  sortNodes(rootNodes);
+  sortNodes(rootNodes, null);
 
   // The shared escaper covers both positions, so the two names are one function.
   const escapeAttribute = escapeHtml;
@@ -458,6 +483,25 @@ function attachTreeEventHandlers(tm: TabManager) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = external ? 'copy' : 'move';
       clearDropHighlights();
+
+      /*
+       * Where in the row the pointer is decides between "into this folder" and
+       * "between these two rows". An external OS drop is always "into", because there
+       * is no ordering question for a file that does not exist here yet.
+       */
+      const position: DropPosition = external
+        ? 'into'
+        : dropPositionFor(e.offsetY, itemEl.getBoundingClientRect().height, type);
+      itemEl.dataset.dropPosition = position;
+
+      if (position !== 'into') {
+        // A line where the item will land, rather than a highlight on a row it is not
+        // going into - the two gestures have to look different or a student cannot
+        // tell which one they are about to do.
+        itemEl.classList.add(position === 'before' ? 'drop-above' : 'drop-below');
+        return;
+      }
+
       if (type === 'folder') {
         itemEl.classList.add('drop-target');
       } else {
@@ -472,7 +516,7 @@ function attachTreeEventHandlers(tm: TabManager) {
       }
     });
     itemEl.addEventListener('dragleave', () => {
-      itemEl.classList.remove('drop-target');
+      itemEl.classList.remove('drop-target', 'drop-above', 'drop-below');
     });
     itemEl.addEventListener('drop', async (e) => {
       if (policyState.lockStructure) return;
@@ -481,14 +525,27 @@ function attachTreeEventHandlers(tm: TabManager) {
       e.preventDefault();
       e.stopPropagation();
       clearDropHighlights();
-      const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+      const position = (itemEl.dataset.dropPosition as DropPosition | undefined) ?? 'into';
+      delete itemEl.dataset.dropPosition;
+
       if (external) {
         // The entry API, so a dropped FOLDER arrives with its structure. It has to be
         // read from the event synchronously, which importDroppedItems does first.
+        const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
         await importDroppedItems(e.dataTransfer!, targetParentId);
-      } else {
-        await moveItemsInto(targetParentId, getInternalDraggedIds(e));
+        return;
       }
+
+      if (position === 'into') {
+        const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+        await moveItemsInto(targetParentId, getInternalDraggedIds(e));
+        return;
+      }
+
+      // Dropped between two rows: the item lands next to this one, inside whatever
+      // parent this row is in - which may be a DIFFERENT parent from the one it came
+      // from, so this both moves and orders.
+      await placeItemsBeside(id, position, getInternalDraggedIds(e));
     });
   });
 

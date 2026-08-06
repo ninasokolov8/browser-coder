@@ -703,6 +703,83 @@ export class WorkspaceService {
     await this.#store.saveState(this.#state);
   }
 
+  /** The key a parent is recorded under. The root has no folder id of its own. */
+  static orderKey(parentId: FolderId | null): string {
+    return parentId ?? '';
+  }
+
+  /** Has the student arranged this parent's children by hand? */
+  isManuallyOrdered(parentId: FolderId | null): boolean {
+    return (this.#state.manuallyOrderedParents ?? []).includes(
+      WorkspaceService.orderKey(parentId),
+    );
+  }
+
+  /**
+   * Put one child at a chosen place among its siblings.
+   *
+   * The first reorder inside a parent does two things at once: it records the parent as
+   * manually ordered, and it renumbers ALL of that parent's children densely, in the
+   * order they were already on screen. That second part is what stops the tree jumping
+   * - before the first drag the display is alphabetical while `order` holds creation
+   * sequence, so writing only the moved item would rearrange everything else too.
+   *
+   * `siblingIdsInDisplayOrder` is supplied by the caller because the SERVICE does not
+   * know how the tree is sorted; the explorer does.
+   *
+   * Returns false when there is nothing to do, so the caller can stay quiet rather than
+   * reporting a move that did not happen.
+   */
+  async reorderChildren(
+    parentId: FolderId | null,
+    siblingIdsInDisplayOrder: readonly string[],
+  ): Promise<boolean> {
+    if (siblingIdsInDisplayOrder.length === 0) return false;
+
+    const updatedAt = this.#now();
+    let changed = false;
+
+    for (let index = 0; index < siblingIdsInDisplayOrder.length; index++) {
+      const id = siblingIdsInDisplayOrder[index];
+
+      const document = this.#documents.get(id);
+      if (document) {
+        if (document.metadata.order === index && this.isManuallyOrdered(parentId)) continue;
+        await this.#store.updateDocumentMetadata(id, { order: index }, updatedAt);
+        document.applyMetadata({ order: index }, { updatedAt });
+        changed = true;
+        continue;
+      }
+
+      const folder = this.#folders.get(id);
+      if (folder) {
+        if (folder.order === index && this.isManuallyOrdered(parentId)) continue;
+        await this.#store.updateFolderMetadata(id, { order: index }, updatedAt);
+        // Replaced, not mutated: a folder record is readonly, and `moveFolder` above
+        // sets a fresh object for the same reason. Mutating one in place would leave
+        // any holder of the old reference reading a value that is no longer true.
+        this.#folders.set(id, { ...folder, order: index, updatedAt });
+        changed = true;
+      }
+    }
+
+    const key = WorkspaceService.orderKey(parentId);
+    if (!this.isManuallyOrdered(parentId)) {
+      this.#state = {
+        ...this.#state,
+        manuallyOrderedParents: [...(this.#state.manuallyOrderedParents ?? []), key],
+      };
+      await this.#store.saveState(this.#state);
+      changed = true;
+    }
+
+    if (changed) {
+      this.#rebuildTree();
+      this.#fire('move', [...siblingIdsInDisplayOrder]);
+    }
+    return changed;
+  }
+
   async setTheme(theme: string): Promise<void> {
     if (this.#state.theme === theme) return;
     this.#state = { ...this.#state, theme };

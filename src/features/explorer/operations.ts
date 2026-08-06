@@ -22,6 +22,7 @@ import { isWorkspaceEntryHidden } from '../workspace-visibility';
 import { importSafeName, uniqueFileName } from './naming.ts';
 import { archiveFolderName, planImport } from './import-plan.ts';
 import { descendantFolderIds, topLevelItems } from './selection-scope.ts';
+import { placeRelativeTo } from './ordering.ts';
 import { lazyRef } from '../../app/lazy';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
@@ -1051,6 +1052,113 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
   } else if (refactorResult.warnings.length > 0) {
     setOutput(refactorResult.warnings.join('\n'));
   }
+}
+
+/**
+ * Drop one or more items next to a specific row, rather than into a folder.
+ *
+ * This is the half of drag-and-drop that never existed: the tree was sorted by name on
+ * every render, so there was no such thing as a position to drop at, and a same-parent
+ * drag reported "Moved 1 item" while doing nothing at all.
+ *
+ * A positional drop can also CHANGE parent - dragging a file from `src/` to sit between
+ * two files at the root is one gesture - so the move happens first and the ordering
+ * second, against the parent the item ends up in.
+ */
+export async function placeItemsBeside(
+  targetId: string,
+  position: 'before' | 'after',
+  draggedIds: string[],
+): Promise<void> {
+  if (policyState.lockStructure) return;
+
+  const workspace = runtime.workspace;
+  if (!workspace) return;
+
+  const ids = Array.from(new Set(draggedIds));
+  if (ids.length === 0 || ids.includes(targetId)) return;
+
+  // Which parent the target sits in is where everything lands.
+  const targetFile = await storage.getFile(targetId);
+  const targetFolder = targetFile ? null : await storage.getFolder(targetId);
+  if (!targetFile && !targetFolder) return;
+  const parentId = (targetFile?.parentId ?? targetFolder?.parentId) ?? null;
+
+  // Only top-level items, for the same reason a plain move reduces them: dragging a
+  // folder together with something inside it must not tear the inner item out.
+  const folderIds = new Set((await storage.getAllFolders()).map(folder => folder.id));
+  const items: ExplorerSelectionItem[] = [];
+  for (const id of ids) {
+    const folder = folderIds.has(id) ? await storage.getFolder(id) : null;
+    if (folder) {
+      items.push({ id, type: 'folder', name: folder.name, parentId: folder.parentId ?? null });
+      continue;
+    }
+    const file = await storage.getFile(id);
+    if (file) items.push({ id, type: 'file', name: file.name, parentId: file.parentId ?? null });
+  }
+  const toPlace = await getTopLevelSelectionItems(items);
+  if (toPlace.length === 0) return;
+
+  const beforePaths = await captureWorkspacePaths();
+
+  // Move anything that is not already in the destination parent.
+  for (const item of toPlace) {
+    if (item.parentId === parentId) continue;
+    if (item.type === 'folder') {
+      const moved = await storage.moveFolder(item.id, parentId);
+      if (!moved) {
+        setStatus('A folder cannot be moved inside itself');
+        return;
+      }
+    } else {
+      await storage.moveFile(item.id, parentId);
+    }
+  }
+
+  // Then arrange. The display order is rebuilt from what is on screen, because that is
+  // what the student was looking at when they let go. `currentSiblingOrder` keeps only
+  // the ids that really are children of this parent, so the whole visible list can be
+  // handed over as-is.
+  let arranged = await currentSiblingOrder(parentId, explorerState.visibleNodeOrder);
+  for (const item of toPlace) {
+    arranged = placeRelativeTo(arranged, item.id, targetId, position);
+  }
+
+  await workspace.reorderChildren(parentId, arranged);
+
+  const refactorResult = await refactorWorkspaceImports(beforePaths).catch(() => ({
+    replacements: 0,
+    warnings: [] as string[],
+  }));
+
+  await renderFileTree(tabManager);
+  runtime.notifyWorkspaceChanged();
+  setStatus(
+    toPlace.length === 1 ? 'Moved 1 item' : `Moved ${toPlace.length} items`,
+  );
+  if (refactorResult.warnings.length > 0) setOutput(refactorResult.warnings.join('\n'));
+}
+
+/**
+ * Every child of a parent, in the order the tree is showing them.
+ *
+ * `visibleNodeOrder` only holds what is on screen, so a collapsed folder's children are
+ * absent - fine, because they are not this parent's children. Anything the tree did not
+ * list is appended, so a renumber can never silently drop a sibling.
+ */
+async function currentSiblingOrder(
+  parentId: string | null,
+  displayed: readonly string[],
+): Promise<string[]> {
+  const children = [
+    ...(await storage.getChildFolders(parentId)).map(folder => folder.id),
+    ...(await storage.getChildFiles(parentId)).map(file => file.id),
+  ];
+  const known = new Set(children);
+  const ordered = displayed.filter(id => known.has(id));
+  for (const id of children) if (!ordered.includes(id)) ordered.push(id);
+  return ordered;
 }
 
 export function setExpandedFolders(value: Set<string>): void {

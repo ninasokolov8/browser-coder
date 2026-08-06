@@ -361,6 +361,26 @@
        * visible ring a keyboard user has no idea which row they are on - the feature
        * would be there and unusable.
        */
+      /*
+       * Where a dragged row will land.
+       *
+       * A LINE between rows, deliberately different from the filled .drop-target
+       * highlight that means "into this folder" - the two gestures are different and
+       * a student has to be able to tell which one they are about to do.
+       */
+      .tree-item.drop-above, .tree-item.drop-below { position: relative; }
+      .tree-item.drop-above::after, .tree-item.drop-below::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        height: 2px;
+        background: var(--accent);
+        pointer-events: none;
+      }
+      .tree-item.drop-above::after { top: -1px; }
+      .tree-item.drop-below::after { bottom: -1px; }
+
       .tree-item:focus-visible {
         outline: 2px solid var(--focus-ring);
         outline-offset: -2px;
