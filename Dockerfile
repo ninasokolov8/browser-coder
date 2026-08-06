@@ -6,7 +6,21 @@ FROM node:20-alpine
 # php-pecl-xdebug is the PHP debugger. It is NOT loaded by default - nothing here
 # enables it in php.ini - so an ordinary run pays nothing for it. The debug adapter
 # turns it on per process with -dzend_extension=xdebug.
-RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sdk
+RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sdk curl
+
+# The C# debugger.
+#
+# netcoredbg, the obvious choice, BUILDS on Alpine and then segfaults the moment it
+# launches a program: on musl CoreCLR's PAL probes the stack with _alloca(1.5 MB) from
+# a thread whose stack is exactly 1.5 MB (dotnet/runtime#103741, Samsung/netcoredbg#206,
+# both open). dncdbg is the netcoredbg maintainer's own fork with that fixed, and the
+# only .NET debugger that publishes a linux-musl-x64 build. See blueprint section 49.
+ARG DNCDBG_VERSION=1.1.0
+RUN mkdir -p /opt/stage && \
+    curl -sSL "https://github.com/viewizard/dncdbg/releases/download/v${DNCDBG_VERSION}/dncdbg-${DNCDBG_VERSION}-linux-musl-x64.tar.gz" \
+      | tar -xz -C /opt/stage 2>/dev/null; \
+    mv /opt/stage/dncdbg /opt/dncdbg && rm -rf /opt/stage /opt/dncdbg/._* && \
+    chmod 755 /opt/dncdbg/dncdbg && /opt/dncdbg/dncdbg --version
 
 # .NET environment
 ENV DOTNET_NOLOGO=1 \

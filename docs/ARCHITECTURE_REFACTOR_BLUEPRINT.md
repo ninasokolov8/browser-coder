@@ -7951,9 +7951,9 @@ exists it skips, honestly.
 
 ### 47.7 Still open at the end of this section
 
-- **C# debugging.** `netcoredbg` is the only realistic debugger and the runtime image is
-  `node:20-alpine` (musl), while every published `netcoredbg` build is glibc. That is an
-  image decision before it is a code one.
+- **C# debugging.** Done in section 49. The guess here was half right and half wrong:
+  netcoredbg does build on musl, and then segfaults for a reason that is neither this
+  project's nor fixable from the image.
 - **PHP debugging.** Done in section 48, once Docker made it possible to check rather
   than guess: `php-pecl-xdebug` is in Alpine's repositories after all.
 - **Conditional breakpoints.** The watch work added expression evaluation to the client;
@@ -8092,3 +8092,162 @@ fail before the fix was restored.
 **On the development host** (no PHP at all): the 26 unit tests, and the contract suite
 skipping honestly with "no php with xdebug on this host". The probe checks that the
 extension *loads*, not that `php` exists - "PHP is installed" is not the same question.
+
+---
+
+## 49. C#, and the debugger that segfaults on Alpine
+
+This is the last language, and it took the longest for a reason that had nothing to do
+with writing code: the obvious debugger does not work on this image, and finding out
+*why* rather than *that* was most of the work.
+
+### 49.1 What the protocol layer looks like
+
+C# debugging means DAP - the Debug Adapter Protocol - which is JSON in an LSP-style
+envelope:
+
+```
+Content-Length: 217\r\n\r\n{"seq":3,"type":"response", ...}
+```
+
+Friendliest of the three protocols this project now implements: no binary framing, no
+id widths, no XML. What it has that the others do not is **three message types on one
+stream in both directions** - `request`, `response` and `event` - so `languages/csharp/
+dap.mjs` is a correlator: responses match their request by sequence number and resolve
+a promise, events go to listeners. A client that only understood responses would hang
+the first time the program printed something, because output arrives as an event.
+
+Translating DAP into this IDE's own protocol looks like work for its own sake. It is
+not: the IDE's protocol is frozen (section 22) and four other languages already speak
+it, so adopting DAP wholesale would mean rewriting all of them or making C# the one
+language that behaves differently.
+
+### 49.2 The ordering DAP requires reads backwards
+
+`launch` is sent **before** `configurationDone` and does not start the program. The
+launch request says what to run and returns immediately; `configurationDone` is what
+actually starts it. Sending them in the intuitive order - configure, then launch -
+sets breakpoints against a session that does not exist yet.
+
+### 49.3 netcoredbg builds on Alpine, and then segfaults
+
+`netcoredbg` is the standard answer for .NET debugging outside Visual Studio. It is not
+packaged for Alpine, so it was built from source. Four fixes were needed, each measured:
+
+| Failure | Fix |
+| --- | --- |
+| `Fatal error when installing dotnet` at configure time | `-DDOTNET_DIR=/usr/lib/dotnet` - the build otherwise downloads its own **glibc** SDK, which cannot run |
+| `unrecognized command-line option '-Walign-cast'` | `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++` - upstream passes clang-only flags and CMake had picked GCC |
+| `cast from pointer to smaller type 'mdToken' loses information` | `-DCORECLR_BRANCH=release/8.0` - the build clones CoreCLR `main` by default, whose headers do not match .NET 8 |
+| `cannot initialize return object of type 'const char *' with an rvalue of type 'int'` | `src/utils/err_utils.cpp` tests `#ifdef _GNU_SOURCE`, but **musl defines `_GNU_SOURCE` and still provides the POSIX `strerror_r`**, which returns `int`. The glibc branch needs `&& defined(__GLIBC__)` |
+
+After those, `netcoredbg --version` prints `NET Core debugger 3.2.0-1`. And then:
+
+```
+$ netcoredbg --interpreter=cli --run -- dotnet UserProgram.dll
+Segmentation fault (core dumped)
+```
+
+### 49.4 The root cause, which is not this project's
+
+It is [dotnet/runtime#103741](https://github.com/dotnet/runtime/issues/103741) with
+[Samsung/netcoredbg#206](https://github.com/Samsung/netcoredbg/issues/206), both open.
+
+On musl - and only on musl - CoreCLR's PAL is compiled with
+`ENSURE_PRIMARY_STACK_SIZE`, so `PAL_InitializeCoreCLR` probes the stack with
+`_alloca(g_defaultStackSize)`, where `g_defaultStackSize` is 1.5 MB. netcoredbg calls
+`coreclr_initialize` from `ManagedCallback::CreateProcess`, and mscordbi dispatches that
+callback on `CordbRCEventThread` - a thread created with a stack of *exactly*
+`g_defaultStackSize`. So it probes 1.5 MB of stack, about thirteen frames deep, on a
+1.5 MB stack. In the runtime maintainer's words, "EnsureStackSize is only intended to be
+used on the main thread".
+
+Two things follow, and both were confirmed here rather than assumed:
+
+- **`--version` works and launching does not**, because `--version` never hosts the CLR.
+- **No stack size fixes it.** The probe size and the thread size are the same variable,
+  so scaling either scales both. A build with
+  `-Wl,-z,stack-size=8388608` was produced and still segfaults. (In passing: the belief
+  that this flag sets the *main* thread's stack is backwards on musl - musl reads
+  `PT_GNU_STACK` to size *new pthreads* and takes the main stack from `RLIMIT_STACK`,
+  the exact inverse of glibc. It is irrelevant here either way, because the crashing
+  thread is created with an explicit `pthread_attr_setstacksize`.)
+
+The runtime issue is milestoned "Future". The fix has to be in the caller.
+
+### 49.5 dncdbg
+
+`dncdbg` is the netcoredbg maintainer's own fork, where that fix exists: the CLR is
+initialised from the main thread instead of from the callback thread. It is **DAP-only**,
+which is what this adapter speaks anyway, and it publishes `linux-musl-x64` builds - so
+the image unpacks a pinned release rather than compiling a debugger, and the production
+build does not grow a twenty-minute C++ stage.
+
+It works, first try, on the same image: breakpoints in two files, a cross-file stack,
+typed locals, watch expressions that call methods, stepping, and a clean exit.
+
+### 49.6 Two more things the transport taught us
+
+**netcoredbg's stdio mode is unusable even when it does not crash.** `--interpreter=
+vscode` puts DAP on its stdout and the debuggee INHERITS that stdout, so the program's
+first `Console.WriteLine` lands in the middle of the protocol stream. The framer waits
+for a `Content-Length` that never comes and the session deadlocks. Measured:
+`configurationDone` never returned. The `console: "internalConsole"` launch option does
+not help - netcoredbg ignores it. Its `--server=<port>` flag fixes it by moving the
+protocol to a socket, at the cost of a listener bound to `0.0.0.0` with no token; that
+listener does stop accepting once connected (measured: the second connection is
+refused), so the exposure is only the connect race, but it is an exposure. dncdbg does
+not have the problem at all - it republishes the debuggee's output as `output` events -
+so the adapter uses plain stdio and opens no port.
+
+**Pending is armed.** The debugger answers `setBreakpoints` before the program exists,
+with `verified: false` and "The breakpoint is pending and will be resolved when
+debugging starts". Reporting that as rejected left the student's margin empty while the
+program stopped there anyway - the most confusing pair of behaviours available. Pending
+now counts as armed, and the `breakpoint` event that arrives when the module loads
+corrects the answer if it turns out it could not bind.
+
+### 49.7 Debugger chatter is not program output
+
+`Could not load state machine method info from PDB file.` arrives as an `output` event
+on the **`stderr` category**, indistinguishable by category from the program's real
+stderr. A student who wrote a correct console program must not be shown it as though
+their code produced it, so it is filtered by content, and a contract test asserts it
+never reaches either stream.
+
+### 49.8 A test that could not fail, and what replaced it
+
+The same lesson as section 48.7, found again. The PHP suite's traversal test passed with
+the adapter's containment check deleted, because `open_basedir` refused the file first.
+The two path helpers now live in `languages/shared/workspace-paths.mjs` - shared because
+three adapters need the identical rule and a security check copied per language is
+exactly the drift this refactor exists to remove - with `tests/unit/workspace-paths.
+test.mjs` covering them on every machine, including the case no interpreter would have
+caught: a sibling job directory whose name is a string prefix of the workspace
+(`/tmp/jobs/run-10` against `/tmp/jobs/run-1`).
+
+### 49.9 Verified
+
+**In a container built from the same base as the runtime image** (`node:20-alpine`,
+Alpine's `dotnet8-sdk` 8.0.29, dncdbg 1.1.0 `linux-musl-x64`): 13 contract tests over
+real debug sessions. The pending-breakpoint fix was reverted and the suite confirmed to
+fail before it was restored.
+
+**On the development host** (no dncdbg): 17 unit tests on the DAP envelope - split
+headers, two messages in one chunk, byte-versus-character lengths, out-of-order
+responses, a reverse request answered rather than ignored, a disconnect resolving every
+request in flight - plus 20 on the shared workspace boundary. The contract suite skips
+honestly, and its probe checks that a debugger *runs*, not merely that a file exists.
+
+### 49.10 Every language this IDE runs can now be debugged
+
+| Language | Mechanism | Client |
+| --- | --- | --- |
+| Python | `bdb` trace hook, in-process | written here |
+| JavaScript | V8 inspector, worker thread of the same process | written here |
+| TypeScript | the JavaScript debugger plus source maps | decoder written here |
+| Java | JDWP to a suspended JVM | protocol client written here |
+| PHP | DBGp, Xdebug dialling out | protocol client written here |
+| C# | DAP to dncdbg | protocol client written here |
+
+Six languages, four protocols, no debugging dependency in `package.json`.

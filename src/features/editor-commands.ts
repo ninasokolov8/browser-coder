@@ -39,7 +39,12 @@ import { runCode } from './execution';
 // And PHP, through Xdebug over DBGp (languages/php/dbgp.mjs). That one needs the
 // extension present in the image; it is installed but not enabled, and the adapter
 // loads it per process, so an ordinary PHP run is unaffected.
-const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript', 'java', 'php']);
+//
+// And C#, over DAP to dncdbg (languages/csharp/dap.mjs) - which completes the set:
+// every language this IDE runs can now be debugged.
+const DEBUGGABLE_LANGUAGES = new Set([
+  'python', 'javascript', 'typescript', 'java', 'php', 'csharp',
+]);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';

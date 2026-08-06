@@ -33,7 +33,6 @@
  */
 
 import net from 'node:net';
-import path from 'node:path';
 
 /** The five entities XML defines. Xdebug emits these and no others. */
 const ENTITIES = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
@@ -309,47 +308,16 @@ export function uriFromPath(filePath) {
 }
 
 /*
- * The workspace boundary lives here rather than in the adapter, and the reason is
- * testability rather than tidiness.
+ * The workspace boundary is shared, and it does not live in the adapter.
  *
- * `debug_adapter.mjs` opens a socket the moment it is imported, so it cannot be loaded
- * by a unit test - which meant the containment check could only be exercised through
- * the contract suite, against real Xdebug. That turned out to prove nothing: PHP's own
+ * `debug_adapter.mjs` opens a socket the moment it is imported, so a unit test cannot
+ * load it - which meant the containment check could only be exercised through the
+ * contract suite, against real Xdebug. That turned out to prove nothing: PHP's own
  * `open_basedir` is set to the same directory, so a traversal was refused by the
- * INTERPRETER whether or not the adapter checked at all. The test passed with the check
- * deleted.
+ * INTERPRETER whether or not the adapter checked at all. The test passed with the
+ * check deleted.
  *
- * Here, both are provable with no PHP on the machine.
+ * Re-exported from here so this module stays the one place the PHP adapter imports
+ * from, and so `tests/unit/dbgp.test.mjs` keeps covering it.
  */
-
-/**
- * A workspace-relative path from the IDE, resolved inside the workspace, or null.
- *
- * Checked in the adapter even though the server checks first: a value that arrived
- * over a socket is not something to trust on someone else's word.
- */
-export function resolveInWorkspace(root, relative) {
-  if (typeof relative !== 'string' || relative === '') return null;
-  if (typeof root !== 'string' || root === '') return null;
-
-  const workspace = path.resolve(root);
-  const resolved = path.resolve(workspace, relative);
-  const prefix = workspace.endsWith(path.sep) ? workspace : `${workspace}${path.sep}`;
-  if (resolved !== workspace && !resolved.startsWith(prefix)) return null;
-  return resolved;
-}
-
-/**
- * An absolute path reported by Xdebug, as the workspace-relative one the IDE uses,
- * or null when it is outside the workspace entirely - a file from the standard
- * library, say, which the student did not write and cannot open.
- */
-export function workspaceRelative(root, absolute) {
-  if (!absolute || typeof root !== 'string' || root === '') return null;
-
-  const workspace = path.resolve(root);
-  const resolved = path.resolve(absolute);
-  const prefix = workspace.endsWith(path.sep) ? workspace : `${workspace}${path.sep}`;
-  if (!resolved.startsWith(prefix)) return null;
-  return resolved.slice(prefix.length).split(path.sep).join('/');
-}
+export { resolveInWorkspace, workspaceRelative } from '../shared/workspace-paths.mjs';

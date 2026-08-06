@@ -31,10 +31,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { runToCompletion } from '../../execution/process-runner.mjs';
 import { log } from '../../logging.mjs';
 import { diagnostics, stripJobPaths } from '../adapter-kit.mjs';
+import { WORKSPACE_ENV } from './python.mjs';
 
 /**
  * Files MSBuild treats as build instructions rather than source.
@@ -58,13 +60,22 @@ const FORBIDDEN_BASENAMES = new Set([
 
 const FORBIDDEN_EXTENSIONS = ['.csproj', '.props', '.targets', '.sln', '.fsproj', '.vbproj', '.proj'];
 
+/**
+ * The one place the framework version is written.
+ *
+ * A debug run has to find the assembly the build produced, and its path contains
+ * this string. Two copies would be a build that succeeds and a debugger that cannot
+ * find what it built.
+ */
+const TARGET_FRAMEWORK = 'net8.0';
+
 /** The generated project file. Trusted: never assembled from user input. */
 function projectFileContents(profile) {
   const langVersion = profile.sourceLevel ? `\n    <LangVersion>${profile.sourceLevel}</LangVersion>` : '';
   return `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>${langVersion}
+    <TargetFramework>${TARGET_FRAMEWORK}</TargetFramework>${langVersion}
     <Nullable>disable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
@@ -84,6 +95,74 @@ function projectFileContents(profile) {
 }
 
 const PROJECT_FILE_NAME = 'UserProgram.csproj';
+
+/** Where the DAP debug adapter lives in the image, next to the language's other files. */
+export const CSHARP_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/csharp/', import.meta.url));
+
+/** Environment the debug adapter reads to know what to attach to. */
+export const DOTNET_ASSEMBLY_ENV = 'BROWSER_CODER_DOTNET_ASSEMBLY';
+export const DEBUG_ENTRY_ENV = 'BROWSER_CODER_DEBUG_ENTRY';
+export const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
+
+/**
+ * Build the project and hand the assembly to the debug adapter.
+ *
+ * Two departures from a normal run, both forced:
+ *
+ *  - **`build`, not `run`.** A debugger attaches to an assembly. `dotnet run` builds
+ *    one and then launches it behind an MSBuild process this adapter does not control,
+ *    so the build has to be a separate step for its output path to be known at all.
+ *  - **Debug configuration, not Release.** Release optimises: locals are held in
+ *    registers rather than slots, calls are inlined, and lines are reordered - so a
+ *    student stepping through their own code watches it jump around and finds half
+ *    their variables missing. That is not a debugger, it is a puzzle.
+ *
+ * A build failure comes back as diagnostics, exactly as a normal run's does, so
+ * clicking Debug on a program with a syntax error reports the error rather than
+ * starting a session against an assembly that was never produced.
+ */
+async function prepareDebugLaunch(ctx, startedAt) {
+  const { job, entryPoint } = ctx;
+
+  const build = await runToCompletion({
+    command: ctx.config.tools.dotnet,
+    args: ['build', '-c', 'Debug', '--no-restore', '--nologo', '-v', 'q', job.dir],
+    cwd: job.dir,
+    env: ctx.sandboxEnv,
+    timeoutMs: ctx.config.execution.csharpTimeoutMs,
+    maxOutputChars: ctx.config.execution.maxOutputChars,
+  });
+
+  if (!build.termination.succeeded) {
+    // The compiler writes its errors to stdout here, as it does for a normal run.
+    const message = cleanBuildOutput(build.stdout || build.stderr, job.dir).trim();
+    return diagnostics(message || `dotnet build exited with ${build.termination.exitCode}`, build.durationMs);
+  }
+
+  const assembly = path.join(job.dir, 'bin', 'Debug', TARGET_FRAMEWORK, 'UserProgram.dll');
+  if (!fs.existsSync(assembly)) {
+    return diagnostics(
+      'The project built but produced no assembly to debug.',
+      Date.now() - startedAt,
+    );
+  }
+
+  return {
+    kind: 'launch',
+    command: ctx.config.tools.node,
+    args: ['--no-warnings', path.join(CSHARP_ADAPTER_DIR, 'debug_adapter.mjs')],
+    cwd: job.dir,
+    timeoutMs: ctx.config.execution.csharpTimeoutMs,
+    extraEnv: {
+      [DOTNET_ASSEMBLY_ENV]: assembly,
+      [WORKSPACE_ENV]: path.resolve(job.dir),
+      // Which source file `lines` (the frozen single-file form) refers to.
+      [DEBUG_ENTRY_ENV]: entryPoint || 'Program.cs',
+      [DOTNET_DEBUGGER_ENV]: ctx.config.tools.dotnetDebugger,
+    },
+    transformStderr: text => cleanBuildOutput(text, job.dir),
+  };
+}
 
 /**
  * A warm, restored project per language level.
@@ -174,9 +253,21 @@ export const csharpAdapter = {
     return { ok: true };
   },
 
+  /**
+   * C# can be debugged.
+   *
+   * Through `dncdbg`, over DAP, spoken by a client written for this project - see
+   * languages/csharp/dap.mjs. It is the only .NET debugger that works on musl -
+   * netcoredbg segfaults there, for a reason recorded in blueprint section 49 - and it
+   * is unpacked into the image rather than compiled. Where it is absent the run reports
+   * `debug:unsupported` rather than pretending.
+   */
+  supportsDebug: true,
+
   async prepare(ctx) {
     const { job, files, profile } = ctx;
     const startedAt = Date.now();
+    const debugging = ctx.debug?.enabled === true;
 
     const sourceFiles = files.filter(file => file.name.toLowerCase().endsWith('.cs'));
     if (sourceFiles.length === 0) {
@@ -216,6 +307,8 @@ export const csharpAdapter = {
       encoding: 'utf8',
       mode: 0o600,
     });
+
+    if (debugging) return prepareDebugLaunch(ctx, startedAt);
 
     return {
       kind: 'launch',

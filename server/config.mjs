@@ -163,6 +163,11 @@ export const CONFIG = {
     java: stringFromEnv('JAVA_BIN', 'java'),
     javac: stringFromEnv('JAVAC_BIN', 'javac'),
     dotnet: stringFromEnv('DOTNET_BIN', 'dotnet'),
+    // The C# debugger: dncdbg, the netcoredbg maintainer's fork, which is the only
+    // .NET debugger that works on musl (see blueprint section 49). Not packaged for
+    // Alpine, so the image unpacks its published linux-musl-x64 build here. Where it
+    // is absent a debug run reports `debug:unsupported`; an ordinary run is unaffected.
+    dotnetDebugger: stringFromEnv('DOTNET_DEBUGGER_BIN', '/opt/dncdbg/dncdbg'),
   },
 
   // The `scaling` block is gone (V-35). It configured a worker pool and an

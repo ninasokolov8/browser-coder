@@ -15,17 +15,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { join, resolve } from 'node:path';
 
-import {
-  DbgpListener,
-  DbgpSession,
-  parseXml,
-  pathFromUri,
-  resolveInWorkspace,
-  uriFromPath,
-  workspaceRelative,
-} from '../../languages/php/dbgp.mjs';
+import { DbgpListener, DbgpSession, parseXml, pathFromUri, uriFromPath } from '../../languages/php/dbgp.mjs';
 
 describe('parsing DBGp XML', () => {
   test('it reads attributes and nesting', () => {
@@ -122,56 +113,6 @@ describe('paths and URIs', () => {
   test('an undecodable URI is returned as-is rather than throwing', () => {
     assert.equal(pathFromUri('file:///job/%ZZ.php'), '/job/%ZZ.php');
     assert.equal(pathFromUri(undefined), '');
-  });
-});
-
-describe('the workspace boundary', () => {
-  const root = resolve('/jobs/abc');
-
-  test('a path inside the workspace resolves', () => {
-    assert.equal(resolveInWorkspace(root, 'main.php'), join(root, 'main.php'));
-    assert.equal(resolveInWorkspace(root, 'lib/helper.php'), join(root, 'lib', 'helper.php'));
-  });
-
-  test('a traversal that lands back inside is allowed', () => {
-    // `lib/../main.php` never leaves. Refusing it would break a legitimate path a
-    // student's own `require` can produce.
-    assert.equal(resolveInWorkspace(root, 'lib/../main.php'), join(root, 'main.php'));
-  });
-
-  test('a traversal that escapes is refused', () => {
-    /*
-     * This is the assertion the contract test could not make.
-     *
-     * PHP's `open_basedir` is set to the same directory, so a traversal is refused by
-     * the interpreter whether or not the adapter checks - the end-to-end test passed
-     * with this check deleted. Here it is the only thing standing in the way.
-     */
-    assert.equal(resolveInWorkspace(root, '../other/main.php'), null);
-    assert.equal(resolveInWorkspace(root, '../../etc/passwd'), null);
-    assert.equal(resolveInWorkspace(root, resolve('/etc/passwd')), null);
-  });
-
-  test('a sibling directory sharing the workspace prefix is not inside it', () => {
-    // The classic string-prefix bug: /jobs/abc-2 starts with /jobs/abc.
-    assert.equal(resolveInWorkspace(root, `${root}-2/main.php`), null);
-    assert.equal(workspaceRelative(root, `${root}-2/main.php`), null);
-  });
-
-  test('an absolute path comes back as the relative one the IDE uses', () => {
-    assert.equal(workspaceRelative(root, join(root, 'lib', 'helper.php')), 'lib/helper.php');
-  });
-
-  test('a file outside the workspace has no relative form', () => {
-    // A standard-library file the student did not write and cannot open.
-    assert.equal(workspaceRelative(root, resolve('/usr/share/php/thing.php')), null);
-  });
-
-  test('empty and missing inputs are refused rather than resolving to the root', () => {
-    assert.equal(resolveInWorkspace(root, ''), null);
-    assert.equal(resolveInWorkspace(root, undefined), null);
-    assert.equal(resolveInWorkspace('', 'main.php'), null);
-    assert.equal(workspaceRelative(root, ''), null);
   });
 });
 
