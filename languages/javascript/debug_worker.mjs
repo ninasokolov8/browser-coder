@@ -400,6 +400,27 @@ async function readScope(scope) {
 let paused = false;
 /** The frame `evaluate` runs in: the student's innermost, not node's. */
 let currentTopFrameId = null;
+/**
+ * Whether a live pause already reported the error that ended the run.
+ *
+ * Node 20 and Node 22 differ over whether a module-level throw pauses at all, so
+ * exactly one of the two paths fires; this is what keeps it to one.
+ */
+let reportedException = false;
+
+/**
+ * Is this pause the program failing?
+ *
+ * `promiseRejection` counts. The program is loaded with a dynamic `import()`, so a
+ * throw at module top level rejects the loader's promise rather than propagating as a
+ * plain uncaught throw, and which of the two V8 reports is a Node version difference
+ * rather than a semantic one. Treating only `"exception"` as a failure meant a
+ * rejection fell through to the `hitBreakpoints` test and came out as a STEP, with no
+ * exception attached at all.
+ */
+function isExceptionReason(reason) {
+  return reason === 'exception' || reason === 'promiseRejection';
+}
 
 function resumeIfPaused() {
   if (!paused) return;
@@ -418,6 +439,26 @@ session.on('Debugger.paused', async message => {
   // Only the student's own frames. Node's internals are on this stack too, and a
   // student stepping into `node:internal/modules` has been failed by their tools.
   const own = (params.callFrames ?? []).filter(isProgramFrame);
+
+  /*
+   * A rejection pause with none of the student's frames on it is not a place.
+   *
+   * The program is loaded with a dynamic `import()`, and on Node 20 a throw at module
+   * top level pauses with `reason: "promiseRejection"` - but it pauses where the
+   * loader observes the rejection, by which point the student's frames have already
+   * unwound. Reporting it anyway pointed at line 325 of `node:internal/modules`,
+   * which is not the student's program and not a line they can look at.
+   *
+   * Resuming lets the run end normally, and the post-mortem stop at the bottom of
+   * this file reports the error from its own stack - which does have the real
+   * location. Node 22 does not pause here at all and takes that path directly, so
+   * both versions end up reporting the same thing.
+   */
+  if (own.length === 0 && isExceptionReason(params.reason)) {
+    resumeIfPaused();
+    return;
+  }
+
   const top = own[0] ?? params.callFrames?.[0];
   if (!top) {
     resumeIfPaused();
@@ -448,9 +489,11 @@ session.on('Debugger.paused', async message => {
 
   const topLocation = toOriginalLocation(fileOfFrame(top), top.location.lineNumber + 1);
 
+  const isException = isExceptionReason(params.reason);
+
   const event = {
     type: 'stopped',
-    reason: params.reason === 'exception' ? 'exception' : (params.hitBreakpoints?.length ? 'breakpoint' : 'step'),
+    reason: isException ? 'exception' : (params.hitBreakpoints?.length ? 'breakpoint' : 'step'),
     file: topLocation.path,
     line: topLocation.line,
     stack,
@@ -458,7 +501,7 @@ session.on('Debugger.paused', async message => {
     globals,
   };
 
-  if (params.reason === 'exception') {
+  if (isException) {
     const thrown = params.data;
     event.exception = {
       type: thrown?.className || 'Error',
@@ -468,6 +511,10 @@ session.on('Debugger.paused', async message => {
     // Not `postMortem`: V8 stops at the throw with the frame still live, so stepping
     // and evaluation both still work - strictly more than Python's post-mortem, and
     // the client already treats a plain `stopped` with an exception correctly.
+    //
+    // The `terminated` frame still follows from the message handler below; what it
+    // must NOT do is send a SECOND stop for the same error.
+    reportedException = true;
   }
 
   send(event);
@@ -598,7 +645,11 @@ parentPort.on('message', message => {
    * faked.
    */
   const error = message.error;
-  if (error) {
+  // On Node 20 the throw already produced a live `promiseRejection` pause with the
+  // frame intact, which is strictly better than this reconstruction - so reporting
+  // both would show the student the same error twice, the second time with no
+  // variables.
+  if (error && !reportedException) {
     const frames = stackFrames(error.stack);
     send({
       type: 'stopped',

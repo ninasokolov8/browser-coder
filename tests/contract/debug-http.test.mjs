@@ -88,6 +88,11 @@ class StreamedRun {
     return this;
   }
 
+  /** Every event of a type received so far, taken or not. */
+  seen(type) {
+    return this.events.filter(event => event.type === type);
+  }
+
   waitFor(type, timeoutMs = 25000) {
     const existing = this.events.find(event => event.type === type && !event.__taken);
     if (existing) {
@@ -482,11 +487,25 @@ describe('debugging JavaScript over HTTP', requires('javascript'), () => {
   });
 
   test('a program that dies reports where it died, before it reports the end', async () => {
-    // The post-mortem stop. V8 does NOT consider a dynamically imported module's throw
-    // uncaught - the loader's own handler sits above it - so `setPauseOnExceptions`
-    // never fires for the case that matters most. The adapter therefore builds the
-    // stop from the real error, which is the same thing Python reports by walking a
-    // traceback, and the client renders both from one `stopped` frame.
+    /*
+     * One outcome, two mechanisms, and the difference is the Node version.
+     *
+     * The program is loaded with a dynamic `import()`, so a throw at module top level
+     * rejects the loader's promise rather than propagating as a plain uncaught throw:
+     *
+     *   - Node 20 (what the production image runs) pauses, with V8 reporting
+     *     `reason: "promiseRejection"`. A live pause, frames intact.
+     *   - Node 22 (a common development machine) does not pause at all, so the
+     *     adapter reconstructs the stop from the error after the fact - the same
+     *     thing Python does by walking a traceback - and marks it `postMortem`.
+     *
+     * This test asserts what must be true on BOTH, because both are shipped. It used
+     * to assert `postMortem: true` unconditionally, which passed on the development
+     * machine and failed in the production image - and the failure was real: the
+     * promiseRejection pause was falling through to "step", so a student on
+     * production whose program threw saw the debugger stop on a line with no reason
+     * given and no error anywhere.
+     */
     const run = await new StreamedRun(base).start({
       language: 'javascript',
       version: 'es2022',
@@ -497,16 +516,20 @@ describe('debugging JavaScript over HTTP', requires('javascript'), () => {
     await run.waitFor('debug:attached');
     const stopped = await run.waitFor('debug:stopped');
     assert.equal(stopped.reason, 'exception');
-    assert.equal(stopped.postMortem, true);
     assert.equal(stopped.exception?.type, 'RangeError');
     assert.match(stopped.exception?.message ?? '', /out of range/);
-    // Line 2 is the throw, recovered from the stack - so this assertion is what
-    // catches a stack-parsing regression.
+    // Line 2 is the throw - from the stack on the post-mortem path, from the pause
+    // location on the live one - so this catches a regression in either.
     assert.equal(stopped.line, 2);
     assert.equal(stopped.file, 'main.mjs');
 
     const exit = await run.waitFor('exit');
     assert.equal(exit.exitCode, 1);
+
+    // Checked once the run is over, so a second stop would have had time to arrive:
+    // whichever path produced it, ONE error is reported ONCE. Both firing would show
+    // the student the same failure twice, the second time with no variables.
+    assert.equal(run.seen('debug:stopped').length, 1);
     await run.close();
   });
 
