@@ -312,3 +312,119 @@ describe('subscribers', () => {
     assert.equal(count, baseline);
   });
 });
+
+describe('watch expressions', () => {
+  const paused = () => {
+    const state = new DebugSessionState();
+    state.setDocument('main');
+    state.starting();
+    state.apply({ type: 'attached' });
+    state.apply({
+      type: 'stopped', line: 4, file: 'main.py', locals: [], globals: [], stack: [],
+    });
+    return state;
+  };
+
+  test('an expression can be watched', () => {
+    const state = paused();
+    assert.equal(state.addWatch('total'), true);
+    assert.deepEqual(state.snapshot().watches, ['total']);
+  });
+
+  test('a blank one is refused, so the list cannot fill with empty rows', () => {
+    const state = paused();
+    assert.equal(state.addWatch('   '), false);
+    assert.deepEqual(state.snapshot().watches, []);
+  });
+
+  test('a duplicate is refused, because it would be evaluated twice per stop', () => {
+    const state = paused();
+    state.addWatch('total');
+    assert.equal(state.addWatch('total'), false);
+    assert.equal(state.snapshot().watches.length, 1);
+  });
+
+  test('one longer than the channel accepts is refused here, not silently dropped', () => {
+    // buildDebugCommand caps an expression at 2000 characters. Without this the
+    // student would type it, see nothing happen, and have no idea why.
+    const state = paused();
+    assert.equal(state.addWatch('x'.repeat(2001)), false);
+    assert.equal(state.addWatch('x'.repeat(2000)), true);
+  });
+
+  test('a result lands against its expression', () => {
+    const state = paused();
+    state.addWatch('total');
+    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
+
+    assert.equal(state.snapshot().watchValues.get('total')?.text, '42');
+  });
+
+  test('an error is kept as an error, not as a value', () => {
+    const state = paused();
+    state.addWatch('nope');
+    state.apply({ type: 'evaluated', expression: 'nope', error: "name 'nope' is not defined" });
+
+    const result = state.snapshot().watchValues.get('nope');
+    assert.equal(result?.text, null);
+    assert.match(result?.error ?? '', /not defined/);
+  });
+
+  test('an ad-hoc evaluation does not add a row nobody asked for', () => {
+    const state = paused();
+    state.apply({ type: 'evaluated', expression: 'something', value: { text: '1' } });
+
+    assert.deepEqual(state.snapshot().watches, []);
+    assert.equal(state.snapshot().watchValues.size, 0);
+  });
+
+  test('values are cleared on the next stop, because a stale one looks current', () => {
+    // The most misleading thing a debugger can show: last line's value, presented as
+    // this line's.
+    const state = paused();
+    state.addWatch('total');
+    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
+    assert.equal(state.snapshot().watchValues.get('total')?.text, '42');
+
+    state.apply({
+      type: 'stopped', line: 5, file: 'main.py', locals: [], globals: [], stack: [],
+    });
+
+    assert.equal(state.snapshot().watchValues.has('total'), false);
+    assert.deepEqual(state.snapshot().watches, ['total'], 'the watch itself was lost');
+  });
+
+  test('removing one drops its value too', () => {
+    const state = paused();
+    state.addWatch('total');
+    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
+
+    state.removeWatch('total');
+
+    assert.deepEqual(state.snapshot().watches, []);
+    assert.equal(state.snapshot().watchValues.has('total'), false);
+  });
+
+  test('removing one that is not there is harmless', () => {
+    const state = paused();
+    state.addWatch('a');
+    state.removeWatch('b');
+    assert.deepEqual(state.snapshot().watches, ['a']);
+  });
+
+  test('watches survive the session ending, because a student runs again', () => {
+    const state = paused();
+    state.addWatch('total');
+    state.apply({ type: 'terminated', exitCode: 0 });
+
+    assert.deepEqual(state.snapshot().watches, ['total']);
+  });
+
+  test('the snapshot is a copy, so a caller cannot mutate the list', () => {
+    const state = paused();
+    state.addWatch('total');
+    (state.snapshot().watches as string[]).push('injected');
+
+    assert.deepEqual(state.snapshot().watches, ['total']);
+  });
+});

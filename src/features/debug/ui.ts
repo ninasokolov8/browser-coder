@@ -278,6 +278,92 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
   }
 }
 
+// ── Watch expressions ───────────────────────────────────────────────────────
+
+/**
+ * Build the watch panel once.
+ *
+ * The `evaluate` command has existed in both adapters since the debugger was written,
+ * and is covered by contract tests - but nothing in the UI ever sent one, so a student
+ * could see the variables that happened to be in scope and could not ask a question
+ * about anything else. This is that question box.
+ */
+function buildWatchPanel(host: HTMLElement): void {
+  if (host.dataset.built === '1') return;
+  host.dataset.built = '1';
+
+  const form = document.createElement('form');
+  form.className = 'debug-watch-form';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'debug-watch-input';
+  input.placeholder = 'Watch an expression…';
+  input.setAttribute('aria-label', 'Watch an expression');
+  // The channel refuses anything longer, so the browser stops it here instead of the
+  // student typing into a box whose contents will be silently dropped.
+  input.maxLength = 2000;
+
+  form.appendChild(input);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    // Cleared only on success, so a rejected duplicate leaves the text to edit rather
+    // than making the student type it again.
+    if (debugState.addWatch(input.value)) input.value = '';
+  });
+
+  const list = document.createElement('div');
+  list.className = 'debug-watch-list';
+
+  host.appendChild(form);
+  host.appendChild(list);
+}
+
+function renderWatches(host: HTMLElement, snapshot: DebugSnapshot): void {
+  const list = host.querySelector('.debug-watch-list');
+  if (!list) return;
+
+  list.textContent = '';
+
+  for (const expression of snapshot.watches) {
+    const row = document.createElement('div');
+    row.className = 'debug-watch-row';
+
+    const name = document.createElement('span');
+    name.className = 'debug-var-name';
+    name.textContent = expression;
+
+    const value = document.createElement('span');
+    const result = snapshot.watchValues.get(expression);
+    if (!result) {
+      // No value YET is different from an error, and different again from a value of
+      // null - saying so beats showing an empty cell the student has to interpret.
+      value.className = 'debug-var-value debug-watch-pending';
+      value.textContent = snapshot.status === 'paused' || snapshot.status === 'postMortem'
+        ? '…'
+        : 'not running';
+    } else {
+      value.className = result.error ? 'debug-var-value debug-watch-error' : 'debug-var-value';
+      // textContent throughout: the value is a repr of something the student created,
+      // and a crafted __repr__ returning markup must never be parsed as HTML.
+      value.textContent = result.error ?? result.text ?? 'None';
+    }
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'debug-watch-remove';
+    remove.textContent = '×';
+    remove.title = `Stop watching ${expression}`;
+    remove.setAttribute('aria-label', `Stop watching ${expression}`);
+    remove.addEventListener('click', () => debugState.removeWatch(expression));
+
+    row.appendChild(name);
+    row.appendChild(value);
+    row.appendChild(remove);
+    list.appendChild(row);
+  }
+}
+
 function renderCallStack(host: HTMLElement, snapshot: DebugSnapshot): void {
   host.textContent = '';
   const stack = snapshot.stop?.stack ?? [];
@@ -345,12 +431,40 @@ export function initializeDebugUi(): Disposable {
   trackDocument();
 
   const panelsHost = document.getElementById('debug-panels');
+  const watchHost = document.getElementById('debug-watch');
+  if (watchHost) buildWatchPanel(watchHost);
+
+  /*
+   * Ask the adapter for every watch, each time the program stops.
+   *
+   * A watch is only meaningful in a paused frame - the `evaluate` command needs one -
+   * so this fires on the transition into `paused` or `postMortem` rather than on every
+   * snapshot, which would re-request on each keystroke in the watch input.
+   */
+  let lastStopKey = '';
+  const refreshWatches = (snapshot: DebugSnapshot): void => {
+    const paused = snapshot.status === 'paused' || snapshot.status === 'postMortem';
+    if (!paused) {
+      lastStopKey = '';
+      return;
+    }
+
+    const key = `${snapshot.stop?.file}:${snapshot.stop?.line}:${snapshot.watches.join(' ')}`;
+    if (key === lastStopKey) return;
+    lastStopKey = key;
+
+    for (const expression of debugState.watchExpressions()) {
+      void sendCommand('evaluate', { expression });
+    }
+  };
 
   const unsubscribe = debugState.subscribe(snapshot => {
     renderDecorations(snapshot);
     renderToolbar(toolbarHost, snapshot);
     renderVariables(variablesHost, snapshot);
     renderCallStack(stackHost, snapshot);
+    if (watchHost) renderWatches(watchHost, snapshot);
+    refreshWatches(snapshot);
 
     // The panels take vertical space from the editor, so they appear only for a live
     // session and go away when it ends - an empty Variables pane permanently below

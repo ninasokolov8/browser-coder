@@ -63,6 +63,22 @@ export interface DebugSnapshot {
   readonly lastError: string | null;
   /** Result of the most recent `evaluate`, for the watch row. */
   readonly evaluated: { readonly expression: string; readonly text: string | null; readonly error: string | null } | null;
+  /**
+   * Expressions the student is watching, in the order they added them.
+   *
+   * Kept here rather than in the UI so the toolbar, the panel and the re-evaluation
+   * that happens on every stop all read one list - the same reason every other piece of
+   * debugger state lives in this object.
+   */
+  readonly watches: readonly string[];
+  /**
+   * The latest value of each watch, keyed by expression.
+   *
+   * Cleared on every stop before the new values are asked for, because a value from the
+   * previous line looks exactly like a current one and is the most misleading thing a
+   * debugger can show.
+   */
+  readonly watchValues: ReadonlyMap<string, { readonly text: string | null; readonly error: string | null }>;
 }
 
 /** What the toolbar may offer, derived rather than tracked. */
@@ -113,6 +129,8 @@ export class DebugSessionState {
   #documentId: string | null = null;
   #lastError: string | null = null;
   #evaluated: DebugSnapshot['evaluated'] = null;
+  #watches: string[] = [];
+  #watchValues = new Map<string, { text: string | null; error: string | null }>();
   #listeners = new Set<(snapshot: DebugSnapshot) => void>();
 
   subscribe(listener: (snapshot: DebugSnapshot) => void): () => void {
@@ -129,7 +147,41 @@ export class DebugSessionState {
       documentId: this.#documentId,
       lastError: this.#lastError,
       evaluated: this.#evaluated,
+      watches: [...this.#watches],
+      watchValues: new Map(this.#watchValues),
     };
+  }
+
+  /**
+   * Start watching an expression.
+   *
+   * Refused when it is blank or already watched - a duplicate row would be evaluated
+   * twice on every stop and shown twice for no benefit. Returns whether it was added,
+   * so the caller can leave the input alone when it was not.
+   */
+  addWatch(expression: string): boolean {
+    const trimmed = expression.trim();
+    if (!trimmed || this.#watches.includes(trimmed)) return false;
+    // The channel refuses anything longer, so refusing here means the student is told
+    // by the input rather than by silence.
+    if (trimmed.length > 2000) return false;
+
+    this.#watches.push(trimmed);
+    this.#emit();
+    return true;
+  }
+
+  removeWatch(expression: string): void {
+    const at = this.#watches.indexOf(expression);
+    if (at === -1) return;
+    this.#watches.splice(at, 1);
+    this.#watchValues.delete(expression);
+    this.#emit();
+  }
+
+  /** Every watch, so the caller can ask the adapter to evaluate each one. */
+  watchExpressions(): readonly string[] {
+    return [...this.#watches];
   }
 
   capabilities(): DebugCapabilities {
@@ -221,6 +273,10 @@ export class DebugSessionState {
         };
         this.#stop = stop;
         this.#status = stop.postMortem ? 'postMortem' : 'paused';
+        // Every watch value is now from the PREVIOUS line. A stale value looks exactly
+        // like a current one, which is the most misleading thing a debugger can show,
+        // so they are cleared here and asked for again by the UI.
+        this.#watchValues.clear();
         break;
       }
 
@@ -235,13 +291,19 @@ export class DebugSessionState {
         }
         break;
 
-      case 'evaluated':
-        this.#evaluated = {
-          expression: String(event.expression ?? ''),
-          text: (event.value as { text?: string } | undefined)?.text ?? null,
-          error: typeof event.error === 'string' ? event.error : null,
-        };
+      case 'evaluated': {
+        const expression = String(event.expression ?? '');
+        const text = (event.value as { text?: string } | undefined)?.text ?? null;
+        const error = typeof event.error === 'string' ? event.error : null;
+
+        this.#evaluated = { expression, text, error };
+        // A result only lands in the watch list if that expression IS a watch. An
+        // ad-hoc evaluation must not add a row the student never asked for.
+        if (this.#watches.includes(expression)) {
+          this.#watchValues.set(expression, { text, error });
+        }
         break;
+      }
 
       case 'terminated':
         this.#status = 'ended';

@@ -1088,6 +1088,42 @@
         color: var(--fg-error);
         direction: ltr;
       }
+      /* Watch expressions: the question box the evaluate command never had. */
+      .debug-watch-form { padding: 6px 8px; }
+      .debug-watch-input {
+        width: 100%;
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: 3px;
+        padding: 3px 6px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .debug-watch-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .debug-watch-row:hover { background: var(--bg-hover); }
+      .debug-watch-row .debug-var-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+      .debug-watch-pending { color: var(--text-muted); font-style: italic; }
+      .debug-watch-error { color: var(--fg-error); }
+      .debug-watch-remove {
+        flex: 0 0 auto;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+      }
+      .debug-watch-remove:hover { color: var(--fg-danger); }
+
       .debug-eval-result {
         margin: 4px 10px;
         padding: 4px 6px;
@@ -2045,6 +2081,7 @@
         <aside id="debug-panels" hidden>
           <div id="debug-variables" aria-label="Variables"></div>
           <div id="debug-callstack" aria-label="Call stack"></div>
+          <div id="debug-watch" aria-label="Watch expressions"></div>
         </aside>
         <div id="editor-container">
           <!-- Breadcrumbs: folder path plus the symbol the cursor is inside.
