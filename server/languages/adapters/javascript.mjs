@@ -24,7 +24,7 @@ import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
 import { WORKSPACE_ENV } from './python.mjs';
 
 /** Where the debug adapter lives in the image, next to the language's other files. */
-const JS_ADAPTER_DIR = path.join(
+export const JS_ADAPTER_DIR = path.join(
   fileURLToPath(new URL('../../../languages/javascript/', import.meta.url)),
 );
 

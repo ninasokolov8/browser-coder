@@ -19,6 +19,8 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
 
+import { loadSourceMap } from './source-map.mjs';
+
 const { port, token, program, pid, workspace } = workerData;
 
 const PROGRAM_URL = pathToFileURL(program).href;
@@ -115,6 +117,74 @@ function urlForWorkspacePath(relativePath) {
   return pathToFileURL(absolute).href;
 }
 
+/*
+ * Source maps, so a compiled language can be debugged as the language it was written in.
+ *
+ * TypeScript is the case that needs it: it becomes JavaScript before it runs, so a
+ * breakpoint on a `.ts` line has to be armed against the `.js` line it became, and a
+ * stop in that `.js` reported back as the `.ts` line the student is looking at.
+ *
+ * The debugger knows about MAPS, not about TypeScript. Anything else compiled to
+ * JavaScript with a map beside it works the same way, and an ordinary `.js` file has no
+ * map and takes none of these paths.
+ */
+const sourceMaps = new Map();
+
+function mapFor(generatedAbsolutePath) {
+  if (!sourceMaps.has(generatedAbsolutePath)) {
+    sourceMaps.set(generatedAbsolutePath, loadSourceMap(generatedAbsolutePath));
+  }
+  return sourceMaps.get(generatedAbsolutePath);
+}
+
+/**
+ * The generated file and line for a breakpoint the student set.
+ *
+ * Returns the request unchanged when the path IS the generated file - an ordinary
+ * JavaScript project - so the common case costs one failed `readFileSync` per file.
+ */
+function toGeneratedLocation(relativePath, line) {
+  const absolute = path.resolve(WORKSPACE, relativePath);
+
+  // The compiler emits `main.js` next to `main.ts`. Nothing else needs guessing,
+  // because the map beside the candidate is what confirms the pairing.
+  const candidate = absolute.replace(/\.(ts|tsx|mts|cts)$/i, match =>
+    match.toLowerCase() === '.tsx' ? '.js' : '.js');
+
+  if (candidate === absolute) return { path: relativePath, line };
+
+  const map = mapFor(candidate);
+  if (!map) return null;
+
+  const generatedLine = map.toGenerated(absolute, line);
+  if (generatedLine === null) return null;
+
+  return {
+    path: path.relative(WORKSPACE, candidate).split(path.sep).join('/'),
+    line: generatedLine,
+  };
+}
+
+/**
+ * The file and line to REPORT for a place the program actually stopped.
+ *
+ * The inverse of the above. Without it a student debugging TypeScript would be shown
+ * line numbers from a file they never wrote and cannot see.
+ */
+function toOriginalLocation(relativePath, line) {
+  const absolute = path.resolve(WORKSPACE, relativePath);
+  const map = mapFor(absolute);
+  if (!map) return { path: relativePath, line };
+
+  const original = map.toOriginal(line);
+  if (!original) return { path: relativePath, line };
+
+  return {
+    path: path.relative(WORKSPACE, original.source).split(path.sep).join('/'),
+    line: original.line,
+  };
+}
+
 /** The path as the IDE knows it: relative to the job, with forward slashes. */
 function workspaceRelative(url) {
   try {
@@ -144,15 +214,32 @@ async function setBreakpoints(lines, files) {
   const wanted = new Map();
   if (Array.isArray(lines) && lines.length > 0) wanted.set(PROGRAM_URL, [...lines]);
 
+  /**
+   * Which original line each armed generated line came from.
+   *
+   * Needed because the answer must be reported in the student's OWN file: telling them
+   * a breakpoint armed on line 12 of a `.js` they never wrote is worse than saying
+   * nothing.
+   */
+  const originalOf = new Map();
+
   for (const [relativePath, fileLines] of Object.entries(files ?? {})) {
-    const url = urlForWorkspacePath(relativePath);
-    if (!url) continue;
-    wanted.set(url, [...(wanted.get(url) ?? []), ...(fileLines ?? [])]);
+    for (const line of fileLines ?? []) {
+      const target = toGeneratedLocation(relativePath, line);
+      if (!target) continue;
+
+      const url = urlForWorkspacePath(target.path);
+      if (!url) continue;
+
+      wanted.set(url, [...(wanted.get(url) ?? []), target.line]);
+      if (target.path !== relativePath) {
+        originalOf.set(`${url}:${target.line}`, { path: relativePath, line });
+      }
+    }
   }
 
   const acceptedByPath = {};
   for (const [url, fileLines] of wanted) {
-    const armed = [];
     for (const line of fileLines) {
       const { result, error } = await post('Debugger.setBreakpointByUrl', {
         lineNumber: line - 1,
@@ -167,16 +254,26 @@ async function setBreakpoints(lines, files) {
       const bound = result.locations?.[0]?.lineNumber;
       const at = typeof bound === 'number' ? bound + 1 : line;
       breakpoints.set(`${url}:${at}`, result.breakpointId);
-      armed.push(at);
+
+      // Reported in the file the student is looking at. For plain JavaScript that is
+      // the same file; for a compiled language it is the source, not the output.
+      const origin = originalOf.get(`${url}:${line}`)
+        ?? { path: workspaceRelative(url), line: at };
+      (acceptedByPath[origin.path] ??= []).push(origin.line);
     }
-    if (armed.length > 0) acceptedByPath[workspaceRelative(url)] = armed.sort((a, b) => a - b);
+  }
+
+  // Not named `path`: that is the node module this file imports, and shadowing it here
+  // would break every path call made later in the same scope.
+  for (const reported of Object.keys(acceptedByPath)) {
+    acceptedByPath[reported] = [...new Set(acceptedByPath[reported])].sort((a, b) => a - b);
   }
 
   // `lines` is still reported for the entry file, so a client that only understands
   // the first shape keeps working.
   send({
     type: 'breakpoints',
-    lines: acceptedByPath[workspaceRelative(PROGRAM_URL)] ?? [],
+    lines: acceptedByPath[toOriginalLocation(workspaceRelative(PROGRAM_URL), 1).path] ?? acceptedByPath[workspaceRelative(PROGRAM_URL)] ?? [],
     files: acceptedByPath,
   });
 }
@@ -328,11 +425,13 @@ session.on('Debugger.paused', async message => {
   }
   currentTopFrameId = top.callFrameId ?? null;
 
-  const stack = own.slice(0, MAX_STACK).map(frame => ({
-    name: frame.functionName || '(module)',
-    file: fileOfFrame(frame),
-    line: frame.location.lineNumber + 1,
-  }));
+  const stack = own.slice(0, MAX_STACK).map(frame => {
+    // Reported in the file the student wrote. For an ordinary .js this is the same
+    // file and line; for a compiled one it is the source, or the whole stack would
+    // name lines in output they never see.
+    const at = toOriginalLocation(fileOfFrame(frame), frame.location.lineNumber + 1);
+    return { name: frame.functionName || '(module)', file: at.path, line: at.line };
+  });
 
   const scopes = top.scopeChain ?? [];
   const locals = [];
@@ -347,11 +446,13 @@ session.on('Debugger.paused', async message => {
   const moduleScope = scopes.find(scope => scope.type === 'module');
   const globals = moduleScope ? await readScope(moduleScope) : [];
 
+  const topLocation = toOriginalLocation(fileOfFrame(top), top.location.lineNumber + 1);
+
   const event = {
     type: 'stopped',
     reason: params.reason === 'exception' ? 'exception' : (params.hitBreakpoints?.length ? 'breakpoint' : 'step'),
-    file: fileOfFrame(top),
-    line: top.location.lineNumber + 1,
+    file: topLocation.path,
+    line: topLocation.line,
     stack,
     locals,
     globals,

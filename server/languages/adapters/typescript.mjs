@@ -29,7 +29,9 @@ import path from 'node:path';
 
 import { log } from '../../logging.mjs';
 import { diagnostics, pinModuleType, stripJobPaths } from '../adapter-kit.mjs';
-import { nodeLaunchArgs } from './javascript.mjs';
+import { JS_ADAPTER_DIR, nodeDebugLaunchArgs, nodeLaunchArgs } from './javascript.mjs';
+import { WORKSPACE_ENV } from './python.mjs';
+import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
 
 let compiler = null;
 let loadAttempted = false;
@@ -121,10 +123,20 @@ export const typescriptAdapter = {
     return 'main.ts';
   },
 
+  /**
+   * TypeScript can be debugged, through the JavaScript debugger and a source map.
+   *
+   * It was excluded before for a good reason: it is compiled before it runs, so a
+   * breakpoint on a .ts line would have armed against the emitted .js and stopped
+   * somewhere else. The map is what removes that objection.
+   */
+  supportsDebug: true,
+
   async prepare(ctx) {
     const { job, files, entryPoint, profile } = ctx;
     const startedAt = Date.now();
     const ts = await getCompiler();
+    const debugging = ctx.debug?.enabled === true;
 
     const tsFiles = files.filter(file => file.name.toLowerCase().endsWith('.ts'));
     const isSingleFile = tsFiles.length === 1;
@@ -163,7 +175,12 @@ export const typescriptAdapter = {
       experimentalDecorators: true,
       skipLibCheck: true,
       noEmitOnError: false,
-      sourceMap: false,
+      // Emitted only for a DEBUG run. A source map is what lets a breakpoint on a
+      // .ts line be armed against the .js line it became, and a stop reported back in
+      // the file the student wrote - without one, TypeScript can be run but not
+      // debugged, which is why it was excluded from the debuggable set. An ordinary
+      // run does not pay for the extra files.
+      sourceMap: debugging,
       removeComments: false,
       // Emit next to the source so relative imports keep resolving.
       outDir: undefined,
@@ -210,6 +227,29 @@ export const typescriptAdapter = {
     const entryToRun = job.exists(entryPoint.replace(/\.ts$/i, '.js'))
       ? emittedEntry
       : job.absolute(entryPoint);
+
+    /*
+     * A debug run goes through the JavaScript debug adapter, against the EMITTED file.
+     *
+     * There is no TypeScript debugger here and there does not need to be one: the
+     * program that actually runs is JavaScript, and the source map emitted above is
+     * what turns a `.ts` breakpoint into a `.js` one and a `.js` stop back into a `.ts`
+     * line. The adapter knows about maps, not about TypeScript.
+     */
+    if (debugging) {
+      return {
+        kind: 'launch',
+        command: ctx.config.tools.node,
+        args: nodeDebugLaunchArgs(JS_ADAPTER_DIR),
+        cwd: job.dir,
+        timeoutMs: ctx.timeoutMs,
+        extraEnv: {
+          [DEBUG_PROGRAM_ENV]: entryToRun,
+          [WORKSPACE_ENV]: path.resolve(job.dir),
+        },
+        transformStderr: text => stripJobPaths(text, job.dir),
+      };
+    }
 
     return {
       kind: 'launch',

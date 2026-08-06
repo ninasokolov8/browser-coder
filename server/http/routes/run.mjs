@@ -294,17 +294,23 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
       return sendRefusal(res, error);
     }
 
-    // Asked to debug a language with no adapter. Told plainly rather than running
-    // anyway and ignoring every breakpoint.
-    if (wantsDebug && !handle.debugSupported) {
-      send({
-        type: 'debug:unsupported',
-        message: `${language} cannot be debugged yet. The program will run normally.`,
-      });
-    }
-
-    // A compile failure never becomes a live session: it answers as JSON, which
-    // is the frozen v1 shape the console UI already handles.
+    /*
+     * A compile failure never becomes a live session: it answers as JSON, which is the
+     * frozen v1 shape the console UI already handles.
+     *
+     * This has to come BEFORE anything is written to the response. It did not, and the
+     * consequence was not a wrong answer - it was the whole server process dying.
+     *
+     * The `debug:unsupported` notice below used to sit above this branch. `send()`
+     * calls `res.write()`, and writing before `writeHead` makes Node commit default
+     * headers; `res.json()` here then threw ERR_HTTP_HEADERS_SENT from an async
+     * continuation, where Express cannot catch it, and an uncaught exception takes the
+     * process down with every other student's run on it.
+     *
+     * Reaching it needed only a debug request whose code does not compile, in a
+     * language the pipeline reports no adapter for - a student clicking Debug on a
+     * program with a syntax error.
+     */
     if (handle.kind === 'diagnostics') {
       return res.json({
         compile: {
@@ -342,6 +348,18 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
     if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
     send({ type: 'session', sessionId });
+
+    // Asked to debug a language with no adapter. Told plainly rather than running
+    // anyway and ignoring every breakpoint.
+    //
+    // Sent from HERE, after the stream is committed, because it is a stream event -
+    // see the note on the diagnostics branch above for what writing it earlier cost.
+    if (wantsDebug && !handle.debugSupported) {
+      send({
+        type: 'debug:unsupported',
+        message: `${language} cannot be debugged yet. The program will run normally.`,
+      });
+    }
 
     // The browser holds this connection open while the student thinks, which can
     // exceed a proxy's idle-read timeout. A periodic keep-alive proves the

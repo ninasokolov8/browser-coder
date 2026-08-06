@@ -28,10 +28,11 @@ import { runCode } from './execution';
  * disagree in a way that misleads: at worst the button is offered and the run
  * reports `debug:unsupported`.
  */
-// TypeScript is deliberately absent: it is compiled before it runs, so a breakpoint on
-// a .ts line would arm against the emitted .js and stop somewhere else. That needs
-// source maps, not another entry here.
-const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript']);
+// TypeScript is here now: it is still compiled before it runs, but the compiler emits
+// a source map for a debug run and the JavaScript debugger uses it in both directions -
+// a .ts breakpoint arms against the .js line it became, and a stop is reported back in
+// the file the student wrote.
+const DEBUGGABLE_LANGUAGES = new Set(['python', 'javascript', 'typescript']);
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';

@@ -662,3 +662,145 @@ describe('breakpoints in more than one file', () => {
     await run.close();
   });
 });
+
+/**
+ * Debugging TypeScript, which is not the language that runs.
+ *
+ * It was excluded from the debuggable set for a real reason: it is compiled to
+ * JavaScript first, so a breakpoint on a `.ts` line armed against the emitted `.js`
+ * would stop somewhere the student did not click. The compiler now emits a source map
+ * for a debug run and the JavaScript debugger uses it in BOTH directions.
+ *
+ * The assertion that matters is the round trip: the stop must be reported at the line
+ * of the `.ts` file, not of the `.js` nobody can see.
+ */
+describe('debugging TypeScript', requires('typescript'), () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  test('a .ts breakpoint stops at the .ts line', async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'typescript',
+      version: 'ts5',
+      // Blank lines and a comment on purpose: the emitted JavaScript does NOT line up
+      // with the source, which is the whole reason a map is needed. A naive
+      // implementation that passed the line straight through would stop on the wrong
+      // one here.
+      code: [
+        'interface Point { x: number; y: number }', // 1 - erased entirely
+        '',                                          // 2
+        '// a comment',                              // 3
+        'const corner: Point = { x: 1, y: 2 };',     // 4
+        'const total: number = corner.x + corner.y;',// 5
+        'console.log(total);',                       // 6
+      ].join('\n'),
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    assert.equal(await run.debug('setBreakpoints', { files: { 'main.ts': [6] } }), 200);
+
+    const armed = await run.waitFor('debug:breakpoints');
+    assert.deepEqual(armed.files?.['main.ts'], [6], `armed in the wrong file: ${JSON.stringify(armed)}`);
+
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.file, 'main.ts', 'reported the emitted .js instead of the source');
+    assert.equal(stopped.line, 6, 'stopped at the wrong .ts line');
+
+    // And the variable computed on the line above is there with its value.
+    const named = [...(stopped.locals || []), ...(stopped.globals || [])];
+    const total = named.find(entry => entry.name === 'total');
+    assert.ok(total, `no 'total': ${JSON.stringify(named.map(entry => entry.name))}`);
+    assert.equal(total.value.text, '3');
+
+    await run.debug('continue');
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+    await run.close();
+  });
+
+  test('an ordinary TypeScript run still emits no debug events', async () => {
+    // The map is emitted only for a debug run, and the v1 surface is untouched.
+    const run = await new StreamedRun(base).start({
+      language: 'typescript',
+      version: 'ts5',
+      code: 'const message: string = "plain";\nconsole.log(message);\n',
+    });
+
+    await run.waitFor('exit');
+    const debugEvents = run.events.filter(event => String(event.type).startsWith('debug:'));
+    assert.deepEqual(debugEvents, [], JSON.stringify(debugEvents));
+    await run.close();
+  });
+});
+
+/**
+ * A compile failure on a DEBUG run must not take the server down.
+ *
+ * It did. The route sent a `debug:unsupported` notice before the response headers were
+ * written; `send()` calls `res.write()`, and writing before `writeHead` makes Node
+ * commit default headers. The compile-diagnostics branch then called `res.json()`,
+ * which threw ERR_HTTP_HEADERS_SENT from an async continuation where Express cannot
+ * catch it - and an uncaught exception ends the process, along with every other
+ * student's run on it.
+ *
+ * Reaching it took nothing exotic: a student clicking Debug on a program that does not
+ * compile.
+ */
+describe('a debug run that does not compile', requires('typescript'), () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  test('answers with the compile result rather than crashing', async () => {
+    const response = await fetch(`${base}/api/run/interactive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: 'typescript',
+        version: 'ts5',
+        code: 'const value: number = "not a number";\n',
+        debug: true,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') || '', /application\/json/);
+
+    const body = await response.json();
+    assert.ok(body.compile, `no compile result: ${JSON.stringify(body)}`);
+    assert.match(body.compile.stderr, /TS2322|not assignable/);
+  });
+
+  test('and the server is still answering afterwards', async () => {
+    // The assertion that would have failed before the fix: the process was gone, so
+    // this request never reached anything.
+    const health = await fetch(`${base}/health`);
+    assert.equal(health.status, 200, 'the server died on the previous request');
+
+    const run = await new StreamedRun(base).start({
+      language: 'typescript',
+      version: 'ts5',
+      code: 'console.log("still here");\n',
+    });
+    await run.waitFor('exit');
+    await run.close();
+  });
+});
