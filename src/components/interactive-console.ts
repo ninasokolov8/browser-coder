@@ -83,7 +83,17 @@ export interface InteractiveResult {
 }
 
 interface ActiveSession {
-  sessionId: string;
+  /**
+   * Null until the server names the session.
+   *
+   * Which is not immediately: the `session` frame is the first thing on the stream,
+   * and the stream does not open until `pipeline.start` has finished compiling - up to
+   * 30 s for Java and 45 s for C#. This used to be the moment `active` was assigned,
+   * so for that whole window `stopInteractive()` returned early and the Stop button did
+   * nothing at all. The session is registered when the REQUEST starts instead, and this
+   * is filled in when the name arrives.
+   */
+  sessionId: string | null;
   controller: AbortController;
 }
 
@@ -313,6 +323,22 @@ export function runProgram(
     void (async () => {
       const controller = new AbortController();
 
+      /*
+       * This run's claim on the console, taken before the request goes out.
+       *
+       * Two things depend on it being an identity rather than a flag. Stop works during
+       * compile, because there is something to abort before the server has named the
+       * session. And teardown below releases the claim only if it is still THIS run's -
+       * `active = null` unconditionally meant a slow run's stream ending after the
+       * student had already started another one would silently disown the new one, and
+       * Stop would then do nothing for the rest of it.
+       */
+      const session: ActiveSession = { sessionId: null, controller };
+      active = session;
+      const releaseSession = () => {
+        if (active === session) active = null;
+      };
+
       // Reveal the typing caret only once the program is actually waiting for
       // input (server sends {type:'waiting'}). Showing it immediately made the
       // caret appear over an empty console with no prompt for context, and
@@ -336,7 +362,7 @@ export function runProgram(
         switch (msg.type) {
           case 'session':
             sessionId = msg.sessionId;
-            active = { sessionId, controller };
+            session.sessionId = sessionId;
             // The stream is live from here, so the caller can drop its spinner
             // and let the console own the panel.
             options.onStreamStart?.();
@@ -355,7 +381,7 @@ export function runProgram(
           case 'ping':
             break;
           case 'exit':
-            active = null;
+            releaseSession();
             void finishRun(msg.exitCode, msg.durationMs, msg.note, msg.turtleData);
             break;
           default:
@@ -464,14 +490,14 @@ export function runProgram(
 
         // Stream ended without an exit event (server died / network dropped).
         if (!settled) {
-          active = null;
+          releaseSession();
           append('\n[connection lost]\n', 'error');
           setStatus('Run failed');
           settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
         }
       } catch (e: any) {
         if (settled) return;
-        active = null;
+        releaseSession();
         // An abort is a deliberate stop (new run / clear output), not a fault.
         if (e?.name === 'AbortError') {
           settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });

@@ -293,6 +293,42 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       armWaiting();
     };
 
+    /*
+     * Arm the disconnect handler BEFORE the compile, not after it.
+     *
+     * `pipeline.start()` runs the adapter's prepare step - javac, `dotnet build`,
+     * `php -l`, `tsc` - which for Java and C# is seconds, and `res.on('close')` used
+     * to be registered only once that had resolved. A student who closed the tab or
+     * pressed Stop during a compile therefore disconnected before anything was
+     * listening, and since 'close' fires once, the handler registered afterwards never
+     * ran: the sandbox was left to be reaped by its own timer.
+     *
+     * Sessions leaked that way are what exhausts the concurrency cap and produce
+     * "too many runs" for the next student - so the window has to be closed, not
+     * shortened. The handle may not exist yet when this fires, hence the flag: stop it
+     * the moment it does.
+     */
+    let clientGone = false;
+    res.on('close', () => {
+      /*
+       * 'close' also fires when the response ENDS normally, which for this route
+       * includes the compile-error branch below - and the handle there is a
+       * diagnostics result with no `stop()`. Calling it threw from inside an event
+       * listener, where Express cannot catch it, and an uncaught exception takes the
+       * process down with every other student's run on it. Exactly the failure the
+       * note on that branch already records, reached a different way.
+       *
+       * `writableEnded` is the same guard the /api/run handler uses, and for the same
+       * reason.
+       */
+      if (res.writableEnded) return;
+
+      clientGone = true;
+      if (handle?.kind === 'session' && !state.finished) {
+        handle.stop(TerminationReason.CANCELLED);
+      }
+    });
+
     try {
       handle = await pipeline.start(
         { language, version, code, files, entryPoint },
@@ -352,6 +388,19 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       });
     }
 
+    /*
+     * The client disconnected while we were still compiling.
+     *
+     * The handler above set the flag but had no handle to stop; now there is one, and
+     * nobody is listening to the stream it would write to. Stopped HERE - before the
+     * session is registered and before the timers are armed - so a run nobody is
+     * watching never becomes a session that exists only to be timed out later.
+     */
+    if (clientGone) {
+      handle.stop(TerminationReason.CANCELLED);
+      return undefined;
+    }
+
     sessionId = sessions.register({
       handle,
       ip,
@@ -401,13 +450,6 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
 
     resetIdle();
     armWaiting();
-
-    // Client navigated away or aborted: kill the sandbox rather than leaving it
-    // waiting for input that will never arrive. Sessions leaked here are what
-    // exhausts the concurrency cap and produce spurious "too many runs" errors.
-    res.on('close', () => {
-      if (!state.finished) handle.stop(TerminationReason.CANCELLED);
-    });
 
     try {
       const result = await handle.done;
