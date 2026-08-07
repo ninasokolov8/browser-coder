@@ -8480,6 +8480,15 @@ seven built-in languages purely to satisfy the type. Configuration describing ma
 the system does not have is worse than absent - the same reasoning that removed the
 `scaling` block in V-35.
 
+**One public response changed shape**, and it is recorded rather than glossed over.
+`GET /api/languages` serves the config files, so it lost `runner` and gained
+`capabilities`. Adding a field is additive; removing one is not, and the frozen v1
+rule deserves the check rather than the assumption. Verified: Step-Up never calls that
+route at all - its only uses of the word runner are its own `CodeRunner` service -
+and the frozen-API contract test does not pin the key set. A third-party consumer
+reading `runner` would have been reading a field that described nothing, since nothing
+in this server has consulted it for the whole life of the refactor.
+
 One thing deliberately did **not** move. `canRunSelection` stayed out of
 `selection-run.ts`, because that module is Monaco-free so node can test it and the loader
 uses Vite's `import.meta.glob`. Importing it there would have traded a unit-tested module

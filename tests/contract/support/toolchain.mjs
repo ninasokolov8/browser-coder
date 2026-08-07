@@ -106,13 +106,41 @@ function javaToolchain() {
 // Probe the exact binaries the server spawns, so availability here means the
 // server can actually run that language - not merely that something with a
 // similar name is on PATH.
+/**
+ * C# needs an SDK that can build the framework the generated project targets.
+ *
+ * `dotnet --version` is not that question. A developer box with .NET 6 answers it
+ * happily and then fails every C# test with NETSDK1045 - "The current .NET SDK does not
+ * support targeting .NET 8.0" - which reads as a broken test rather than a missing
+ * toolchain. Measured: that is exactly what this host does.
+ *
+ * `--list-sdks` prints one line per installed SDK, so the real question is whether any
+ * of them is new enough. Kept in step with `TARGET_FRAMEWORK` in the C# adapter.
+ */
+const CSHARP_MINIMUM_SDK_MAJOR = 8;
+
+function dotnetToolchain() {
+  const listed = probe(process.env.DOTNET_BIN || 'dotnet', ['--list-sdks']);
+  if (!listed) return null;
+
+  const newest = Math.max(
+    0,
+    ...listed
+      .split(/\r?\n/)
+      .map(line => Number.parseInt(/^(\d+)\./.exec(line.trim())?.[1] ?? '', 10))
+      .filter(Number.isFinite),
+  );
+
+  return newest >= CSHARP_MINIMUM_SDK_MAJOR ? listed : null;
+}
+
 const PROBES = {
   javascript: () => probe(process.execPath, ['--version']),
   typescript: () => probe(process.execPath, ['--version']),
   python: () => probe(process.env.PYTHON_BIN || 'python3', ['--version']),
   java: javaToolchain,
   php: () => probe(process.env.PHP_BIN || 'php', ['--version']),
-  csharp: () => probe(process.env.DOTNET_BIN || 'dotnet', ['--version']),
+  csharp: dotnetToolchain,
 };
 
 const detected = new Map();
