@@ -24,6 +24,7 @@ import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';
 import { explorerState } from './explorer/state';
+import { runStudentTests } from './tests/run.ts';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -52,7 +53,7 @@ commands.register({
   id: 'workspace.run',
   title: 'Run',
   capability: 'run',
-  run: () => runCode(editor.getValue()),
+  run: async () => { await runCode(editor.getValue()); },
 });
 
 commands.register({
@@ -68,7 +69,26 @@ commands.register({
     // a button that starts a run which silently ignores every breakpoint is not.
     return model !== null && languageCan(model.getLanguageId(), 'debug');
   },
-  run: () => runCode(editor.getValue(), { debug: true }),
+  run: async () => { await runCode(editor.getValue(), { debug: true }); },
+});
+
+/*
+ * Check my work.
+ *
+ * Gated on the same 'run' capability as Run and Debug: running the marking harness
+ * IS running, and a task that forbids running must not be markable either.
+ *
+ * Deliberately NOT gated on a harness existing. That check needs the workspace
+ * snapshot, which is async, and a command's `when` is synchronous - so the command
+ * is always offered and says 'this task has no checks' when there are none. An
+ * always-present item that sometimes says nothing to do beats an item that appears
+ * and disappears for reasons the student cannot see.
+ */
+commands.register({
+  id: 'workspace.runTests',
+  title: 'Check my work',
+  capability: 'run',
+  run: () => runStudentTests(),
 });
 
 commands.register({

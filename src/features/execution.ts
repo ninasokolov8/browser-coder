@@ -131,6 +131,15 @@ export async function runCode(
      * fragment while the rest is mid-edit.
      */
     markerRange?: { startLine: number; endLine: number };
+    /**
+     * Run a DIFFERENT file as the entry point, keeping the whole project.
+     *
+     * For "Check my work": the marking harness is the program, and the student's own
+     * code is the rest of the payload it imports. Everything else about the run - the
+     * snapshot, the diagnostics gate, the stream, the console - is identical, which is
+     * the entire reason this is an option here rather than a second pipeline.
+     */
+    entryPointOverride?: string;
   } = {},
 ) {
   const { editor, tabManager, storage } = requireRuntime();
@@ -302,7 +311,12 @@ const activeSnapshotFile = languageFiles.find(file =>
 
 // `code` is the editor value at the instant Run was requested. It wins over
 // any delayed IndexedDB/autosave value for the entry point.
-if (activeSnapshotFile) activeSnapshotFile.content = code;
+//
+// NOT when the entry point was overridden. Then `code` is still the file on
+// screen and the entry point is the marking harness, so writing one over the
+// other would run the student's own code as though it were the marking script -
+// and every check would pass.
+if (activeSnapshotFile && !options.entryPointOverride) activeSnapshotFile.content = code;
 
 const entryPointExists = !!activeSnapshotFile;
 
@@ -411,6 +425,11 @@ ${result.stdout || ''}`,
         exitCode: result.exitCode,
         durationMs: result.durationMs });
     }
+
+    // Returned so a caller can read what the program printed. "Check my work" needs
+    // it: the harness reports its verdict on stdout, and parsing that is the whole
+    // feature. Every other caller ignores it, exactly as before.
+    return result;
   } catch (e: any) {
     stopRunLoader();
     setOutputHtml(

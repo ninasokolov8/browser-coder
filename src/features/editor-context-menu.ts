@@ -173,13 +173,13 @@ runtime.commands?.register({
   title: 'Run selection',
   capability: 'run',
   when: () => selectedProgram() !== null,
-  run: () => {
+  run: async () => {
     const selected = selectedProgram();
     if (!selected) return;
     // The pre-run diagnostics gate is scoped to these lines: an error on line 40 of a
     // file being edited must not refuse a run of line 1, which is the main reason to
     // run a fragment at all.
-    return runCode(selected.code, { markerRange: selected.range });
+    await runCode(selected.code, { markerRange: selected.range });
   },
 });
 

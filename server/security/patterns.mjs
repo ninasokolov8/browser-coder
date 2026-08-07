@@ -198,10 +198,34 @@ const SECURITY = {
       /\bfile\s*\(/i,
       /\breadfile\s*\(/i,
       /\bfread\s*\(/i,
-      /\binclude\s*[^;]+/i,
-      /\binclude_once\s*[^;]+/i,
-      /\brequire\s*[^;]+/i,
-      /\brequire_once\s*[^;]+/i,
+      /*
+       * Includes: the DANGEROUS ones, not all of them.
+       *
+       * These four rules replace `/\binclude\s*[^;]+/i` and its three siblings, which
+       * matched every include there has ever been. The effect was that a PHP project
+       * COULD NOT SPAN FILES: `require_once __DIR__ . '/helper.php'` - the first thing
+       * anybody writes after their first file - was refused as an attack, and the
+       * message told the student their code contained shell commands.
+       *
+       * The threat is Local File Inclusion: `require $_GET['page']`, an absolute path
+       * out of the project, a traversal, or a stream wrapper. A literal relative path
+       * is a student importing their own code. Every fixture in the attack corpus uses
+       * an absolute path (`/etc/passwd`, `/var/log/...`), so all of them still fail.
+       *
+       * And this is not the only thing standing in the way: the adapter runs PHP with
+       * `open_basedir` set to the job directory, so even a literal include cannot reach
+       * outside it. This is the layer that explains itself; that one is the layer that
+       * cannot be argued with.
+       */
+      // A quoted target beginning with `/` - an absolute path. `__DIR__ . '/x.php'`
+      // does not match, because what follows the keyword there is `__DIR__`.
+      /\b(?:include|require)(?:_once)?\s*\(?\s*['"]\//i,
+      // A variable anywhere in the target: the classic LFI shape.
+      /\b(?:include|require)(?:_once)?\b[^;]*\$/i,
+      // A stream wrapper or a URL, which `allow_url_include=Off` also refuses.
+      /\b(?:include|require)(?:_once)?\b[^;]*(?::\/\/|\b(?:php|data|zip|phar|expect|glob):)/i,
+      // A traversal, whatever it is spelled around.
+      /\b(?:include|require)(?:_once)?\b[^;]*\.\.[/\\]/i,
       /\bunlink\s*\(/i,
       /\brmdir\s*\(/i,
       /\bmkdir\s*\(/i,
