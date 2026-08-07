@@ -1,6 +1,10 @@
 import * as monaco from 'monaco-editor';
 import { getLanguage } from '../languages';
-import { identifierPattern, maskCommentsAndStrings } from '../languages/syntax.ts';
+import {
+  buildSearchPattern as buildPattern,
+  findMatches,
+  replaceInFile as coreReplaceInFile,
+} from './search-core.ts';
 import { runtime } from '../app/runtime';
 import { policyState } from '../app/config';
 import {
@@ -87,80 +91,23 @@ async function persistReplacedContent(fileId: string, newContent: string): Promi
   runtime.notifyWorkspaceChanged();
 }
 
+/*
+ * Thin bindings over the pure scanner.
+ *
+ * The rules live in search-core.ts so they can be tested without a DOM; these carry the
+ * current toggle state into them. Nothing here decides anything.
+ */
 function buildSearchPattern(query: string, global: boolean, language?: string): RegExp {
-  const flags = `${global ? 'g' : ''}${searchOptions.caseSensitive ? '' : 'i'}`;
-
-  if (searchOptions.regex) {
-    return new RegExp(query, flags);
-  }
-
-  let escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (searchOptions.wholeWord) {
-    // `\b` is defined against JavaScript's idea of a word character, which is wrong
-    // for several of the languages here: searching PHP for `$total` with whole-word
-    // on found nothing, because `\b` sits between `$` and `t` rather than before the
-    // `$`. Same for `my-class` in CSS, which `\b` splits into two words.
-    //
-    // Built from the language's own identifier characters instead. Falls back to the
-    // plain `\b` when the language is unknown, which is what it always did.
-    const identifier = language ? identifierPattern(language) : null;
-    escapedQuery = identifier
-      ? `(?<!${identifier})${escapedQuery}(?!${identifier})`
-      : `\\b${escapedQuery}\\b`;
-  }
-
-  return new RegExp(escapedQuery, flags);
+  return buildPattern(query, global, searchOptions, language);
 }
 
-/**
- * Replace every match in one file, honouring the SAME options search used.
- *
- * This exists because the two replace paths built their own patterns with
- * `buildSearchPattern(query, true)` - no language - while search passed one. That
- * meant whole-word search and whole-word replace disagreed about where a word
- * starts: searching PHP for `$total` found nothing (correctly, before this change)
- * while replace-all would have rewritten it.
- *
- * `codeOnly` made it worse and destructively so: the results list would show three
- * matches and replace-all would silently rewrite five, including ones inside
- * comments and strings the student had deliberately left alone.
- *
- * Matches are located on the MASKED text and spliced out of the ORIGINAL by offset,
- * which the lexer's length-and-newline guarantee makes sound.
- */
 function replaceInFile(
   content: string,
   query: string,
   language: string,
   replacement: string,
 ): { text: string; count: number } {
-  let pattern: RegExp;
-  try {
-    pattern = buildSearchPattern(query, true, language);
-  } catch {
-    return { text: content, count: 0 };
-  }
-
-  const searchable = searchOptions.codeOnly
-    ? maskCommentsAndStrings(language, content)
-    : content;
-
-  // Collected first, then applied right-to-left, so an earlier splice cannot
-  // invalidate a later offset.
-  const spans: Array<{ start: number; end: number }> = [];
-  let match: RegExpExecArray | null;
-  pattern.lastIndex = 0;
-  while ((match = pattern.exec(searchable)) !== null) {
-    spans.push({ start: match.index, end: match.index + match[0].length });
-    if (match[0].length === 0) pattern.lastIndex += 1;
-  }
-
-  let text = content;
-  for (const span of spans.reverse()) {
-    text = text.slice(0, span.start) + replacement + text.slice(span.end);
-  }
-
-  return { text, count: spans.length };
+  return coreReplaceInFile(content, query, language, replacement, searchOptions);
 }
 
 // Function to highlight search matches in current editor
@@ -302,57 +249,18 @@ async function performSearch() {
 }
 
 function searchInFile(content: string, query: string, fileId: string, fileName: string, language: string): SearchMatch[] {
-  const matches: SearchMatch[] = [];
-  const lines = content.split('\n');
-
-  // `language` used to be accepted here and then ignored - threaded through four
-  // signatures purely to reach an emoji in the results list. It now decides two
-  // things: what counts as a word boundary, and (with codeOnly) which regions are
-  // searchable at all.
-  //
-  // The masked text is searched, and the ORIGINAL is reported. That is only sound
-  // because the lexer guarantees identical length and newline positions, so an
-  // offset found in one is valid in the other.
-  const searchable = searchOptions.codeOnly
-    ? maskCommentsAndStrings(language, content).split('\n')
-    : lines;
-
-  let searchPattern: RegExp;
-  try {
-    searchPattern = buildSearchPattern(query, true, language);
-  } catch {
-    return matches;
-  }
-
-  for (let lineNum = 0; lineNum < lines.length; lineNum++) {
-    const line = searchable[lineNum];
-    let match: RegExpExecArray | null;
-    
-    // Reset regex lastIndex
-    searchPattern.lastIndex = 0;
-    
-    while ((match = searchPattern.exec(line)) !== null) {
-      matches.push({
-        fileId,
-        fileName,
-        language,
-        line: lineNum + 1,
-        column: match.index + 1,
-        // The ORIGINAL line, not the masked one: the offsets are shared, but the
-        // student must see their own text in the results list.
-        text: lines[lineNum],
-        matchStart: match.index,
-        matchEnd: match.index + match[0].length,
-      });
-      
-      // Prevent infinite loop for zero-length matches
-      if (match[0].length === 0) {
-        searchPattern.lastIndex++;
-      }
-    }
-  }
-
-  return matches;
+  // The same scan Replace All uses, placed on its lines and labelled with the file it
+  // came from. The placement is in search-core.ts; this only adds the labels.
+  return findMatches(content, query, language, searchOptions).map(match => ({
+    fileId,
+    fileName,
+    language,
+    line: match.line,
+    column: match.column,
+    text: match.text,
+    matchStart: match.matchStart,
+    matchEnd: match.matchEnd,
+  }));
 }
 
 function renderSearchResults() {
