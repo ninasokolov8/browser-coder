@@ -297,9 +297,18 @@ export const CONFIG = {
     storageDir:
       process.env.PREVIEW_STORAGE_DIR || path.join(os.tmpdir(), 'browser-coder-previews'),
 
-    // Set in docker-compose.prod.yml but never read by the pre-refactor server
-    // (blueprint V-38). Parsed here so the values are at least visible; Phase B
-    // enforces them.
+    /*
+     * The two bounds on preview storage. Both now enforced; neither was.
+     *
+     * They were set in docker-compose.prod.yml and read by nothing (blueprint V-38),
+     * under a comment saying "Phase B enforces them" - and Phase B came and went, so
+     * the deployment believed it had a storage cap and a publish rate limit and had
+     * neither. The only bound was the 30-day TTL, which on a shared volume means a
+     * class publishing all term fills the disk and everything on that mount fails.
+     *
+     * Zero means unlimited for both, which is the default, so a deployment that never
+     * set them does not start deleting or refusing anything because it upgraded.
+     */
     maxStorageBytes: intFromEnv('PREVIEW_MAX_STORAGE_BYTES', 0),
     publishesPerMinute: intFromEnv('PREVIEW_PUBLISHES_PER_MINUTE', 0),
   },

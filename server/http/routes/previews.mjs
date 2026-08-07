@@ -33,10 +33,35 @@ const STORAGE_UNAVAILABLE_TEXT = 'Preview storage is unavailable';
  * @param {import('../../previews/store.mjs').PreviewStore} deps.store
  * @param {Function} deps.log
  */
-export function registerPreviewRoutes(app, { store, log }) {
+export function registerPreviewRoutes(app, { store, log, publishLimiter = null }) {
   app.post('/api/previews', async (req, res) => {
     if (!store.isReady) {
       return res.status(503).json({ error: STORAGE_UNAVAILABLE_JSON });
+    }
+
+    /*
+     * A tighter limit than the global one, because this route is different in kind:
+     * every other request is transient, and this one writes files that stay for the
+     * TTL. The global limiter is 200 per window, which is 200 published projects.
+     *
+     * `PREVIEW_PUBLISHES_PER_MINUTE` was parsed and set in docker-compose.prod.yml and
+     * read by nothing - the config even said so, "Phase B enforces them", and Phase B
+     * came and went. So the deployment believed publishing was rate limited and it was
+     * not. Together with the storage cap this is what actually bounds preview storage.
+     *
+     * Unset means unlimited, matching the cap, so no existing deployment changes
+     * behaviour by upgrading.
+     */
+    if (publishLimiter) {
+      const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+      const { allowed } = publishLimiter.check(ip);
+      if (!allowed) {
+        res.setHeader('Retry-After', '60');
+        return res.status(429).json({
+          error: 'You are publishing previews too quickly. Wait a minute and try again.',
+          retryAfter: 60,
+        });
+      }
     }
 
     const rawEntryPath = typeof req.body?.entryPath === 'string' ? req.body.entryPath : 'index.html';

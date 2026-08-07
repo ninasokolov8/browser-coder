@@ -172,7 +172,19 @@ registerHealthRoutes(app, {
   },
 });
 
-registerPreviewRoutes(app, { store: previewStore, log });
+/*
+ * A per-minute cap on PUBLISHING, separate from the global request limiter.
+ *
+ * Publishing is the one route that writes files which outlive the request, so 200 per
+ * window - the global limit - is 200 published projects. Unset means unlimited, matching
+ * the storage cap, so upgrading changes nothing for a deployment that never set it.
+ */
+const previewPublishLimiter = CONFIG.preview.publishesPerMinute > 0
+  ? new RateLimiter({ windowMs: 60_000, maxRequests: CONFIG.preview.publishesPerMinute })
+  : null;
+previewPublishLimiter?.start();
+
+registerPreviewRoutes(app, { store: previewStore, log, publishLimiter: previewPublishLimiter });
 registerLanguageRoutes(app, { rootDir: __dirname, log });
 
 // These handlers hold no language logic: they translate HTTP into a pipeline
