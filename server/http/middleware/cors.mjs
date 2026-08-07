@@ -12,55 +12,33 @@
  * does not send one.
  */
 
-export const ALLOWED_ORIGINS = [
-  'http://localhost:8000',
-  'http://localhost:3000',
-  'http://localhost',
-  'http://127.0.0.1:8000',
-  'http://127.0.0.1:3000',
-  'https://stepup.school',
-  'https://step-up.co.il',
-  'https://www.stepup.school',
-  'https://www.step-up.co.il',
-  'https://arc.co',
-  'https://www.arc.co',
-  // Development / staging
-  'http://stepup.local',
-  'https://staging.stepup.school',
-];
+import { classifyOrigin, STEPUP_BASE_DOMAINS, STEPUP_ORIGINS } from '../../domain/stepup-origins.mjs';
 
-export const ALLOWED_BASE_DOMAINS = ['stepup.school', 'step-up.co.il', 'arcacademy.co'];
+/*
+ * The list moved to server/domain/stepup-origins.mjs, where the client reads it too.
+ *
+ * It was written twice - here and in src/integrations/stepup-bus.ts - and the two had
+ * drifted: only this side trusted `arc.co`, and only the client trusted `stepup.zone`,
+ * `localhost:8080` (which is the APP_URL in Step-Up's own .env.example) and
+ * `167.71.63.99`. Re-exported so existing importers and tests are unaffected.
+ */
+export const ALLOWED_ORIGINS = STEPUP_ORIGINS;
+export const ALLOWED_BASE_DOMAINS = STEPUP_BASE_DOMAINS;
 
 /**
  * Is this origin allowed to make credentialed cross-origin requests?
  *
- * The subdomain rule is written against the parsed HOSTNAME rather than with
- * `endsWith` on the raw origin string. Comparing a string that also contains the
- * scheme and the port means reasoning about URL syntax at every call site; parsing
- * removes that class of mistake, because a hostname either equals the domain or
- * ends with a dot and the domain, and nothing else can be constructed to look
- * like it.
+ * Membership is the shared rule. The extra condition is this side's alone: a
+ * SUBDOMAIN grant must not be reachable over plain HTTP in production, because a
+ * credentialed CORS grant to an attacker-controlled subdomain over http is a
+ * different risk from a postMessage target. An origin listed exactly is trusted as
+ * written, http included - that is what naming it means.
  */
 export function isAllowedOrigin(origin, { isDev }) {
-  if (!origin) return false;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-
-  let hostname;
-  let protocol;
-  try {
-    const url = new URL(origin);
-    hostname = url.hostname.toLowerCase();
-    protocol = url.protocol;
-  } catch {
-    return false;
-  }
-
-  // A subdomain grant must not be reachable over plain HTTP in production.
-  if (!isDev && protocol !== 'https:') return false;
-
-  return ALLOWED_BASE_DOMAINS.some(
-    domain => hostname === domain || hostname.endsWith(`.${domain}`),
-  );
+  const match = classifyOrigin(origin);
+  if (!match.allowed) return false;
+  if (match.via === 'subdomain' && !isDev && match.protocol !== 'https:') return false;
+  return true;
 }
 
 export function createCorsMiddleware({ isDev, log }) {

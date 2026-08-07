@@ -1,22 +1,19 @@
 import { appConfig } from '../app/config';
+import { isStepUpOrigin } from '../../server/domain/stepup-origins.mjs';
 
-const ALLOWED_ORIGINS = [
-  'http://localhost:8000','http://localhost:8080','http://localhost:3000','http://localhost',
-  'http://127.0.0.1:8000','http://127.0.0.1:3000','http://167.71.63.99',
-  'https://stepup.school','https://step-up.co.il','https://www.stepup.school','https://www.step-up.co.il',
-  'https://staging.stepup.school','https://stepup.zone','https://dev.stepup.zone','http://stepup.local',
-  'https://arcacademy.co','https://www.arcacademy.co',
-];
-const ALLOWED_BASE_DOMAINS = ['stepup.school','step-up.co.il','stepup.zone','arcacademy.co'];
 let parentOrigin: string | null = null;
 
+/**
+ * Which parent this embedded IDE will speak to.
+ *
+ * The list is shared with the server's CORS middleware. It used to be a second copy
+ * here, and the two had drifted: this side trusted `stepup.zone`, `localhost:8080` and
+ * `167.71.63.99` and the server did not, while the server trusted `arc.co` and this
+ * side did not - so the IDE would postMessage a parent whose API calls the same server
+ * would refuse.
+ */
 export function isAllowedOrigin(origin: string): boolean {
-  if (!origin) return false;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-  try {
-    const hostname = new URL(origin).hostname;
-    return ALLOWED_BASE_DOMAINS.some(base => hostname === base || hostname.endsWith('.' + base));
-  } catch { return false; }
+  return isStepUpOrigin(origin);
 }
 
 export function deriveInitialParentOrigin(): string | null {

@@ -21,6 +21,7 @@ import {
   createCorsMiddleware,
   isAllowedOrigin,
 } from '../../server/http/middleware/cors.mjs';
+import { isStepUpOrigin } from '../../server/domain/stepup-origins.mjs';
 
 /** Minimal express-shaped request. */
 function request({ peer = '203.0.113.7', headers = {}, ip, method = 'GET', path = '/api/run' } = {}) {
@@ -286,5 +287,73 @@ describe('isAllowedOrigin', () => {
 
   test('hostname comparison is case-insensitive', () => {
     assert.equal(isAllowedOrigin('https://APP.StepUp.School', prod), true);
+  });
+});
+
+describe('the client and the server agree about Step-Up', () => {
+  /*
+   * One rule, previously two files, already drifted in both directions:
+   *
+   *   only the client trusted  stepup.zone, *.stepup.zone, localhost:8080, 167.71.63.99
+   *   only the server trusted  arc.co, www.arc.co
+   *
+   * So the embedded IDE would postMessage a parent whose API requests this same server
+   * refused, and vice versa. Neither half is wrong on its own, which is exactly why it
+   * survived: you cannot see the bug from either file.
+   *
+   * Both now import server/domain/stepup-origins.mjs. These tests assert what that
+   * buys - that the answers match - so re-introducing a local list fails here rather
+   * than in production.
+   */
+  const CORPUS = [
+    // The origins Step-Up's own deploy script and .env.example name.
+    'https://arcacademy.co',
+    'https://dev.arcacademy.co',
+    'http://localhost:8080',
+    // Previously one-sided, in each direction.
+    'https://stepup.zone',
+    'https://dev.stepup.zone',
+    'http://167.71.63.99',
+    'https://arc.co',
+    // And things that must be refused by both.
+    'https://evil.com',
+    'https://notstepup.school',
+    'https://stepup.school.evil.com',
+    'null',
+    '',
+  ];
+
+  test('every origin gets the same verdict from both sides', () => {
+    for (const origin of CORPUS) {
+      assert.equal(
+        isStepUpOrigin(origin),
+        isAllowedOrigin(origin, { isDev: true }),
+        `${origin || '(empty)'}: the client and the server disagree`,
+      );
+    }
+  });
+
+  test('the origins Step-Up actually deploys to are allowed', () => {
+    // deploy/deploy.sh: DOMAIN=arcacademy.co (prod), dev.arcacademy.co (dev).
+    // .env.example: APP_URL=http://localhost:8080 - which the server used to refuse.
+    for (const origin of ['https://arcacademy.co', 'https://dev.arcacademy.co']) {
+      assert.equal(isAllowedOrigin(origin, { isDev: false }), true, origin);
+      assert.equal(isStepUpOrigin(origin), true, origin);
+    }
+    assert.equal(isAllowedOrigin('http://localhost:8080', { isDev: true }), true);
+  });
+
+  test('the server still refuses a subdomain grant over http in production', () => {
+    // The one rule that is NOT shared, and must not become shared by accident: a
+    // credentialed CORS grant is not the same risk as a postMessage target.
+    assert.equal(isStepUpOrigin('http://app.arcacademy.co'), true);
+    assert.equal(isAllowedOrigin('http://app.arcacademy.co', { isDev: false }), false);
+  });
+
+  test('a lookalike is refused by both', () => {
+    for (const origin of ['https://arcacademy.co.evil.com', 'https://notarcacademy.co']) {
+      assert.equal(isStepUpOrigin(origin), false, origin);
+      assert.equal(isAllowedOrigin(origin, { isDev: true }), false, origin);
+    }
   });
 });

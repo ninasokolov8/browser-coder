@@ -7,6 +7,7 @@ import { createCommandRegistry } from './commands';
 import { DiagnosticsStore } from './diagnostics/store';
 import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
 import { connectRunMarkers } from './diagnostics/server-source';
+import { connectDiagnosticStaleness } from './diagnostics/staleness';
 import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
 import { initializeCommandPalette } from './features/command-palette';
 import { initializeQuickOpen } from './features/quick-open';
@@ -190,6 +191,10 @@ async function bootstrap(): Promise<void> {
   // Squiggles for compiler errors. Driven by the store rather than written at
   // publish time, so a stale result being discarded also clears its marker.
   connectRunMarkers({ store: diagnostics, models: workspace.models, service: workspace.service });
+  // And the thing that discards them. Without this the store's revision stamps were
+  // recorded and never compared, so a compile error stayed squiggled on its original
+  // line through every edit that followed - including the one that fixed it.
+  connectDiagnosticStaleness({ store: diagnostics, service: workspace.service });
 
   initializeProblemsPanel(diagnostics);
 
