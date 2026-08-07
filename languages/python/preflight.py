@@ -47,13 +47,35 @@ _DYNAMIC_NAMES = {
 # refuse a program. Only real `import` statements and real calls count.
 
 # Modules a student program may not import. Everything else (math, random,
-# time, statistics, turtle, …) is allowed.
+# time, statistics, turtle, csv, json, datetime, …) is allowed.
+#
+# Narrowed once the container became the boundary for the threats it can actually
+# hold - but only for those threats, which is a shorter list than it first
+# appears. See fs_guard.py: every job runs as the SAME uid, so file access had to
+# be confined rather than simply permitted.
+#
+# Still blocked, and why each one is not merely redundant with the container:
+#   • os, subprocess, pty, signal, resource, _posixsubprocess - process control,
+#     and `os` is a second unguarded route to the filesystem (os.open, os.scandir)
+#     that would make fs_guard.py optional.
+#   • ctypes, mmap, marshal, pickle - reach memory or execute what they load.
+#   • importlib, builtins, inspect, gc, types, code, runpy, pdb - reach the
+#     interpreter's own state, which is how the fs guard would be unwrapped.
+#   • pathlib, glob, shutil, fileinput, tempfile, fnmatch, io, codecs, sqlite3,
+#     shelve, dbm, zipfile, tarfile, gzip, bz2, lzma - filesystem access that does
+#     NOT pass through the guarded `open`. These are the ones worth revisiting:
+#     each is a real curriculum topic, and each needs its own confinement.
+#   • socket, ssl, http, urllib, requests, ftplib, smtplib, … - the network is
+#     already unreachable; these stay only so the failure is a clear message
+#     instead of a timeout the student cannot interpret.
+#   • threading, multiprocessing, asyncio, _thread - concurrency the runner's
+#     single-process timeout and pid limit model does not account for.
 _BLOCKED_MODULES = {
-    'os', 'sys', 'subprocess', 'socket', 'ssl', 'select', 'signal', 'shutil',
-    'pathlib', 'io', 'codecs', 'base64', 'binascii', 'pickle', 'cPickle',
+    'os', 'subprocess', 'socket', 'ssl', 'select', 'signal', 'shutil',
+    'pathlib', 'io', 'codecs', 'pickle', 'cPickle',
     'marshal', 'ctypes', 'mmap', 'resource', 'pty', 'tty', 'termios', 'fcntl',
     'threading', 'multiprocessing', 'asyncio', 'importlib', 'builtins',
-    'inspect', 'gc', 'dis', 'ast', 'code', 'types', 'platform', 'tempfile',
+    'inspect', 'gc', 'dis', 'code', 'types', 'tempfile', 'platform', 'ast',
     'glob', 'fnmatch', 'fileinput', 'getpass', 'webbrowser', 'sqlite3',
     'http', 'urllib', 'urllib2', 'requests', 'ftplib', 'smtplib', 'telnetlib',
     'poplib', 'imaplib', 'nntplib', 'xmlrpc', 'commands',
@@ -63,12 +85,35 @@ _BLOCKED_MODULES = {
     'pipes', 'popen2', '_thread', '_socket', '_posixsubprocess',
 }
 
-# Builtins that hand out code execution, the file system or the interpreter's
-# internals. Only flagged as a *direct* call: `door.open()` on the student's own
-# object is a method call and stays legal, and so does a function they defined
-# themselves called open() or compile().
+# `sys` is allowed, but only these attributes.
+#
+# sys.exit() is taught in every introductory course and is completely harmless -
+# the process is going to be killed by the timeout anyway. What is NOT harmless is
+# the rest of the module: sys.modules and sys.path reach the import machinery,
+# and sys._getframe walks the stack into the guard's own closure. So the module is
+# permitted and the dangerous attributes are named, rather than the reverse.
+_ALLOWED_SYS_ATTRIBUTES = {
+    'exit', 'argv', 'stdin', 'stdout', 'stderr', 'version', 'version_info',
+    'maxsize', 'platform', 'byteorder', 'getsizeof', 'float_info', 'int_info',
+    'getrecursionlimit', 'setrecursionlimit', 'flags', 'implementation',
+    'exc_info', 'displayhook', 'excepthook', 'hexversion', 'api_version',
+    'copyright', 'executable', 'prefix', 'base_prefix', 'dont_write_bytecode',
+}
+
+# Modules that are permitted but whose attribute surface is restricted.
+_ATTRIBUTE_LIMITED_MODULES = {'sys': _ALLOWED_SYS_ATTRIBUTES}
+
+# Builtins that hand out code execution or the interpreter's internals. Only
+# flagged as a *direct* call: `door.open()` on the student's own object is a
+# method call and stays legal, and so does a function they defined themselves
+# called compile().
+#
+# `open` is deliberately NOT here any more. It is allowed and confined to the
+# workspace at runtime by fs_guard.py - see that file for why refusing it outright
+# was both too strict for the curriculum and, on its own, not the reason cross-job
+# reads were prevented.
 _BLOCKED_BUILTIN_CALLS = {
-    'eval', 'exec', 'compile', '__import__', 'open', 'breakpoint',
+    'eval', 'exec', 'compile', '__import__', 'breakpoint',
     'getattr', 'setattr', 'delattr', 'globals', 'locals', 'vars',
 }
 
@@ -136,6 +181,15 @@ def _security_problems(tree, lines):
             root = (node.module or '').split('.')[0]
             if root in _BLOCKED_MODULES:
                 report(node, "importing from '%s'" % root)
+            elif root in _ATTRIBUTE_LIMITED_MODULES:
+                # `from sys import _getframe` would otherwise bind the name
+                # directly and never appear as an attribute access.
+                allowed = _ATTRIBUTE_LIMITED_MODULES[root]
+                for alias in node.names:
+                    if alias.name == '*':
+                        report(node, "importing everything from '%s'" % root)
+                    elif alias.name not in allowed:
+                        report(node, "using %s.%s" % (root, alias.name))
 
         # ── Real calls ──────────────────────────────────────────────────────
         elif isinstance(node, ast.Call):
@@ -148,6 +202,17 @@ def _security_problems(tree, lines):
                 target = func.value
                 if isinstance(target, ast.Name) and target.id in _BLOCKED_MODULES:
                     report(node, "calling %s.%s()" % (target.id, func.attr))
+
+        # ── Attribute-limited modules ───────────────────────────────────────
+        # Checked before the generic internals rule so the message names the
+        # module the student actually wrote.
+        elif (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in _ATTRIBUTE_LIMITED_MODULES
+            and node.attr not in _ATTRIBUTE_LIMITED_MODULES[node.value.id]
+        ):
+            report(node, "using %s.%s" % (node.value.id, node.attr))
 
         # ── Interpreter internals ───────────────────────────────────────────
         elif isinstance(node, ast.Attribute) and node.attr in _BLOCKED_ATTRIBUTES:

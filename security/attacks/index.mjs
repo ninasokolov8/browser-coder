@@ -23,19 +23,19 @@
  */
 
 // Default/backwards-compatible exports: English attack vectors
-export { javascriptTests } from './javascript.mjs';
-export { typescriptTests } from './typescript.mjs';
-export { pythonTests } from './python.mjs';
-export { phpTests } from './php.mjs';
-export { javaTests } from './java.mjs';
-export { csharpTests } from './csharp.mjs';
+export { javascriptTests } from '../../tests/security/attacks/javascript.mjs';
+export { typescriptTests } from '../../tests/security/attacks/typescript.mjs';
+export { pythonTests } from '../../tests/security/attacks/python.mjs';
+export { phpTests } from '../../tests/security/attacks/php.mjs';
+export { javaTests } from '../../tests/security/attacks/java.mjs';
+export { csharpTests } from '../../tests/security/attacks/csharp.mjs';
 
-import { javascriptTests as javascriptTestsEn } from './javascript.mjs';
-import { typescriptTests as typescriptTestsEn } from './typescript.mjs';
-import { pythonTests as pythonTestsEn } from './python.mjs';
-import { phpTests as phpTestsEn } from './php.mjs';
-import { javaTests as javaTestsEn } from './java.mjs';
-import { csharpTests as csharpTestsEn } from './csharp.mjs';
+import { javascriptTests as javascriptTestsEn } from '../../tests/security/attacks/javascript.mjs';
+import { typescriptTests as typescriptTestsEn } from '../../tests/security/attacks/typescript.mjs';
+import { pythonTests as pythonTestsEn } from '../../tests/security/attacks/python.mjs';
+import { phpTests as phpTestsEn } from '../../tests/security/attacks/php.mjs';
+import { javaTests as javaTestsEn } from '../../tests/security/attacks/java.mjs';
+import { csharpTests as csharpTestsEn } from '../../tests/security/attacks/csharp.mjs';
 
 import { javascriptTests as javascriptTestsHe } from './javascript_he.mjs';
 import { typescriptTests as typescriptTestsHe } from './typescript_he.mjs';

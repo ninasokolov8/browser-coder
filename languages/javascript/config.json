@@ -26,9 +26,10 @@
       "monacoTarget": "ES5"
     }
   ],
-  "runner": {
-    "command": "node",
-    "args": ["--input-type=module"],
-    "stdin": true
+  "icon": "🟨",
+  "capabilities": {
+    "debug": true,
+    "taughtKeywords": true,
+    "runSelection": true
   }
 }

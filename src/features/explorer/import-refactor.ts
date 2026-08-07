@@ -1,5 +1,7 @@
 import { runtime } from '../../app/runtime';
 import type { StoredFile } from '../../storage';
+import { lazyRef } from '../../app/lazy';
+import { movedBasenames, warningsForUnhandledFile } from './reference-warnings.ts';
 
 export type WorkspacePathSnapshot = Map<string, string>;
 
@@ -7,6 +9,15 @@ interface RewriteResult {
   content: string;
   replacements: number;
   warnings: string[];
+  /**
+   * True when this file's language has no rewriter here at all.
+   *
+   * Distinct from "scanned and found nothing to change": the caller can only tell
+   * the student the truth - "this file may reference the moved file and was not
+   * updated" - if it knows the difference. Without it, `svg`, `json` and `markdown`
+   * were indistinguishable from a clean scan.
+   */
+  unhandledLanguage?: boolean;
 }
 
 type SupportedImportLanguage =
@@ -28,13 +39,8 @@ const PHP_EXTENSIONS = ['.php'];
 const HTML_EXTENSIONS = ['.html', '.htm'];
 const CSS_EXTENSIONS = ['.css'];
 
-const storage = new Proxy({} as any, {
-  get: (_target, property) => (runtime.storage as any)[property],
-});
-
-const tabManager = new Proxy({} as any, {
-  get: (_target, property) => (runtime.tabManager as any)[property],
-});
+const storage = lazyRef(() => runtime.storage, 'storage');
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 
 function splitPath(value: string): string[] {
   return String(value || '')
@@ -113,34 +119,27 @@ function relativeSpecifier(importerPath: string, targetPath: string): string {
   return relative;
 }
 
+// `StoredFile.content` reads through to the authoritative buffer, so the previous
+// model-then-tab-then-record hunt for the freshest copy has exactly one answer.
 function getLiveContent(file: StoredFile): string {
-  const model = runtime.fileModels.get(file.id);
-  if (model && !model.isDisposed()) return model.getValue();
-
-  const tab = tabManager.getTab(file.id);
-  if (tab) return tab.file.content ?? file.content;
-
   return file.content;
 }
 
+/**
+ * Rewrite a file's imports.
+ *
+ * One assignment to the working copy plus one revision-guarded flush. Writing to
+ * the model, then to storage, then reconstructing the tab from the persisted row
+ * was three chances to lose an edit made during the refactor.
+ */
 async function persistContent(file: StoredFile, content: string): Promise<void> {
-  const model = runtime.fileModels.get(file.id);
-  if (model && !model.isDisposed() && model.getValue() !== content) {
-    model.setValue(content);
-  }
+  const workspace = runtime.workspace;
+  const document = workspace?.getDocument(file.id);
+  if (!workspace || !document) return;
 
-  const updated = await storage.updateFile(file.id, {
-    content,
-    isUserModified: true,
-  });
-
-  const tab = tabManager.getTab(file.id);
-  if (tab) {
-    tab.file = updated
-      ? { ...updated, content }
-      : { ...tab.file, content };
-    tab.isDirty = false;
-  }
+  document.setContent(content);
+  await workspace.setDocumentUserModified(file.id, true);
+  await workspace.flush(file.id);
 }
 
 export async function captureWorkspacePaths(): Promise<WorkspacePathSnapshot> {
@@ -986,7 +985,17 @@ function rewriteImportsForFile(
       );
 
     default:
-      return { content, replacements: 0, warnings: [] };
+      // A language this module does not rewrite. Reporting zero replacements and
+      // NO warning is what made this a silent failure: the caller shows
+      // "N imports updated", the student believes the move was clean, and a
+      // reference in a Markdown link, an SVG <image href> or a JSON config quietly
+      // points at a path that no longer exists.
+      //
+      // The warning is raised by the caller instead of here, because deciding
+      // whether this file actually mentions anything that moved needs the full set
+      // of old paths - and warning about every unhandled file on every move would
+      // be noise the student learns to ignore.
+      return { content, replacements: 0, warnings: [], unhandledLanguage: true };
   }
 }
 
@@ -1043,6 +1052,14 @@ export async function refactorWorkspaceImports(
   let changedFiles = 0;
   const warnings = new Set<string>();
 
+  // The file names that actually moved, for the unhandled-language warning below.
+  const moved = movedBasenames(
+    [...beforePaths].map(([id, oldPath]) => ({
+      oldPath,
+      newPath: newPathById.get(id) ?? oldPath,
+    })),
+  );
+
   for (const file of files) {
     const importerOldPath =
       beforePaths.get(file.id) ?? newPathById.get(file.id) ?? '';
@@ -1063,6 +1080,21 @@ export async function refactorWorkspaceImports(
     );
 
     for (const warning of result.warnings) warnings.add(warning);
+
+    // A file whose language has no rewriter here cannot be silently reported as
+    // clean. The rule for when to speak lives in reference-warnings.ts, which is
+    // pure and therefore testable in node - this module is not, because it imports
+    // the runtime.
+    if (result.unhandledLanguage) {
+      for (const warning of warningsForUnhandledFile(
+        importerNewPath,
+        currentContent,
+        file.language || 'this file type',
+        moved,
+      )) {
+        warnings.add(warning);
+      }
+    }
 
     if (result.content !== currentContent) {
       await persistContent(file, result.content);

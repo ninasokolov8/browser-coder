@@ -2,6 +2,7 @@ import {
   statusEl,
   panelContentEl,
 } from "./dom";
+import { escapeHtml } from './html-escape.ts';
 
 /**
  * Escape a plain string for safe insertion as HTML content.
@@ -9,10 +10,10 @@ import {
  * user-controlled strings (stdout, stderr, filenames, error messages).
  */
 export function escHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  // Delegates to the one escaper. Kept as a named export because the output panel
+  // is the main consumer and the name reads well at those call sites; the previous
+  // body escaped only three characters.
+  return escapeHtml(text);
 }
 
 export function setStatus(s: string) {
@@ -34,6 +35,20 @@ export function appendOutput(text: string) {
   panelContentEl.dir = 'ltr';
   const existing = panelContentEl.innerHTML;
   panelContentEl.innerHTML = existing + (existing ? '\n' : '') + escHtml(text);
+  panelContentEl.scrollTop = panelContentEl.scrollHeight;
+}
+
+/**
+ * Append pre-formatted HTML after whatever the panel already holds.
+ *
+ * Same contract as `setOutputHtml`: the CALLER escapes every user-controlled string.
+ * Appending rather than replacing is what lets the error explanation sit UNDER the
+ * program's own output and its exit line, instead of taking their place - a student
+ * has to learn to read the real message eventually, so it stays on screen.
+ */
+export function appendOutputHtml(html: string) {
+  panelContentEl.dir = 'ltr';
+  panelContentEl.innerHTML = panelContentEl.innerHTML + (html || '');
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 

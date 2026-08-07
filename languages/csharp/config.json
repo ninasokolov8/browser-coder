@@ -17,9 +17,9 @@
       "sourceLevel": "10"
     }
   ],
-  "runner": {
-    "command": "dotnet",
-    "compile": true,
-    "tempFile": true
+  "capabilities": {
+    "debug": true,
+    "taughtKeywords": true,
+    "runSelection": true
   }
 }

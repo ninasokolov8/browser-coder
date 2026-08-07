@@ -3,3 +3,12 @@ node_modules
 *.log
 server.log
 .DS_Store
+
+# The image builds its own dist. Shipping a local one wastes context, and a
+# concurrent `vite build` can change files mid-transfer - which fails the build
+# with "invalid file request dist/assets/...".
+dist
+
+# Test scaffolding and scratch output never belong in a production image.
+tests/reports
+docs

@@ -1,0 +1,110 @@
+{
+  "CS0103": {
+    "type": "compile error",
+    "explanation": "The compiler reached a name it does not know. In C# every name must be declared before it is used - a variable, a method, or a using for its namespace.",
+    "cause": "A spelling mistake, or using a variable outside the braces it was declared in.",
+    "example": "int total = 0;\nConsole.WriteLine(totl);    // no such name\nConsole.WriteLine(total);"
+  },
+  "CS1002": {
+    "type": "compile error",
+    "explanation": "A semicolon is missing at the end of a statement.",
+    "cause": "A forgotten semicolon - usually at the end of the line BEFORE the one named.",
+    "example": "int x = 5\nint y = 6;   // reported here, the mistake is above\nint x = 5;"
+  },
+  "CS1525": {
+    "type": "compile error",
+    "explanation": "The compiler expected a value at that spot and found something that cannot be one.",
+    "cause": "An expression left unfinished, such as an assignment with nothing on the right.",
+    "example": "int x = ;    // nothing to assign\nint x = 0;"
+  },
+  "CS0029": {
+    "type": "type error",
+    "explanation": "A value of one type was put where a different type is required, and C# will not convert it for you.",
+    "cause": "Assigning text to a number variable, or forgetting to convert.",
+    "example": "int age = \"12\";                // text into a number\nint age = int.Parse(\"12\");     // convert first"
+  },
+  "CS0161": {
+    "type": "compile error",
+    "explanation": "A method promises to return a value and there is a path through it that returns nothing.",
+    "cause": "A return inside an if with no return for the other case.",
+    "example": "int Sign(int n) {\n    if (n > 0) return 1;\n}                     // what if n <= 0?\nint SignOk(int n) {\n    if (n > 0) return 1;\n    return -1;\n}"
+  },
+  "CS0165": {
+    "type": "compile error",
+    "explanation": "A local variable is read before anything has been stored in it. C# will not guess a starting value.",
+    "cause": "Declaring a variable and assigning it only inside an if that might not run.",
+    "example": "int total;\nif (ready) total = 5;\nConsole.WriteLine(total);   // maybe never assigned\nint totalOk = 0;"
+  },
+  "CS0117": {
+    "type": "type error",
+    "explanation": "The type exists, but it has no member with that name.",
+    "cause": "A spelling or capitalisation mistake - C# member names always start with a capital letter.",
+    "example": "Console.writeline(\"hi\");   // lower case w and l\nConsole.WriteLine(\"hi\");"
+  },
+  "CS1061": {
+    "type": "type error",
+    "explanation": "The value has no method or property with that name. The value is not the kind of thing you thought it was.",
+    "cause": "Calling a List method on an array, or a string method on a number.",
+    "example": "int[] nums = {1, 2};\nnums.Add(3);                 // an array has a fixed size\nvar list = new List<int> {1, 2};\nlist.Add(3);"
+  },
+  "CS0246": {
+    "type": "compile error",
+    "explanation": "The compiler cannot find that type or namespace anywhere.",
+    "cause": "A missing using line, or a spelling mistake in the type name.",
+    "example": "List<int> nums = new();               // needs the collections namespace\nusing System.Collections.Generic;     // add this at the top"
+  },
+  "CS0019": {
+    "type": "type error",
+    "explanation": "An operator was used with types it does not work on - such as subtracting one piece of text from another.",
+    "cause": "Doing arithmetic on values that are still text.",
+    "example": "string a = \"5\";\nint b = a - 1;                 // cannot subtract from text\nint b2 = int.Parse(a) - 1;"
+  },
+  "CS0136": {
+    "type": "compile error",
+    "explanation": "A name is declared twice in overlapping scopes, so it is not clear which one a use refers to.",
+    "cause": "Declaring a variable inside a loop or an if with the same name as one outside it.",
+    "example": "int i = 0;\nfor (int i = 0; i < 3; i++) { }   // i already means something here\nfor (int j = 0; j < 3; j++) { }"
+  },
+  "CS5001": {
+    "type": "compile error",
+    "explanation": "The program has no starting point. A C# program needs a Main method, or top-level statements in one file.",
+    "cause": "Every line is inside a class with no Main, or the entry file is not the one being built.",
+    "example": "// Top-level statements are enough:\nConsole.WriteLine(\"hello\");\n// Or a Main method:\nclass Program { static void Main() { Console.WriteLine(\"hello\"); } }"
+  },
+  "NullReferenceException": {
+    "type": "runtime error",
+    "explanation": "Something used a dot on a variable holding null. null means \"no object at all\", so there is nothing to ask.",
+    "cause": "A variable that was never given an object, or a lookup that found nothing.",
+    "example": "string name = null;\nConsole.WriteLine(name.Length);   // null has no Length\nif (name is not null) Console.WriteLine(name.Length);"
+  },
+  "IndexOutOfRangeException": {
+    "type": "index error",
+    "explanation": "You asked for a position that does not exist. An array of 3 has positions 0, 1 and 2.",
+    "cause": "Counting from 1 instead of 0, or a loop using <= where < was meant.",
+    "example": "int[] nums = {1, 2, 3};\nfor (int i = 0; i <= nums.Length; i++)   // one step too far\nfor (int i = 0; i < nums.Length; i++)"
+  },
+  "FormatException": {
+    "type": "value error",
+    "explanation": "Text was converted to a number and the text was not a number.",
+    "cause": "int.Parse on input containing letters, spaces, or nothing at all.",
+    "example": "int.Parse(\"twelve\");\nint.TryParse(\"twelve\", out int n);   // returns false instead of failing"
+  },
+  "DivideByZeroException": {
+    "type": "runtime error",
+    "explanation": "A whole number was divided by zero, which has no answer.",
+    "cause": "A count or a length that turned out to be 0.",
+    "example": "int average = total / count;   // count is 0\nif (count != 0) average = total / count;"
+  },
+  "InvalidOperationException": {
+    "type": "runtime error",
+    "explanation": "The operation is fine in general but not valid right now, in the state the object is in.",
+    "cause": "First() on an empty collection, or changing a collection while looping over it.",
+    "example": "var first = items.First();            // empty collection\nvar first2 = items.FirstOrDefault();  // gives null instead of failing"
+  },
+  "StackOverflowException": {
+    "type": "runtime error",
+    "explanation": "A method called itself over and over until there was no room left to remember the calls.",
+    "cause": "A recursive method whose stopping condition is missing or never reached.",
+    "example": "int Count(int n) => Count(n - 1);                 // never stops\nint CountOk(int n) => n <= 0 ? 0 : CountOk(n - 1);"
+  }
+}

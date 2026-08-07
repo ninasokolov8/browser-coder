@@ -1,31 +1,61 @@
 /**
- * IndexedDB-based storage for IDE files and folders
- * Provides persistent storage for user's files across sessions
+ * Compatibility facade over `WorkspaceService`.
+ *
+ * This file used to BE the storage layer: it opened IndexedDB, held a copy of
+ * every file's content, and let any caller write any field of any record in any
+ * order. `src/workspace/` replaces all of that. What remains here is a thin
+ * adapter, so the ten modules that still call `storage.getAllFiles()` and friends
+ * keep working while the truth lives in exactly one place.
+ *
+ * Two things make the facade worth having rather than a liability.
+ *
+ * **It reads through.** `getAllFiles()` returns records whose `content` is the
+ * live buffer, so the several call sites that used to hunt for the freshest copy -
+ *
+ *     const model = runtime.fileModels.get(file.id);
+ *     if (model && !model.isDisposed()) return model.getValue();
+ *     const tab = tabManager.getTab(file.id);
+ *     if (tab) return tab.file.content ?? file.content;
+ *     return file.content;
+ *
+ * - now get the same answer whichever question they ask.
+ *
+ * **It narrows.** `updateFile` used to accept a partial record and merge it,
+ * which is how a rename could carry stale content back over a live edit (V-10).
+ * Here each field is routed to the specific service command that owns it, so the
+ * merge that caused the defect no longer exists.
+ *
+ * New code should use `runtime.workspace` directly. This exists to keep the
+ * migration in reviewable steps, not as a long-term API.
  */
 
+import type { WorkspaceService } from './workspace';
+import type { FolderMetadata } from './workspace';
+
 export interface StoredFile {
-  id: string;           // Unique file ID
-  name: string;         // Display name (e.g., "main.js", "utils.py")
-  path: string;         // Full path (e.g., "/src/main.js")
-  parentId: string | null; // Parent folder ID, null for root
-  language: string;     // Language ID (javascript, python, etc.)
-  version: string;      // Language version ID
-  content: string;      // File content
-  createdAt: number;    // Timestamp
-  updatedAt: number;    // Last modified timestamp
-  order: number;        // Display order within parent
-  isUserModified: boolean; // True if user has ever edited (not just default starter)
+  id: string;
+  name: string;
+  /** Canonical relative path, derived from the folder chain. No leading slash. */
+  path: string;
+  parentId: string | null;
+  language: string;
+  version: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+  order: number;
+  isUserModified: boolean;
 }
 
 export interface StoredFolder {
-  id: string;           // Unique folder ID
-  name: string;         // Display name
-  path: string;         // Full path (e.g., "/src")
-  parentId: string | null; // Parent folder ID, null for root
+  id: string;
+  name: string;
+  path: string;
+  parentId: string | null;
   createdAt: number;
   updatedAt: number;
-  order: number;        // Display order within parent
-  isExpanded: boolean;  // UI state
+  order: number;
+  isExpanded: boolean;
 }
 
 export type FileSystemItem = (StoredFile & { type: 'file' }) | (StoredFolder & { type: 'folder' });
@@ -35,609 +65,227 @@ export interface WorkspaceState {
   theme: string;
 }
 
-const DEFAULT_DB_NAME = 'BrowserCoderDB';
-let DB_NAME = DEFAULT_DB_NAME;
-const DB_VERSION = 2; // Bump version for new folders store
-const FILES_STORE = 'files';
-const FOLDERS_STORE = 'folders';
-const STATE_STORE = 'workspace';
-
-/**
- * Override the IndexedDB name (must be called before storage.init()).
- * Used in embedded mode to isolate each iframe so multiple Step-Up parts
- * on the same page don't share/overwrite each other's files.
+/*
+ * There was a `dbName` module variable here, with `setDbName`/`getDbName` around it and
+ * a comment explaining that this is how an embedded IDE gets an isolated database.
+ *
+ * Nothing wrote it and nothing read it. The isolation is real but it is done in
+ * main.ts, which computes the name from `appConfig.isEmbedded` and passes it to
+ * `createWorkspace` - so the comment described a switch that had no wire attached,
+ * pointing the next person at the wrong file to change.
  */
-export function setDbName(name: string): void {
-  DB_NAME = name;
+
+let service: WorkspaceService | null = null;
+
+/** Called once at bootstrap, before any consumer touches the facade. */
+export function setWorkspaceService(next: WorkspaceService): void {
+  service = next;
 }
 
-export function getDbName(): string {
-  return DB_NAME;
+function require(): WorkspaceService {
+  if (!service) throw new Error('Workspace service has not been initialized');
+  return service;
 }
 
-class StorageManager {
-  private db: IDBDatabase | null = null;
-  private initPromise: Promise<void> | null = null;
-
-  /**
-   * Initialize IndexedDB connection
-   */
+class StorageFacade {
   async init(): Promise<void> {
-    if (this.db) return;
-    if (this.initPromise) return this.initPromise;
-
-    this.initPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = () => {
-        console.error('IndexedDB error:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve();
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Files store with indexes
-        if (!db.objectStoreNames.contains(FILES_STORE)) {
-          const filesStore = db.createObjectStore(FILES_STORE, { keyPath: 'id' });
-          filesStore.createIndex('name', 'name', { unique: false });
-          filesStore.createIndex('path', 'path', { unique: false });
-          filesStore.createIndex('parentId', 'parentId', { unique: false });
-          filesStore.createIndex('language', 'language', { unique: false });
-          filesStore.createIndex('order', 'order', { unique: false });
-        }
-
-        // Folders store
-        if (!db.objectStoreNames.contains(FOLDERS_STORE)) {
-          const foldersStore = db.createObjectStore(FOLDERS_STORE, { keyPath: 'id' });
-          foldersStore.createIndex('name', 'name', { unique: false });
-          foldersStore.createIndex('path', 'path', { unique: false });
-          foldersStore.createIndex('parentId', 'parentId', { unique: false });
-          foldersStore.createIndex('order', 'order', { unique: false });
-        }
-
-        // Workspace state store
-        if (!db.objectStoreNames.contains(STATE_STORE)) {
-          db.createObjectStore(STATE_STORE, { keyPath: 'key' });
-        }
-      };
-    });
-
-    return this.initPromise;
+    const workspace = require();
+    if (!workspace.isOpen) await workspace.open();
   }
 
-  /**
-   * Ensure DB is ready before operations
-   */
-  private async ensureReady(): Promise<IDBDatabase> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
-    return this.db;
-  }
+  // ===== files =====
 
-  // ========== Folder Operations ==========
-
-  /**
-   * Create a new folder
-   */
-  async createFolder(folder: { name: string; parentId: string | null }): Promise<StoredFolder> {
-    const db = await this.ensureReady();
-    
-    // Build path
-    let parentPath = '';
-    if (folder.parentId) {
-      const parent = await this.getFolder(folder.parentId);
-      if (parent) parentPath = parent.path;
-    }
-    
-    // Get next order number within parent
-    const siblings = await this.getChildFolders(folder.parentId);
-    const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), -1);
-
-    const newFolder: StoredFolder = {
-      id: `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: folder.name,
-      path: `${parentPath}/${folder.name}`,
-      parentId: folder.parentId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      order: maxOrder + 1,
-      isExpanded: false,
-    };
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FOLDERS_STORE, 'readwrite');
-      const store = tx.objectStore(FOLDERS_STORE);
-      const request = store.add(newFolder);
-
-      request.onsuccess = () => resolve(newFolder);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Get a folder by ID
-   */
-  async getFolder(id: string): Promise<StoredFolder | null> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FOLDERS_STORE, 'readonly');
-      const store = tx.objectStore(FOLDERS_STORE);
-      const request = store.get(id);
-
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Get all folders
-   */
-  async getAllFolders(): Promise<StoredFolder[]> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FOLDERS_STORE, 'readonly');
-      const store = tx.objectStore(FOLDERS_STORE);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const folders = request.result || [];
-        folders.sort((a, b) => a.order - b.order);
-        resolve(folders);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Get child folders of a parent
-   */
-  async getChildFolders(parentId: string | null): Promise<StoredFolder[]> {
-    const all = await this.getAllFolders();
-    return all.filter(f => f.parentId === parentId).sort((a, b) => a.order - b.order);
-  }
-
-  /**
-   * Update a folder
-   */
-  async updateFolder(id: string, updates: Partial<Omit<StoredFolder, 'id' | 'createdAt'>>): Promise<StoredFolder | null> {
-    const db = await this.ensureReady();
-    const existing = await this.getFolder(id);
-    if (!existing) return null;
-
-    // If name changed, update path and all children paths
-    let newPath = existing.path;
-    if (updates.name && updates.name !== existing.name) {
-      const parentPath = existing.path.substring(0, existing.path.lastIndexOf('/'));
-      newPath = `${parentPath}/${updates.name}`;
-      
-      // Update all descendant paths
-      await this.updateDescendantPaths(existing.path, newPath);
-    }
-
-    const updated: StoredFolder = {
-      ...existing,
-      ...updates,
-      path: newPath,
-      updatedAt: Date.now(),
-    };
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FOLDERS_STORE, 'readwrite');
-      const store = tx.objectStore(FOLDERS_STORE);
-      const request = store.put(updated);
-
-      request.onsuccess = () => resolve(updated);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Update paths of all descendants when parent folder renamed
-   */
-  private async updateDescendantPaths(oldPath: string, newPath: string): Promise<void> {
-    const db = await this.ensureReady();
-    
-    // Update folders
-    const allFolders = await this.getAllFolders();
-    const allFiles = await this.getAllFiles();
-    
-    const tx = db.transaction([FOLDERS_STORE, FILES_STORE], 'readwrite');
-    const folderStore = tx.objectStore(FOLDERS_STORE);
-    const fileStore = tx.objectStore(FILES_STORE);
-
-    for (const folder of allFolders) {
-      if (folder.path.startsWith(oldPath + '/')) {
-        folder.path = newPath + folder.path.substring(oldPath.length);
-        folder.updatedAt = Date.now();
-        folderStore.put(folder);
-      }
-    }
-
-    for (const file of allFiles) {
-      if (file.path.startsWith(oldPath + '/')) {
-        file.path = newPath + file.path.substring(oldPath.length);
-        file.updatedAt = Date.now();
-        fileStore.put(file);
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  /**
-   * Delete a folder and all its contents recursively
-   */
-  async deleteFolder(id: string): Promise<boolean> {
-    const db = await this.ensureReady();
-    const folder = await this.getFolder(id);
-    if (!folder) return false;
-
-    // Get all descendants
-    const allFolders = await this.getAllFolders();
-    const allFiles = await this.getAllFiles();
-    
-    const folderIdsToDelete = new Set<string>([id]);
-    const fileIdsToDelete = new Set<string>();
-
-    // Find all descendant folders
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const f of allFolders) {
-        if (f.parentId && folderIdsToDelete.has(f.parentId) && !folderIdsToDelete.has(f.id)) {
-          folderIdsToDelete.add(f.id);
-          changed = true;
-        }
-      }
-    }
-
-    // Find all files in these folders
-    for (const file of allFiles) {
-      if (file.parentId && folderIdsToDelete.has(file.parentId)) {
-        fileIdsToDelete.add(file.id);
-      }
-    }
-
-    const tx = db.transaction([FOLDERS_STORE, FILES_STORE], 'readwrite');
-    const folderStore = tx.objectStore(FOLDERS_STORE);
-    const fileStore = tx.objectStore(FILES_STORE);
-
-    for (const folderId of folderIdsToDelete) {
-      folderStore.delete(folderId);
-    }
-    for (const fileId of fileIdsToDelete) {
-      fileStore.delete(fileId);
-    }
-
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  // ========== File Operations ==========
-
-  /**
-   * Create a new file
-   */
-  async createFile(file: Omit<StoredFile, 'id' | 'createdAt' | 'updatedAt' | 'order' | 'path'>): Promise<StoredFile> {
-    const db = await this.ensureReady();
-    
-    // Build path
-    let parentPath = '';
-    if (file.parentId) {
-      const parent = await this.getFolder(file.parentId);
-      if (parent) parentPath = parent.path;
-    }
-
-    // Get next order number within parent
-    const siblings = await this.getChildFiles(file.parentId);
-    const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), -1);
-
-    const newFile: StoredFile = {
-      ...file,
-      id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      path: `${parentPath}/${file.name}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      order: maxOrder + 1,
-      isUserModified: file.isUserModified ?? false,
-    };
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, 'readwrite');
-      const store = tx.objectStore(FILES_STORE);
-      const request = store.add(newFile);
-
-      request.onsuccess = () => resolve(newFile);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Get child files of a parent folder
-   */
-  async getChildFiles(parentId: string | null): Promise<StoredFile[]> {
-    const all = await this.getAllFiles();
-    return all.filter(f => f.parentId === parentId).sort((a, b) => a.order - b.order);
-  }
-
-  /**
-   * Get a file by ID
-   */
-  async getFile(id: string): Promise<StoredFile | null> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, 'readonly');
-      const store = tx.objectStore(FILES_STORE);
-      const request = store.get(id);
-
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Get all files, sorted by order
-   */
   async getAllFiles(): Promise<StoredFile[]> {
-    const db = await this.ensureReady();
+    const workspace = require();
+    return workspace
+      .allDocuments()
+      .map(document => toStoredFile(document.id, workspace))
+      .filter((file): file is StoredFile => file !== null)
+      .sort((left, right) => left.order - right.order);
+  }
 
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, 'readonly');
-      const store = tx.objectStore(FILES_STORE);
-      const request = store.getAll();
+  async getFile(id: string): Promise<StoredFile | null> {
+    return toStoredFile(id, require());
+  }
 
-      request.onsuccess = () => {
-        const files = request.result || [];
-        files.sort((a, b) => a.order - b.order);
-        resolve(files);
-      };
-      request.onerror = () => reject(request.error);
+  async getChildFiles(parentId: string | null): Promise<StoredFile[]> {
+    const files = await this.getAllFiles();
+    return files.filter(file => file.parentId === parentId);
+  }
+
+  async createFile(
+    file: Omit<StoredFile, 'id' | 'createdAt' | 'updatedAt' | 'order' | 'path'>,
+  ): Promise<StoredFile> {
+    const workspace = require();
+    const document = await workspace.createDocument({
+      name: file.name,
+      parentId: file.parentId,
+      language: file.language,
+      version: file.version,
+      content: file.content,
+      isUserModified: file.isUserModified,
     });
+    return toStoredFile(document.id, workspace)!;
   }
 
   /**
-   * Update a file (content, name, etc.)
+   * Route each field to the command that owns it.
+   *
+   * Deliberately not a merge. A caller passing `{ name }` changes only the name,
+   * and cannot carry a stale `content` along with it.
    */
-  async updateFile(id: string, updates: Partial<Omit<StoredFile, 'id' | 'createdAt'>>): Promise<StoredFile | null> {
-    const db = await this.ensureReady();
-    const existing = await this.getFile(id);
-    if (!existing) return null;
+  async updateFile(id: string, updates: Partial<StoredFile>): Promise<StoredFile | null> {
+    const workspace = require();
+    const document = workspace.getDocument(id);
+    if (!document) return null;
 
-    // If name changed, update path
-    let newPath = existing.path;
-    if (updates.name && updates.name !== existing.name) {
-      const parentPath = existing.path.substring(0, existing.path.lastIndexOf('/'));
-      newPath = `${parentPath}/${updates.name}`;
+    if (updates.content !== undefined && updates.content !== document.getContent()) {
+      document.setContent(updates.content);
     }
 
-    const updated: StoredFile = {
-      ...existing,
-      ...updates,
-      path: updates.path ?? newPath,
-      updatedAt: Date.now(),
-    };
+    if (updates.name !== undefined && updates.name !== document.name) {
+      await workspace.renameDocument(id, updates.name);
+    }
 
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, 'readwrite');
-      const store = tx.objectStore(FILES_STORE);
-      const request = store.put(updated);
+    if (
+      (updates.language !== undefined && updates.language !== document.language) ||
+      (updates.version !== undefined && updates.version !== document.version)
+    ) {
+      await workspace.setDocumentLanguage(
+        id,
+        updates.language ?? document.language,
+        updates.version ?? document.version,
+      );
+    }
 
-      request.onsuccess = () => resolve(updated);
-      request.onerror = () => reject(request.error);
-    });
+    if (updates.parentId !== undefined && updates.parentId !== document.parentId) {
+      await workspace.moveDocument(id, updates.parentId);
+    }
+
+    if (
+      updates.isUserModified !== undefined &&
+      updates.isUserModified !== document.metadata.isUserModified
+    ) {
+      await workspace.setDocumentUserModified(id, updates.isUserModified);
+    }
+
+    if (updates.content !== undefined) await workspace.flush(id);
+
+    return toStoredFile(id, workspace);
   }
 
-  /**
-   * Move a file into another folder (or to root when newParentId is null).
-   * Updates parentId and recomputes the full path.
-   */
   async moveFile(id: string, newParentId: string | null): Promise<StoredFile | null> {
-    const existing = await this.getFile(id);
-    if (!existing) return null;
-    if (existing.parentId === newParentId) return existing; // no-op
-
-    let parentPath = '';
-    if (newParentId) {
-      const parent = await this.getFolder(newParentId);
-      if (!parent) return null;
-      parentPath = parent.path;
-    }
-
-    return this.updateFile(id, {
-      parentId: newParentId,
-      path: `${parentPath}/${existing.name}`,
-    });
+    const workspace = require();
+    const document = await workspace.moveDocument(id, newParentId);
+    return document ? toStoredFile(document.id, workspace) : null;
   }
 
-  /**
-   * Move a folder (and its whole subtree) into another folder, or to root.
-   * Rejects moving a folder into itself or one of its own descendants.
-   */
-  async moveFolder(id: string, newParentId: string | null): Promise<StoredFolder | null> {
-    const db = await this.ensureReady();
-    const existing = await this.getFolder(id);
-    if (!existing) return null;
-    if (existing.parentId === newParentId) return existing; // no-op
-
-    const allFolders = await this.getAllFolders();
-
-    // Guard: cannot drop a folder into itself or a descendant
-    if (newParentId) {
-      if (newParentId === id) return null;
-      let cursor: StoredFolder | undefined = allFolders.find(f => f.id === newParentId);
-      while (cursor) {
-        if (cursor.id === id) return null;
-        cursor = cursor.parentId ? allFolders.find(f => f.id === cursor!.parentId) : undefined;
-      }
-    }
-
-    let parentPath = '';
-    if (newParentId) {
-      const parent = allFolders.find(f => f.id === newParentId);
-      if (!parent) return null;
-      parentPath = parent.path;
-    }
-
-    const oldPath = existing.path;
-    const newPath = `${parentPath}/${existing.name}`;
-
-    // Re-path all descendants first, then the folder itself
-    await this.updateDescendantPaths(oldPath, newPath);
-
-    const updated: StoredFolder = {
-      ...existing,
-      parentId: newParentId,
-      path: newPath,
-      updatedAt: Date.now(),
-    };
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FOLDERS_STORE, 'readwrite');
-      const store = tx.objectStore(FOLDERS_STORE);
-      const request = store.put(updated);
-      request.onsuccess = () => resolve(updated);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Delete a file
-   */
   async deleteFile(id: string): Promise<boolean> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, 'readwrite');
-      const store = tx.objectStore(FILES_STORE);
-      const request = store.delete(id);
-
-      request.onsuccess = () => resolve(true);
-      request.onerror = () => reject(request.error);
-    });
+    await require().deleteDocuments([id]);
+    return true;
   }
 
-  /**
-   * Get file system tree structure
-   */
-  async getFileSystemTree(): Promise<FileSystemItem[]> {
+  // ===== folders =====
+
+  async createFolder(folder: { name: string; parentId: string | null }): Promise<StoredFolder> {
+    const workspace = require();
+    const created = await workspace.createFolder(folder.name, folder.parentId);
+    return toStoredFolder(created, workspace);
+  }
+
+  async getFolder(id: string): Promise<StoredFolder | null> {
+    const workspace = require();
+    const folder = workspace.getFolder(id);
+    return folder ? toStoredFolder(folder, workspace) : null;
+  }
+
+  async getAllFolders(): Promise<StoredFolder[]> {
+    const workspace = require();
+    return workspace
+      .allFolders()
+      .map(folder => toStoredFolder(folder, workspace))
+      .sort((left, right) => left.order - right.order);
+  }
+
+  async getChildFolders(parentId: string | null): Promise<StoredFolder[]> {
     const folders = await this.getAllFolders();
-    const files = await this.getAllFiles();
-    
-    const items: FileSystemItem[] = [
-      ...folders.map(f => ({ ...f, type: 'folder' as const })),
-      ...files.map(f => ({ ...f, type: 'file' as const })),
-    ];
-    
-    return items;
+    return folders.filter(folder => folder.parentId === parentId);
   }
 
-  // ========== Workspace State ==========
+  async updateFolder(id: string, updates: Partial<StoredFolder>): Promise<StoredFolder | null> {
+    const workspace = require();
+    let folder = workspace.getFolder(id);
+    if (!folder) return null;
 
-  /**
-   * Get workspace state
-   */
-  async getWorkspaceState(): Promise<WorkspaceState> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STATE_STORE, 'readonly');
-      const store = tx.objectStore(STATE_STORE);
-      const request = store.get('state');
-
-      request.onsuccess = () => {
-        const result = request.result;
-        resolve(result?.value || { activeFileId: null, theme: 'vs-dark' });
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  /**
-   * Save workspace state
-   */
-  async saveWorkspaceState(state: WorkspaceState): Promise<void> {
-    const db = await this.ensureReady();
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STATE_STORE, 'readwrite');
-      const store = tx.objectStore(STATE_STORE);
-      const request = store.put({ key: 'state', value: state });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  // ========== Utilities ==========
-
-  /**
-   * Clear all data (for debugging/reset)
-   */
-  async clearAll(): Promise<void> {
-    const db = await this.ensureReady();
-
-    const tx = db.transaction([FILES_STORE, FOLDERS_STORE, STATE_STORE], 'readwrite');
-    tx.objectStore(FILES_STORE).clear();
-    tx.objectStore(FOLDERS_STORE).clear();
-    tx.objectStore(STATE_STORE).clear();
-
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  /**
-   * Export all files as JSON (for backup)
-   */
-  async exportAll(): Promise<{ files: StoredFile[]; state: WorkspaceState }> {
-    const files = await this.getAllFiles();
-    const state = await this.getWorkspaceState();
-    return { files, state };
-  }
-
-  /**
-   * Import files from JSON backup
-   */
-  async importAll(data: { files: StoredFile[]; state: WorkspaceState }): Promise<void> {
-    const db = await this.ensureReady();
-
-    const tx = db.transaction([FILES_STORE, STATE_STORE], 'readwrite');
-    const filesStore = tx.objectStore(FILES_STORE);
-    const stateStore = tx.objectStore(STATE_STORE);
-
-    // Clear existing
-    filesStore.clear();
-    stateStore.clear();
-
-    // Import files
-    for (const file of data.files) {
-      filesStore.add(file);
+    if (updates.name !== undefined && updates.name !== folder.name) {
+      folder = await workspace.renameFolder(id, updates.name);
+    }
+    if (folder && updates.parentId !== undefined && updates.parentId !== folder.parentId) {
+      folder = await workspace.moveFolder(id, updates.parentId);
     }
 
-    // Import state
-    stateStore.put({ key: 'state', value: data.state });
+    return folder ? toStoredFolder(folder, workspace) : null;
+  }
 
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+  async moveFolder(id: string, newParentId: string | null): Promise<StoredFolder | null> {
+    const workspace = require();
+    const folder = await workspace.moveFolder(id, newParentId);
+    return folder ? toStoredFolder(folder, workspace) : null;
+  }
+
+  async deleteFolder(id: string): Promise<boolean> {
+    await require().deleteFolders([id]);
+    return true;
+  }
+
+  // ===== workspace state =====
+
+  // There used to be getWorkspaceState/saveWorkspaceState here, and nothing in the
+  // app ever called either one - so the WorkspaceState.theme field they wrote was
+  // permanently 'vs-dark' while the real theme lived in localStorage. Anyone
+  // fixing a theming bug by writing to the workspace would have seen no effect at
+  // all. The theme is per-browser, not per-project (a project must not carry a
+  // theme into someone else's IDE), so localStorage is the right home and this
+  // path is deleted rather than wired up. See src/components/settings.ts.
+
+  async clearAll(): Promise<void> {
+    await require().clearAll();
   }
 }
 
-// Singleton export
-export const storage = new StorageManager();
+function toStoredFile(id: string, workspace: WorkspaceService): StoredFile | null {
+  const document = workspace.getDocument(id);
+  if (!document) return null;
+  const metadata = document.metadata;
+
+  return {
+    id: document.id,
+    name: metadata.name,
+    path: workspace.pathOf(document.id) ?? metadata.name,
+    parentId: metadata.parentId,
+    language: metadata.language,
+    version: metadata.version,
+    // The live buffer, not the persisted row. This is the whole point.
+    content: document.getContent(),
+    createdAt: metadata.createdAt,
+    updatedAt: metadata.updatedAt,
+    order: metadata.order,
+    isUserModified: metadata.isUserModified,
+  };
+}
+
+function toStoredFolder(folder: FolderMetadata, workspace: WorkspaceService): StoredFolder {
+  return {
+    id: folder.id,
+    name: folder.name,
+    path: workspace.pathOf(folder.id) ?? folder.name,
+    parentId: folder.parentId,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    order: folder.order,
+    // UI-only state that the explorer keeps in its own module now.
+    isExpanded: false,
+  };
+}
+
+export const storage = new StorageFacade();

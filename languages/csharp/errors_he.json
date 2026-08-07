@@ -1,0 +1,110 @@
+{
+  "CS0103": {
+    "type": "compile error",
+    "explanation": "המהדר הגיע לשם שהוא לא מכיר. ב-C# כל שם חייב להיות מוצהר לפני השימוש בו - משתנה, מתודה, או using עבור המרחב שלו.",
+    "cause": "שגיאת כתיב, או שימוש במשתנה מחוץ לסוגריים המסולסלים שבהם הוצהר.",
+    "example": "int total = 0;\nConsole.WriteLine(totl);    // no such name\nConsole.WriteLine(total);"
+  },
+  "CS1002": {
+    "type": "compile error",
+    "explanation": "חסרה נקודה-פסיק בסוף משפט.",
+    "cause": "נקודה-פסיק שנשכחה - בדרך כלל בסוף השורה שלפני זו שצוינה.",
+    "example": "int x = 5\nint y = 6;   // reported here, the mistake is above\nint x = 5;"
+  },
+  "CS1525": {
+    "type": "compile error",
+    "explanation": "המהדר ציפה לערך במקום הזה ומצא משהו שלא יכול להיות ערך.",
+    "cause": "ביטוי שנשאר לא גמור, למשל השמה בלי שום דבר מימין.",
+    "example": "int x = ;    // nothing to assign\nint x = 0;"
+  },
+  "CS0029": {
+    "type": "type error",
+    "explanation": "ערך מסוג אחד הוכנס למקום שדורש סוג אחר, ו-C# לא תמיר אותו עבורכם.",
+    "cause": "השמת טקסט למשתנה מספרי, או שכחה להמיר.",
+    "example": "int age = \"12\";                // text into a number\nint age = int.Parse(\"12\");     // convert first"
+  },
+  "CS0161": {
+    "type": "compile error",
+    "explanation": "מתודה מבטיחה להחזיר ערך, ויש מסלול דרכה שלא מחזיר כלום.",
+    "cause": "return בתוך if בלי return למקרה השני.",
+    "example": "int Sign(int n) {\n    if (n > 0) return 1;\n}                     // what if n <= 0?\nint SignOk(int n) {\n    if (n > 0) return 1;\n    return -1;\n}"
+  },
+  "CS0165": {
+    "type": "compile error",
+    "explanation": "משתנה מקומי נקרא לפני שנשמר בו משהו. C# לא תנחש ערך התחלתי.",
+    "cause": "הצהרה על משתנה והשמה אליו רק בתוך if שאולי לא ירוץ.",
+    "example": "int total;\nif (ready) total = 5;\nConsole.WriteLine(total);   // maybe never assigned\nint totalOk = 0;"
+  },
+  "CS0117": {
+    "type": "type error",
+    "explanation": "הסוג קיים, אבל אין לו איבר בשם הזה.",
+    "cause": "שגיאת כתיב או אותיות גדולות - שמות איברים ב-C# תמיד מתחילים באות גדולה.",
+    "example": "Console.writeline(\"hi\");   // lower case w and l\nConsole.WriteLine(\"hi\");"
+  },
+  "CS1061": {
+    "type": "type error",
+    "explanation": "לערך אין מתודה או תכונה בשם הזה. הערך אינו מהסוג שחשבתם.",
+    "cause": "קריאה למתודה של List על מערך, או למתודה של מחרוזת על מספר.",
+    "example": "int[] nums = {1, 2};\nnums.Add(3);                 // an array has a fixed size\nvar list = new List<int> {1, 2};\nlist.Add(3);"
+  },
+  "CS0246": {
+    "type": "compile error",
+    "explanation": "המהדר לא מוצא את הסוג או מרחב השמות הזה בשום מקום.",
+    "cause": "שורת using חסרה, או שגיאת כתיב בשם הסוג.",
+    "example": "List<int> nums = new();               // needs the collections namespace\nusing System.Collections.Generic;     // add this at the top"
+  },
+  "CS0019": {
+    "type": "type error",
+    "explanation": "אופרטור הופעל על סוגים שהוא לא עובד איתם - למשל חיסור של טקסט מטקסט.",
+    "cause": "ביצוע חשבון על ערכים שהם עדיין טקסט.",
+    "example": "string a = \"5\";\nint b = a - 1;                 // cannot subtract from text\nint b2 = int.Parse(a) - 1;"
+  },
+  "CS0136": {
+    "type": "compile error",
+    "explanation": "שם מוצהר פעמיים בתחומים חופפים, ולכן לא ברור לאיזה מהם שימוש מתייחס.",
+    "cause": "הצהרה על משתנה בתוך לולאה או if עם אותו שם כמו משתנה שמחוץ להם.",
+    "example": "int i = 0;\nfor (int i = 0; i < 3; i++) { }   // i already means something here\nfor (int j = 0; j < 3; j++) { }"
+  },
+  "CS5001": {
+    "type": "compile error",
+    "explanation": "לתוכנית אין נקודת התחלה. תוכנית C# צריכה מתודת Main, או משפטים ברמה העליונה בקובץ אחד.",
+    "cause": "כל השורות נמצאות בתוך מחלקה בלי Main, או שקובץ הכניסה אינו זה שנבנה.",
+    "example": "// Top-level statements are enough:\nConsole.WriteLine(\"hello\");\n// Or a Main method:\nclass Program { static void Main() { Console.WriteLine(\"hello\"); } }"
+  },
+  "NullReferenceException": {
+    "type": "runtime error",
+    "explanation": "משהו השתמש בנקודה על משתנה שמחזיק null. המשמעות של null היא \"אין אובייקט בכלל\", ולכן אין את מי לשאול.",
+    "cause": "משתנה שמעולם לא קיבל אובייקט, או חיפוש שלא מצא כלום.",
+    "example": "string name = null;\nConsole.WriteLine(name.Length);   // null has no Length\nif (name is not null) Console.WriteLine(name.Length);"
+  },
+  "IndexOutOfRangeException": {
+    "type": "index error",
+    "explanation": "ביקשתם מיקום שלא קיים. במערך של 3 המיקומים הם 0, 1 ו-2.",
+    "cause": "ספירה מ-1 במקום מ-0, או לולאה עם <= במקום <.",
+    "example": "int[] nums = {1, 2, 3};\nfor (int i = 0; i <= nums.Length; i++)   // one step too far\nfor (int i = 0; i < nums.Length; i++)"
+  },
+  "FormatException": {
+    "type": "value error",
+    "explanation": "טקסט הומר למספר והטקסט לא היה מספר.",
+    "cause": "int.Parse על קלט שמכיל אותיות, רווחים, או כלום.",
+    "example": "int.Parse(\"twelve\");\nint.TryParse(\"twelve\", out int n);   // returns false instead of failing"
+  },
+  "DivideByZeroException": {
+    "type": "runtime error",
+    "explanation": "מספר שלם חולק באפס, ולזה אין תוצאה.",
+    "cause": "ספירה או אורך שהתגלו כ-0.",
+    "example": "int average = total / count;   // count is 0\nif (count != 0) average = total / count;"
+  },
+  "InvalidOperationException": {
+    "type": "runtime error",
+    "explanation": "הפעולה תקינה באופן כללי אבל לא כרגע, במצב שבו האובייקט נמצא.",
+    "cause": "First() על אוסף ריק, או שינוי אוסף תוך כדי לולאה עליו.",
+    "example": "var first = items.First();            // empty collection\nvar first2 = items.FirstOrDefault();  // gives null instead of failing"
+  },
+  "StackOverflowException": {
+    "type": "runtime error",
+    "explanation": "מתודה קראה לעצמה שוב ושוב עד שלא נשאר מקום לזכור את הקריאות.",
+    "cause": "מתודה רקורסיבית שתנאי העצירה שלה חסר או לא מושג לעולם.",
+    "example": "int Count(int n) => Count(n - 1);                 // never stops\nint CountOk(int n) => n <= 0 ? 0 : CountOk(n - 1);"
+  }
+}

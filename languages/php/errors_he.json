@@ -1,0 +1,86 @@
+{
+  "syntax error": {
+    "type": "syntax error",
+    "explanation": "PHP לא הצליחה להבין את צורת הקוד ועצרה לפני שהריצה משהו. שום דבר בקובץ לא רץ.",
+    "cause": "נקודה-פסיק חסרה, סוגר מסולסל או מרכאה שלא נסגרו, או $ שנשכח לפני משתנה. הסתכלו על השורה שמעל זו ש-PHP מציינת.",
+    "example": "$total = 5\necho $total;   // PHP complains here; the semicolon is missing above\n$total = 5;"
+  },
+  "Undefined variable": {
+    "type": "name error",
+    "explanation": "קראתם משתנה שמעולם לא קיבל ערך. PHP ממשיכה עם ערך ריק, אבל מודיעה לכם שכנראה לא לזה התכוונתם.",
+    "cause": "שגיאת כתיב, או משתנה שנקבע בתוך if שלא רץ.",
+    "example": "$total = 5;\necho $totl;                   // spelled differently\necho $total;\necho $maybe ?? 'default';     // ?? supplies a value when it is unset"
+  },
+  "Undefined array key": {
+    "type": "key error",
+    "explanation": "ביקשתם ממערך מפתח שאין לו.",
+    "cause": "שגיאת כתיב במפתח, או קריאה למפתח לפני שמשהו הכניס אותו.",
+    "example": "$ages = ['sam' => 12];\necho $ages['Sam'];              // capital S is a different key\necho $ages['Sam'] ?? 0;         // ?? gives a default instead"
+  },
+  "Call to undefined function": {
+    "type": "name error",
+    "explanation": "PHP לא מצאה פונקציה בשם הזה. או שהיא כתובה אחרת, או שהיא מוגדרת בקובץ שמעולם לא נטען.",
+    "cause": "שגיאת כתיב, או קריאה לפונקציה לפני שהקובץ שמגדיר אותה נטען.",
+    "example": "echo strlen('abc');    // a real built-in\necho strLen('abc');    // PHP function names are case-insensitive,\n                       // but your OWN functions must match how they were defined"
+  },
+  "Undefined method": {
+    "type": "name error",
+    "explanation": "קראתם למתודה שהמחלקה לא מגדירה.",
+    "cause": "שגיאת כתיב, או קריאה למתודה על אובייקט מסוג לא נכון.",
+    "example": "class User { function getName() { } }\n$u = new User();\n$u->getname();    // your own method names ARE case-insensitive in PHP,\n$u->getName();    // but matching how you defined it keeps the code readable"
+  },
+  "Undefined property": {
+    "type": "name error",
+    "explanation": "קראתם תכונה שלאובייקט אין.",
+    "cause": "שגיאת כתיב, או תכונה שנקבעת רק בחלק מהמסלולים בקוד.",
+    "example": "class User { public $name; }\n$u = new User();\necho $u->nmae;    // spelled differently\necho $u->name;"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "ערך מהסוג הלא נכון היה בשימוש - הועבר לפונקציה שמצהירה על סוג אחר, או שולב עם אופרטור שלא מקבל אותו.",
+    "cause": "טקסט במקום שבו ציפו למספר, לעיתים קרובות היישר מקלט המשתמש.",
+    "example": "function double(int $n) { return $n * 2; }\ndouble('abc');       // not a number\ndouble((int) '12');  // convert first"
+  },
+  "ValueError": {
+    "type": "value error",
+    "explanation": "הסוג היה נכון אבל הערך עצמו לא מותר עבור הפונקציה הזו.",
+    "cause": "אורך שלילי, מערך ריק במקום שדרוש בו פריט אחד, או ערך מחוץ לטווח שהפונקציה מקבלת.",
+    "example": "array_rand([]);        // there is nothing to pick from\narray_rand([1, 2, 3]);"
+  },
+  "DivisionByZeroError": {
+    "type": "runtime error",
+    "explanation": "משהו חולק באפס, ולזה אין תוצאה.",
+    "cause": "ספירה או אורך שהתגלו כ-0.",
+    "example": "$average = $total / count($scores);   // count is 0\nif (count($scores) > 0) { $average = $total / count($scores); }"
+  },
+  "ArgumentCountError": {
+    "type": "type error",
+    "explanation": "פונקציה נקראה עם פחות ארגומנטים ממה שהיא דורשת.",
+    "cause": "שכחת ארגומנט, או שינוי הפרמטרים של פונקציה בלי לעדכן את הקריאות.",
+    "example": "function greet($name, $greeting) { }\ngreet('Ada');                              // one argument short\nfunction greetOk($name, $greeting = 'Hi') { }   // a default makes it optional"
+  },
+  "ParseError": {
+    "type": "syntax error",
+    "explanation": "PHP לא הצליחה לקרוא את הקוד כ-PHP בכלל.",
+    "cause": "בדרך כלל <?php חסר בראש הקובץ, או תו זר באמצע.",
+    "example": "<?php\necho 'hello';   // every PHP file starts with the opening tag"
+  },
+  "Error": {
+    "type": "runtime error",
+    "explanation": "בעיה חמורה עצרה את התוכנית. ההודעה שאחרי הנקודתיים אומרת מה היא הייתה.",
+    "cause": "קריאה למתודה על משהו שאינו אובייקט, או טעות אחרת ש-PHP לא יכולה להתאושש ממנה.",
+    "example": "$user = null;\n$user->getName();     // null is not an object\nif ($user !== null) { $user->getName(); }"
+  },
+  "Exception": {
+    "type": "runtime error",
+    "explanation": "משהו זרק חריגה ואף אחד לא תפס אותה, ולכן התוכנית נעצרה. ההודעה נכתבה על ידי מי שזרק אותה.",
+    "cause": "throw מכוון בקוד שלכם או של ספרייה, על תנאי שהתברר כנכון.",
+    "example": "try {\n    risky();\n} catch (Exception $e) {\n    echo 'Could not do it: ' . $e->getMessage();\n}"
+  },
+  "Cannot modify header information": {
+    "type": "runtime error",
+    "explanation": "כותרות חייבות להישלח לפני כל פלט. משהו כבר הודפס, ולכן מאוחר מדי לקבוע כותרת.",
+    "cause": "echo, שורה ריקה, או רווח לפני תג הפתיחה <?php.",
+    "example": "<?php\nheader('Content-Type: text/plain');   // must come before any echo\necho 'hello';"
+  }
+}

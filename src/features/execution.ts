@@ -1,112 +1,102 @@
-// @ts-nocheck
 import * as monaco from 'monaco-editor';
-import { getLanguage, getKeywordExplanation } from '../languages';
-import { t } from '../i18n';
-import { getUILang } from './wrapped-i18n';
-import { runtime } from '../app/runtime';
-import { appConfig, policyState } from '../app/config';
+import { getErrorExplanation, getLanguage } from '../languages';
+import { runtime, requireEditor, requireStorage, requireTabManager } from '../app/runtime';
+import { appConfig } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
+import { withCachedAssets } from './asset-transport.ts';
 import { notifyRunResult } from '../integrations/stepup-bus';
-import { setStatus, setOutput, appendOutput, setOutputHtml } from '../components/output';
+import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
-import { runInteractive, codeReadsStdin, stopInteractive } from '../components/interactive-console';
-import { renderTurtle, clearTurtleCanvas } from '../components/turtle';
-import type { TurtleData } from '../components/turtle';
-import { showKeywordHelpPopup } from '../components/keyword-help';
-import { runBtn } from '../components/dom';
-import { getOrCreateModel } from './editor-core';
-import { isCssFile, isHtmlFile, isSvgFile, openWebPreview } from './live-preview';
+import { runProgram, stopInteractive } from '../components/interactive-console';
+import { clearTurtleCanvas } from '../components/turtle';
+import { publishRunDiagnostics } from '../diagnostics/server-source';
+import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
+import { debugState, syncBreakpoints } from './debug/ui.ts';
+import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
-import { hideImageWindow, showImageWindow } from '../components/image-window';
-
-function requireRuntime() {
-  const editor = runtime.editor;
-  const tabManager = runtime.tabManager;
-  const storage = runtime.storage;
-  if (!editor || !tabManager || !storage) {
-    throw new Error('IDE is not ready yet. Please wait for initialization to finish.');
-  }
-  return { editor, tabManager, storage };
-}
+import { showImageWindow } from '../components/image-window';
+import { escapeHtml } from '../components/html-escape.ts';
+import { parseCompilerOutput } from '../diagnostics/compiler-output.ts';
+import { buildErrorHelpBlock, selectErrorKey } from './error-help.ts';
+import { getUILang } from './wrapped-i18n';
+import { announce, describeRunOutcome } from '../components/announce.ts';
 
 /**
- * Does this run need an interactive console? True when ANY file that will be
- * executed reads from stdin - not just the entry file, since a helper module
- * imported by the entry point may be the one calling input().
+ * The three the run path needs, resolved together.
+ *
+ * A thin grouping over the shared accessors in app/runtime.ts rather than a fourth
+ * private copy of the readiness check - it used to be one, with its own message.
  */
-function payloadReadsStdin(langId: string, body: Record<string, unknown>): boolean {
-  const files = body.files as Array<{ content?: string }> | undefined;
-  if (Array.isArray(files)) {
-    return files.some(file => codeReadsStdin(langId, file?.content || ''));
-  }
-  return codeReadsStdin(langId, (body.code as string) || '');
+function requireRuntime() {
+  return { editor: requireEditor(), tabManager: requireTabManager(), storage: requireStorage() };
 }
 
 // ── Output helpers ──────────────────────────────────────────────────────────
 
-/** Escape text for safe embedding as HTML content. */
-function esc(s: string): string {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+/**
+ * Escape text for embedding in the output panel's markup.
+ *
+ * Was a local three-character escaper that omitted quotes - the weakest of four
+ * copies in the codebase. Now the shared one; see src/components/html-escape.ts.
+ */
+const esc = escapeHtml;
 
-function getCompileLabel(langId: string): string {
-  switch (langId) {
-    case 'java':       return 'Compile Error (javac)';
-    case 'csharp':     return 'Compile Error (dotnet build)';
-    case 'typescript': return 'TypeScript Error';
-    case 'php':        return 'Parse Error (php -l)';
-    case 'python':     return 'Problem Detected — code was not run';
-    default:           return 'Compile Error';
-  }
+/**
+ * The one sentence a screen reader should hear about what went wrong.
+ *
+ * The parser's message, trimmed to its first line and given a location. Everything
+ * after that first line is a stack trace, which is not something to read aloud.
+ */
+function firstErrorSentence(languageId: string, output: string): string | null {
+  const [diagnostic] = parseCompilerOutput(languageId, output);
+  if (!diagnostic) return null;
+
+  const message = diagnostic.message.split('\n')[0].trim();
+  if (!message) return null;
+  return `${message} on line ${diagnostic.line} of ${diagnostic.file}.`;
 }
 
 /**
- * Render a /api/run result into the output panel as formatted HTML.
- * Compile errors get a blue header and red error text.
- * Runtime output appears as-is with an optional red stderr section and a
- * green/red exit-code footer.
+ * Explain the error a failed run produced, under the run's own output.
+ *
+ * The traceback stays on screen - a student has to learn to read the real thing
+ * eventually - and the explanation goes below it. The message explained is the one the
+ * FIRST diagnostic carries, which is also the one the editor marker points at, so the
+ * squiggle and the paragraph are always about the same line.
+ *
+ * Silent when there is no entry. A confidently wrong explanation in a teaching tool is
+ * worse than none: it teaches the student the wrong model of what their program did.
  */
-function renderRunResult(
-  data: { stdout?: string; stderr?: string; exitCode: number; phase?: string },
-  langId: string
-): void {
-  const isCompile = data.phase === 'compile';
-  const parts: string[] = [];
+function explainRunFailure(languageId: string, output: string): void {
+  const language = getLanguage(languageId);
+  const entries = language?.errors;
+  if (!entries) return;
 
-  if (isCompile) {
-    parts.push(`<span class="info">── ${esc(getCompileLabel(langId))} ──────────────────────────────────────</span>\n`);
-    if (data.stderr) {
-      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
-    }
-  } else {
-    if (data.stdout) {
-      parts.push(esc(data.stdout));
-    }
-    if (data.stderr) {
-      if (parts.length > 0) parts.push('\n');
-      const errLabel = langId === 'python' ? 'Python Error' : langId === 'java' ? 'Java Error' : langId === 'csharp' ? 'C# Error' : langId === 'php' ? 'PHP Error' : 'Error Output';
-      parts.push(`<span class="info">── ${errLabel} ─────────────────────────────────────────────</span>\n`);
-      parts.push(`<span class="error">${esc(data.stderr)}</span>`);
-    }
-  }
+  const [diagnostic] = parseCompilerOutput(languageId, output);
+  if (!diagnostic) return;
 
-  // Trailing newline before footer
-  if (parts.length > 0) {
-    const last = parts[parts.length - 1];
-    if (!last.endsWith('\n')) parts.push('\n');
-  }
+  const key = selectErrorKey(languageId, diagnostic.message, Object.keys(entries));
+  if (!key) return;
 
-  if (data.exitCode === 0) {
-    parts.push(`<span class="success">[exit 0 ✓]</span>`);
-  } else {
-    parts.push(`<span class="error">[exit code: ${data.exitCode}]</span>`);
-  }
+  const help = getErrorExplanation(languageId, key, getUILang());
+  if (!help) return;
 
-  setOutputHtml(parts.join(''));
+  const block = buildErrorHelpBlock(key, help);
+  // Hebrew is right-to-left inside a panel that is deliberately forced LTR, because
+  // the panel's other content is raw program output. Only the prose is turned round.
+  const dir = block.rtl ? ' dir="rtl"' : '';
+
+  const lines = [
+    '',
+    `<span class="info">── What this means ─────────────────────────────────────────</span>`,
+    `<span class="info">${esc(block.heading)}</span>`,
+    `<span${dir}>${esc(block.explanation)}</span>`,
+  ];
+  if (block.cause) lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
+  if (block.example) lines.push('', `<span class="success">${esc(block.example)}</span>`);
+
+  appendOutputHtml(`\n${lines.join('\n')}`);
 }
 
 /**
@@ -130,7 +120,29 @@ function showSvgPreview(filePath: string, source: string): void {
   setStatus('SVG image shown ✅');
 }
 
-export async function runCode(code: string) {
+export async function runCode(
+  code: string,
+  options: {
+    debug?: boolean;
+    /**
+     * The lines being run, when this is a selection rather than the whole file.
+     *
+     * Used to scope the pre-run diagnostics gate. Without it, an error anywhere in a
+     * file blocks running any part of it - which defeats the point of running a
+     * fragment while the rest is mid-edit.
+     */
+    markerRange?: { startLine: number; endLine: number };
+    /**
+     * Run a DIFFERENT file as the entry point, keeping the whole project.
+     *
+     * For "Check my work": the marking harness is the program, and the student's own
+     * code is the rest of the payload it imports. Everything else about the run - the
+     * snapshot, the diagnostics gate, the stream, the console - is identical, which is
+     * the entire reason this is an option here rather than a second pipeline.
+     */
+    entryPointOverride?: string;
+  } = {},
+) {
   const { editor, tabManager, storage } = requireRuntime();
   const activeTab = tabManager.getActiveTab();
   if (!activeTab) return;
@@ -138,8 +150,46 @@ export async function runCode(code: string) {
   const lang = getLanguage(activeTab.file.language);
   if (!lang) return;
 
-  if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file)) {
+  // HTML, CSS and Markdown are rendered, not executed. Markdown goes through the
+  // same publisher so relative images in the notes resolve.
+  if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file) || isMarkdownFile(activeTab.file)) {
     await openWebPreview();
+    return;
+  }
+
+  // A plain-text data file is not a program either. Same reasoning as JSON below:
+  // saying so beats forwarding it to a sandbox that answers with a syntax error from
+  // a language the student never chose. There is nothing to validate, so it only
+  // explains how the file is meant to be used.
+  if (lang.id === 'text') {
+    setStatus('Data file');
+    setOutputHtml(
+      `<span class="info">${esc(activeTab.file.name)} is a data file, so there is nothing to run.</span>\n` +
+      `<span class="info">Read it from a program - in Python, ` +
+      `open("${esc(activeTab.file.name)}").read().</span>`,
+    );
+    return;
+  }
+
+  // JSON is data. Running it is meaningless, and the honest answer is to say so and
+  // report whether it parses - not to hand it to a runtime that will reject it with
+  // something less useful, and not to do nothing at all.
+  if (lang.id === 'json') {
+    try {
+      JSON.parse(code);
+      setStatus('Valid JSON ✅');
+      setOutputHtml(
+        `<span class="info">${esc(activeTab.file.name)} is valid JSON.</span>\n` +
+        `<span class="info">JSON is data, so there is nothing to run. ` +
+        `Load it from a program - in Python, json.load(open("${esc(activeTab.file.name)}")).</span>`,
+      );
+    } catch (error) {
+      setStatus('Invalid JSON ❌');
+      setOutputHtml(
+        `<span class="error">${esc(activeTab.file.name)} is not valid JSON.</span>\n` +
+        `<span class="error">${esc(error instanceof Error ? error.message : String(error))}</span>`,
+      );
+    }
     return;
   }
 
@@ -159,8 +209,14 @@ export async function runCode(code: string) {
     const model = editor.getModel();
     if (model) {
       const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+      const range = options.markerRange;
       const errors = markers.filter(
-        (m: monaco.editor.IMarker) => m.severity === monaco.MarkerSeverity.Error
+        (m: monaco.editor.IMarker) =>
+          m.severity === monaco.MarkerSeverity.Error &&
+          // Scoped to the lines actually being run. A selection run is not blocked by
+          // an error elsewhere in the file; a whole-file run has no range and so is
+          // gated exactly as before.
+          (!range || (m.startLineNumber >= range.startLine && m.startLineNumber <= range.endLine))
       );
       if (errors.length > 0) {
         const errLines = errors
@@ -194,8 +250,7 @@ export async function runCode(code: string) {
     let requestBody: Record<string, unknown> = {
       language: lang.id,
       version: activeTab.file.version,
-      code,
-    };
+      code };
 
     // In full/project mode, execute the complete workspace. The API already
     // supports files[] + entryPoint; this makes imports between local files
@@ -206,8 +261,28 @@ if (appConfig.ideMode !== 'snippet') {
 await tabManager.saveCurrentTab();
 const workspaceFiles = await collectWorkspaceSnapshot();
 
+/*
+ * Source files for this language, PLUS the companion files a program reads.
+ *
+ * The filter used to be "this language only", which quietly broke two features
+ * that depend on the workspace reaching the sandbox:
+ *
+ *   - turtle.bgpic("maze.svg") and register_shape("cursor.svg") name a workspace
+ *     file, and an .svg has language `svg`, so it was never sent. The shim then
+ *     looked for a file that was not there and silently drew nothing.
+ *   - H4 made open("data.txt") legal and confined to the workspace - but a
+ *     data file in the project was never written into the job directory, so the
+ *     only files a program could read were ones it had just created itself.
+ *
+ * Companion files are data, never compiled: the server writes them into the job
+ * directory and the entry point is still a source file. The project size policy
+ * bounds the total, so a workspace full of large images is refused by the same
+ * limit that bounds source - with a clear message rather than a silent drop.
+ */
+const COMPANION_LANGUAGES = new Set([ASSET_LANGUAGE_ID, 'svg', 'json', 'markdown', 'css', 'html', 'text']);
+
 const languageFiles = workspaceFiles.filter(file =>
-  !file.language || file.language === lang.id
+  !file.language || file.language === lang.id || COMPANION_LANGUAGES.has(file.language)
 );
 
 /*
@@ -226,6 +301,9 @@ const languageFiles = workspaceFiles.filter(file =>
 const storedActiveFile = await storage.getFile(activeTab.file.id);
 
 const entryPoint = normalizeProjectPath(
+  // "Check my work" runs the marking harness as the program and the student's own
+  // file as one of its imports, so the override wins over the active tab.
+  options.entryPointOverride ||
   storedActiveFile?.path ||
   activeTab.file.path ||
   activeTab.file.name
@@ -237,7 +315,12 @@ const activeSnapshotFile = languageFiles.find(file =>
 
 // `code` is the editor value at the instant Run was requested. It wins over
 // any delayed IndexedDB/autosave value for the entry point.
-if (activeSnapshotFile) activeSnapshotFile.content = code;
+//
+// NOT when the entry point was overridden. Then `code` is still the file on
+// screen and the entry point is the marking harness, so writing one over the
+// other would run the student's own code as though it were the marking script -
+// and every check would pass.
+if (activeSnapshotFile && !options.entryPointOverride) activeSnapshotFile.content = code;
 
 const entryPointExists = !!activeSnapshotFile;
 
@@ -256,136 +339,108 @@ requestBody = {
   // Mark the active file explicitly as well as sending entryPoint. This keeps
   // native and embedded/project execution correct even with older compatible
   // backends that prefer the per-file isMain flag.
-  files: languageFiles.map(file => ({
-    ...file,
-    isMain: normalizeProjectPath(file.path) === entryPoint,
-  })),
-  entryPoint,
-};
+  //
+  // Assets that the server already has are replaced by their digest, so a project
+  // with a 2 MiB image does not send 2.8 MB of base64 on every single Run. Any
+  // failure - no secure context, no cache configured, a failed upload - returns the
+  // files untouched, which is the shape that has always worked.
+  files: await withCachedAssets(
+    languageFiles.map(file => ({
+      ...file,
+      isMain: normalizeProjectPath(file.path) === entryPoint })),
+  ),
+  entryPoint };
 }
 
-    // ── Interactive stdin path ────────────────────────────────────────────
-    // Programs that pause for keyboard input (input(), Scanner, readline,
-    // Console.ReadLine, fgets(STDIN), …) cannot use the buffered /api/run
-    // round-trip: it returns a single result and cannot wait mid-execution,
-    // so the program would hang until the timeout and lose everything after
-    // the prompt. Route them to the streaming console instead, which works
-    // for BOTH snippet and multi-file project runs and every language.
-    if (!appConfig.noOutput && payloadReadsStdin(lang.id, requestBody)) {
-      stopRunLoader();
-      clearTurtleCanvas();
-      const result = await runInteractive(lang.id, requestBody);
-      if (appConfig.isEmbedded) {
-        notifyRunResult({
-          stdout: result.stdout,
-          stderr: result.stderr,
-          exitCode: result.exitCode,
-          durationMs: result.durationMs,
-        });
-      }
-      return;
-    }
-
-    const resp = await fetch("/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-
-    const raw = await resp.text();
-    let data: any = null;
-
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = null;
-    }
-
-    stopRunLoader();
-    setOutput("");
-    clearTurtleCanvas();
-    hideImageWindow();
-
-    if (!resp.ok) {
-      setOutputHtml(
-        `<span class="error">HTTP ${resp.status}\n${esc(raw || '(empty response)')}</span>\n` +
-        `<span class="error">[exit code: 1]</span>`
-      );
-      setStatus("Run failed");
-      return;
-    }
-
-    if (!data) {
-      setOutputHtml(
-        `<span class="error">ERROR: Server returned no JSON.\n${esc(raw || '(empty response)')}</span>\n` +
-        `<span class="error">[exit code: 1]</span>`
-      );
-      setStatus("Run failed");
-      return;
-    }
-
-    // ── Turtle graphics output ──────────────────────────────────────────
-    // A run counts as turtle output when it drew something *or* left a turtle
-    // on screen (a program may only place the cursor without drawing).
+    // ── One transport ────────────────────────────────────────────────────
     //
-    // Only open the turtle window when the program finished successfully
-    // (exit 0). A compile/syntax error means the program never ran, and a
-    // runtime error (e.g. a typo like `t.foward`) means it failed part-way -
-    // in both cases we show only the error and draw nothing, so a broken
-    // program never flashes a half-finished drawing.
-    let turtleRenderErr: string | null = null;
-    let missingTurtlePic: string | null = null;
-    if (
-      data.exitCode === 0 &&
-      data.phase !== 'compile' &&
-      data.turtleData &&
-      (data.turtleData.shapes?.length > 0 || data.turtleData.cursors?.length > 0)
-    ) {
-      try {
-        // bgpic("maze.svg") names a project file. Python only reports the name;
-        // the image itself lives in the workspace, so resolve it here and hand
-        // the renderer a data URL.
-        const picName = (data.turtleData as TurtleData).pic;
-        if (picName) {
-          const picUrl = await resolveWorkspaceImageUrl(
-            picName,
-            normalizeProjectPath(activeTab.file.path || activeTab.file.name),
-          );
-          if (picUrl) (data.turtleData as TurtleData).picData = picUrl;
-          else missingTurtlePic = picName;
-        }
-        renderTurtle(data.turtleData as TurtleData);
-      } catch (renderErr) {
-        turtleRenderErr = String(renderErr);
-      }
+    // Every run streams. There is no longer a regex deciding whether this
+    // program 'looks like' it reads input, and no buffered branch behind it - see
+    // the note at the top of interactive-console.ts for why that split was wrong.
+    //
+    // /api/run still exists and is unchanged; Step-Up calls it server-side. The
+    // IDE simply no longer uses it.
+    // A debug run announces itself before the stream opens, so the toolbar appears
+    // immediately rather than only once the adapter attaches.
+    if (options.debug) debugState.starting();
+
+    const result = await runProgram(lang.id, requestBody, {
+      // Stop the spinner the moment the stream is live: from then on the console
+      // owns the panel and shows progress by printing.
+      onStreamStart: () => stopRunLoader(),
+
+      debug: options.debug === true,
+
+      onDebugEvent: event => {
+        debugState.apply(event);
+        // Breakpoints go out as soon as the adapter is listening. Earlier would race
+        // the connection; later would miss a breakpoint on the program's first lines.
+        if (event.type === 'attached') syncBreakpoints();
+      },
+
+      // turtle.bgpic("maze.svg") names a workspace file. Python reports only the
+      // name, so it is resolved here, where the workspace is in scope.
+      resolveImage: (name: string) =>
+        resolveWorkspaceImageUrl(
+          name,
+          normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+        ) });
+
+    // However the run ended, the session is over: no stale current-line arrow, no
+    // step buttons left enabled.
+    if (options.debug) debugState.finished();
+
+    // Compiler and runtime errors become editor markers and Problems entries, not
+    // just a paragraph of text. For Python, Java, PHP and C# this is the ONLY thing
+    // that knows what is wrong - Monaco has no language service for them.
+    if (runtime.workspace && runtime.models && runtime.diagnostics) {
+      publishRunDiagnostics({
+        store: runtime.diagnostics,
+        service: runtime.workspace,
+        models: runtime.models,
+        languageId: lang.id,
+        // Both streams: javac and node use stderr, php -l splits across the two,
+        // and a Python traceback can arrive on either depending on the phase.
+        output: `${result.stderr || ''}
+${result.stdout || ''}`,
+        entryDocumentId: activeTab.file.id,
+        documentCount: Array.isArray(requestBody.files)
+          ? (requestBody.files as unknown[]).length
+          : 1 });
     }
 
-    renderRunResult(data, lang.id);
-    if (missingTurtlePic) {
-      appendOutput(
-        `[turtle: background image "${missingTurtlePic}" was not found in this project. ` +
-        `Add an .svg file with that name — bgpic() reads SVG images from the workspace.]`
-      );
+    // After the program's own output and its exit line, never instead of them. Only
+    // for a run that actually failed: explaining an error to someone whose program
+    // worked is noise.
+    const combinedOutput = `${result.stderr || ''}\n${result.stdout || ''}`;
+    if (result.exitCode !== 0) {
+      explainRunFailure(lang.id, combinedOutput);
     }
-    if (turtleRenderErr) appendOutput(`[turtle render error: ${turtleRenderErr}]`);
 
-    setStatus(
-      data.exitCode === 0
-        ? 'Ready ✅'
-        : data.phase === 'compile'
-          ? 'Compile error ❌'
-          : 'Runtime error ❌'
+    // Said once, to a screen reader. The panel itself is not a live region because a
+    // program that prints two hundred lines would read all two hundred aloud.
+    announce(
+      describeRunOutcome({
+        exitCode: result.exitCode,
+        errorSummary: result.exitCode === 0
+          ? null
+          : firstErrorSentence(lang.id, combinedOutput),
+        problemCount: runtime.diagnostics?.counts().total ?? 0,
+      }),
     );
-    
-    // Notify parent of run result (Step-Up integration)
+
     if (appConfig.isEmbedded) {
       notifyRunResult({
-        stdout: data.stdout || '',
-        stderr: data.stderr || '',
-        exitCode: data.exitCode ?? -1,
-        durationMs: data.durationMs || 0
-      });
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs });
     }
+
+    // Returned so a caller can read what the program printed. "Check my work" needs
+    // it: the harness reports its verdict on stdout, and parsing that is the whole
+    // feature. Every other caller ignores it, exactly as before.
+    return result;
   } catch (e: any) {
     stopRunLoader();
     setOutputHtml(
@@ -408,170 +463,3 @@ requestBody = {
     stopRunLoader();
   }
 }
-
-const initialized = requireRuntime();
-const editor = initialized.editor;
-const tabManager = initialized.tabManager;
-
-runBtn.addEventListener("click", () => runCode(editor.getValue()));
-
-// Keyboard shortcuts
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-  runBtn.click();
-});
-
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-  // Save current tab
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    tabManager.saveCurrentTab();
-    setStatus(`Saved ${activeTab.file.name}`);
-  }
-});
-
-// Ctrl+N - New file
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, async () => {
-  const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion);
-  if (newTab) {
-    const model = getOrCreateModel(newTab);
-    editor.setModel(model);
-    setStatus(`Created ${newTab.file.name}`);
-  }
-});
-
-// Ctrl+W - Close current tab
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, async () => {
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab && tabManager.getTabCount() > 1) {
-    await tabManager.closeTab(activeTab.file.id);
-  }
-});
-
-// Format document
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
-  editor.getAction("editor.action.formatDocument")?.run();
-});
-
-// "Explain this keyword" - right-click a keyword to see a plain-English
-// explanation + example, backed by languages/*/keywords.json.
-//
-// The menu item only appears when the word under the cursor/selection is
-// actually present in the active language's keyword dictionary - driven by
-// a Monaco context key kept in sync on every cursor/selection/model change,
-// so adding a new entry to keywords.json makes it "just work" with no other
-// code changes, and it stays hidden for anything not in the file.
-function resolveKeywordAtCursor(ed: monaco.editor.IStandaloneCodeEditor): string {
-  const position = ed.getPosition();
-  const model = ed.getModel();
-  if (!position || !model) return "";
-
-  const wordInfo = model.getWordAtPosition(position);
-  if (wordInfo) return wordInfo.word;
-
-  const selection = ed.getSelection();
-  if (selection && !selection.isEmpty()) {
-    return model.getValueInRange(selection).trim();
-  }
-  return "";
-}
-
-const keywordHelpAvailable = editor.createContextKey<boolean>("keywordHelpAvailable", false);
-
-function updateKeywordHelpAvailability() {
-  const word = resolveKeywordAtCursor(editor);
-  if (!word) {
-    keywordHelpAvailable.set(false);
-    return;
-  }
-  const activeTab = tabManager.getActiveTab();
-  const langId = activeTab ? activeTab.file.language : runtime.currentLang.id;
-  keywordHelpAvailable.set(!!getKeywordExplanation(langId, word));
-}
-
-editor.onDidChangeCursorSelection(updateKeywordHelpAvailability);
-editor.onDidChangeModel(updateKeywordHelpAvailability);
-
-editor.addAction({
-  id: "explainKeyword",
-  label: t("editor.explainKeyword") || "💡 Explain this keyword",
-  contextMenuGroupId: "9_cutcopypaste",
-  contextMenuOrder: 1.5,
-  precondition: "keywordHelpAvailable",
-  run: (ed) => {
-    const position = ed.getPosition();
-    const model = ed.getModel();
-    if (!position || !model) return;
-
-    const wordInfo = model.getWordAtPosition(position);
-    const word = wordInfo?.word || resolveKeywordAtCursor(ed);
-    if (!word) return;
-
-    const activeTab = tabManager.getActiveTab();
-    const langId = activeTab ? activeTab.file.language : runtime.currentLang.id;
-    const entry = getKeywordExplanation(langId, word, getUILang());
-    if (!entry) return;
-
-    // Position the popup near the clicked word on screen
-    const coords = wordInfo
-      ? ed.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: wordInfo.startColumn })
-      : ed.getScrolledVisiblePosition(position);
-    const editorDomNode = ed.getDomNode();
-    const editorRect = editorDomNode?.getBoundingClientRect();
-    const x = (editorRect?.left || 0) + (coords?.left || 0);
-    const y = (editorRect?.top || 0) + (coords?.top || 0) + (coords?.height || 18);
-
-    showKeywordHelpPopup(word, entry.type, entry.explanation, entry.example, entry.rtl, x, y);
-  },
-});
-
-// "Run Selected" - right-click a selection to execute just those lines.
-// Only appears when the selection covers at least one full line: either a
-// multi-line selection, or a single line selected in its entirety (e.g.
-// triple-click, or Home then Shift+End) - not for a plain cursor or a
-// partial in-line text selection like a variable name.
-const runSelectionAvailable = editor.createContextKey<boolean>("runSelectionAvailable", false);
-
-function updateRunSelectionAvailability() {
-  const selection = editor.getSelection();
-  const model = editor.getModel();
-  if (!selection || !model || selection.isEmpty()) {
-    runSelectionAvailable.set(false);
-    return;
-  }
-  if (selection.startLineNumber !== selection.endLineNumber) {
-    runSelectionAvailable.set(true);
-    return;
-  }
-  // Single line selected - only counts if the whole line is covered
-  const lineMaxColumn = model.getLineMaxColumn(selection.startLineNumber);
-  runSelectionAvailable.set(selection.startColumn === 1 && selection.endColumn === lineMaxColumn);
-}
-
-editor.onDidChangeCursorSelection(updateRunSelectionAvailability);
-editor.onDidChangeModel(updateRunSelectionAvailability);
-
-editor.addAction({
-  id: "runSelectedLines",
-  label: t("editor.runSelected") || "▶ Run Selected",
-  contextMenuGroupId: "1_run",
-  contextMenuOrder: 1,
-  precondition: "runSelectionAvailable",
-  run: (ed) => {
-    const selection = ed.getSelection();
-    const model = ed.getModel();
-    if (!selection || !model) return;
-
-    // Always execute the FULL lines touched by the selection, not just the
-    // exact (possibly partial-column) selected text - matches how the
-    // context menu becomes available in the first place.
-    const startLine = selection.startLineNumber;
-    const endLine = selection.endLineNumber;
-    const code = model.getValueInRange(
-      new monaco.Range(startLine, 1, endLine, model.getLineMaxColumn(endLine))
-    );
-    if (!code.trim()) return;
-
-    runCode(code);
-  },
-});
-

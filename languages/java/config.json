@@ -16,9 +16,10 @@
       "sourceLevel": "11"
     }
   ],
-  "runner": {
-    "command": "java",
-    "compile": true,
-    "tempFile": true
+  "icon": "☕",
+  "capabilities": {
+    "debug": true,
+    "taughtKeywords": true,
+    "runSelection": false
   }
 }

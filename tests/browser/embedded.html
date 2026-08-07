@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embedded (Step-Up) smoke</title>
+    <style>
+      iframe { width: 1100px; height: 700px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Drives the IDE the way Step-Up does: embedded in an iframe, with files
+      delivered by postMessage rather than restored from IndexedDB.
+
+      This is the consumer contract the workspace refactor touched most directly -
+      `replaceAllFiles` became atomic and identity-preserving, and stepup.ts stopped
+      disposing every model on each update. Those are exactly the changes that a
+      unit test cannot confirm are wired correctly.
+
+      Must be served from an origin in stepup-bus.ts's allowlist, or every message
+      is correctly ignored and the test would fail for the wrong reason. The runner
+      pins this suite to port 3000 for that reason.
+    -->
+    <pre id="results">running…</pre>
+    <iframe id="ide" src="/?embed=1&mode=full&lang=python"></iframe>
+    <script type="module" src="./embedded.ts"></script>
+  </body>
+</html>

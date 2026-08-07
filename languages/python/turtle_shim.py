@@ -1,18 +1,24 @@
 # ─── Turtle Shim for Browser Coder ──────────────────────────────────────────
 # Replaces the standard `turtle` module (which requires tkinter / a display)
 # with a pure-Python renderer that captures every drawing command and, at
-# process exit, serialises them to a single JSON blob printed on stdout as:
+# process exit, serialises them to JSON.
 #
-#   __TURTLE_COMMANDS__:<base64-encoded-JSON>
+# Transport: the JSON is written to the path in BROWSER_CODER_GRAPHICS_OUT,
+# which the server sets in the sandbox environment and which lives inside the
+# run's own private job directory. NOTHING is written to stdout.
 #
-# The browser-coder frontend (src/main.ts) detects this line, decodes it, and
-# renders the result on an HTML5 <canvas>.
+# That is deliberate and load-bearing. An earlier version printed the output
+# path to stdout for the server to read back; since stdout belongs to the
+# student's program, any program could name any file and have the service read
+# and delete it on its behalf. The server now chooses the path, so there is no
+# decision left for a program to influence. It also means a dense drawing is
+# never truncated by the 100 KB stdout cap.
 #
 # Design goals:
 #   • Full coverage of the common turtle API (module functions + Turtle class)
 #   • Secure: everything is scoped inside _setup_turtle() – no stdlib handles
 #     leak into the user's namespace after the function returns
-#   • No third-party dependencies; only stdlib (sys, json, math, atexit, base64)
+#   • No third-party dependencies; only stdlib (sys, json, math, atexit, os)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _setup_turtle():
@@ -20,6 +26,13 @@ def _setup_turtle():
     import json as _j
     import math as _m
     import atexit as _ae
+    # base64 is needed again, for SVG cursor shapes.
+    #
+    # It was removed on this branch when the stdout fallback transport went, and the
+    # SVG cursor feature - written in parallel on `main` - added three new uses of
+    # it. Git merged both sides without a conflict and produced code that raises
+    # `NameError: _b64` the first time a program calls `register_shape("x.svg")`.
+    # Nothing in a clean merge, a typecheck or a Python parse catches that.
     import base64 as _b64
 
     # ── Shared drawing list (all turtles write here) ─────────────────────────
@@ -61,6 +74,42 @@ def _setup_turtle():
 
     _gs = _new_state()   # global / module-level turtle state
 
+    # ── State for the rest of the public API ────────────────────────────────
+    #
+    # Single-element lists so the closures below can mutate them, matching the
+    # convention already used by _cfg, _tracer and _speed.
+    _angle       = [360.0]   # fullcircle: 360 for degrees(), 2*pi for radians()
+    _poly_rec    = [None]    # points being recorded between begin_poly/end_poly
+    _poly_done   = [None]    # the last completed recording, for get_poly()
+    _undo_limit  = [None]    # setundobuffer(); None means unlimited
+    _undo_stack  = []        # entries counted by undobufferentries()
+    _turtle_objects = []     # Turtle instances, for turtles()
+    _module_pen  = [None]    # the implicit module-level turtle, for getpen()
+
+    # CPython's built-in cursor polygons, so get_shapepoly() can answer for a
+    # built-in name and not only for a registered one.
+    _BUILTIN_SHAPE_POINTS = {
+        'classic':  ((0, 0), (-5, -9), (0, -7), (5, -9)),
+        'arrow':    ((-10, 0), (10, 0), (0, 10)),
+        'square':   ((10, -10), (10, 10), (-10, 10), (-10, -10)),
+        'triangle': ((10, -5.77), (0, 11.55), (-10, -5.77)),
+        'circle':   ((10, 0), (7.07, 7.07), (0, 10), (-7.07, 7.07),
+                     (-10, 0), (-7.07, -7.07), (0, -10), (7.07, -7.07)),
+        'turtle':   ((0, 16), (-2, 14), (-1, 10), (-4, 7), (-7, 9), (-9, 8),
+                     (-6, 5), (-7, 1), (-5, -3), (-8, -6), (-6, -8), (-4, -5),
+                     (0, -7), (4, -5), (6, -8), (8, -6), (5, -3), (7, 1),
+                     (6, 5), (9, 8), (7, 9), (4, 7), (1, 10), (2, 14)),
+        'blank':    (),
+    }
+
+    def _to_degrees(value):
+        """One angle, from the current unit into degrees."""
+        return float(value) * 360.0 / _angle[0]
+
+    def _from_degrees(value):
+        """One angle, from degrees into the current unit."""
+        return float(value) * _angle[0] / 360.0
+
     # ── Animation-support state ─────────────────────────────────────────────
     _arc_mode = [False]  # True inside _circ so penup steps don't spam 'M' shapes
     _tracer   = [1]      # Last tracer(n) value; 0 means "no animation"
@@ -87,6 +136,14 @@ def _setup_turtle():
                        'square', 'triangle', 'blank')
     _polys    = {}       # custom polygon shapes: name -> [[x, y], ...]
     _svg_shapes = {}     # SVG cursor shapes: name -> embedded image metadata
+
+    # Must match GRAPHICS_LIMITS.maxSvgBytes in server/graphics/turtle.mjs.
+    #
+    # The ported version used 12 MB, which base64 inflates to 16 MB - twice the
+    # whole graphics channel's 8 MB budget, so a shape anywhere near that size
+    # could never be delivered at all. It would have looked like a mysterious
+    # "my cursor did not appear" rather than a limit. A cursor icon is a few KB.
+    _MAX_SVG_BYTES = 256 * 1024
     _turtles  = []       # states of every Turtle() instance the program made
     _gs_used  = [False]  # did the program actually use the module-level turtle?
 
@@ -198,7 +255,7 @@ def _setup_turtle():
 
         if (
             len(encoded_bytes) <= 0
-            or len(encoded_bytes) > 12 * 1024 * 1024
+            or len(encoded_bytes) > _MAX_SVG_BYTES
             or '<svg' not in svg_text.lower()
         ):
             return False
@@ -238,34 +295,55 @@ def _setup_turtle():
         if source is not None:
             return _register_svg_source(shape_name, source)
 
-        # EXISTING BEHAVIOUR: read a local SVG when present in the runtime.
-        raw_name = _os.path.expanduser(shape_name)
+        # Read a local SVG when present in the workspace.
+        #
+        # Confined to the workspace deliberately. The version this was ported from
+        # called `expanduser` and `abspath` on the shape name, so
+        # `register_shape("/etc/hosts.svg")` or `register_shape("~/.ssh/id_rsa.svg")`
+        # named a real absolute path to try to open.
+        #
+        # On this branch `open` is already confined by languages/python/fs_guard.py,
+        # so those reads FAIL - but `os.path.isfile` and `os.path.getsize` are not
+        # guarded, so the candidate loop would still answer "does this file exist?"
+        # for any path on the container. That is a small leak, and there is no reason
+        # to leave it: a cursor image lives in the student's own project.
+        workspace = _os.path.realpath(
+            _os.environ.get('BROWSER_CODER_WORKSPACE') or _os.getcwd()
+        )
+
         candidates = []
 
         def _candidate(path):
             if not path:
                 return
-            absolute = _os.path.abspath(path)
+            try:
+                absolute = _os.path.realpath(path)
+            except OSError:
+                return
+            # realpath first, so a symlink or `..` cannot step outside.
+            if absolute != workspace and not absolute.startswith(workspace + _os.sep):
+                return
             if absolute not in candidates:
                 candidates.append(absolute)
 
-        _candidate(raw_name)
-        _candidate(_os.path.join(_os.getcwd(), raw_name))
-        try:
-            script_dir = _os.path.dirname(_os.path.abspath(_sys.argv[0]))
-            _candidate(_os.path.join(script_dir, raw_name))
-        except Exception:
-            pass
+        # A name with a drive letter, a leading separator or a `~` is not a
+        # workspace-relative file name and is not treated as one.
+        if not _os.path.isabs(shape_name) and not shape_name.startswith('~'):
+            _candidate(_os.path.join(workspace, shape_name))
+            _candidate(_os.path.join(_os.getcwd(), shape_name))
+            try:
+                script_dir = _os.path.dirname(_os.path.abspath(_sys.argv[0]))
+                _candidate(_os.path.join(script_dir, shape_name))
+            except Exception:
+                pass
 
-        # Browser Coder already adds project folders to sys.path.
-        # Check those exact locations without a recursive filesystem scan.
-        for import_dir in _sys.path:
-            if isinstance(import_dir, str) and import_dir:
-                _candidate(_os.path.join(import_dir, raw_name))
+            # Browser Coder already adds project folders to sys.path.
+            # Check those exact locations without a recursive filesystem scan.
+            for import_dir in _sys.path:
+                if isinstance(import_dir, str) and import_dir:
+                    _candidate(_os.path.join(import_dir, shape_name))
 
-        # Keep the limit bounded. The data is written to the existing temp JSON
-        # output path, so this does not affect normal stdout limits.
-        max_svg_bytes = 12 * 1024 * 1024
+        max_svg_bytes = _MAX_SVG_BYTES
 
         for candidate in candidates:
             try:
@@ -504,10 +582,14 @@ def _setup_turtle():
     # ── Movement ─────────────────────────────────────────────────────────────
     def forward(distance):   _fwd(_gs, distance)
     def backward(distance):  _fwd(_gs, -distance)
-    def right(angle):        _gs['h'] -= angle
-    def left(angle):         _gs['h'] += angle
-    def setheading(angle):   _gs['h'] = float(angle)
-    def heading():           return _gs['h']
+    # Angles cross the unit boundary here. Internally every heading is degrees; the
+    # student's unit is whatever degrees()/radians() last set. Converting at the edge
+    # rather than storing the unit means every _seg/_fwd calculation below stays in
+    # one unit and cannot be half-converted.
+    def right(angle):        _gs['h'] -= _to_degrees(angle)
+    def left(angle):         _gs['h'] += _to_degrees(angle)
+    def setheading(angle):   _gs['h'] = _to_degrees(angle)
+    def heading():           return _from_degrees(_gs['h'])
     fd = forward;  bk = back = backward;  rt = right;  lt = left;  seth = setheading
 
     # ── Position ─────────────────────────────────────────────────────────────
@@ -534,7 +616,9 @@ def _setup_turtle():
 
     def towards(x, y=None):
         if isinstance(x, (list, tuple)): x, y = x[0], x[1]
-        return _m.degrees(_m.atan2(float(y or 0) - _gs['y'], float(x or 0) - _gs['x']))
+        degrees_to = _m.degrees(_m.atan2(float(y or 0) - _gs['y'], float(x or 0) - _gs['x']))
+        # Reported in the student's current angle unit, like heading().
+        return _from_degrees(degrees_to % 360.0)
 
     # ── Pen ──────────────────────────────────────────────────────────────────
     def pendown():   _gs['pd'] = True
@@ -745,11 +829,12 @@ def _setup_turtle():
             _register_svg_shape(shape_name, shape)
             return
 
-        try:
-            pts = [[round(float(p[0]), 3), round(float(p[1]), 3)] for p in shape]
-        except Exception:
-            return
-        if len(pts) >= 3:
+        # A Shape object, a raw sequence of points, or a compound shape. The
+        # documented two-step form is
+        #     s.register_shape("name", turtle.Shape("polygon", points))
+        # and accepting only the raw sequence made that form silently do nothing.
+        pts = _shape_points(shape)
+        if pts and len(pts) >= 3:
             _polys[shape_name] = pts
     register_shape = addshape
 
@@ -780,6 +865,20 @@ def _setup_turtle():
         def getshapes(self):              return getshapes()
         def Screen(self):                 return _screen
         def Turtle(self, *a, **kw):       return _Turtle(*a, **kw)
+
+        # Screen-level members of the wider API. Present on the object as well as at
+        # module level, because a program written in the `screen = Screen()` style
+        # never touches the module functions - and `screen.setworldcoordinates(...)`
+        # raising AttributeError is indistinguishable from the feature not existing.
+        def setworldcoordinates(self, llx, lly, urx, ury):
+            setworldcoordinates(llx, lly, urx, ury)
+
+        def degrees(self, fullcircle=360.0):   degrees(fullcircle)
+        def radians(self):                     radians()
+        def turtles(self):                     return turtles()
+        def getcanvas(self):                   return getcanvas()
+        def onkeypress(self, fun, key=None):   return onkeypress(fun, key)
+        def onkeyrelease(self, fun, key=None): return onkeyrelease(fun, key)
 
         # Drawing calls, also accepted on the screen: they drive the module-level
         # turtle, exactly as turtle.forward() does. Same reasoning as the
@@ -852,6 +951,10 @@ def _setup_turtle():
         def colormode(self, c=None):      return c if c is not None else 255
 
     _screen = _Screen()
+    # The real module separates TurtleScreen (a screen on a given canvas) from
+    # Screen() (the singleton). One canvas here, so the class is the same - present
+    # so `isinstance(s, turtle.TurtleScreen)` and subclassing both resolve.
+    TurtleScreen = _Screen
     def Screen(): return _screen
     def getscreen(): return _screen
 
@@ -860,6 +963,7 @@ def _setup_turtle():
         def __init__(self, *args, **kwargs):
             self._s = _new_state()
             _turtles.append(self._s)
+            _turtle_objects.append(self)
             if 'shape' in kwargs:
                 _set_shape(self._s, kwargs['shape'])
             elif args and isinstance(args[0], str):
@@ -1037,9 +1141,107 @@ def _setup_turtle():
         def onrelease(self, fun, btn=1, add=None): pass
         def ondrag(self, fun, btn=1, add=None): pass
 
+        # ── The rest of the per-turtle API ───────────────────────────────────
+
+        def teleport(self, x=None, y=None, fill_gap=False):
+            """Move without drawing, keeping the pen state (Python 3.12+).
+
+            Not the same as penup-goto-pendown: that leaves the pen up if it was
+            already up, and this must restore whatever it was.
+            """
+            target_x = self._s['x'] if x is None else float(x)
+            target_y = self._s['y'] if y is None else float(y)
+            was_down = self._s['pd']
+            if not fill_gap:
+                self._s['pd'] = False
+            # _seg already records a move shape when the pen is up, so there is
+            # nothing further to emit.
+            _seg(self._s, target_x, target_y)
+            self._s['pd'] = was_down
+
+        def clone(self):
+            """A second turtle at the same position with the same appearance."""
+            copy = _Turtle()
+            copy._s.update({
+                key: value for key, value in self._s.items()
+                # Fill bookkeeping is per-turtle progress, not appearance: copying
+                # a half-finished fill would make the clone close the original's
+                # polygon.
+                if key not in ('fp', 'fl', 'fi')
+            })
+            copy._s['fp'] = []
+            copy._s['fl'] = False
+            copy._s['fi'] = 0
+            return copy
+
+        def shearfactor(self, shear=None):
+            if shear is None:
+                return self._s.get('sf', 0.0)
+            self._s['sf'] = float(shear)
+            _app(self._s)
+            return None
+
+        def shapetransform(self, t11=None, t12=None, t21=None, t22=None):
+            """Read or set the cursor's 2x2 transform.
+
+            Stored so the renderer can apply it; reading back returns what was set,
+            which is what code that saves and restores a transform relies on.
+            """
+            current = self._s.get('tf')
+            if t11 is None and t12 is None and t21 is None and t22 is None:
+                if current:
+                    return tuple(current)
+                # Derived from the stretch factors, as the real module does, so the
+                # identity case still reports the actual scaling.
+                return (self._s['sl'], 0.0, 0.0, self._s['sw'])
+            base = list(current) if current else [self._s['sl'], 0.0, 0.0, self._s['sw']]
+            for index, value in enumerate((t11, t12, t21, t22)):
+                if value is not None:
+                    base[index] = float(value)
+            self._s['tf'] = base
+            _app(self._s)
+            return None
+
+        def begin_poly(self):
+            _poly_rec[0] = [(self._s['x'], self._s['y'])]
+
+        def end_poly(self):
+            if _poly_rec[0] is not None:
+                _poly_done[0] = tuple(Vec2D(x, y) for x, y in _poly_rec[0])
+                _poly_rec[0] = None
+
+        def get_poly(self):
+            return _poly_done[0]
+
+        def get_shapepoly(self):
+            name = self._s['sh']
+            if name in _polys:
+                return tuple(Vec2D(x, y) for x, y in _polys[name])
+            return tuple(Vec2D(x, y) for x, y in _BUILTIN_SHAPE_POINTS.get(name, ()))
+
+        def setundobuffer(self, size):
+            _undo_limit[0] = None if size is None else max(0, int(size))
+
+        def undobufferentries(self):
+            if _undo_limit[0] == 0:
+                return 0
+            return len(_undo_stack)
+
+        def getscreen(self):
+            return _screen
+
+        def getturtle(self):
+            return self
+
+        getpen = getturtle
+
     Turtle = _Turtle
     RawTurtle = _Turtle
     Pen = _Turtle
+    # The real module distinguishes RawPen/RawTurtle (a turtle on a given canvas)
+    # from Turtle (one on the default screen). There is one canvas here, so they are
+    # the same class - kept as names so `isinstance(t, turtle.RawPen)` resolves.
+    RawPen = _Turtle
 
     # ── atexit: emit drawing data ─────────────────────────────────────────────
     def _emit():
@@ -1069,27 +1271,277 @@ def _setup_turtle():
             data['pic'] = _cfg[0]['pic']
         json_str = _j.dumps(data, separators=(',', ':'))
 
-        # Write the JSON to a temp file and print only the path to stdout.
-        # This avoids the server's stdout size limit (100 KB) for programs
-        # that produce thousands of shapes (spirographs, dense mandalas, etc).
-        # The server reads the file in parseTurtleOutput() then deletes it.
+        # ── Write the drawing to the target the SERVICE chose ─────────────────
+        #
+        # The path comes from BROWSER_CODER_GRAPHICS_OUT, which the server sets
+        # in the sandbox environment before starting this process. It is inside
+        # the run's own private job directory.
+        #
+        # Nothing is printed to stdout. This matters for two reasons:
+        #
+        #  1. The previous design printed `__TURTLE_FILE__:<path>` and the server
+        #     then read and DELETED whatever path it found there. Because stdout
+        #     belongs to the student's program, any program could name any file
+        #     and have the service read and unlink it on its behalf. Choosing the
+        #     path server-side removes the decision an attacker could subvert;
+        #     filtering the marker would not have, because the flaw was trusting
+        #     a filesystem instruction from untrusted output at all.
+        #
+        #  2. The server's live-output filter had to buffer anything starting with
+        #     `__TURTLE_` before applying the output budget, so an unterminated
+        #     marker could exhaust its memory. With nothing printed there is
+        #     nothing to buffer.
+        #
+        # Using a file rather than stdout also keeps a dense drawing (spirograph,
+        # mandala) from being truncated by the 100 KB output cap.
         import os as _os
-        _tmp_dir = _os.environ.get('TMPDIR', _os.environ.get('TMP', '/tmp'))
-        _tmp_path = _os.path.join(_tmp_dir, '__turtle_%d__.json' % _os.getpid())
-        try:
-            with open(_tmp_path, 'w', encoding='utf-8') as _fh:
-                _fh.write(json_str)
-            print('__TURTLE_FILE__:' + _tmp_path, flush=True)
-        except Exception:
-            # Fallback: inline base64 (may still get truncated for huge programs)
-            _enc = _b64.b64encode(json_str.encode()).decode()
-            print('__TURTLE_COMMANDS__:' + _enc, flush=True)
+        _out_path = _os.environ.get('BROWSER_CODER_GRAPHICS_OUT')
+        if _out_path:
+            try:
+                # Written whole, then closed, so the server never observes a
+                # partially written JSON document.
+                with open(_out_path, 'w', encoding='utf-8') as _fh:
+                    _fh.write(json_str)
+            except Exception:
+                # A drawing that cannot be saved is a lost picture, never a failed
+                # program. Silently give up rather than corrupting the student's
+                # real output with a diagnostic they cannot act on.
+                pass
 
     _ae.register(_emit)
 
+    # ── The rest of the public API ────────────────────────────────────────────
+    #
+    # Measured rather than guessed: `turtle.__all__` lists 122 public names and the
+    # shim provided 96, so 26 were missing. `tests/contract/turtle-api.test.mjs`
+    # asserts the whole list, which is what makes "all of the library" a checkable
+    # claim instead of an intention.
+    #
+    # Three names are deliberately NOT functional, and say so when called, because
+    # they only mean something to a tkinter canvas that does not exist here. A
+    # student who calls one gets a clear sentence rather than an AttributeError or,
+    # worse, silence.
+
+    class Terminator(Exception):
+        """Raised by the real module to unwind out of mainloop. Kept so
+        `except turtle.Terminator:` in student code still names a real class."""
+
+    class Vec2D(tuple):
+        """The real module's 2-vector. A tuple subclass, with the same operators.
+
+        Students use it via `pos()` arithmetic - `t.pos() - other.pos()` - so the
+        operators matter, not just the type.
+        """
+
+        def __new__(cls, x, y):
+            return tuple.__new__(cls, (float(x), float(y)))
+
+        def __add__(self, other):
+            return Vec2D(self[0] + other[0], self[1] + other[1])
+
+        def __sub__(self, other):
+            return Vec2D(self[0] - other[0], self[1] - other[1])
+
+        def __mul__(self, other):
+            # Vector * vector is the dot product; vector * number scales.
+            if isinstance(other, Vec2D):
+                return self[0] * other[0] + self[1] * other[1]
+            return Vec2D(self[0] * other, self[1] * other)
+
+        def __rmul__(self, other):
+            if isinstance(other, (int, float)):
+                return Vec2D(self[0] * other, self[1] * other)
+            return NotImplemented
+
+        def __neg__(self):
+            return Vec2D(-self[0], -self[1])
+
+        def __abs__(self):
+            return _m.hypot(*self)
+
+        def rotate(self, angle):
+            perp = Vec2D(-self[1], self[0])
+            radians = angle * _m.pi / 180.0
+            c, s = _m.cos(radians), _m.sin(radians)
+            return Vec2D(self[0] * c + perp[0] * s, self[1] * c + perp[1] * s)
+
+        def __getnewargs__(self):
+            return (self[0], self[1])
+
+        def __repr__(self):
+            return '(%.2f,%.2f)' % self
+
+    class Shape:
+        """A shape description, matching the real module's constructor.
+
+        `Shape("polygon", ((0,0),(10,0),(5,10)))` then `register_shape(name, shape)`
+        is the documented two-step form, so the object has to exist for that code to
+        run at all.
+        """
+
+        def __init__(self, type_, data=None):
+            self._type = str(type_)
+            self._data = data
+            if self._type == 'polygon' and data is not None:
+                self._data = tuple(tuple(point) for point in data)
+
+        def addcomponent(self, poly, fill, outline=None):
+            # Compound shapes render as their first component here; the canvas
+            # renderer draws one polygon per cursor.
+            if self._type != 'compound':
+                raise TypeError('addcomponent: shape is not a compound shape')
+            if self._data is None:
+                self._data = []
+            self._data.append((tuple(tuple(p) for p in poly), fill, outline))
+
+    def _shape_points(shape):
+        """Extract polygon points from a Shape, a raw sequence, or None."""
+        if shape is None:
+            return None
+        data = getattr(shape, '_data', shape)
+        kind = getattr(shape, '_type', 'polygon')
+        if kind == 'compound' and data:
+            data = data[0][0]
+        try:
+            return [[round(float(p[0]), 3), round(float(p[1]), 3)] for p in data]
+        except Exception:
+            return None
+
+    def _unavailable(name, because):
+        """A stub that explains itself instead of failing obscurely."""
+
+        def stub(*_args, **_kwargs):
+            raise NotImplementedError(
+                '%s() is not available in Browser Coder: %s. '
+                'Everything else in the turtle module works.' % (name, because)
+            )
+
+        stub.__name__ = name
+        return stub
+
+    getcanvas = _unavailable(
+        'getcanvas', 'it returns a tkinter canvas, and drawing happens on an HTML canvas here'
+    )
+    write_docstringdict = _unavailable(
+        'write_docstringdict', 'it writes a Python source file of docstrings to disk'
+    )
+
+    class ScrolledCanvas:
+        """Present so `isinstance` and `except` clauses resolve. Constructing one is
+        refused rather than returning a fake that fails later in a confusing place."""
+
+        def __init__(self, *_args, **_kwargs):
+            raise NotImplementedError(
+                'ScrolledCanvas is not available in Browser Coder: it is a tkinter '
+                'widget. Use Screen(), which works.'
+            )
+
+    # ── Angle modes ───────────────────────────────────────────────────────────
+    #
+    # The real module keeps headings in the CURRENT unit. Every internal calculation
+    # here is in degrees, so the mode is a conversion applied at the boundary: the
+    # angle a student passes in, and the heading they read back.
+    def degrees(fullcircle=360.0):
+        _angle[0] = float(fullcircle) if fullcircle else 360.0
+
+    def radians():
+        _angle[0] = 2.0 * _m.pi
+
+    # ── Polygon recording ─────────────────────────────────────────────────────
+    def begin_poly():
+        _poly_rec[0] = [(_gs['x'], _gs['y'])]
+
+    def end_poly():
+        if _poly_rec[0] is not None:
+            _poly_done[0] = tuple(Vec2D(x, y) for x, y in _poly_rec[0])
+            _poly_rec[0] = None
+
+    def get_poly():
+        return _poly_done[0]
+
+    def get_shapepoly():
+        """The current cursor's polygon, as the real module reports it."""
+        name = _gs['sh']
+        if name in _polys:
+            return tuple(Vec2D(x, y) for x, y in _polys[name])
+        return tuple(Vec2D(x, y) for x, y in _BUILTIN_SHAPE_POINTS.get(name, ()))
+
+    # ── Coordinate system ─────────────────────────────────────────────────────
+    def setworldcoordinates(llx, lly, urx, ury):
+        """Record a user coordinate system for the renderer.
+
+        Stored rather than applied to every stored point: the canvas already scales
+        the drawing, so the frontend is the right place to map it, and rewriting
+        thousands of already-emitted points would be both slower and lossy.
+        """
+        _cfg[0]['world'] = [float(llx), float(lly), float(urx), float(ury)]
+
+    # ── Undo bookkeeping ──────────────────────────────────────────────────────
+    def setundobuffer(size):
+        _undo_limit[0] = None if size is None else max(0, int(size))
+
+    def undobufferentries():
+        if _undo_limit[0] == 0:
+            return 0
+        return len(_undo_stack)
+
+    # ── Turtle registry ───────────────────────────────────────────────────────
+    def turtles():
+        return list(_turtle_objects)
+
+    def _module_turtle():
+        """The implicit turtle the module-level functions drive.
+
+        The real module creates one lazily and `getpen()` returns it. Here the
+        module-level state dict `_gs` already exists, so this wraps it in a Turtle
+        object ONCE and hands back the same object every time - two different objects
+        sharing one state would make `getpen() is getpen()` false and break identity
+        comparisons in student code.
+        """
+        if _module_pen[0] is None:
+            pen = _Turtle.__new__(_Turtle)
+            pen._s = _gs
+            _module_pen[0] = pen
+        return _module_pen[0]
+
+    def getpen():
+        return _module_turtle()
+
+    getturtle = getpen
+
+    # ── Movement and cursor transforms ────────────────────────────────────────
+    def teleport(x=None, y=None, fill_gap=False):
+        _module_turtle().teleport(x, y, fill_gap=fill_gap)
+
+    def clone():
+        return _module_turtle().clone()
+
+    def shearfactor(shear=None):
+        return _module_turtle().shearfactor(shear)
+
+    def shapetransform(t11=None, t12=None, t21=None, t22=None):
+        return _module_turtle().shapetransform(t11, t12, t21, t22)
+
+    # Mouse handlers on the turtle itself. Accepted and recorded, like the existing
+    # onclick: a canvas drawing is a still image here, so a callback can never fire -
+    # but a program that registers one must still run to completion.
+    def ondrag(fun, btn=1, add=None): pass
+
+    def onrelease(fun, btn=1, add=None): pass
+
+    _public = [
+        'degrees', 'radians', 'begin_poly', 'end_poly', 'get_poly', 'get_shapepoly',
+        'setworldcoordinates', 'setundobuffer', 'undobufferentries',
+        'turtles', 'getpen', 'getturtle', 'teleport', 'clone',
+        'shearfactor', 'shapetransform', 'ondrag', 'onrelease',
+        'Vec2D', 'Shape', 'Terminator', 'ScrolledCanvas',
+        'getcanvas', 'write_docstringdict',
+        'TurtleScreen', 'RawPen',
+    ]
+
     # ── Build turtle module object and inject into sys.modules ────────────────
     _tm = type(_sys)('turtle')
-    _public = [
+    _public += [
         'forward', 'fd', 'backward', 'bk', 'back',
         'right', 'rt', 'left', 'lt', 'setheading', 'seth', 'heading',
         'goto', 'setpos', 'setposition', 'setx', 'sety',
@@ -1111,9 +1563,20 @@ def _setup_turtle():
         'Screen', 'getscreen', 'Turtle', 'RawTurtle', 'Pen',
     ]
     _lc = locals()
+    _exported = []
     for _n in _public:
         if _n in _lc:
             setattr(_tm, _n, _lc[_n])
+            _exported.append(_n)
+
+    # `__all__` matters for two real things: `from turtle import *` uses it to decide
+    # what to bind, and any introspection - including this repo's own conformance
+    # test - reads it to ask what the module offers. Without it a star-import pulls in
+    # whatever `dir()` happens to show, and the test could not compare the two
+    # modules at all.
+    _tm.__all__ = sorted(_exported)
+    _tm.__doc__ = 'Browser Coder turtle: a canvas renderer with the CPython turtle API.'
+
     _sys.modules['turtle'] = _tm
 
 

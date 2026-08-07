@@ -10,8 +10,10 @@
       "default": true
     }
   ],
-  "runner": {
-    "command": "php",
-    "tempFile": true
+  "icon": "🐘",
+  "capabilities": {
+    "debug": true,
+    "taughtKeywords": true,
+    "runSelection": true
   }
 }

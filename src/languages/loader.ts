@@ -2,8 +2,9 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedKeywordEntry, VersionConfig } from "./types";
+import type { ErrorEntry, KeywordEntry, LanguageCapabilities, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
+import { ASSET_LANGUAGE_ID, ASSET_TYPES } from "../workspace/assets.ts";
 
 // Import all config.json files at build time
 const configModules = import.meta.glob<{ default: LanguageConfig }>(
@@ -24,6 +25,20 @@ const keywordHeModules = import.meta.glob<{ default: Record<string, KeywordEntry
   { eager: true }
 );
 
+// Curated explanations for the errors a language produces, and their Hebrew
+// translations. Same shape and same optionality as the keyword dictionaries above: a
+// language with no errors.json explains nothing, and the raw compiler message is still
+// shown on its own.
+const errorModules = import.meta.glob<{ default: Record<string, ErrorEntry> }>(
+  "/languages/*/errors.json",
+  { eager: true }
+);
+
+const errorHeModules = import.meta.glob<{ default: Record<string, ErrorEntry> }>(
+  "/languages/*/errors_he.json",
+  { eager: true }
+);
+
 // Extract the language id from a glob path like "/languages/python/keywords.json"
 function languageIdFromPath(path: string): string {
   const match = path.match(/\/languages\/([^/]+)\//);
@@ -35,13 +50,15 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     id: 'html',
     name: 'HTML',
     extension: 'html',
+    extensions: ['htm', 'xhtml'],
     monacoLanguage: 'html',
     icon: LANGUAGE_ICONS.html || '🌐',
     versions: [{ id: 'html5', name: 'HTML5', default: true }],
-    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     id: 'css',
@@ -50,10 +67,11 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'css',
     icon: LANGUAGE_ICONS.css || '🎨',
     versions: [{ id: 'css3', name: 'CSS3', default: true }],
-    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
   {
     // SVG images are XML text, so they live in the normal text file storage and
@@ -65,10 +83,101 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'xml',
     icon: LANGUAGE_ICONS.svg || '🖼️',
     versions: [{ id: 'svg11', name: 'SVG 1.1', default: true }],
-    runner: { command: 'asset' },
     starters: {},
     keywords: {},
     keywordsHe: {},
+    errors: {},
+    errorsHe: {},
+  },
+  {
+    // Data, not a program. Registering it is what gives the student Monaco's JSON
+    // language service: a syntax error is underlined as they type instead of
+    // surfacing much later as a stack trace inside `json.load`.
+    id: 'json',
+    name: 'JSON',
+    extension: 'json',
+    monacoLanguage: 'json',
+    icon: LANGUAGE_ICONS.json || '⚙️',
+    versions: [{ id: 'json', name: 'JSON', default: true }],
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+    errors: {},
+    errorsHe: {},
+  },
+  {
+    /**
+     * Binary assets: images, audio, fonts, archives.
+     *
+     * One language rather than one per format, because from the workspace's point of
+     * view they are all the same thing - opaque base64 that is never edited as text.
+     * The FORMAT is carried in `version` (the validated extension), which is what
+     * the asset viewer reads to pick a media type.
+     *
+     * `monacoLanguage: 'plaintext'` is deliberate and never used: a document of this
+     * language gets no Monaco model at all, because handing base64 to a text editor
+     * would let a student corrupt an image by typing in it. See
+     * src/features/asset-viewer.ts.
+     */
+    id: ASSET_LANGUAGE_ID,
+    name: 'Asset',
+    extension: 'png',
+    extensions: ASSET_TYPES.map(type => type.extension).filter(extension => extension !== 'png'),
+    monacoLanguage: 'plaintext',
+    icon: LANGUAGE_ICONS.asset || '🖼️',
+    versions: ASSET_TYPES.map(type => ({
+      id: type.extension,
+      name: type.mediaType,
+      default: type.extension === 'png',
+    })),
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+    errors: {},
+    errorsHe: {},
+  },
+  {
+    /**
+     * Plain text data files.
+     *
+     * Programs read them - `open("data.txt")` is a documented capability of the run
+     * layer, and the whole workspace is copied into the sandbox - but until now a
+     * student could not get one IN. The importer resolves a language by extension and
+     * there was none for `.txt`, so dragging the data file an exercise depends on
+     * answered "data.txt - unsupported file type".
+     *
+     * One language for every plain-text data extension, the same way one Asset
+     * language covers every binary format: from the workspace's point of view they
+     * are all just text that is read, never run.
+     */
+    id: 'text',
+    name: 'Text / data',
+    extension: 'txt',
+    extensions: ['csv', 'tsv', 'log', 'dat', 'ini', 'cfg', 'conf', 'properties'],
+    monacoLanguage: 'plaintext',
+    icon: LANGUAGE_ICONS.text || '📄',
+    versions: [{ id: 'text', name: 'Plain text', default: true }],
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+    errors: {},
+    errorsHe: {},
+  },
+  {
+    // Monaco ships a Markdown tokenizer but no language service, so this is
+    // colouring plus the preview below - which is what Markdown is for.
+    id: 'markdown',
+    name: 'Markdown',
+    extension: 'md',
+    extensions: ['markdown', 'mdown', 'mkd'],
+    monacoLanguage: 'markdown',
+    icon: LANGUAGE_ICONS.markdown || '📝',
+    versions: [{ id: 'commonmark', name: 'Markdown', default: true }],
+    starters: {},
+    keywords: {},
+    keywordsHe: {},
+    errors: {},
+    errorsHe: {},
   },
 ];
 
@@ -128,6 +237,30 @@ body {
   </g>
 </svg>
 `,
+  'json/json': `{
+  "name": "My data",
+  "items": [
+    { "id": 1, "label": "first", "done": false },
+    { "id": 2, "label": "second", "done": true }
+  ]
+}
+`,
+  'markdown/commonmark': `# My notes
+
+Write notes, a README, or an assignment answer here, then click **Open Preview**.
+
+## What you can use
+
+- **bold**, *italic* and \`inline code\`
+- lists, like this one
+- [links](https://example.com)
+
+\`\`\`python
+print("fenced code blocks are highlighted too")
+\`\`\`
+
+> Quoted text goes in a blockquote.
+`,
 };
 
 // Cache for loaded starters with TTL
@@ -154,6 +287,8 @@ function loadLanguages(): Map<string, LoadedLanguage> {
       starters: {},
       keywords: {},
       keywordsHe: {},
+      errors: {},
+      errorsHe: {},
     });
   }
 
@@ -174,6 +309,17 @@ function loadLanguages(): Map<string, LoadedLanguage> {
     if (lang) {
       lang.keywordsHe = module.default || {};
     }
+  }
+
+  // Attach curated error explanations, exactly as the keyword dictionaries above.
+  for (const [path, module] of Object.entries(errorModules)) {
+    const lang = languages.get(languageIdFromPath(path));
+    if (lang) lang.errors = module.default || {};
+  }
+
+  for (const [path, module] of Object.entries(errorHeModules)) {
+    const lang = languages.get(languageIdFromPath(path));
+    if (lang) lang.errorsHe = module.default || {};
   }
 
   for (const language of BUILTIN_LANGUAGES) {
@@ -197,6 +343,33 @@ export function getAllLanguages(): LoadedLanguage[] {
 
 export function getLanguageIds(): string[] {
   return Array.from(languages.keys());
+}
+
+/**
+ * Does this language offer that capability?
+ *
+ * The single question that replaced four hand-maintained lists - `DEBUGGABLE_LANGUAGES`,
+ * `TAUGHT_LANGUAGES`, `SELECTION_RUNNABLE_LANGUAGES` and the executable half of
+ * `LANGUAGE_ICONS`. Each was a copy of a fact belonging to the language, and adding a
+ * language meant finding all four.
+ *
+ * Absent means NO. A language that has not said it can be debugged does not get a
+ * Debug button, which is the right default for a promise made to a student: the worst
+ * outcome here is a button that starts a run which ignores every breakpoint.
+ */
+export function languageCan(
+  languageId: string | undefined | null,
+  capability: keyof LanguageCapabilities,
+): boolean {
+  if (!languageId) return false;
+  return languages.get(languageId)?.capabilities?.[capability] === true;
+}
+
+/** Every language declaring a capability, in registration order. */
+export function languagesThatCan(capability: keyof LanguageCapabilities): string[] {
+  return Array.from(languages.values())
+    .filter(language => language.capabilities?.[capability] === true)
+    .map(language => language.id);
 }
 
 // Check if cache entry is valid
@@ -371,6 +544,44 @@ export function getKeywordExplanation(langId: string, word: string, uiLang?: str
     const heExplanation = lang.keywordsHe?.[matchedKey]?.explanation;
     if (heExplanation) {
       return { ...entry, explanation: heExplanation, rtl: true };
+    }
+  }
+  return { ...entry, rtl: false };
+}
+
+/**
+ * Look up what one error MEANS, keyed by the identifier `errorKeyFrom` extracted.
+ *
+ * Exact match only, unlike the keyword lookup. An error key is not something a student
+ * typed - it came out of a parser reading the runtime's own output - so a
+ * case-insensitive fallback could only ever turn a miss into a WRONG explanation, and a
+ * confidently wrong explanation in a teaching tool is worse than none: it teaches the
+ * student the wrong model of what their program did.
+ *
+ * Hebrew is resolved the same way as for keywords, and per FIELD rather than per entry:
+ * an entry translated but missing its `cause` falls back to the English cause instead of
+ * dropping the sentence that actually helps.
+ */
+export function getErrorExplanation(
+  langId: string,
+  key: string,
+  uiLang?: string,
+): ResolvedErrorEntry | null {
+  const lang = languages.get(langId);
+  if (!lang || !key) return null;
+
+  const entry = lang.errors?.[key];
+  if (!entry) return null;
+
+  if (uiLang === "he") {
+    const translated = lang.errorsHe?.[key];
+    if (translated?.explanation) {
+      return {
+        ...entry,
+        explanation: translated.explanation,
+        cause: translated.cause || entry.cause,
+        rtl: true,
+      };
     }
   }
   return { ...entry, rtl: false };

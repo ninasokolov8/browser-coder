@@ -1,0 +1,233 @@
+# CI gates.
+#
+# The point of this file is that a red build blocks a merge. Before it, the only
+# verification was a security suite that a human ran by hand, and typecheck errors
+# could reach production because ten frontend modules were `@ts-nocheck` and nothing
+# ran `tsc` anyway.
+#
+# Ordered cheapest-first so an obvious failure reports in seconds rather than after
+# a container build.
+
+name: CI
+
+on:
+  push:
+    branches: [main, full_refactor]
+  pull_request:
+  workflow_dispatch:
+
+# A new push supersedes an in-flight run for the same ref. Nothing here is a
+# deployment, so cancelling is free.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22.18+ strips TypeScript natively, which is how the unit tests import
+          # `src/**/*.ts` with no build step.
+          node-version: '22.18'
+          cache: npm
+
+      - run: npm ci
+
+      # Both configs: src (browser) and tests (node). They are separate so browser
+      # code cannot reference a node global that will not exist in the bundle.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: The dev-only test seam must not ship
+        # __bcRuntime and __bcMonaco are guarded by import.meta.env.DEV. If the guard
+        # is ever removed, a production bundle would hand every embedding page a
+        # handle to the IDE's internals.
+        run: |
+          if grep -rq "__bcRuntime\|__bcMonaco" dist/; then
+            echo "::error::a development test seam reached the production bundle"
+            exit 1
+          fi
+          echo "test seams absent from dist/"
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  contract:
+    name: Frozen contract and defect gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+          cache: npm
+
+      # The suite SKIPS a language whose toolchain is absent, and reports the skip
+      # rather than passing quietly. Installing them here is what turns those skips
+      # into real coverage; without this the job would be green while never having
+      # compiled a line of Java.
+      - name: Install language toolchains
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3 php-cli openjdk-17-jdk-headless
+          python3 --version && php --version | head -1 && javac -version
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - run: npm ci
+
+      - name: Contract suite
+        run: npm run test:contract
+
+  browser:
+    name: Browser suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+          cache: npm
+      - run: npm ci
+
+      # The runner finds an installed Chromium rather than depending on Playwright.
+      # ubuntu-latest ships Chrome; SMOKE_BROWSER makes the choice explicit rather
+      # than relying on the search order finding the right one.
+      - name: Locate a browser
+        run: |
+          for candidate in /usr/bin/google-chrome /usr/bin/chromium-browser /usr/bin/chromium; do
+            if [ -x "$candidate" ]; then echo "SMOKE_BROWSER=$candidate" >> "$GITHUB_ENV"; exit 0; fi
+          done
+          echo "::error::no Chromium-based browser found on the runner"
+          exit 1
+
+      - name: Workspace, app-boot and embedded suites
+        run: npm run test:browser
+
+  ops:
+    name: Operations configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # nginx refuses to start on a bad config, so an invalid file is an outage on
+      # deploy rather than an error at review time. `api` is stubbed because the
+      # upstream is resolved at parse time and there is no api container here.
+      - name: nginx config
+        run: |
+          docker run --rm --add-host api:127.0.0.1 \
+            -v "$PWD/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$PWD/nginx/tls:/etc/nginx/tls:ro" \
+            nginx:alpine nginx -t
+
+      - name: The TLS template must also parse
+        # It is not active by default, so nothing would otherwise notice it rotting -
+        # and it is only ever used in a hurry, when TLS is being turned on.
+        run: |
+          mkdir -p /tmp/tls && cp nginx/tls/server.conf.example /tmp/tls/server.conf
+          docker run --rm --add-host api:127.0.0.1 \
+            -v "$PWD/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "/tmp/tls:/etc/nginx/tls:ro" \
+            nginx:alpine sh -c '
+              apk add --no-cache openssl >/dev/null &&
+              mkdir -p /etc/letsencrypt/live/coder.example.org &&
+              openssl req -x509 -newkey rsa:2048 -days 1 -nodes \
+                -keyout /etc/letsencrypt/live/coder.example.org/privkey.pem \
+                -out /etc/letsencrypt/live/coder.example.org/fullchain.pem \
+                -subj "/CN=coder.example.org" 2>/dev/null &&
+              nginx -t'
+
+      - name: Compose files are valid
+        run: |
+          docker compose -f docker-compose.yml config >/dev/null
+          docker compose -f docker-compose.prod.yml config >/dev/null
+
+      - name: The isolation the comments claim must be configured
+        # V-07 and N-05 were both a comment claiming containment that the file
+        # below it did not configure. A comment cannot be tested; this can.
+        run: node scripts/check-ops-config.mjs
+
+  image:
+    name: Production image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image build includes a module-tree import check, so a source directory
+      # missing from the COPY allowlist fails the BUILD rather than the container -
+      # which in a rolling deploy is after the old one is already gone.
+      - name: Build
+        run: docker build -f Dockerfile.production -t browser-coder:ci .
+
+      - name: It must boot, and report a budget-derived capacity
+        run: |
+          docker run -d --name ci-api \
+            --security-opt no-new-privileges:true --read-only \
+            --tmpfs /tmp:noexec,nosuid,size=200M \
+            --tmpfs /app/sandbox:noexec,nosuid,size=512M,uid=1001,gid=1001 \
+            --pids-limit 512 --memory 1g --cpus 2 \
+            -e NODE_ENV=production -e PORT=3001 \
+            -e PREVIEW_STORAGE_DIR=/tmp/preview-data \
+            -p 3001:3001 browser-coder:ci
+
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3001/live >/dev/null; then break; fi
+            sleep 2
+          done
+
+          curl -sf http://127.0.0.1:3001/health | tee /tmp/health.json
+          echo
+
+          # V-36: concurrency must come from the container's 1 GiB budget, not the
+          # runner's host memory. Before the fix this read 500.
+          node -e "
+            const health = require('/tmp/health.json');
+            const config = health.config;
+            console.log('maxConcurrent', config.maxConcurrent, 'from', config.memoryBudgetSource, config.memoryBudgetMB, 'MB');
+            if (config.memoryBudgetSource === 'host') throw new Error('the container did not detect its cgroup memory limit (V-36)');
+            if (config.maxConcurrent > 40) throw new Error('maxConcurrent ' + config.maxConcurrent + ' is too high for a 1 GiB budget (V-36)');
+          "
+      # 322 attack cases across six languages, run against the real image.
+      #
+      # This suite existed but was only ever run by hand, which is how the policy
+      # and the corpus drifted apart: entries asserted that sys.exit() was an
+      # attack and that file access was refused outright, long after both had
+      # become deliberate product decisions. It is a gate now.
+      #
+      # It also asserts the other direction - that workspace file I/O still WORKS -
+      # so tightening the sandbox until the curriculum breaks fails here too.
+      - name: Security corpus
+        run: API_URL=http://127.0.0.1:3001 node tests/security/security-tests.mjs
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs ci-api || true
+
+      - name: Stop
+        if: always()
+        run: docker rm -f ci-api || true

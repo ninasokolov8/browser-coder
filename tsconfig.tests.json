@@ -1,0 +1,19 @@
+{
+  // Typechecks the unit tests, which run in node rather than the browser.
+  //
+  // Separate from tsconfig.json on purpose. The tests need node's globals
+  // (`node:test`, `setImmediate`), and adding those to the browser config would
+  // let `src/` reference something that does not exist in the bundle and only
+  // fail at runtime, in a student's browser.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // `vite/client` stays because the test files import `src/` modules, and those
+    // resolve transitively into files using `import.meta.glob` and `?worker`
+    // imports. Dropping it would report Vite's own syntax as an error.
+    "types": ["node", "vite/client"],
+    // The tests exercise the IndexedDB adapter through fake-indexeddb, which
+    // installs the DOM's IDB globals, so the DOM lib is still required here.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["tests/unit/**/*.ts", "src/**/*"]
+}

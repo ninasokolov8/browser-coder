@@ -16,7 +16,40 @@ FROM node:20-alpine
 # Install language runtimes
 # su-exec: lets the entrypoint start as root (to fix bind-mounted volume
 # permissions) and then drop down to the unprivileged "app" user
-RUN apk add --no-cache python3 openjdk17-jdk php bash dotnet8-sdk su-exec && rm -rf /var/cache/apk/*
+# php-pecl-xdebug: the PHP debugger. Deliberately NOT enabled in php.ini - an
+# ordinary run must not pay for a debugger it is not using - so the debug adapter
+# loads it per process with -dzend_extension=xdebug and nothing else ever sees it.
+RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sdk su-exec curl && rm -rf /var/cache/apk/*
+
+# The C# debugger.
+#
+# netcoredbg, the obvious choice, BUILDS on Alpine and then segfaults the moment it
+# launches a program: on musl CoreCLR's PAL probes the stack with _alloca(1.5 MB) from
+# a thread whose stack is exactly 1.5 MB (dotnet/runtime#103741, Samsung/netcoredbg#206,
+# both open, and no linker stack flag can fix it because the probe size and the thread
+# size are the same constant). dncdbg is the netcoredbg maintainer's own fork with that
+# fixed, and the only .NET debugger publishing musl builds at all. Section 49.
+#
+# Pinned by version deliberately: a debugger that changes under a running deployment
+# is a debugger nobody can reason about.
+#
+# TARGETARCH is supplied by buildx. dncdbg ships musl builds for both architectures,
+# and hardcoding x64 would produce an arm64 image whose debugger cannot execute - a
+# failure that appears at a student's first debug run rather than at build time.
+ARG TARGETARCH
+ARG DNCDBG_VERSION=1.1.0
+RUN DNCDBG_ARCH=$(case "${TARGETARCH:-amd64}" in arm64) echo arm64 ;; *) echo x64 ;; esac) && \
+    mkdir -p /opt/stage && \
+    curl -sSL "https://github.com/viewizard/dncdbg/releases/download/v${DNCDBG_VERSION}/dncdbg-${DNCDBG_VERSION}-linux-musl-${DNCDBG_ARCH}.tar.gz" \
+      | tar -xz -C /opt/stage 2>/dev/null; \
+    mv /opt/stage/dncdbg /opt/dncdbg && rm -rf /opt/stage /opt/dncdbg/._* && \
+    # The upstream tarball is built on macOS, so every entry arrives owned by uid 501
+    # and group "dialout". It happens to work, because the modes are 755/644 - but a
+    # debugger owned by an arbitrary uid is one `umask` change away from not working,
+    # and nothing else in this image is owned by a stranger.
+    chown -R root:root /opt/dncdbg && \
+    chmod 755 /opt/dncdbg/dncdbg && chmod 644 /opt/dncdbg/libdbgshim.so && \
+    /opt/dncdbg/dncdbg --version
 
 # .NET environment
 ENV DOTNET_NOLOGO=1 \
@@ -38,11 +71,23 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built app
+#
+# This list is an allowlist, which is the right default for a production image -
+# but it means a new top-level source directory must be added here or the image
+# silently ships without it. The refactor's `server/` tree is exactly that case:
+# omitting it produced ERR_MODULE_NOT_FOUND for server/config.mjs at startup,
+# with a healthy-looking build and a container that could not boot.
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.mjs ./
+COPY --from=builder /app/server ./server
 COPY --from=builder /app/languages ./languages
 COPY --from=builder /app/security ./security
 COPY --from=builder /app/tests ./tests
+
+# Fail the BUILD rather than the container if a required module is missing.
+# A missing import is otherwise only discovered when the process starts, which in
+# a rolling deploy means the old container is already gone.
+RUN node --input-type=module -e "import('/app/server/config.mjs').then(()=>console.log('module tree present'))"
 
 # Ensure reports directories exist and are writable
 RUN mkdir -p /app/security/reports /app/tests/reports /preview-data && \

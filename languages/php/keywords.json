@@ -351,8 +351,8 @@
   },
   "->": {
     "type": "operator",
-    "explanation": "Object operator used to access instance properties and methods.",
-    "example": "<?php\n$user->name = 'Nina';\necho $user->getName();"
+    "explanation": "Reads a property or calls a method on an object.",
+    "example": "$person->name;\n$person->greet();"
   },
   "?->": {
     "type": "operator",
@@ -536,13 +536,13 @@
   },
   "&&": {
     "type": "operator",
-    "explanation": "Logical AND operator. True only when both sides are true.",
-    "example": "<?php\nif ($age >= 18 && $hasId) {\n    echo 'Allowed';\n}"
+    "explanation": "Logical AND: true only when both sides are true.",
+    "example": "if ($a && $b) { }"
   },
   "||": {
     "type": "operator",
-    "explanation": "Logical OR operator. True when at least one side is true.",
-    "example": "<?php\nif ($weekend || $holiday) {\n    echo 'Rest';\n}"
+    "explanation": "Logical OR: true when either side is true.",
+    "example": "if ($a || $b) { }"
   },
   "!": {
     "type": "operator",
@@ -551,13 +551,13 @@
   },
   "==": {
     "type": "operator",
-    "explanation": "Loose equality comparison that may convert types before comparing.",
-    "example": "<?php\nvar_dump('5' == 5); // true"
+    "explanation": "Loose equality: converts the two sides before comparing, which makes \"0\" == false true. Use === unless you want that.",
+    "example": "\"1\" == 1     // true"
   },
   "===": {
     "type": "operator",
-    "explanation": "Strict equality comparison requiring both value and type to match.",
-    "example": "<?php\nvar_dump('5' === 5); // false"
+    "explanation": "Strict equality: equal AND the same type. Prefer this - == converts types first, so \"0\" == false is true.",
+    "example": "0 === \"0\"    // false\n0 == \"0\"     // true"
   },
   "!=": {
     "type": "operator",
@@ -566,8 +566,8 @@
   },
   "!==": {
     "type": "operator",
-    "explanation": "Strict inequality comparison requiring value or type to differ.",
-    "example": "<?php\nif ($a !== $b) echo 'Different';"
+    "explanation": "Strict inequality: different in value OR in type.",
+    "example": "if ($a !== $b) { }"
   },
   "<=>": {
     "type": "operator",
@@ -576,8 +576,8 @@
   },
   "??": {
     "type": "operator",
-    "explanation": "Null coalescing operator. Returns the left value if it exists and is not null, otherwise the right value.",
-    "example": "<?php\n$name = $_GET['name'] ?? 'Guest';"
+    "explanation": "Null coalescing: use the right side when the left is null OR not set at all - so it does not warn about a missing key.",
+    "example": "$name = $_GET[\"name\"] ?? \"guest\";"
   },
   "??=": {
     "type": "operator",
@@ -596,8 +596,8 @@
   },
   "=>": {
     "type": "operator",
-    "explanation": "Double-arrow operator used for array key/value pairs, foreach key/value binding, match arms, and arrow functions.",
-    "example": "<?php\n$user = ['name' => 'Nina'];\n$result = match ($x) { 1 => 'one', default => 'other' };"
+    "explanation": "Pairs a key with a value in an array, and names the pair in a foreach.",
+    "example": "$ages = [\"ada\" => 36];\nforeach ($ages as $name => $age) { }"
   },
   "@": {
     "type": "operator",
@@ -1453,5 +1453,25 @@
     "type": "standard",
     "explanation": "Common PHP autoloading standard that maps namespaces to directory paths.",
     "example": "{\n  \"autoload\": {\n    \"psr-4\": { \"App\\\\\": \"src/\" }\n  }\n}"
+  },
+  ".": {
+    "type": "operator",
+    "explanation": "Joins two strings together. PHP uses a dot for this, not + - and + on two strings is an error rather than a join.",
+    "example": "$greeting = \"Hello, \" . $name;"
+  },
+  ".=": {
+    "type": "operator",
+    "explanation": "Appends to a string variable, in place. $s .= \"x\" is short for $s = $s . \"x\".",
+    "example": "$out = \"\";\n$out .= \"line 1\\n\";"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division.",
+    "example": "$rest = 7 % 2;   // 1"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use === .",
+    "example": "$total = 10;"
   }
 }

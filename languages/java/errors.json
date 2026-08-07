@@ -1,0 +1,116 @@
+{
+  "cannot find symbol": {
+    "type": "compile error",
+    "explanation": "The compiler reached a name it does not know. Java has to be told about every name before it is used - by declaring a variable, defining a method, or importing a class.",
+    "cause": "A spelling mistake, a missing import, or using a variable outside the braces it was declared in.",
+    "example": "int total = 0;\nSystem.out.println(totl);    // no such name\nSystem.out.println(total);   // the name that was declared"
+  },
+  "'<token>' expected": {
+    "type": "compile error",
+    "explanation": "Java expected a particular character at that spot and found something else. The compiler's own message names the character it wanted - a semicolon, a bracket, a brace or a comma.",
+    "cause": "A forgotten semicolon or an unclosed bracket - usually at the end of the line BEFORE the one the compiler names.",
+    "example": "int x = 5\nint y = 6;   // reported here; the semicolon is missing above\nint x = 5;"
+  },
+  "illegal start of expression": {
+    "type": "compile error",
+    "explanation": "Java found something in a place where a value was expected and cannot make sense of it.",
+    "cause": "An unclosed brace earlier in the file, or a method defined inside another method.",
+    "example": "int x = ;      // nothing to assign\nint x = 0;"
+  },
+  "class, interface, enum, or record expected": {
+    "type": "compile error",
+    "explanation": "At the top level of a Java file, only class, interface, enum or record declarations may appear. Something else was found there.",
+    "cause": "One closing brace too many, which ends the class early and leaves the rest of the file outside it.",
+    "example": "public class Main {\n    public static void main(String[] a) {\n        System.out.println(1);\n    }\n}\n}   // one brace too many - everything after this is outside the class"
+  },
+  "incompatible types": {
+    "type": "type error",
+    "explanation": "A value of one type was put where a different type is required. Java checks this before the program runs.",
+    "cause": "Assigning text to a number variable, or forgetting to convert a value.",
+    "example": "int age = \"12\";                  // text into a number\nint age = Integer.parseInt(\"12\"); // convert first"
+  },
+  "missing return statement": {
+    "type": "compile error",
+    "explanation": "A method promises to return a value, and there is a way to reach its end without returning one.",
+    "cause": "A return inside an if with no return for the else path.",
+    "example": "int sign(int n) {\n    if (n > 0) return 1;\n}                       // what if n <= 0?\nint signOk(int n) {\n    if (n > 0) return 1;\n    return -1;\n}"
+  },
+  "variable might not have been initialized": {
+    "type": "compile error",
+    "explanation": "A local variable is being read before anything has been stored in it. Java refuses to guess a starting value.",
+    "cause": "Declaring a variable and only assigning it inside an if that might not run.",
+    "example": "int total;\nif (ready) total = 5;\nSystem.out.println(total);   // maybe never assigned\nint totalOk = 0;             // give it a starting value"
+  },
+  "unreachable statement": {
+    "type": "compile error",
+    "explanation": "There is code that can never run, because the line before it always leaves the method or the loop.",
+    "cause": "A statement after return, break or continue.",
+    "example": "return total;\nSystem.out.println(total);   // can never run"
+  },
+  "method does not override or implement a method from a supertype": {
+    "type": "compile error",
+    "explanation": "A method is marked @Override, but nothing in the parent class or interface has that exact signature to override.",
+    "cause": "A different spelling, a different number of parameters, or different parameter types from the method being overridden.",
+    "example": "@Override\npublic String tostring() { return \"x\"; }   // wrong capitals\n@Override\npublic String toString() { return \"x\"; }"
+  },
+  "NullPointerException": {
+    "type": "runtime error",
+    "explanation": "Something used a dot on a variable holding null. null means \"no object at all\", so there is nothing to ask.",
+    "cause": "A variable that was never given an object, or a method that returned null when nothing was found.",
+    "example": "String name = null;\nSystem.out.println(name.length());   // null has no length\nif (name != null) System.out.println(name.length());"
+  },
+  "ArrayIndexOutOfBoundsException": {
+    "type": "index error",
+    "explanation": "You asked for a position that does not exist in the array. An array of 3 has positions 0, 1 and 2.",
+    "cause": "Counting from 1 instead of 0, or a loop condition using <= where < was meant.",
+    "example": "int[] nums = {1, 2, 3};\nfor (int i = 0; i <= nums.length; i++)   // one step too far\nfor (int i = 0; i < nums.length; i++)"
+  },
+  "StringIndexOutOfBoundsException": {
+    "type": "index error",
+    "explanation": "You asked for a character at a position the string does not have.",
+    "cause": "charAt or substring with a position past the end - the last character is at length() - 1.",
+    "example": "String s = \"abc\";\ns.charAt(3);          // positions are 0, 1, 2\ns.charAt(s.length() - 1);"
+  },
+  "NumberFormatException": {
+    "type": "value error",
+    "explanation": "Text was converted to a number and the text was not a number.",
+    "cause": "Integer.parseInt on input that contains letters, spaces or is empty.",
+    "example": "Integer.parseInt(\"12 \");    // the space is not a digit\nInteger.parseInt(\"12 \".trim());"
+  },
+  "ArithmeticException": {
+    "type": "runtime error",
+    "explanation": "An impossible calculation was attempted - almost always dividing a whole number by zero.",
+    "cause": "A count or a length that turned out to be 0.",
+    "example": "int average = total / count;   // count is 0\nif (count != 0) average = total / count;"
+  },
+  "ClassCastException": {
+    "type": "type error",
+    "explanation": "An object was cast to a type it is not. The cast compiled, but at run time the object turned out to be something else.",
+    "cause": "Taking something out of a collection and assuming its type.",
+    "example": "Object o = \"hello\";\nInteger n = (Integer) o;         // it is a String\nif (o instanceof Integer n2) { }  // check before casting"
+  },
+  "InputMismatchException": {
+    "type": "value error",
+    "explanation": "A Scanner was asked for one kind of value and the input held another.",
+    "cause": "nextInt() when the person typed a word, or a leftover newline from a previous read.",
+    "example": "int age = scanner.nextInt();      // the input was \"twelve\"\nString line = scanner.nextLine();  // read it as text and convert yourself"
+  },
+  "NoSuchElementException": {
+    "type": "runtime error",
+    "explanation": "Something was read from a source that has nothing left in it.",
+    "cause": "A Scanner reading past the end of the input, or next() on an iterator that is finished.",
+    "example": "while (scanner.hasNextLine()) {    // ask before reading\n    String line = scanner.nextLine();\n}"
+  },
+  "ConcurrentModificationException": {
+    "type": "runtime error",
+    "explanation": "A collection was changed while a for-each loop was walking through it. The loop cannot continue safely.",
+    "cause": "Calling add or remove on the list inside a loop over that same list.",
+    "example": "for (String s : items) {\n    if (s.isEmpty()) items.remove(s);   // changed while looping\n}\nitems.removeIf(String::isEmpty);        // do it in one step instead"
+  },
+  "StackOverflowError": {
+    "type": "runtime error",
+    "explanation": "A method called itself over and over until Java ran out of room to remember the calls.",
+    "cause": "A recursive method whose stopping condition is missing or never reached.",
+    "example": "int count(int n) { return count(n - 1); }   // never stops\nint countOk(int n) { return n <= 0 ? 0 : countOk(n - 1); }"
+  }
+}

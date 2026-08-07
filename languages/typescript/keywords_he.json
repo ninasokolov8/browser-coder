@@ -621,8 +621,8 @@
   },
   "=>": {
     "type": "operator",
-    "explanation": "תחביר arrow function ליצירת פונקציות, לעיתים עם inference של פרמטרים וערכי החזרה.",
-    "example": "const add = (a: number, b: number): number => a + b;"
+    "explanation": "פונקציית חץ: דרך קצרה לכתוב פונקציה. עם ביטוי יחיד התוצאה מוחזרת אוטומטית.",
+    "example": "const double = n => n * 2;\n[1, 2].map(n => n + 1);"
   },
   "?": {
     "type": "optional_marker",
@@ -631,18 +631,18 @@
   },
   "!": {
     "type": "operator",
-    "explanation": "NOT לוגי בזמן ריצה, וגם non-null או definite-assignment assertion במיקומי TypeScript.",
-    "example": "const el = document.getElementById('app')!;\nif (!ready) console.log('wait');"
+    "explanation": "קביעת אי-null: אומרת למהדר \"סמכו עליי, זה לא null\". אינה משנה דבר בזמן ריצה, ולכן אם טעיתם התוכנית עדיין תקרוס.",
+    "example": "const element = document.getElementById(\"app\")!;"
   },
   "?.": {
     "type": "operator",
-    "explanation": "Optional chaining ניגש בבטחה למאפיינים מקוננים או לקריאות בלי לזרוק שגיאה על null או undefined.",
-    "example": "const city = user?.address?.city;"
+    "explanation": "שרשור אופציונלי: קורא מאפיין רק אם האובייקט קיים, במקום לזרוק שגיאה.",
+    "example": "user?.address?.city"
   },
   "??": {
     "type": "operator",
-    "explanation": "Nullish coalescing מחזיר את הצד הימני רק כאשר הצד השמאלי הוא null או undefined.",
-    "example": "const name = userName ?? 'Guest';"
+    "explanation": "איחוד null: משתמש בצד ימין רק כאשר השמאלי הוא null או undefined. בשונה מ-|| , שומר על 0 ועל \"\" .",
+    "example": "const count = input ?? 0;   // 0 stays 0\nconst bad = 0 || 5;         // 5 - probably not wanted"
   },
   "??=": {
     "type": "operator",
@@ -651,13 +651,13 @@
   },
   "||": {
     "type": "operator",
-    "explanation": "OR לוגי מחזיר את הערך הראשון שהוא truthy או את הערך האחרון.",
-    "example": "const port = envPort || 3000;"
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת. זהירות כברירת מחדל - הוא מחליף גם 0 וגם \"\" ; ?? לא.",
+    "example": "if (isAdmin || isOwner) { }"
   },
   "&&": {
     "type": "operator",
-    "explanation": "AND לוגי מחזיר את הערך הראשון שהוא falsy או את הערך האחרון.",
-    "example": "ready && start();"
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת.",
+    "example": "if (age >= 18 && hasTicket) { }"
   },
   "||=": {
     "type": "operator",
@@ -671,18 +671,18 @@
   },
   "===": {
     "type": "operator",
-    "explanation": "שוויון מחמיר משווה ערכים בלי המרת טיפוסים.",
-    "example": "if (value === 42) {\n  console.log('exact match');\n}"
+    "explanation": "שוויון קפדני: שווה וגם מאותו טיפוס. עדיף על == , שממיר טיפוסים קודם ויוצר הפתעות כמו \"\" == 0 שמחזיר true.",
+    "example": "1 === 1     // true\n1 === \"1\"   // false"
   },
   "!==": {
     "type": "operator",
-    "explanation": "אי-שוויון מחמיר משווה ערכים בלי המרת טיפוסים.",
-    "example": "if (value !== null) {\n  console.log(value);\n}"
+    "explanation": "אי-שוויון קפדני: שונה בערך או בטיפוס.",
+    "example": "if (answer !== 42) { }"
   },
   "==": {
     "type": "operator",
-    "explanation": "שוויון רופף משווה ערכים עם המרות טיפוס של JavaScript. ברוב קוד TypeScript עדיף להשתמש ב-===.",
-    "example": "if (value == null) {\n  console.log('null or undefined');\n}"
+    "explanation": "שוויון רופף: ממיר את שני הצדדים לטיפוס משותף לפני ההשוואה, ולכן \"\" == 0 וגם \"1\" == 1 מחזירים true. השתמשו ב-=== אלא אם אתם דווקא רוצים בכך.",
+    "example": "\"1\" == 1    // true\n\"1\" === 1   // false"
   },
   "!=": {
     "type": "operator",
@@ -691,8 +691,8 @@
   },
   "...": {
     "type": "operator",
-    "explanation": "תחביר spread/rest. מרחיב מערכים/אובייקטים או אוסף פרמטרים/איברים שנותרו.",
-    "example": "function total(...nums: number[]) {\n  return nums.reduce((a, b) => a + b, 0);\n}\nconst copy = { ...user };"
+    "explanation": "פריסה או איסוף: פורס רשימה לפריטים נפרדים, או אוסף פריטים נפרדים לרשימה.",
+    "example": "const both = [...first, ...second];\nfunction sum(...numbers) { }"
   },
   "spread": {
     "type": "syntax_pattern",
@@ -1523,5 +1523,35 @@
     "type": "typescript_syntax",
     "explanation": "תחביר type assertion ישן יותר שמשתמש ב-<Type>value. אי אפשר להשתמש בו בקבצי TSX כי הוא מתנגש עם JSX.",
     "example": "const input = <HTMLInputElement>document.getElementById('name');"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק. n % 2 === 0 אומר ש-n זוגי.",
+    "example": "7 % 2   // 1"
+  },
+  "**": {
+    "type": "operator",
+    "explanation": "חזקה: מעלה את המספר השמאלי בחזקת המספר הימני.",
+    "example": "2 ** 3  // 8"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "מוסיף אחד למשתנה, במקום.",
+    "example": "let i = 0;\ni++;   // i is 1"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "מוסיף למשתנה ושומר את התוצאה בחזרה בתוכו.",
+    "example": "total += 5;"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין לשם שמשמאל. להשוואה השתמשו ב-=== .",
+    "example": "let total = 10;"
+  },
+  "?:": {
+    "type": "operator",
+    "explanation": "מסמן מאפיין או פרמטר כאופציונלי: הוא עשוי להיעדר לגמרי.",
+    "example": "interface User { name: string; nickname?: string }"
   }
 }

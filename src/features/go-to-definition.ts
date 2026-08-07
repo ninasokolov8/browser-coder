@@ -1,9 +1,8 @@
 import * as monaco from 'monaco-editor';
-import { runtime } from '../app/runtime';
+import { requireModels, runtime } from '../app/runtime';
 import { getAllLanguages } from '../languages';
-import { getOrCreateModel } from './editor-core';
+import { maskCommentsAndStrings } from '../languages/syntax.ts';
 import type { StoredFile } from '../storage';
-import type { Tab } from '../tabs';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 
 interface SymbolDefinition {
@@ -51,81 +50,26 @@ function joinPath(base: string, relative: string): string {
   return output.join('/');
 }
 
+/**
+ * The file's current text.
+ *
+ * `StoredFile.content` now reads through to the authoritative buffer, so the old
+ * three-way hunt for the freshest copy - model, then tab, then record - has one
+ * answer. Kept as a named function because the intent ("current, not persisted")
+ * is worth stating at the call sites.
+ */
 function getLiveContent(file: StoredFile): string {
-  const model = runtime.fileModels.get(file.id);
-  if (model && !model.isDisposed()) return model.getValue();
-
-  const tab = runtime.tabManager?.getTab(file.id);
-  return tab?.file.content ?? file.content;
+  return file.content;
 }
 
-function maskCommentsAndStrings(code: string): string {
-  let output = '';
-  let state: 'normal' | 'single' | 'double' | 'template' | 'line' | 'block' = 'normal';
-  let escaped = false;
-
-  for (let index = 0; index < code.length; index++) {
-    const char = code[index];
-    const next = code[index + 1];
-
-    if (state === 'line') {
-      if (char === '\n') {
-        output += '\n';
-        state = 'normal';
-      } else output += ' ';
-      continue;
-    }
-
-    if (state === 'block') {
-      if (char === '*' && next === '/') {
-        output += '  ';
-        index++;
-        state = 'normal';
-      } else output += char === '\n' ? '\n' : ' ';
-      continue;
-    }
-
-    if (state !== 'normal') {
-      output += char === '\n' ? '\n' : ' ';
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (
-        (state === 'single' && char === "'") ||
-        (state === 'double' && char === '"') ||
-        (state === 'template' && char === '`')
-      ) state = 'normal';
-      continue;
-    }
-
-    if (char === '/' && next === '/') {
-      output += '  ';
-      index++;
-      state = 'line';
-    } else if (char === '/' && next === '*') {
-      output += '  ';
-      index++;
-      state = 'block';
-    } else if (char === '#') {
-      output += ' ';
-      state = 'line';
-    } else if (char === "'") {
-      output += ' ';
-      state = 'single';
-    } else if (char === '"') {
-      output += ' ';
-      state = 'double';
-    } else if (char === '`') {
-      output += ' ';
-      state = 'template';
-    } else output += char;
-  }
-
-  return output;
-}
 
 function collectDefinitions(file: StoredFile): SymbolDefinition[] {
   const content = getLiveContent(file);
-  const lines = maskCommentsAndStrings(content).split('\n');
+  // Keyed by the file's own language. The lexer this replaced took no language and
+  // hardcoded C-like syntax plus a `#` case - so it masked Python line comments but
+  // not Python docstrings, and applied `#` to languages where it means something
+  // else. See src/languages/syntax.ts.
+  const lines = maskCommentsAndStrings(file.language, content).split('\n');
   const definitions: SymbolDefinition[] = [];
   const seen = new Set<string>();
 
@@ -301,16 +245,24 @@ async function resolveDefinitions(
   return matching;
 }
 
-function ensureTargetModel(definition: SymbolDefinition): monaco.editor.ITextModel {
-  const existing = runtime.fileModels.get(definition.file.id);
-  if (existing && !existing.isDisposed()) return existing;
-
-  const tab: Tab = { file: definition.file, isDirty: false };
-  return getOrCreateModel(tab);
+/**
+ * The model a definition lives in, created on demand.
+ *
+ * This used to fabricate a throwaway `Tab` just to reach `getOrCreateModel`. The
+ * model registry is addressed by document, so the detour is gone - and because the
+ * URI is now the file's real workspace path, the location handed back to Monaco
+ * identifies the target unambiguously even when two folders hold a file of the
+ * same name (V-18).
+ */
+function ensureTargetModel(definition: SymbolDefinition): monaco.editor.ITextModel | null {
+  const document = runtime.workspace?.getDocument(definition.file.id);
+  if (!document) return null;
+  return requireModels().acquire(document);
 }
 
-function toLocation(definition: SymbolDefinition): monaco.languages.Location {
+function toLocation(definition: SymbolDefinition): monaco.languages.Location | null {
   const model = ensureTargetModel(definition);
+  if (!model) return null;
   return {
     uri: model.uri,
     range: new monaco.Range(
@@ -360,7 +312,11 @@ export function initializeGoToDefinition(): void {
     disposables.push(monaco.languages.registerDefinitionProvider(languageId, {
       provideDefinition: async (model, position) => {
         const definitions = await resolveDefinitions(model, position);
-        return definitions.map(toLocation);
+        // A definition whose document has since been deleted yields no location
+        // rather than a fabricated one.
+        return definitions
+          .map(toLocation)
+          .filter((location): location is monaco.languages.Location => location !== null);
       },
     }));
   }

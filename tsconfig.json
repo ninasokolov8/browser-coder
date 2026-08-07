@@ -10,9 +10,17 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    // The workspace domain imports its siblings with explicit `.ts` extensions so
+    // node can run the unit tests directly via type stripping, with no build step
+    // between the source under test and the test. Vite resolves the same
+    // specifiers unchanged.
+    "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
+  // Browser sources only. The unit tests are checked by tsconfig.tests.json,
+  // which adds the node types - kept separate so `src/` cannot reach for a node
+  // global that does not exist in the bundle.
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }

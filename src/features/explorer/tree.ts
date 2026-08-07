@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLanguage } from '../../languages';
 import { runtime } from '../../app/runtime';
 import { policyState } from '../../app/config';
@@ -7,17 +6,62 @@ import { applyFileLanguage } from '../editor-core';
 import { explorerState } from './state';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { setOutput, setStatus } from '../../components/output';
+import { escapeHtml } from '../../components/html-escape.ts';
 import { hasHiddenWorkspacePrefix, isWorkspaceEntryHidden, isWorkspacePathHidden } from '../workspace-visibility';
+import { lazyRef } from '../../app/lazy';
+import { dropPositionFor, sortSiblings, type DropPosition } from './ordering.ts';
+import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
-  deleteSelectedItems, clearDropHighlights, importExternalFiles, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
+  deleteSelectedItems, clearDropHighlights, importDroppedItems, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
+  markInvalidDropTargets, importFromPicker, downloadSelectedItem, placeItemsBeside,
 } from './operations';
 
-const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
-const storage = new Proxy({} as any, { get: (_t, p) => (runtime.storage as any)[p] });
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
+const storage = lazyRef(() => runtime.storage, 'storage');
+
+/**
+ * Redraw the explorer, at most once per turn of the event loop.
+ *
+ * There are 26 call sites, and several fire together: a tab update calls it, the
+ * workspace-changed notification calls it, and the operation that caused both calls it
+ * again itself. Each call re-reads every folder and every file, rebuilds the entire
+ * tree as HTML, and re-attaches eight drag/click listeners to every row - so a single
+ * save could rebuild a 300-row explorer three times.
+ *
+ * Coalescing here rather than at the call sites keeps every caller's contract: the
+ * returned promise still resolves after the DOM has been rebuilt, which the rename
+ * flow depends on (it focuses an input that only exists after the render).
+ */
+let renderInFlight: Promise<void> | null = null;
+let renderAgain = false;
+
+export function renderFileTree(tm = runtime.tabManager!): Promise<void> {
+  if (renderInFlight) {
+    // A change that arrived while we were drawing needs one more pass, but only one.
+    renderAgain = true;
+    return renderInFlight;
+  }
+
+  renderInFlight = (async () => {
+    try {
+      // Yield once so the other calls in this same turn collapse into this render.
+      await Promise.resolve();
+      do {
+        renderAgain = false;
+        await renderFileTreeNow(tm);
+      } while (renderAgain);
+    } finally {
+      renderInFlight = null;
+      renderAgain = false;
+    }
+  })();
+
+  return renderInFlight;
+}
 
 // ===== File Explorer Rendering =====
-export async function renderFileTree(tm = runtime.tabManager!) {
+async function renderFileTreeNow(tm = runtime.tabManager!) {
   const tabs = tm.getAllTabs();
   const activeTab = tm.getActiveTab();
   const folders = await storage.getAllFolders();
@@ -29,6 +73,8 @@ export async function renderFileTree(tm = runtime.tabManager!) {
     name: string;
     type: 'file' | 'folder';
     parentId: string | null;
+    /** The stored sibling order, honoured only for a parent the student arranged. */
+    order: number;
     language?: string;
     children?: TreeNode[];
     tab?: typeof tabs[0];
@@ -92,6 +138,7 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       name: folder.name,
       type: 'folder',
       parentId: folder.parentId,
+      order: folder.order,
       folder,
       children: [],
     });
@@ -125,6 +172,7 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       name: file.name,
       type: 'file',
       parentId: file.parentId,
+      order: file.order,
       language: file.language,
       tab,
     };
@@ -160,26 +208,40 @@ export async function renderFileTree(tm = runtime.tabManager!) {
     explorerState.renamingItemId = null;
   }
 
-  // Sort: folders first, then files, both alphabetically
-  const sortNodes = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+  /*
+   * Sort each parent by the student's arrangement when they have made one, and by name
+   * otherwise.
+   *
+   * The `order` field has always been maintained by storage and always discarded here.
+   * Honouring it unconditionally would have reshuffled every existing project from
+   * alphabetical to creation sequence, so a parent switches to `order` only once
+   * something inside it has actually been dragged into place - see ordering.ts.
+   */
+  const workspace = runtime.workspace;
+  const sortNodes = (nodes: TreeNode[], parentId: string | null) => {
+    const manual = workspace?.isManuallyOrdered(parentId) ?? false;
+    const sorted = sortSiblings(
+      nodes.map(node => ({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        order: node.order,
+      })),
+      manual,
+    );
+
+    const byId = new Map(nodes.map(node => [node.id, node]));
+    nodes.length = 0;
+    for (const entry of sorted) nodes.push(byId.get(entry.id)!);
+
     for (const node of nodes) {
-      if (node.children) sortNodes(node.children);
+      if (node.children) sortNodes(node.children, node.id);
     }
   };
-  sortNodes(rootNodes);
+  sortNodes(rootNodes, null);
 
-  const escapeHtml = (value: string): string => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-
-  const escapeAttribute = (value: string): string => escapeHtml(value);
+  // The shared escaper covers both positions, so the two names are one function.
+  const escapeAttribute = escapeHtml;
 
   // Render HTML
   function renderNode(node: TreeNode, depth: number = 0): string {
@@ -201,6 +263,7 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
+             role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" aria-expanded="${isExpanded}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="folder" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent}px">
           <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
@@ -210,7 +273,7 @@ export async function renderFileTree(tm = runtime.tabManager!) {
             : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
         </div>
-        ${isExpanded ? `<div class="tree-children">${childrenHtml}</div>` : ''}
+        ${isExpanded ? `<div class="tree-children" role="group">${childrenHtml}</div>` : ''}
       `;
     } else {
       // Icon reflects the file's own language, whether or not a tab is open
@@ -220,6 +283,7 @@ export async function renderFileTree(tm = runtime.tabManager!) {
       return `
         <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
              draggable="true"
+             role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="file" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent + 16}px">
           <span class="tree-item-icon">${icon}</span>
@@ -245,6 +309,50 @@ export async function renderFileTree(tm = runtime.tabManager!) {
 
   // Attach event handlers
   attachTreeEventHandlers(tm);
+  applyRovingTabindex();
+}
+
+/**
+ * Exactly one row is tabbable, and focus survives a re-render.
+ *
+ * A tree is ONE tab stop, not one per file - Tab should move past the explorer, and
+ * the arrow keys move within it. That is the roving-tabindex pattern every accessible
+ * tree uses, and without it a 300-file project puts 300 stops between the sidebar and
+ * the editor.
+ *
+ * Focus also has to be restored by hand, because the tree is rebuilt with `innerHTML`
+ * on every change: the focused element is destroyed, and the browser drops focus to
+ * `<body>` - so a student navigating with the keyboard would be thrown out of the tree
+ * every time autosave fired.
+ */
+function applyRovingTabindex(): void {
+  const rows = [...fileTreeEl.querySelectorAll<HTMLElement>('.tree-item')];
+  if (rows.length === 0) return;
+
+  const wanted =
+    rows.find(row => row.dataset.id === explorerState.focusedId)
+    ?? rows.find(row => row.dataset.id === explorerState.selectedItemId)
+    ?? rows.find(row => row.classList.contains('active'))
+    ?? rows[0];
+
+  for (const row of rows) row.tabIndex = row === wanted ? 0 : -1;
+
+  // Only take focus back if the tree HAD it. Stealing focus from the editor because a
+  // file was saved would be far worse than losing it.
+  if (explorerState.treeHadFocus && document.activeElement !== wanted) {
+    wanted.focus({ preventScroll: false });
+  }
+  explorerState.focusedId = wanted.dataset.id ?? null;
+}
+
+/** Move focus to a row and make it the tabbable one. */
+function focusRow(id: string): void {
+  const row = fileTreeEl.querySelector<HTMLElement>(`.tree-item[data-id="${CSS.escape(id)}"]`);
+  if (!row) return;
+  for (const other of fileTreeEl.querySelectorAll<HTMLElement>('.tree-item')) other.tabIndex = -1;
+  row.tabIndex = 0;
+  explorerState.focusedId = id;
+  row.focus();
 }
 
 function attachTreeEventHandlers(tm: TabManager) {
@@ -335,6 +443,10 @@ function attachTreeEventHandlers(tm: TabManager) {
       }
 
       explorerState.draggingIds = Array.from(explorerState.selectedIds);
+      // Started, not awaited: dragstart must stay synchronous or the native drag is
+      // cancelled. It resolves off the in-memory folder maps long before a pointer
+      // can travel to a target.
+      void markInvalidDropTargets(explorerState.draggingIds);
       const payload = explorerState.draggingIds.join(',');
       e.dataTransfer?.setData('application/x-browser-coder-items', payload);
       e.dataTransfer?.setData('text/plain', payload);
@@ -345,7 +457,10 @@ function attachTreeEventHandlers(tm: TabManager) {
     itemEl.addEventListener('dragend', () => {
       // Drop handlers may perform asynchronous IndexedDB work. Delay cleanup
       // one task so the drop event can first copy the DataTransfer payload.
-      setTimeout(() => { explorerState.draggingIds = []; }, 0);
+      setTimeout(() => {
+        explorerState.draggingIds = [];
+        explorerState.invalidDropTargetIds = new Set();
+      }, 0);
       clearDropHighlights();
       itemEl.classList.remove('dragging');
     });
@@ -356,11 +471,37 @@ function attachTreeEventHandlers(tm: TabManager) {
     //                         so dropping on a root-level file lands in root
     // Works for both internal moves and external OS-file drops.
     itemEl.addEventListener('dragover', (e) => {
+      // A locked workspace must not advertise a drop it will silently discard. Without
+      // preventDefault the browser shows the not-allowed cursor, which is the honest
+      // answer. Internal drags are already blocked at the source, but an external file
+      // dragged from the desktop reaches here.
+      if (policyState.lockStructure) return;
       const external = isExternalFileDrag(e);
       if (getInternalDraggedIds(e).length === 0 && !external) return;
+      // A folder cannot go inside itself, so do not paint it as somewhere it can go.
+      if (!external && explorerState.invalidDropTargetIds.has(id)) return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = external ? 'copy' : 'move';
       clearDropHighlights();
+
+      /*
+       * Where in the row the pointer is decides between "into this folder" and
+       * "between these two rows". An external OS drop is always "into", because there
+       * is no ordering question for a file that does not exist here yet.
+       */
+      const position: DropPosition = external
+        ? 'into'
+        : dropPositionFor(e.offsetY, itemEl.getBoundingClientRect().height, type);
+      itemEl.dataset.dropPosition = position;
+
+      if (position !== 'into') {
+        // A line where the item will land, rather than a highlight on a row it is not
+        // going into - the two gestures have to look different or a student cannot
+        // tell which one they are about to do.
+        itemEl.classList.add(position === 'before' ? 'drop-above' : 'drop-below');
+        return;
+      }
+
       if (type === 'folder') {
         itemEl.classList.add('drop-target');
       } else {
@@ -375,20 +516,36 @@ function attachTreeEventHandlers(tm: TabManager) {
       }
     });
     itemEl.addEventListener('dragleave', () => {
-      itemEl.classList.remove('drop-target');
+      itemEl.classList.remove('drop-target', 'drop-above', 'drop-below');
     });
     itemEl.addEventListener('drop', async (e) => {
+      if (policyState.lockStructure) return;
       const external = isExternalFileDrag(e);
       if (getInternalDraggedIds(e).length === 0 && !external) return;
       e.preventDefault();
       e.stopPropagation();
       clearDropHighlights();
-      const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+      const position = (itemEl.dataset.dropPosition as DropPosition | undefined) ?? 'into';
+      delete itemEl.dataset.dropPosition;
+
       if (external) {
-        await importExternalFiles(e.dataTransfer!.files, targetParentId);
-      } else {
-        await moveItemsInto(targetParentId, getInternalDraggedIds(e));
+        // The entry API, so a dropped FOLDER arrives with its structure. It has to be
+        // read from the event synchronously, which importDroppedItems does first.
+        const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+        await importDroppedItems(e.dataTransfer!, targetParentId);
+        return;
       }
+
+      if (position === 'into') {
+        const targetParentId = type === 'folder' ? id : (itemEl.dataset.parent || null);
+        await moveItemsInto(targetParentId, getInternalDraggedIds(e));
+        return;
+      }
+
+      // Dropped between two rows: the item lands next to this one, inside whatever
+      // parent this row is in - which may be a DIFFERENT parent from the one it came
+      // from, so this both moves and orders.
+      await placeItemsBeside(id, position, getInternalDraggedIds(e));
     });
   });
 
@@ -419,11 +576,13 @@ function attachTreeEventHandlers(tm: TabManager) {
                 version: (detected.versions.find(v => v.default) || detected.versions[0]).id,
               }
             : {};
-          const updatedFile = await storage.updateFile(id, { name: newName, ...langUpdates });
-          // Update the complete cached file record, including its new path.
+          await storage.updateFile(id, { name: newName, ...langUpdates });
+
+          // No cached record to rebuild: the tab reads its name and path from the
+          // document and the folder tree. `applyFileLanguage` re-points the Monaco
+          // model at the new path, since a URI cannot be renamed in place.
           const tab = tm.getTab(id);
-          if (tab && updatedFile) {
-            tab.file = { ...updatedFile, content: tab.file.content };
+          if (tab) {
             applyFileLanguage(id);
 
             // A file renamed to X_HIDDEN_ disappears from every normal file
@@ -458,6 +617,127 @@ function attachTreeEventHandlers(tm: TabManager) {
   }
 }
 
+
+/*
+ * The keyboard contract for a tree.
+ *
+ * Before this the explorer was reachable only with a mouse: rows were plain divs with
+ * no role, no tab stop and no key handling, so a keyboard or screen-reader user could
+ * not open a file at all. These are the bindings the ARIA tree pattern specifies, and
+ * they are what a student who cannot use a mouse needs in order to use the IDE.
+ *
+ * Registered on the container rather than per row, so a re-render cannot drop it.
+ */
+fileTreeEl.addEventListener('focusin', () => {
+  explorerState.treeHadFocus = true;
+  const row = (document.activeElement as HTMLElement | null)?.closest?.('.tree-item') as HTMLElement | null;
+  if (row?.dataset.id) explorerState.focusedId = row.dataset.id;
+});
+
+fileTreeEl.addEventListener('focusout', event => {
+  // Only when focus actually leaves the tree, not when it moves between rows.
+  const next = (event as FocusEvent).relatedTarget as Node | null;
+  if (!next || !fileTreeEl.contains(next)) explorerState.treeHadFocus = false;
+});
+
+fileTreeEl.addEventListener('keydown', event => {
+  const target = event.target as HTMLElement;
+  // A rename input owns its own keys - Enter commits, Escape cancels.
+  if (target.classList.contains('tree-item-input')) return;
+
+  const row = target.closest('.tree-item') as HTMLElement | null;
+  if (!row) return;
+
+  const order = explorerState.visibleNodeOrder;
+  const id = row.dataset.id ?? '';
+  const type = row.dataset.type as 'file' | 'folder';
+  const at = order.indexOf(id);
+  if (at === -1) return;
+
+  const move = (to: number): void => {
+    const next = order[Math.max(0, Math.min(order.length - 1, to))];
+    if (next) focusRow(next);
+  };
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault();
+      move(at + 1);
+      return;
+
+    case 'ArrowUp':
+      event.preventDefault();
+      move(at - 1);
+      return;
+
+    case 'Home':
+      event.preventDefault();
+      move(0);
+      return;
+
+    case 'End':
+      event.preventDefault();
+      move(order.length - 1);
+      return;
+
+    case 'ArrowRight':
+      event.preventDefault();
+      // On a collapsed folder, open it. On an open one, step into its first child.
+      // On a file, nothing - which is what the pattern says.
+      if (type === 'folder' && !explorerState.expandedFolders.has(id)) {
+        explorerState.expandedFolders.add(id);
+        explorerState.focusedId = id;
+        void renderFileTree(tabManager);
+      } else if (type === 'folder') {
+        move(at + 1);
+      }
+      return;
+
+    case 'ArrowLeft': {
+      event.preventDefault();
+      // On an open folder, close it. Otherwise go up to the parent, which is how a
+      // student climbs back out of a deep folder without arrowing through everything
+      // inside it.
+      if (type === 'folder' && explorerState.expandedFolders.has(id)) {
+        explorerState.expandedFolders.delete(id);
+        explorerState.focusedId = id;
+        void renderFileTree(tabManager);
+        return;
+      }
+      const parentId = row.dataset.parent;
+      if (parentId && order.includes(parentId)) focusRow(parentId);
+      return;
+    }
+
+    case 'Enter':
+    case ' ':
+      event.preventDefault();
+      // Same effect as a click, and deliberately routed through it so the two cannot
+      // drift: one place decides what opening a row means.
+      row.click();
+      return;
+
+    case 'F2':
+      if (policyState.lockStructure) return;
+      event.preventDefault();
+      explorerState.selectedItemId = id;
+      explorerState.selectedItemType = type;
+      explorerState.renamingItemId = id;
+      void renderFileTree(tabManager);
+      return;
+
+    case 'Delete':
+      if (policyState.lockStructure) return;
+      event.preventDefault();
+      explorerState.selectedItemId = id;
+      explorerState.selectedItemType = type;
+      explorerState.selectedIds = new Set([id]);
+      void deleteSelectedItems();
+      return;
+
+    default:
+  }
+});
 
 // Right-click on empty explorer space opens the root context menu.
 fileTreeEl.addEventListener('contextmenu', (e) => {
@@ -505,6 +785,9 @@ function setContextMenuActionLabel(action: string, label?: string): void {
   const icons: Record<string, string> = {
     'new-file': '📄',
     'new-folder': '📁',
+    'import-files': '⬆️',
+    'import-folder': '📥',
+    download: '⬇️',
     rename: '✏️',
     delete: '🗑️',
   };
@@ -516,8 +799,17 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
 
   setContextMenuActionLabel('new-file');
   setContextMenuActionLabel('new-folder');
+  setContextMenuActionLabel('import-files');
+  setContextMenuActionLabel('import-folder');
+  setContextMenuActionLabel('download');
   setContextMenuActionLabel('rename');
   setContextMenuActionLabel('delete');
+
+  // Importing is always available: it targets the selected folder, or the root.
+  setContextMenuActionVisible('import-files', true);
+  setContextMenuActionVisible('import-folder', true);
+  // Downloading needs exactly one thing to download - a file, or a folder as a ZIP.
+  setContextMenuActionVisible('download', selectedCount === 1);
 
   if (selectedCount === 0) {
     // Empty explorer area: only creation actions are relevant.
@@ -552,7 +844,7 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
   setContextMenuActionVisible('delete', true);
 }
 
-function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
+export function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
   if (policyState.lockStructure) return;
   updateContextMenuForSelection(type);
 
@@ -605,6 +897,21 @@ contextMenuEl.querySelectorAll('.context-menu-item').forEach(item => {
           explorerState.renamingItemId = explorerState.selectedItemId;
           renderFileTree(tabManager);
         }
+        break;
+      case 'import-files':
+        await importFromPicker(
+          { directory: false },
+          explorerState.selectedItemType === 'folder' ? explorerState.selectedItemId : null,
+        );
+        break;
+      case 'import-folder':
+        await importFromPicker(
+          { directory: true },
+          explorerState.selectedItemType === 'folder' ? explorerState.selectedItemId : null,
+        );
+        break;
+      case 'download':
+        await downloadSelectedItem();
         break;
       case 'delete':
         await deleteSelectedItems();

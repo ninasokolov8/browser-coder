@@ -1,3 +1,5 @@
+import { maskCommentsAndStrings } from '../languages/syntax.ts';
+
 export interface ParsedFunction {
   name: string;
   type: 'function' | 'method' | 'class' | 'arrow';
@@ -58,114 +60,24 @@ function addResult(
 }
 
 /**
- * Masks comments and string/template contents while preserving line breaks and
- * character positions. Regex parsing then avoids most false positives from
- * comments and quoted text without needing a full language parser.
+ * REMOVED: a local `maskCommentsAndStrings`, replaced by the shared lexer in
+ * `src/languages/syntax.ts`.
+ *
+ * The ~100-line state machine that used to sit here hardcoded C-like syntax and
+ * took no language argument. Python triple-quoted strings were therefore not
+ * masked at all: a `def` written inside a docstring was reported as a real
+ * function, and the Run panel offered to run it. A second, independently written
+ * copy in `go-to-definition.ts` had grown a `#` case that this one never did -
+ * duplication diverging exactly where it hurts.
+ *
+ * One lexer now, keyed by language, with its table typed so a newly registered
+ * language cannot be silently forgotten.
  */
-function maskCommentsAndStrings(code: string): string {
-  let result = '';
-  let i = 0;
-  let state:
-    | 'normal'
-    | 'single'
-    | 'double'
-    | 'template'
-    | 'line-comment'
-    | 'block-comment' = 'normal';
-  let escaped = false;
-
-  while (i < code.length) {
-    const char = code[i];
-    const next = code[i + 1];
-
-    if (state === 'line-comment') {
-      if (char === '\n') {
-        result += '\n';
-        state = 'normal';
-      } else {
-        result += ' ';
-      }
-      i++;
-      continue;
-    }
-
-    if (state === 'block-comment') {
-      if (char === '*' && next === '/') {
-        result += '  ';
-        i += 2;
-        state = 'normal';
-      } else {
-        result += char === '\n' ? '\n' : ' ';
-        i++;
-      }
-      continue;
-    }
-
-    if (state !== 'normal') {
-      result += char === '\n' ? '\n' : ' ';
-
-      if (escaped) {
-        escaped = false;
-      } else if (char === '\\') {
-        escaped = true;
-      } else if (
-        (state === 'single' && char === "'") ||
-        (state === 'double' && char === '"') ||
-        (state === 'template' && char === '`')
-      ) {
-        state = 'normal';
-      }
-
-      i++;
-      continue;
-    }
-
-    if (char === '/' && next === '/') {
-      result += '  ';
-      i += 2;
-      state = 'line-comment';
-      continue;
-    }
-
-    if (char === '/' && next === '*') {
-      result += '  ';
-      i += 2;
-      state = 'block-comment';
-      continue;
-    }
-
-    if (char === "'") {
-      result += ' ';
-      state = 'single';
-      i++;
-      continue;
-    }
-
-    if (char === '"') {
-      result += ' ';
-      state = 'double';
-      i++;
-      continue;
-    }
-
-    if (char === '`') {
-      result += ' ';
-      state = 'template';
-      i++;
-      continue;
-    }
-
-    result += char;
-    i++;
-  }
-
-  return result;
-}
 
 function parseJavaScriptFunctions(code: string): ParsedFunction[] {
   const results: ParsedFunction[] = [];
   const seen = new Set<string>();
-  const lines = maskCommentsAndStrings(code).split('\n');
+  const lines = maskCommentsAndStrings('javascript', code).split('\n');
   let classDepth = 0;
   let braceDepth = 0;
 
@@ -243,7 +155,12 @@ function parseJavaScriptFunctions(code: string): ParsedFunction[] {
 function parsePythonFunctions(code: string): ParsedFunction[] {
   const results: ParsedFunction[] = [];
   const seen = new Set<string>();
-  const lines = code.split('\n');
+  // Masked, which it never used to be. The `# comment` check below caught line
+  // comments, but nothing caught a DOCSTRING - so a `def` written inside a
+  // triple-quoted string was reported as a real function, and the Run panel
+  // offered to run it. Masking preserves line and column positions, so the
+  // indentation arithmetic below is unaffected.
+  const lines = maskCommentsAndStrings('python', code).split('\n');
   const classIndents: number[] = [];
 
   for (let index = 0; index < lines.length; index++) {
@@ -296,7 +213,7 @@ function parsePythonFunctions(code: string): ParsedFunction[] {
 function parseJavaFunctions(code: string): ParsedFunction[] {
   const results: ParsedFunction[] = [];
   const seen = new Set<string>();
-  const lines = maskCommentsAndStrings(code).split('\n');
+  const lines = maskCommentsAndStrings('java', code).split('\n');
 
   for (let index = 0; index < lines.length; index++) {
     const trimmed = lines[index].trim();
@@ -334,7 +251,7 @@ function parseJavaFunctions(code: string): ParsedFunction[] {
 function parsePHPFunctions(code: string): ParsedFunction[] {
   const results: ParsedFunction[] = [];
   const seen = new Set<string>();
-  const lines = maskCommentsAndStrings(code).split('\n');
+  const lines = maskCommentsAndStrings('php', code).split('\n');
 
   for (let index = 0; index < lines.length; index++) {
     const trimmed = lines[index].trim();
@@ -372,7 +289,7 @@ function parsePHPFunctions(code: string): ParsedFunction[] {
 function parseCSharpFunctions(code: string): ParsedFunction[] {
   const results: ParsedFunction[] = [];
   const seen = new Set<string>();
-  const lines = maskCommentsAndStrings(code).split('\n');
+  const lines = maskCommentsAndStrings('csharp', code).split('\n');
 
   for (let index = 0; index < lines.length; index++) {
     const trimmed = lines[index].trim();
@@ -527,7 +444,7 @@ function extractBraceLanguageDefinitions(
   language: SupportedLanguage,
 ): string {
   const lines = code.split('\n');
-  const maskedLines = maskCommentsAndStrings(code).split('\n');
+  const maskedLines = maskCommentsAndStrings(language, code).split('\n');
   const ranges: DefinitionRange[] = [];
 
   const declarationPattern =

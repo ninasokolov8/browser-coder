@@ -2,6 +2,7 @@ import { runtime } from '../app/runtime';
 import { normalizeProjectPath } from '../components/project-path';
 import { setOutput, setStatus } from '../components/output';
 import { collectWorkspaceSnapshot, type WorkspaceFile } from './workspace';
+import { markdownToPage } from './markdown';
 
 const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 
@@ -47,6 +48,23 @@ export function isSvgFile(
 ): boolean {
   if (!file) return false;
   return file.language === 'svg' || /\.svg$/i.test(file.path || file.name || '');
+}
+
+export function isMarkdownFile(
+  file: { language?: string; name?: string; path?: string } | null | undefined,
+): boolean {
+  if (!file) return false;
+  return (
+    file.language === 'markdown' ||
+    /\.(?:md|markdown|mdown|mkd)$/i.test(file.path || file.name || '')
+  );
+}
+
+/** Every file the Open Preview button can act on. */
+export function isPreviewable(
+  file: { language?: string; name?: string; path?: string } | null | undefined,
+): boolean {
+  return isHtmlFile(file) || isCssFile(file) || isMarkdownFile(file);
 }
 
 function findHtmlEntriesUsingCss(
@@ -184,8 +202,8 @@ export async function openWebPreview(): Promise<void> {
   if (!tabManager || !storage) throw new Error('IDE is not ready');
 
   const activeTab = tabManager.getActiveTab();
-  if (!activeTab || (!isHtmlFile(activeTab.file) && !isCssFile(activeTab.file))) {
-    throw new Error('Open an HTML or CSS file before starting the web preview.');
+  if (!activeTab || !isPreviewable(activeTab.file)) {
+    throw new Error('Open an HTML, CSS or Markdown file before starting the web preview.');
   }
 
   // Open synchronously so browser popup blockers do not block the preview tab
@@ -214,7 +232,28 @@ export async function openWebPreview(): Promise<void> {
 
     let entry: WorkspaceFile | undefined;
 
-    if (isHtmlFile(activeTab.file)) {
+    if (isMarkdownFile(activeTab.file)) {
+      // Rendered to a real page and published alongside the workspace, so relative
+      // images in the notes - `![maze](maze.svg)` - resolve against the same files
+      // the HTML preview would see.
+      const source = files.find(file => file.path === activePath);
+      if (!source) throw new Error(`Markdown file was not found: ${activePath}`);
+
+      const renderedPath = `${activePath.replace(/\.[^./]+$/, '')}.preview.html`;
+      const rendered: WorkspaceFile = {
+        path: renderedPath,
+        language: 'html',
+        // The IDE's theme, not the machine's: a light IDE on a dark laptop used to
+        // render the notes dark beside a light editor.
+        content: markdownToPage(
+          source.content,
+          activePath.split('/').pop() || activePath,
+          document.body.classList.contains('dark-theme'),
+        ),
+      };
+      files.push(rendered);
+      entry = rendered;
+    } else if (isHtmlFile(activeTab.file)) {
       entry = files.find(file => file.path === activePath);
     } else {
       const htmlEntries = findHtmlEntriesUsingCss(files, activePath);
@@ -289,11 +328,12 @@ export function initializeWebPreview(): void {
 
   const updateVisibility = () => {
     const active = runtime.tabManager?.getActiveTab();
-    const canPreview = isHtmlFile(active?.file) || isCssFile(active?.file);
-    button.hidden = !canPreview;
+    button.hidden = !isPreviewable(active?.file);
     button.title = isCssFile(active?.file)
       ? 'Open the HTML page that uses this stylesheet'
-      : 'Open the current HTML file in a new browser tab';
+      : isMarkdownFile(active?.file)
+        ? 'Render this Markdown file and open it in a new browser tab'
+        : 'Open the current HTML file in a new browser tab';
   };
 
   updateVisibility();

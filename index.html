@@ -21,8 +21,40 @@
         --text-secondary: #6e6e6e;
         --text-muted: #999999;
         --accent: #007acc;
-        --icon-color: #424242;
-        --icon-active: #007acc;
+        --icon-color: #858585;
+        --icon-active: #ffffff;
+
+        /* Semantic colours. Everything below used to be a hardcoded VS-Code-dark
+           literal in a component rule, so light mode inherited values chosen for a
+           #1e1e1e background: the Output panel's success line was 1.6:1 on #f3f3f3,
+           the debugger's paused-line arrow 1.5:1, and every white-alpha overlay
+           1.01:1 - invisible. These pairs are chosen to clear 4.5:1 for text and
+           3:1 for glyphs on BOTH themes' backgrounds. */
+        --fg-error: #b5250e;
+        --fg-success: #1a7f37;
+        --fg-info: #0a5aa8;
+        --fg-warning: #8a5300;
+        --fg-symbol: #0b6fa4;
+        --fg-dirty: #9a5b00;
+        --fg-annotation: #24713a;
+        --fg-danger: #b3261e;
+        --fg-exception: #c42b1c;
+        --glyph-current: #b58900;
+        --bg-current-line: rgba(181, 137, 0, 0.20);
+        --bg-hover: rgba(0, 0, 0, 0.06);
+        --bg-hover-strong: rgba(0, 0, 0, 0.09);
+        --bg-selected: rgba(0, 122, 204, 0.16);
+        --bg-danger-soft: rgba(220, 53, 69, 0.14);
+        --border-subtle: rgba(0, 0, 0, 0.14);
+        --border-faint: rgba(0, 0, 0, 0.08);
+        --focus-ring: #0a5aa8;
+        --bg-input: #ffffff;
+        --bg-checker: #f0f0f0;
+        --bg-checker-alt: #dcdcdc;
+        --shadow-strong: rgba(0, 0, 0, 0.18);
+        --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+        /* Native scrollbars and form controls follow the theme rather than the OS. */
+        color-scheme: light;
       }
 
       .dark-theme {
@@ -43,6 +75,93 @@
         --accent: #007acc;
         --icon-color: #858585;
         --icon-active: #ffffff;
+
+        --fg-error: #f48771;
+        --fg-success: #89d185;
+        --fg-info: #75beff;
+        --fg-warning: #ce9178;
+        --fg-symbol: #9cdcfe;
+        --fg-dirty: #e8ab6a;
+        --fg-annotation: #6a9955;
+        --fg-danger: #ff6b6b;
+        --fg-exception: #f14c4c;
+        --glyph-current: #ffcc00;
+        --bg-current-line: rgba(255, 204, 0, 0.14);
+        --bg-hover: rgba(255, 255, 255, 0.06);
+        --bg-hover-strong: rgba(255, 255, 255, 0.10);
+        --bg-selected: rgba(255, 255, 255, 0.12);
+        --bg-danger-soft: rgba(220, 53, 69, 0.20);
+        --border-subtle: rgba(255, 255, 255, 0.12);
+        --border-faint: rgba(255, 255, 255, 0.07);
+        --focus-ring: #75beff;
+        --bg-input: #3c3c3c;
+        --bg-checker: #2a2a2a;
+        --bg-checker-alt: #333333;
+        --shadow-strong: rgba(0, 0, 0, 0.45);
+        --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+        color-scheme: dark;
+      }
+
+      /*
+       * High contrast.
+       *
+       * Layered ON TOP of .dark-theme rather than replacing it - applyTheme adds both
+       * classes - so a variable this block does not restate keeps a dark value instead
+       * of falling through to the light set. That is the whole reason the old
+       * two-branch applyTheme could not have a third theme added to it.
+       *
+       * Every pair here clears 7:1, the WCAG AAA threshold, against the surface it sits
+       * on. Borders become solid and full-strength because the subtle overlays that
+       * work on a grey panel disappear entirely on pure black.
+       */
+      .hc-theme {
+        --bg-main: #000000;
+        --bg-sidebar: #000000;
+        --bg-activitybar: #000000;
+        --bg-editor: #000000;
+        --bg-panel: #000000;
+        --bg-titlebar: #000000;
+        --bg-statusbar: #000000;
+        --bg-tab: #000000;
+        --bg-tab-active: #000000;
+        --bg-tab-hover: #1a1a1a;
+        --border-color: #ffffff;
+        --text-primary: #ffffff;
+        --text-secondary: #ffffff;
+        --text-muted: #d4d4d4;
+        --accent: #1aebff;
+        --icon-color: #ffffff;
+        --icon-active: #1aebff;
+
+        --fg-error: #ff8a80;
+        --fg-success: #7ee787;
+        --fg-info: #79c0ff;
+        --fg-warning: #ffd479;
+        --fg-symbol: #9cdcfe;
+        --fg-dirty: #ffd479;
+        --fg-annotation: #7ee787;
+        --fg-danger: #ff8a80;
+        --fg-exception: #ff8a80;
+        --glyph-current: #ffff00;
+        --bg-current-line: rgba(255, 255, 0, 0.25);
+        --bg-hover: rgba(255, 255, 255, 0.22);
+        --bg-hover-strong: rgba(255, 255, 255, 0.32);
+        --bg-selected: rgba(26, 235, 255, 0.30);
+        --bg-danger-soft: rgba(255, 138, 128, 0.30);
+        --border-subtle: #ffffff;
+        --border-faint: #ffffff;
+        --focus-ring: #ffff00;
+        --bg-input: #000000;
+        --bg-checker: #000000;
+        --bg-checker-alt: #3f3f3f;
+        --shadow-strong: rgba(0, 0, 0, 0.9);
+        color-scheme: dark;
+      }
+
+      /* A focus ring that cannot be missed, which is the point of the theme. */
+      .hc-theme :focus-visible {
+        outline: 3px solid var(--focus-ring) !important;
+        outline-offset: 1px;
       }
 
       * { box-sizing: border-box; }
@@ -216,7 +335,7 @@
         border-radius: 3px; font-size: 14px;
       }
       .sidebar-btn:hover { background: var(--bg-tab-hover); color: var(--text-primary); }
-      .sidebar-btn.danger:hover { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; }
+      .sidebar-btn.danger:hover { background: var(--bg-danger-soft); color: var(--fg-danger); }
       .sidebar-content { flex: 1; overflow: auto; padding: 4px 0; }
       .sidebar-panel { display: none; flex-direction: column; height: 100%; }
       .sidebar-panel.active { display: flex; }
@@ -235,6 +354,41 @@
       .tree-item:hover { background: var(--bg-tab-hover); }
       .tree-item.active { background: var(--accent); color: white; }
       .tree-item.selected { background: rgba(0, 122, 204, 0.25); }
+      /*
+       * Keyboard focus in the file tree.
+       *
+       * The tree is one tab stop with the arrow keys moving inside it, so without a
+       * visible ring a keyboard user has no idea which row they are on - the feature
+       * would be there and unusable.
+       */
+      /*
+       * Where a dragged row will land.
+       *
+       * A LINE between rows, deliberately different from the filled .drop-target
+       * highlight that means "into this folder" - the two gestures are different and
+       * a student has to be able to tell which one they are about to do.
+       */
+      .tree-item.drop-above, .tree-item.drop-below { position: relative; }
+      .tree-item.drop-above::after, .tree-item.drop-below::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        height: 2px;
+        background: var(--accent);
+        pointer-events: none;
+      }
+      .tree-item.drop-above::after { top: -1px; }
+      .tree-item.drop-below::after { bottom: -1px; }
+
+      .tree-item:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: -2px;
+      }
+      #panel-content:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: -2px;
+      }
       .tree-item.dragging { opacity: 0.5; }
       .tree-item.drop-target { background: rgba(0, 122, 204, 0.3); outline: 1px solid var(--accent); outline-offset: -1px; }
       .tree-item-chevron {
@@ -437,7 +591,7 @@
       }
       .run-item-type {
         font-size: 10px;
-        color: #6a9955;
+        color: var(--fg-annotation);
         margin-left: auto;
         margin-right: 8px;
         font-style: italic;
@@ -635,7 +789,7 @@
       }
       .tab-icon { font-size: 14px; flex-shrink: 0; }
       .tab-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-      .tab-dirty { color: #e8ab6a; font-size: 16px; line-height: 1; margin-left: -2px; }
+      .tab-dirty { color: var(--fg-dirty); font-size: 16px; line-height: 1; margin-left: -2px; }
       .tab-close {
         width: 18px; height: 18px;
         display: flex; align-items: center; justify-content: center;
@@ -646,7 +800,7 @@
         flex-shrink: 0;
       }
       .tab:hover .tab-close { opacity: 1; }
-      .tab-close:hover { background: rgba(255,80,80,0.2); color: #f44; }
+      .tab-close:hover { background: var(--bg-danger-soft); color: var(--fg-danger); }
 
       .tab-add {
         width: 32px; height: 35px;
@@ -807,10 +961,364 @@
         direction: ltr;
         text-align: left;
       }
-      #panel-content .error { color: #f48771; }
-      #panel-content .success { color: #89d185; }
-      #panel-content .info { color: #75beff; }
-      #panel-content .warning { color: #ce9178; }
+      /* One overlay, two users: the command palette and quick-open share
+         picker.ts, so they share the styling too. */
+      #command-palette,
+      #quick-open {
+        position: fixed;
+        inset: 0;
+        z-index: 4000;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 12vh;
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .palette-box {
+        width: min(620px, 92vw);
+        background: var(--bg-panel, #252526);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+      }
+      .palette-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: var(--text-primary, #ddd);
+        background: var(--bg-input);
+        border: 0;
+        border-bottom: 1px solid var(--border-subtle);
+        outline: none;
+      }
+      .palette-list { max-height: 46vh; overflow-y: auto; }
+      .palette-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 12px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .palette-row.selected { background: var(--bg-selected); }
+      .palette-row.disabled { opacity: 0.45; cursor: default; }
+      .palette-note { color: var(--text-secondary); font-size: 11px; }
+      .palette-empty { padding: 12px; color: var(--text-secondary); font-size: 13px; }
+      /* Quick-open's second column: the containing folder. Dimmed and pushed
+         right so the file name stays the thing the eye lands on. */
+      .palette-detail {
+        color: var(--text-secondary);
+        font-size: 11px;
+        margin-left: auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        direction: ltr;
+      }
+
+      /* ── Debugger ─────────────────────────────────────────────────────── */
+      #debug-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex: 0 0 auto;
+        padding: 3px 8px;
+        background: var(--bg-panel, #252526);
+        border-bottom: 1px solid var(--border-faint);
+      }
+      #debug-toolbar[hidden] { display: none; }
+      .debug-btn {
+        width: 26px; height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        color: var(--text-primary, #ddd);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .debug-btn:hover:not(:disabled) { background: var(--bg-hover-strong); }
+      .debug-btn:disabled { opacity: 0.35; cursor: default; }
+
+      #debug-panels {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 0 0 auto;
+        max-height: 34vh;
+        overflow: auto;
+        padding: 4px 0;
+        font-size: 12px;
+        background: var(--bg-panel, #252526);
+        border-top: 1px solid var(--border-color, #3c3c3c);
+      }
+      #debug-panels[hidden] { display: none; }
+      .debug-section {
+        padding: 3px 10px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary, #888);
+      }
+      .debug-empty { padding: 10px; color: var(--text-secondary, #888); }
+      .debug-var-row {
+        display: flex;
+        gap: 8px;
+        padding: 2px 10px;
+        /* A variable name and a repr are both code: LTR even in the Hebrew UI. */
+        direction: ltr;
+      }
+      .debug-var-row:hover { background: var(--bg-hover); }
+      .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
+      .debug-var-value {
+        color: var(--text-primary, #ddd);
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .debug-var-type { color: var(--text-secondary, #777); flex: 0 0 auto; font-size: 10px; }
+      .debug-exception {
+        margin: 4px 10px;
+        padding: 6px 8px;
+        border-left: 3px solid var(--fg-exception);
+        background: rgba(241, 76, 76, 0.10);
+        color: var(--fg-error);
+        direction: ltr;
+      }
+      /* Watch expressions: the question box the evaluate command never had. */
+      .debug-watch-form { padding: 6px 8px; }
+      .debug-watch-input {
+        width: 100%;
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: 3px;
+        padding: 3px 6px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .debug-watch-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .debug-watch-row:hover { background: var(--bg-hover); }
+      .debug-watch-row .debug-var-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+      .debug-watch-pending { color: var(--text-muted); font-style: italic; }
+      .debug-watch-error { color: var(--fg-error); }
+      .debug-watch-remove {
+        flex: 0 0 auto;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+      }
+      .debug-watch-remove:hover { color: var(--fg-danger); }
+
+      .debug-eval-result {
+        margin: 4px 10px;
+        padding: 4px 6px;
+        background: var(--bg-hover);
+        border-radius: 3px;
+        direction: ltr;
+      }
+      .debug-eval-result.error { color: var(--fg-error); }
+      .debug-frame-row {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 2px 10px;
+        background: none;
+        border: 0;
+        font: inherit;
+        color: var(--text-secondary, #999);
+        cursor: pointer;
+        direction: ltr;
+      }
+      .debug-frame-row:hover { background: var(--bg-hover); color: var(--text-primary); }
+      .debug-frame-row.innermost { color: var(--text-primary, #ddd); }
+
+      /* These need glyphMargin: true on the editor, or they are never drawn and the
+         click that toggles a breakpoint is never delivered. */
+      .debug-breakpoint-glyph::before {
+        content: '';
+        display: block;
+        width: 11px; height: 11px;
+        margin: 3px 0 0 4px;
+        border-radius: 50%;
+        background: #e51400;
+      }
+      /* A conditional breakpoint: hollow, so it reads as "sometimes" rather than
+         "always". A student whose program runs past a solid dot has no way to tell a
+         false condition from a broken debugger; a different shape is the whole point,
+         and it must survive high contrast, where subtle fills disappear. */
+      .debug-breakpoint-conditional::before {
+        background: transparent;
+        border: 2px solid #e51400;
+        width: 7px; height: 7px;
+      }
+      .debug-current-glyph::before {
+        content: '\25B6';
+        color: var(--glyph-current);
+        font-size: 11px;
+        margin-left: 3px;
+      }
+      .debug-exception-glyph::before {
+        content: '\26A0';
+        color: var(--fg-exception);
+        font-size: 11px;
+        margin-left: 3px;
+      }
+      .debug-current-line { background: var(--bg-current-line); }
+
+      /* ── Asset viewer ─────────────────────────────────────────────────── */
+      /* Takes the editor's place for a binary file. The editor is hidden rather
+         than destroyed, so switching back to code does not rebuild Monaco. */
+      #asset-viewer {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+        padding: 24px;
+        background: var(--bg-editor, #1e1e1e);
+        z-index: 5;
+      }
+      #asset-viewer[hidden] { display: none; }
+      .asset-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        max-width: 100%;
+      }
+      .asset-image {
+        max-width: min(100%, 900px);
+        max-height: 55vh;
+        object-fit: contain;
+        border-radius: 6px;
+        /* A chequerboard, so a transparent PNG reads as transparent rather than as
+           whatever the panel background happens to be. */
+        background-color: var(--bg-checker);
+        background-image:
+          linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%),
+          linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 8px 8px;
+        box-shadow: 0 6px 24px var(--shadow-strong);
+      }
+      .asset-unavailable {
+        max-width: 460px;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-secondary, #999);
+      }
+      .asset-meta {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 3px 14px;
+        font-size: 12px;
+      }
+      .asset-meta-key { color: var(--text-secondary, #888); }
+      .asset-meta-value {
+        color: var(--text-primary, #ddd);
+        /* A file name is a name, not prose: LTR even in the Hebrew UI. */
+        direction: ltr;
+        word-break: break-all;
+      }
+      .asset-hint {
+        font-size: 11px;
+        color: var(--text-secondary, #777);
+        text-align: center;
+        direction: ltr;
+      }
+
+      /* ── Breadcrumbs ──────────────────────────────────────────────────── */
+      #breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex: 0 0 auto;
+        padding: 3px 10px;
+        font-size: 11px;
+        overflow-x: auto;
+        white-space: nowrap;
+        background: var(--bg-panel, #252526);
+        border-bottom: 1px solid var(--border-faint);
+        /* A file path is a path, not prose: it stays LTR even in the Hebrew UI. */
+        direction: ltr;
+        scrollbar-width: none;
+      }
+      #breadcrumbs::-webkit-scrollbar { height: 0; }
+      #breadcrumbs[hidden] { display: none; }
+      .breadcrumb-segment {
+        background: none;
+        border: 0;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font: inherit;
+        color: var(--text-secondary, #999);
+      }
+      button.breadcrumb-segment { cursor: pointer; }
+      button.breadcrumb-segment:hover { background: var(--bg-hover); color: var(--text-primary); }
+      button.breadcrumb-segment:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+      .breadcrumb-file { color: var(--text-primary, #ddd); }
+      .breadcrumb-symbol { color: var(--fg-symbol); }
+      .breadcrumb-separator { color: var(--text-muted); }
+      #problems-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 0;
+        font-size: 12px;
+      }
+      #problems-content.visible { display: block; }
+      .problems-empty {
+        padding: 10px 14px;
+        color: var(--text-secondary);
+      }
+      .problem-file {
+        padding: 4px 14px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        background: var(--bg-panel, #1e1e1e);
+      }
+      .problem-row {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        padding: 3px 14px 3px 28px;
+        cursor: pointer;
+      }
+      .problem-row:hover { background: var(--bg-hover); }
+      .problem-row:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+      .problem-icon { flex: 0 0 auto; }
+      .problem-row.severity-error .problem-icon { color: var(--fg-error); }
+      .problem-row.severity-warning .problem-icon { color: var(--fg-warning); }
+      .problem-row.severity-info .problem-icon { color: var(--fg-info); }
+      .problem-message { flex: 1 1 auto; }
+      .problem-location {
+        flex: 0 0 auto;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+      .problem-source { flex: 0 0 auto; color: var(--text-secondary); opacity: 0.75; }
+      #panel-content .error { color: var(--fg-error); }
+      #panel-content .success { color: var(--fg-success); }
+      #panel-content .info { color: var(--fg-info); }
+      #panel-content .warning { color: var(--fg-warning); }
 
 /* Interactive stdin console (programs that call input()/Scanner/etc.) */
 #panel-content .term-input-line {
@@ -821,7 +1329,7 @@
 }
 
 #panel-content .term-caret {
-  color: #89d185;
+  color: var(--fg-success);
   flex: 0 0 auto;
   user-select: none;
 }
@@ -837,8 +1345,21 @@
   font-size: inherit;
   line-height: inherit;
   padding: 0;
-  caret-color: #89d185;
+  caret-color: var(--fg-success);
 }
+      .term-eof {
+        margin-inline-start: 8px;
+        padding: 1px 8px;
+        font-size: 11px;
+        font-family: inherit;
+        color: var(--text-secondary);
+        background: transparent;
+        border: 1px solid var(--border-subtle);
+        border-radius: 3px;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+      .term-eof:hover { color: var(--text-primary); border-color: var(--focus-ring); }
 
 /* ===== GRAPHICS POPUP WINDOWS ===== */
 /* Graphics output, including Turtle drawings and SVG images, lives in its
@@ -1169,6 +1690,8 @@
       body.structure-locked #btn-new-file,
       body.structure-locked #btn-new-folder,
       body.structure-locked #empty-state-new-file,
+      body.structure-locked .context-menu-item[data-action="import-files"],
+      body.structure-locked .context-menu-item[data-action="import-folder"],
       body.structure-locked .context-menu-item[data-action="new-file"],
       body.structure-locked .context-menu-item[data-action="new-folder"],
       body.structure-locked .context-menu-item[data-action="rename"],
@@ -1353,7 +1876,45 @@
       }
     </style>
   </head>
-  <body class="dark-theme">
+  <body>
+    <!--
+      Theme, before the first paint.
+
+      The body used to ship with class="dark-theme" and the saved theme was applied in
+      initializeLayout() - after the editor was created and four dynamic imports had
+      resolved, every one of which lets the browser paint. A student who chose Light
+      got a full-window dark flash on every single load.
+
+      Inline and synchronous on purpose: an external module would be fetched, and the
+      flash is exactly the gap between parse and fetch. Kept to the one decision it
+      needs to make, with the same key and shape settings.ts uses.
+    -->
+    <script>
+      (function () {
+        var theme = null;
+        try {
+          var saved = localStorage.getItem('browser-coder-settings');
+          if (saved) theme = JSON.parse(saved).theme || null;
+        } catch (error) {
+          /* private mode, or a corrupt value - fall through to the OS preference */
+        }
+        if (!theme) {
+          // The OS preference decides only for the STANDALONE IDE. An embedded IDE
+          // keeps the dark default it has always had: the host page controls how the
+          // lesson looks, never passes a theme, and would otherwise have every task
+          // turn light for every student whose laptop is in light mode - a change
+          // nobody asked for. An explicit stored choice still wins, above.
+          var embedded = new URLSearchParams(window.location.search).get('embed') === '1';
+          theme = !embedded && window.matchMedia
+            && window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'vs'
+            : 'vs-dark';
+        }
+        // Read back by editor-core so Monaco is constructed in the right theme too.
+        window.__bcInitialTheme = theme;
+        if (theme === 'vs-dark') document.body.classList.add('dark-theme');
+      })();
+    </script>
     <div id="app">
       <!-- Activity Bar -->
       <div id="activitybar">
@@ -1381,7 +1942,14 @@
           <span>📟</span>
           <span data-i18n="app.logo">Browser Coder</span>
         </div>
-        <span id="status" style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
+        <!--
+          The status line is the one place almost every action reports itself -
+          "Ready", "Moved 2 items", "Runtime error", "Downloaded logo.png" - so making
+          it a live region gives a screen-reader user nearly the whole UI at once.
+          `aria-atomic` because the text is replaced wholesale, not appended to.
+        -->
+        <span id="status" role="status" aria-live="polite" aria-atomic="true"
+              style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
         <div class="controls">
           <button id="btn-hack-lab" class="btn btn-hack" data-i18n-title="titlebar.hackLab" onclick="window.open('/reports/', '_blank')">🔓 <span data-i18n="titlebar.hackLab">Hack Lab</span></button>
           <span class="titlebar-separator"></span>
@@ -1393,10 +1961,14 @@
           </select>
           <select id="version" title="Version"></select>
           <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
+          <!-- Debug. Greyed for a language with no adapter rather than hidden, so the
+               feature is discoverable and its absence is explained by the tooltip. -->
+          <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
           <button id="download" class="btn btn-secondary" title="Download file">↓</button>
           <select id="theme" title="Theme">
             <option value="vs-dark">Dark</option>
             <option value="vs">Light</option>
+            <option value="hc-black">High contrast</option>
           </select>
           <span class="titlebar-separator"></span>
           <div id="lang-selector">
@@ -1422,7 +1994,12 @@
             </div>
           </div>
           <div class="sidebar-content">
-            <div class="file-tree" id="file-tree">
+            <!--
+              One tab stop for the whole tree, with the arrow keys moving inside it -
+              see applyRovingTabindex in src/features/explorer/tree.ts. Without a role
+              here the rows are announced as anonymous groups of text.
+            -->
+            <div class="file-tree" id="file-tree" role="tree" aria-label="Project files">
               <!-- Files rendered dynamically -->
             </div>
           </div>
@@ -1443,6 +2020,9 @@
                 <button class="search-btn" id="btn-regex" data-i18n-title="search.regex">.*</button>
                 <button class="search-btn" id="btn-case" data-i18n-title="search.matchCase">Aa</button>
                 <button class="search-btn" id="btn-word" data-i18n-title="search.matchWord">ab</button>
+                <!-- Skip matches inside comments and string literals. Needs the
+                     per-language lexer, which is why it could not exist before. -->
+                <button class="search-btn" id="btn-code-only" data-i18n-title="search.codeOnly">{ }</button>
               </div>
               <div class="search-row">
                 <input type="text" id="replace-input" class="search-input" data-i18n-placeholder="search.replace" placeholder="Replace">
@@ -1491,6 +2071,10 @@
         <div class="context-menu-item" data-action="new-file">📄 <span data-i18n="context.newFile">New File</span></div>
         <div class="context-menu-item" data-action="new-folder">📁 <span data-i18n="context.newFolder">New Folder</span></div>
         <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="import-files">⬆️ <span data-i18n="context.importFiles">Import files…</span></div>
+        <div class="context-menu-item" data-action="import-folder">📥 <span data-i18n="context.importFolder">Import folder…</span></div>
+        <div class="context-menu-item" data-action="download">⬇️ <span data-i18n="context.download">Download</span></div>
+        <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="rename">✏️ <span data-i18n="context.rename">Rename</span></div>
         <div class="context-menu-item danger" data-action="delete">🗑️ <span data-i18n="context.delete">Delete</span></div>
       </div>
@@ -1500,7 +2084,22 @@
         <div id="tabs">
           <!-- Tabs rendered by TabManager -->
         </div>
+        <!-- Debugger panels: variables and the call stack. Beside the editor rather
+             than in the output panel, because a student reads them WHILE looking at
+             the paused line. -->
+        <aside id="debug-panels" hidden>
+          <div id="debug-variables" aria-label="Variables"></div>
+          <div id="debug-callstack" aria-label="Call stack"></div>
+          <div id="debug-watch" aria-label="Watch expressions"></div>
+        </aside>
         <div id="editor-container">
+          <!-- Breadcrumbs: folder path plus the symbol the cursor is inside.
+               Hidden until there is something to show, so an empty workspace does
+               not reserve a blank strip. -->
+          <nav id="breadcrumbs" aria-label="Breadcrumbs" hidden></nav>
+          <!-- Debugger controls. Hidden until a session starts, so an ordinary run
+               looks exactly as it did before. -->
+          <div id="debug-toolbar" role="toolbar" aria-label="Debugger" hidden></div>
           <div id="editor"></div>
           <div id="editor-empty-state">
             <div class="empty-state-content">
@@ -1518,15 +2117,36 @@
           <div id="panel-header">
             <div class="panel-tabs">
               <div class="panel-tab active" data-tab="output" data-i18n="panel.output">Output</div>
+              <div class="panel-tab" data-tab="problems" data-i18n="panel.problems">Problems</div>
             </div>
             <div class="panel-actions">
               <button id="clearOutput" class="panel-btn" data-i18n-title="panel.clear">🗑</button>
               <button id="togglePanel" class="panel-btn" data-i18n-title="panel.toggle">⌃</button>
             </div>
           </div>
-          <div id="panel-content" data-i18n="panel.placeholder">(Run code to see output here)</div>
+          <!--
+            `role="log"` and focusable, but deliberately NOT aria-live. A running
+            program can print hundreds of lines, and a live log would read every one of
+            them aloud - which is worse than silence. The outcome is announced once,
+            through #a11y-announcer below, and a screen-reader user can Tab here to read
+            the output itself at their own pace.
+          -->
+          <div id="panel-content" role="log" tabindex="0" aria-label="Program output"
+               data-i18n="panel.placeholder">(Run code to see output here)</div>
+          <div id="problems-content" role="region" aria-label="Problems" hidden></div>
         </div>
       </div>
+
+      <!--
+        The one place the IDE speaks to a screen reader on purpose.
+
+        Off-screen rather than `display:none`, because a hidden element is not
+        announced at all. Everything routed here is a SUMMARY - "Run finished, exit
+        code 1. ReferenceError on line 2." - never the output itself, which is what
+        makes it useful rather than a flood.
+      -->
+      <div id="a11y-announcer" role="status" aria-live="polite" aria-atomic="true"
+           style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;"></div>
 
       <!-- Status Bar -->
       <div id="statusbar">

@@ -1,18 +1,24 @@
-// @ts-nocheck
 import * as monaco from 'monaco-editor';
 import { getLanguage } from '../languages';
+import {
+  buildSearchPattern as buildPattern,
+  findMatches,
+  replaceInFile as coreReplaceInFile,
+} from './search-core.ts';
 import { runtime } from '../app/runtime';
 import { policyState } from '../app/config';
 import {
   searchInput, replaceInput, searchResultsEl, searchSummaryEl, searchCountEl,
-  btnRegex, btnCase, btnWord, btnClearSearch, btnReplaceAll, btnReplaceAllFiles,
+  btnRegex, btnCase, btnWord, btnCodeOnly, btnClearSearch, btnReplaceAll, btnReplaceAllFiles,
 } from '../components/dom';
 import { setOutput } from '../components/output';
+import { escapeHtml } from '../components/html-escape.ts';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
+import { lazyRef } from '../app/lazy';
 
-const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
-const tabManager = new Proxy({} as any, { get: (_t, p) => (runtime.tabManager as any)[p] });
-const storage = new Proxy({} as any, { get: (_t, p) => (runtime.storage as any)[p] });
+const editor = lazyRef(() => runtime.editor, 'editor');
+const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
+const storage = lazyRef(() => runtime.storage, 'storage');
 const fileModels = runtime.fileModels;
 
 // ===== SEARCH FUNCTIONALITY =====
@@ -38,6 +44,15 @@ let searchOptions = {
   regex: false,
   caseSensitive: false,
   wholeWord: false,
+  /**
+   * Skip matches inside comments and string literals.
+   *
+   * The highest-value search feature the IDE was missing, and one that could not be
+   * built before `src/languages/syntax.ts` existed: deciding whether an offset is
+   * inside a comment needs a per-language lexer. Searching for a variable name and
+   * getting every mention of it in prose is the common frustration this removes.
+   */
+  codeOnly: false,
 };
 
 let currentSearchResults: SearchResult[] = [];
@@ -48,62 +63,51 @@ let searchDecorations: string[] = [];  // Monaco decoration IDs for highlighting
 /**
  * Return the newest content for a file.
  *
- * Storage can lag behind an open Monaco model while the user is typing, so
- * search/replace must prefer the model, then the open tab, then IndexedDB.
+ * There is now one copy of a document's text, so there is nothing to prefer. The
+ * previous implementation ranked model over tab over IndexedDB, which was correct
+ * given three copies but only by convention - and search-and-replace across many
+ * files is exactly where a mis-ranked read silently corrupts work.
  */
 function getLiveFileContent(fileId: string, storedContent: string = ''): string {
-  const model = fileModels.get(fileId);
-  if (model && !model.isDisposed()) {
-    return model.getValue();
-  }
-
-  const tab = tabManager.getTab(fileId);
-  if (tab) {
-    return tab.file.content ?? storedContent;
-  }
-
-  return storedContent;
+  return runtime.workspace?.getDocument(fileId)?.getContent() ?? storedContent;
 }
 
 /**
- * Apply replacement content consistently to every representation of a file:
- * Monaco model, open tab metadata, and persistent storage.
+ * Write replacement content into a document.
+ *
+ * One assignment to the working copy, then one revision-guarded flush. The old
+ * version wrote to the model, wrote to storage, rebuilt `tab.file` from the
+ * persisted row, and then set `isDirty = false` - the same shape as V-09, so a
+ * keystroke arriving during a multi-file replace could be silently reverted.
  */
 async function persistReplacedContent(fileId: string, newContent: string): Promise<void> {
-  const model = fileModels.get(fileId);
-  if (model && !model.isDisposed() && model.getValue() !== newContent) {
-    model.setValue(newContent);
-  }
+  const workspace = runtime.workspace;
+  const document = workspace?.getDocument(fileId);
+  if (!workspace || !document) return;
 
-  const updatedFile = await storage.updateFile(fileId, { content: newContent });
-  const tab = tabManager.getTab(fileId);
-
-  if (tab) {
-    tab.file = updatedFile
-      ? { ...updatedFile, content: newContent }
-      : { ...tab.file, content: newContent };
-
-    // Replacement is persisted immediately, so the tab should not retain a
-    // stale dirty flag from Monaco's synchronous change event.
-    tab.isDirty = false;
-  }
+  document.setContent(newContent);
+  await workspace.flush(fileId);
 
   runtime.notifyWorkspaceChanged();
 }
 
-function buildSearchPattern(query: string, global: boolean): RegExp {
-  const flags = `${global ? 'g' : ''}${searchOptions.caseSensitive ? '' : 'i'}`;
+/*
+ * Thin bindings over the pure scanner.
+ *
+ * The rules live in search-core.ts so they can be tested without a DOM; these carry the
+ * current toggle state into them. Nothing here decides anything.
+ */
+function buildSearchPattern(query: string, global: boolean, language?: string): RegExp {
+  return buildPattern(query, global, searchOptions, language);
+}
 
-  if (searchOptions.regex) {
-    return new RegExp(query, flags);
-  }
-
-  let escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (searchOptions.wholeWord) {
-    escapedQuery = `\\b${escapedQuery}\\b`;
-  }
-
-  return new RegExp(escapedQuery, flags);
+function replaceInFile(
+  content: string,
+  query: string,
+  language: string,
+  replacement: string,
+): { text: string; count: number } {
+  return coreReplaceInFile(content, query, language, replacement, searchOptions);
 }
 
 // Function to highlight search matches in current editor
@@ -156,6 +160,12 @@ btnWord.addEventListener('click', () => {
   performSearch();
 });
 
+btnCodeOnly.addEventListener('click', () => {
+  searchOptions.codeOnly = !searchOptions.codeOnly;
+  btnCodeOnly.classList.toggle('active', searchOptions.codeOnly);
+  performSearch();
+});
+
 btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   replaceInput.value = '';
@@ -172,31 +182,25 @@ btnReplaceAll.addEventListener('click', async () => {
   const query = searchInput.value;
   if (!activeTab || !query) return;
 
-  let searchPattern: RegExp;
-  try {
-    searchPattern = buildSearchPattern(query, true);
-  } catch {
-    setOutput('Invalid search pattern');
-    return;
-  }
-
   const storedFile = await storage.getFile(activeTab.file.id);
   const currentContent = getLiveFileContent(
     activeTab.file.id,
     storedFile?.content ?? activeTab.file.content ?? ''
   );
 
-  const matches = currentContent.match(searchPattern);
-  const matchCount = matches?.length ?? 0;
+  // Through the shared helper, so this replaces exactly what the results list
+  // showed - same language, same whole-word rule, same codeOnly filter.
+  const { text: newContent, count: matchCount } = replaceInFile(
+    currentContent,
+    query,
+    activeTab.file.language,
+    replaceInput.value,
+  );
 
   if (matchCount === 0) {
     setOutput('No matches to replace in current file');
     return;
   }
-
-  // Rebuild because RegExp instances with the global flag are stateful.
-  const replacementPattern = buildSearchPattern(query, true);
-  const newContent = currentContent.replace(replacementPattern, replaceInput.value);
 
   await persistReplacedContent(activeTab.file.id, newContent);
   await performSearch();
@@ -245,43 +249,18 @@ async function performSearch() {
 }
 
 function searchInFile(content: string, query: string, fileId: string, fileName: string, language: string): SearchMatch[] {
-  const matches: SearchMatch[] = [];
-  const lines = content.split('\n');
-  
-  let searchPattern: RegExp;
-  try {
-    searchPattern = buildSearchPattern(query, true);
-  } catch {
-    return matches;
-  }
-
-  for (let lineNum = 0; lineNum < lines.length; lineNum++) {
-    const line = lines[lineNum];
-    let match: RegExpExecArray | null;
-    
-    // Reset regex lastIndex
-    searchPattern.lastIndex = 0;
-    
-    while ((match = searchPattern.exec(line)) !== null) {
-      matches.push({
-        fileId,
-        fileName,
-        language,
-        line: lineNum + 1,
-        column: match.index + 1,
-        text: line,
-        matchStart: match.index,
-        matchEnd: match.index + match[0].length,
-      });
-      
-      // Prevent infinite loop for zero-length matches
-      if (match[0].length === 0) {
-        searchPattern.lastIndex++;
-      }
-    }
-  }
-
-  return matches;
+  // The same scan Replace All uses, placed on its lines and labelled with the file it
+  // came from. The placement is in search-core.ts; this only adds the labels.
+  return findMatches(content, query, language, searchOptions).map(match => ({
+    fileId,
+    fileName,
+    language,
+    line: match.line,
+    column: match.column,
+    text: match.text,
+    matchStart: match.matchStart,
+    matchEnd: match.matchEnd,
+  }));
 }
 
 function renderSearchResults() {
@@ -337,13 +316,7 @@ function renderSearchResults() {
   attachSearchResultHandlers();
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+
 
 function attachSearchResultHandlers() {
   // Click on file to open it
@@ -456,23 +429,15 @@ btnReplaceAllFiles.addEventListener('click', async () => {
 
     const currentContent = getLiveFileContent(result.fileId, file.content);
 
-    let searchPattern: RegExp;
-    try {
-      searchPattern = buildSearchPattern(query, true);
-    } catch {
-      setOutput('Invalid search pattern');
-      return;
-    }
-
-    const matches = currentContent.match(searchPattern);
-    const fileMatchCount = matches?.length ?? 0;
-    if (fileMatchCount === 0) continue;
-
-    const replacementPattern = buildSearchPattern(query, true);
-    const newContent = currentContent.replace(
-      replacementPattern,
-      replaceInput.value
+    // Per-file language, not a single pattern reused across the whole workspace:
+    // a project can hold Python and CSS, and their word boundaries differ.
+    const { text: newContent, count: fileMatchCount } = replaceInFile(
+      currentContent,
+      query,
+      file.language,
+      replaceInput.value,
     );
+    if (fileMatchCount === 0) continue;
 
     await persistReplacedContent(result.fileId, newContent);
     replacedCount += fileMatchCount;

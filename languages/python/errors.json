@@ -1,0 +1,158 @@
+{
+  "NameError": {
+    "type": "name error",
+    "explanation": "Python reached a word it has never seen before. Every name has to be created before it can be used - by assigning to it, by defining a function, or by importing it.",
+    "cause": "Usually a spelling mistake, or using a variable on a line that runs before the line that creates it.",
+    "example": "print(totl)      # Python has never seen 'totl'\ntotal = 10\nprint(total)     # this works, and it comes after the line that made it"
+  },
+  "UnboundLocalError": {
+    "type": "name error",
+    "explanation": "You read a variable inside a function, but that same function also assigns to it further down. Assigning to a name anywhere in a function makes it local to that function for the whole function, so the earlier read finds nothing.",
+    "cause": "Trying to change a variable from outside the function without saying so.",
+    "example": "count = 0\ndef add():\n    count = count + 1   # 'count' is local here, and empty\ndef add_ok():\n    global count\n    count = count + 1"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "You asked Python to do something with a value that does not support it - like adding a number to a piece of text, or calling something that is not a function.",
+    "cause": "Very often a number that is really text: input() always gives you text, even when the person typed digits.",
+    "example": "age = input(\"Age? \")\nprint(age + 1)        # text + number\nprint(int(age) + 1)   # turn the text into a number first"
+  },
+  "ValueError": {
+    "type": "value error",
+    "explanation": "The kind of value was right but the value itself was not usable. Python understood what you asked for and could not do it with that particular value.",
+    "cause": "Most often int() or float() being given text that is not a number.",
+    "example": "int(\"twelve\")   # the right kind of thing, the wrong value\nint(\"12\")       # this works"
+  },
+  "SyntaxError": {
+    "type": "syntax error",
+    "explanation": "Python could not understand the shape of your code, so it stopped before running anything. Nothing in the file ran at all.",
+    "cause": "A missing colon, an unclosed bracket or quote, or = used where == was meant. Look at the line ABOVE the one Python names - an unclosed bracket is only noticed on the next line.",
+    "example": "if x > 5      # missing colon\n    print(x)\nif x > 5:\n    print(x)"
+  },
+  "IndentationError": {
+    "type": "syntax error",
+    "explanation": "Python uses indentation to decide which lines belong together. The spaces at the start of this line do not line up with anything.",
+    "cause": "Mixing different amounts of indentation, or forgetting to indent the body of an if, a for or a def.",
+    "example": "def greet():\nprint(\"hi\")       # not indented, so it is not inside greet\n\ndef greet_ok():\n    print(\"hi\")   # four spaces: inside the function"
+  },
+  "TabError": {
+    "type": "syntax error",
+    "explanation": "Some lines are indented with tab characters and others with spaces. They can look identical on screen and mean different things to Python.",
+    "cause": "Pasting code from somewhere else into a file that uses the other kind of indentation.",
+    "example": "def f():\n    print(1)   # spaces\n\tprint(2)   # a tab - looks the same, is not\n# Use spaces everywhere. This editor inserts spaces when you press Tab."
+  },
+  "IndexError": {
+    "type": "index error",
+    "explanation": "You asked for an item at a position that does not exist. A list of 3 items has positions 0, 1 and 2 - there is no position 3.",
+    "cause": "Counting from 1 instead of 0, or looping one step too far.",
+    "example": "items = [\"a\", \"b\", \"c\"]\nprint(items[3])    # there is no fourth item\nprint(items[-1])   # the last one, whatever the length"
+  },
+  "KeyError": {
+    "type": "key error",
+    "explanation": "You asked a dictionary for a key it does not have. Unlike a list, a dictionary will not invent a value for a key that was never added.",
+    "cause": "A typo in the key, or reading a key before anything put it there.",
+    "example": "ages = {\"sam\": 12}\nprint(ages[\"Sam\"])          # capital S is a different key\nprint(ages.get(\"Sam\", 0))   # .get returns a default instead of failing"
+  },
+  "AttributeError": {
+    "type": "type error",
+    "explanation": "You used a dot to ask a value for something it does not have. The value on the left of the dot is not the kind of thing you thought it was.",
+    "cause": "Often a function that returned None: a method that changes a list in place usually gives back None rather than the list.",
+    "example": "names = [\"b\", \"a\"]\nnames = names.sort()   # sort() returns None, so names is now None\nnames.append(\"c\")      # None has no append\nnames.sort()           # sort in place, and keep the list"
+  },
+  "ZeroDivisionError": {
+    "type": "runtime error",
+    "explanation": "Something was divided by zero, which has no answer in mathematics either.",
+    "cause": "A count or a length that turned out to be 0 - often an average of an empty list.",
+    "example": "scores = []\nprint(sum(scores) / len(scores))   # len is 0\nif scores:\n    print(sum(scores) / len(scores))"
+  },
+  "ModuleNotFoundError": {
+    "type": "import error",
+    "explanation": "Python could not find the module you tried to import. Either the name is wrong, or that module is not available here.",
+    "cause": "A spelling mistake, or an outside library that is not installed in this sandbox.",
+    "example": "import radnom      # spelled wrong\nimport random      # this one exists\n# random, turtle, math, json and datetime all work here."
+  },
+  "ImportError": {
+    "type": "import error",
+    "explanation": "The module was found, but the specific thing you asked for is not inside it.",
+    "cause": "Importing a name that the module does not define, usually a spelling mistake.",
+    "example": "from math import squareroot   # no such name\nfrom math import sqrt         # this is what it is called"
+  },
+  "FileNotFoundError": {
+    "type": "runtime error",
+    "explanation": "Python looked for that file and it was not there. Your program can only see files that are in your project.",
+    "cause": "The file has not been added to the project yet, or the name does not match exactly - including capital letters.",
+    "example": "open(\"Data.txt\")   # the file in the project is called data.txt\nopen(\"data.txt\")   # names must match exactly"
+  },
+  "PermissionError": {
+    "type": "runtime error",
+    "explanation": "Python was not allowed to open that file. Programs here may only read and write files inside their own project.",
+    "cause": "Trying to reach a path outside the project, such as one starting with / or containing ..",
+    "example": "open(\"/etc/passwd\")   # outside the project\nopen(\"notes.txt\")     # a file in your own project"
+  },
+  "EOFError": {
+    "type": "runtime error",
+    "explanation": "input() waited for someone to type a line and the input ended instead. There was nothing left to read.",
+    "cause": "Asking for more input than was given, often an input() inside a loop that never stops.",
+    "example": "while True:\n    line = input()   # nothing left to read on the second turn\n# Ask once, or stop when the answer is empty."
+  },
+  "RecursionError": {
+    "type": "runtime error",
+    "explanation": "A function called itself over and over until Python gave up. Every call takes a little memory, so there is a limit.",
+    "cause": "A recursive function with no base case, or one whose base case is never reached.",
+    "example": "def count(n):\n    return count(n - 1)   # never stops\n\ndef count_ok(n):\n    if n <= 0:\n        return 0          # the base case\n    return count_ok(n - 1)"
+  },
+  "AssertionError": {
+    "type": "runtime error",
+    "explanation": "An assert statement checked something and it was false. assert is a way of saying \"this must be true at this point\", and it was not.",
+    "cause": "The program reached a state the author did not expect - which is exactly what the assert was there to catch.",
+    "example": "total = -5\nassert total >= 0, \"total should never be negative\"\n# The message after the comma is shown, so write one."
+  },
+  "StopIteration": {
+    "type": "runtime error",
+    "explanation": "next() was called on something that has run out of items. A for loop handles this for you; calling next() by hand does not.",
+    "cause": "Calling next() more times than there are items.",
+    "example": "numbers = iter([1, 2])\nnext(numbers)\nnext(numbers)\nnext(numbers)                  # nothing left\nnext(numbers, None)            # give a default instead"
+  },
+  "OverflowError": {
+    "type": "value error",
+    "explanation": "The result was too large for the kind of number being used. Whole numbers in Python can be enormous, but decimals cannot.",
+    "cause": "Repeated multiplication or exponentiation with decimal numbers.",
+    "example": "10.0 ** 1000    # too big for a decimal\n10 ** 1000      # whole numbers have no such limit"
+  },
+  "MemoryError": {
+    "type": "runtime error",
+    "explanation": "The program asked for more memory than it is allowed to use.",
+    "cause": "Building a list that grows without limit, usually in a loop with no stopping condition.",
+    "example": "items = []\nwhile True:\n    items.append(\"x\")   # grows forever\n# Give the loop a condition that eventually becomes false."
+  },
+  "UnicodeDecodeError": {
+    "type": "value error",
+    "explanation": "A file was read as text, but its bytes are not text in the encoding Python assumed.",
+    "cause": "Opening an image, a sound file or another binary file as if it were text.",
+    "example": "open(\"logo.png\").read()          # not text\nopen(\"logo.png\", \"rb\").read()    # read the raw bytes instead"
+  },
+  "JSONDecodeError": {
+    "type": "value error",
+    "explanation": "The text you handed to the json module is not valid JSON, so it could not be turned into Python values.",
+    "cause": "A missing comma or bracket, single quotes instead of double, or an empty file.",
+    "example": "json.loads(\"{'a': 1}\")    # JSON needs double quotes\njson.loads('{\"a\": 1}')    # valid"
+  },
+  "KeyboardInterrupt": {
+    "type": "runtime error",
+    "explanation": "The program was stopped from outside while it was running. Nothing is wrong with your code.",
+    "cause": "Pressing Stop, or the run reaching its time limit.",
+    "example": "# Nothing to fix. If the program was in a loop that never ends,\n# give the loop a condition that eventually becomes false."
+  },
+  "NotImplementedError": {
+    "type": "runtime error",
+    "explanation": "A function was called that is deliberately left unfinished - its body raises this on purpose.",
+    "cause": "Usually a method a base class expects a subclass to fill in, or a placeholder nobody came back to.",
+    "example": "class Shape:\n    def area(self):\n        raise NotImplementedError   # subclasses must provide this\n\nclass Square(Shape):\n    def area(self):\n        return self.side ** 2"
+  },
+  "OSError": {
+    "type": "runtime error",
+    "explanation": "Something the operating system was asked to do failed - opening a file, making a folder, or similar.",
+    "cause": "A path that is not valid here, or a file operation that is not allowed inside the project.",
+    "example": "open(\"C:/Windows/notepad.exe\")   # not reachable from here\nopen(\"my_notes.txt\", \"w\")        # a file in your own project"
+  }
+}

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLanguage, getStarterAsync, preloadStarters } from '../languages';
 import { runtime } from '../app/runtime';
 import { appConfig, policyState } from '../app/config';
@@ -8,8 +7,9 @@ import { langSel, versionSel, themeSel, downloadBtn } from '../components/dom';
 import { downloadFile } from '../components/download';
 import { saveSettings } from '../components/settings';
 import { getOrCreateModel, updateEmptyState } from './editor-core';
+import { isAssetFile, showAssetViewer } from './asset-viewer.ts';
 import { renderFileTree } from './explorer';
-import { getDbName, setDbName } from '../storage';
+import { loadSharedProject, requestedShareId } from './share.ts';
 
 export async function initializeWorkspace(): Promise<void> {
 const editor = runtime.editor;
@@ -21,24 +21,46 @@ if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) {
 setStatus("Loading files…");
 
 if (appConfig.isEmbedded) {
-  // Embedded mode: isolate this iframe's IndexedDB so multiple parts on the
-  // same Step-Up page don't share/overwrite each other's files. Each iframe
-  // gets a unique DB that's deleted on unload.
-  const isolatedDb = `BrowserCoderDB-embed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  setDbName(isolatedDb);
-  const dbToDelete = getDbName();
-  window.addEventListener('beforeunload', () => {
-    try { indexedDB.deleteDatabase(dbToDelete); } catch (_) { /* best effort */ }
-  });
-  // Start with clean state - files will be provided by Step-Up via postMessage (stepup:init).
+  // The isolated database name and its cleanup are decided in main.ts, where the
+  // workspace is constructed. Here we only start from a clean state: files arrive
+  // from Step-Up via postMessage (stepup:init).
   await tabManager.initEmbedded();
   updateEmptyState(true);
   editor.setModel(null);
   setStatus("Waiting for content…");
+} else if (await openSharedProjectIfRequested()) {
+  /*
+   * The page was opened from a share link, and the shared files are now the workspace.
+   *
+   * Before the normal restore, deliberately: `tabManager.init()` reopens whatever this
+   * browser had last time, and a share link that dropped somebody into their OWN old
+   * project would be worse than useless - they would see the wrong code and have no
+   * idea why.
+   *
+   * Not offered for an embedded IDE. There, Step-Up owns what is on screen and pushes
+   * it over postMessage; a link that replaced the task's files would be the IDE
+   * overruling the platform that framed it.
+   */
 } else {
   const initialTab = await tabManager.init(runtime.currentLang, runtime.currentVersion);
 
-  if (initialTab) {
+  if (initialTab && isAssetFile(initialTab.file)) {
+    // A restored binary asset gets the viewer, not the editor - the same rule
+    // `onTabSwitch` applies on every switch. Without it, reopening the IDE while an
+    // image was the active tab threw out of `getOrCreateModel` (the registry refuses
+    // a model for an asset, deliberately) and the rejection killed the whole of
+    // bootstrap: no run panel, no palette, no layout, and a status line reading
+    // "Initialization failed" that a student cannot recover from without clearing
+    // site data. The most-recently-clicked file being an image is not an edge case.
+    editor.setModel(null);
+    showAssetViewer({
+      name: initialTab.file.name,
+      content: initialTab.file.content,
+      path: initialTab.file.path,
+    });
+    updateEmptyState(false);
+    setStatus(`${initialTab.file.name}`);
+  } else if (initialTab) {
     const lang = getLanguage(initialTab.file.language);
     if (lang) {
       runtime.currentLang = lang;
@@ -59,12 +81,25 @@ if (appConfig.isEmbedded) {
   }
 }
 
-// Listen to editor content changes for auto-save
+/*
+ * Editor content changed -> mark THAT model's document modified.
+ *
+ * Attributed by model, not by active tab, because the two are not always the same
+ * document. When the active tab is a binary asset, `onTabSwitch` shows the viewer and
+ * returns BEFORE `editor.setModel(...)`, so the editor keeps the previously-opened
+ * source file's model attached and merely hidden behind the viewer. Reading the active
+ * tab here meant that any change to that hidden model - a Replace All across files is
+ * the easy way to cause one - wrote the source file's text into the IMAGE's document,
+ * and autosave then persisted it over the student's file.
+ *
+ * The model is the document's authoritative buffer, so the text has already landed by
+ * the time this fires. What is left is recording that the student modified it and
+ * re-rendering the tab strip.
+ */
 editor.onDidChangeModelContent(() => {
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    tabManager.markDirty(activeTab.file.id, editor.getValue());
-  }
+  const model = editor.getModel();
+  const fileId = model ? runtime.models?.documentIdFor(model) : null;
+  if (fileId) tabManager.markDirty(fileId, editor.getValue());
 });
 
 // Theme selector
@@ -79,6 +114,10 @@ themeSel.addEventListener("change", () => {
 // language file exists but was changed even by one character, create a new
 // clean starter file instead.
 langSel.addEventListener("change", async () => {
+  // Re-checked inside the handler, not captured from the guard at the top of
+  // initializeWorkspace: these fields are mutable and the handler runs much later.
+  if (!runtime.currentLang) return;
+
   if (policyState.lockStructure) {
     langSel.value = runtime.currentLang.id;
     return;
@@ -122,38 +161,42 @@ langSel.addEventListener("change", async () => {
   preloadStarters(newLang.id).catch(() => {});
 });
 
-// Version selector
+// Version selector.
+//
+// Everything this handler needs is captured BEFORE the first await: the target
+// document id, the language and the version. The previous version read
+// `runtime.currentVersion` and `editor.getModel()` again *after* two awaits and
+// wrote the starter template into whatever model was active by then - so a user
+// who switched tabs while the starter was loading had the wrong file overwritten
+// (V-11). Applying content through the service, addressed by document id, means
+// the write cannot land anywhere else.
 versionSel.addEventListener("change", async () => {
-  const version = runtime.currentLang.versions.find((v: VersionConfig) => v.id === versionSel.value);
-  if (!version) return;
+  const targetLang = runtime.currentLang;
+  if (!targetLang) return;
 
-  runtime.currentVersion = version;
-  configureMonacoForVersion(runtime.currentLang, runtime.currentVersion);
+  const targetVersion = targetLang.versions.find(candidate => candidate.id === versionSel.value);
+  if (!targetVersion) return;
+
+  runtime.currentVersion = targetVersion;
+  configureMonacoForVersion(targetLang, targetVersion);
 
   const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    // Smart content update: only replace if user hasn't modified the code
-    // Uses async check that compares content against starter template
-    let newContent: string | undefined = undefined;
-    const isModified = await tabManager.isTabUserModifiedAsync(activeTab.file.id);
-    if (!isModified) {
-      // Tab has default content - replace with new version's starter
-      newContent = await getStarterAsync(runtime.currentLang.id, runtime.currentVersion.id);
-    }
+  if (!activeTab) return;
+  const documentId = activeTab.file.id;
 
-    await tabManager.updateTabLanguage(activeTab.file.id, runtime.currentLang, runtime.currentVersion, newContent);
+  // Replace the content only when the file still holds an untouched starter.
+  const isModified = await tabManager.isTabUserModifiedAsync(documentId);
+  const newContent = isModified
+    ? undefined
+    : await getStarterAsync(targetLang.id, targetVersion.id);
 
-    // Update model content if changed
-    if (newContent !== undefined) {
-      const model = editor.getModel();
-      if (model) {
-        model.setValue(newContent);
-      }
-      setStatus(`${runtime.currentLang.name} ${runtime.currentVersion.name} - loaded starter template`);
-    } else {
-      setStatus(`${runtime.currentLang.name} ${runtime.currentVersion.name} - your code preserved`);
-    }
-  }
+  await tabManager.updateTabLanguage(documentId, targetLang, targetVersion, newContent);
+
+  setStatus(
+    newContent !== undefined
+      ? `${targetLang.name} ${targetVersion.name} - loaded starter template`
+      : `${targetLang.name} ${targetVersion.name} - your code preserved`
+  );
 });
 
 // Clear output button handled in VS Code UI section below
@@ -161,11 +204,75 @@ versionSel.addEventListener("change", async () => {
 // Download file
 downloadBtn.addEventListener("click", () => {
   const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    downloadFile(activeTab.file.name, editor.getValue());
-    setStatus(`Downloaded ${activeTab.file.name}`);
-  }
+  if (!activeTab) return;
+
+  // The FILE's content, never `editor.getValue()`. For an asset the editor does not
+  // hold this file at all - `onTabSwitch` returns before `setModel` - so the old
+  // version base64-decoded whichever source file was open last and saved 14 bytes of
+  // noise as logo.png (or nothing at all, when the asset was the only tab). `file`
+  // reads through to the live document buffer, so unsaved edits are still included.
+  downloadFile(activeTab.file.name, activeTab.file.content);
+  setStatus(`Downloaded ${activeTab.file.name}`);
 });
 
 // Run button
+}
+
+/**
+ * If this page was opened from a share link, make its files the workspace.
+ *
+ * Returns true when it did, so the caller skips the ordinary restore - reopening the
+ * viewer's OWN last project on top of a share link would show them the wrong code with
+ * no explanation.
+ *
+ * Read-only is not enforced by locking the editor, and that is deliberate. The natural
+ * next thing after reading somebody's broken code is to try a fix, and the copy is
+ * theirs: it lives in their browser, it cannot touch the original, and re-sharing makes
+ * a new link. What must not happen is silent CONFUSION about which is which, so the
+ * status line says whose it is.
+ *
+ * Any failure returns false and the IDE starts normally. A share link that cannot be
+ * fetched must not leave a student with no workspace at all.
+ */
+async function openSharedProjectIfRequested(): Promise<boolean> {
+  const id = requestedShareId();
+  if (!id) return false;
+
+  const { editor, tabManager } = { editor: runtime.editor, tabManager: runtime.tabManager };
+  if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) return false;
+
+  setStatus('Opening shared project…');
+
+  const project = await loadSharedProject(id);
+  if (!project || !Array.isArray(project.files) || project.files.length === 0) {
+    // `loadSharedProject` has already said why on the status line.
+    return false;
+  }
+
+  try {
+    const tab = await tabManager.replaceAllFiles(
+      project.files.map(file => ({
+        path: file.path,
+        content: file.content,
+        language: file.language,
+      })),
+      runtime.currentLang,
+      runtime.currentVersion,
+    );
+
+    if (tab && !isAssetFile(tab.file)) {
+      editor.setModel(getOrCreateModel(tab));
+      updateEmptyState(false);
+    } else {
+      editor.setModel(null);
+      updateEmptyState(!tab);
+    }
+
+    renderFileTree();
+    setStatus(`Opened a shared project — ${project.files.length} files. This is your own copy.`);
+    return true;
+  } catch {
+    setStatus('That shared project could not be opened.');
+    return false;
+  }
 }

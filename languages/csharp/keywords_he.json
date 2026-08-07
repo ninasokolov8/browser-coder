@@ -1038,5 +1038,65 @@
     "type": "preprocessor_directive",
     "explanation": "שולט באזהרות ובהערות של nullable reference types.",
     "example": "#nullable enable\nstring? name = null;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "משווה שני ערכים. עבור מחרוזות C# משווה את הטקסט, בשונה מ-Java - אך עבור מחלקות משלכם היא משווה זהות אלא אם המחלקה מגדירה אחרת.",
+    "example": "if (name == \"Ada\") { }   // works in C#"
+  },
+  "!=": {
+    "type": "operator",
+    "explanation": "\"לא שווה ל\".",
+    "example": "if (total != 0) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק. n % 2 == 0 אומר ש-n זוגי.",
+    "example": "int rest = 7 % 2;   // 1"
+  },
+  "/": {
+    "type": "operator",
+    "explanation": "חילוק. בין שני מספרים שלמים השארית נזרקת: 7 / 2 שווה 3. הפכו צד אחד ל-double כדי לקבל מספר עשרוני.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "מוסיף אחד למשתנה, במקום.",
+    "example": "for (int i = 0; i < 5; i++) { }"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "מוסיף למשתנה ושומר את התוצאה בחזרה בתוכו.",
+    "example": "total += n;"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת.",
+    "example": "if (list != null && list.Count > 0) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "איחוד null: משתמש בצד ימין רק כאשר השמאלי הוא null.",
+    "example": "string display = name ?? \"unknown\";"
+  },
+  "?.": {
+    "type": "operator",
+    "explanation": "גישה מותנית ב-null: קורא איבר רק אם האובייקט אינו null, במקום לזרוק שגיאה.",
+    "example": "int? length = name?.Length;"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "למבדה, או איבר עם גוף-ביטוי: דרך קצרה לכתוב פונקציה או מאפיין.",
+    "example": "list.ForEach(item => Console.WriteLine(item));"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין למשתנה שמשמאל. להשוואה השתמשו ב-== .",
+    "example": "int total = 10;"
   }
 }

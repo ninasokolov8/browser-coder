@@ -963,5 +963,65 @@
     "type": "concurrency_class",
     "explanation": "מימוש Future שתומך בשרשור פעולות אסינכרוניות.",
     "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "משווה שני ערכים. עבור אובייקטים - כולל מחרוזות - זה שואל אם מדובר באותו אובייקט בזיכרון, לא אם הם נראים אותו הדבר. להשוואת טקסט השתמשו ב-.equals() .",
+    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
+  },
+  "!=": {
+    "type": "operator",
+    "explanation": "\"לא שווה ל\". עבור אובייקטים משווה זהות, כמו == .",
+    "example": "if (total != 0) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק. n % 2 == 0 אומר ש-n זוגי.",
+    "example": "int rest = 7 % 2;   // 1"
+  },
+  "/": {
+    "type": "operator",
+    "explanation": "חילוק. בין שני מספרים שלמים השארית נזרקת: 7 / 2 שווה 3 ולא 3.5. הפכו צד אחד ל-double כדי לקבל מספר עשרוני.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "מוסיף אחד למשתנה, במקום.",
+    "example": "for (int i = 0; i < 5; i++) { }"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "מוסיף למשתנה ושומר את התוצאה בחזרה בתוכו.",
+    "example": "total += n;"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת, ולכן הצד הימני כלל לא מחושב.",
+    "example": "if (list != null && list.size() > 0) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "<=": {
+    "type": "operator",
+    "explanation": "\"קטן או שווה ל\".",
+    "example": "if (score <= 100) { }"
+  },
+  ">=": {
+    "type": "operator",
+    "explanation": "\"גדול או שווה ל\".",
+    "example": "if (age >= 18) { }"
+  },
+  "->": {
+    "type": "operator",
+    "explanation": "למבדה: פונקציה קצרה ללא שם.",
+    "example": "list.forEach(item -> System.out.println(item));"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין למשתנה שמשמאל. להשוואה השתמשו ב-== .",
+    "example": "int total = 10;"
   }
 }

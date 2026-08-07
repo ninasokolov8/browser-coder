@@ -351,8 +351,8 @@
   },
   "->": {
     "type": "operator",
-    "explanation": "אופרטור אובייקט המשמש לגישה למאפייני מופע ולמתודות מופע.",
-    "example": "<?php\n$user->name = 'Nina';\necho $user->getName();"
+    "explanation": "קורא מאפיין או מפעיל מתודה על אובייקט.",
+    "example": "$person->name;\n$person->greet();"
   },
   "?->": {
     "type": "operator",
@@ -536,13 +536,13 @@
   },
   "&&": {
     "type": "operator",
-    "explanation": "אופרטור AND לוגי. true רק כאשר שני הצדדים הם true.",
-    "example": "<?php\nif ($age >= 18 && $hasId) {\n    echo 'Allowed';\n}"
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת.",
+    "example": "if ($a && $b) { }"
   },
   "||": {
     "type": "operator",
-    "explanation": "אופרטור OR לוגי. true כאשר לפחות אחד מהצדדים הוא true.",
-    "example": "<?php\nif ($weekend || $holiday) {\n    echo 'Rest';\n}"
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת.",
+    "example": "if ($a || $b) { }"
   },
   "!": {
     "type": "operator",
@@ -551,13 +551,13 @@
   },
   "==": {
     "type": "operator",
-    "explanation": "השוואת שוויון רופפת שעשויה להמיר טיפוסים לפני ההשוואה.",
-    "example": "<?php\nvar_dump('5' == 5); // true"
+    "explanation": "שוויון רופף: ממיר את שני הצדדים לפני ההשוואה, ולכן \"0\" == false מחזיר true. השתמשו ב-=== אלא אם אתם רוצים בכך.",
+    "example": "\"1\" == 1     // true"
   },
   "===": {
     "type": "operator",
-    "explanation": "השוואת שוויון קפדנית שדורשת התאמה גם בערך וגם בטיפוס.",
-    "example": "<?php\nvar_dump('5' === 5); // false"
+    "explanation": "שוויון קפדני: שווה וגם מאותו טיפוס. עדיף - == ממיר טיפוסים קודם, ולכן \"0\" == false מחזיר true.",
+    "example": "0 === \"0\"    // false\n0 == \"0\"     // true"
   },
   "!=": {
     "type": "operator",
@@ -566,8 +566,8 @@
   },
   "!==": {
     "type": "operator",
-    "explanation": "השוואת אי־שוויון קפדנית שדורשת הבדל בערך או בטיפוס.",
-    "example": "<?php\nif ($a !== $b) echo 'Different';"
+    "explanation": "אי-שוויון קפדני: שונה בערך או בטיפוס.",
+    "example": "if ($a !== $b) { }"
   },
   "<=>": {
     "type": "operator",
@@ -576,8 +576,8 @@
   },
   "??": {
     "type": "operator",
-    "explanation": "אופרטור מיזוג null. מחזיר את הערך השמאלי אם הוא קיים ואינו null, אחרת את הערך הימני.",
-    "example": "<?php\n$name = $_GET['name'] ?? 'Guest';"
+    "explanation": "איחוד null: משתמש בצד ימין כאשר השמאלי הוא null או כלל אינו מוגדר - ולכן אינו מתריע על מפתח חסר.",
+    "example": "$name = $_GET[\"name\"] ?? \"guest\";"
   },
   "??=": {
     "type": "operator",
@@ -596,8 +596,8 @@
   },
   "=>": {
     "type": "operator",
-    "explanation": "אופרטור חץ כפול המשמש לזוגות מפתח/ערך במערכים, לקישור מפתח/ערך ב־foreach, לזרועות match ולפונקציות חץ.",
-    "example": "<?php\n$user = ['name' => 'Nina'];\n$result = match ($x) { 1 => 'one', default => 'other' };"
+    "explanation": "מקשר מפתח לערך במערך, ומנקב את הזוג בלולאת foreach.",
+    "example": "$ages = [\"ada\" => 36];\nforeach ($ages as $name => $age) { }"
   },
   "@": {
     "type": "operator",
@@ -1453,5 +1453,25 @@
     "type": "standard",
     "explanation": "תקן autoloading נפוץ ב־PHP שממפה namespaces לנתיבי תיקיות.",
     "example": "{\n  \"autoload\": {\n    \"psr-4\": { \"App\\\\\": \"src/\" }\n  }\n}"
+  },
+  ".": {
+    "type": "operator",
+    "explanation": "מחבר שתי מחרוזות. PHP משתמשת בנקודה לשם כך, לא ב-+ - ו-+ בין שתי מחרוזות היא שגיאה ולא חיבור.",
+    "example": "$greeting = \"Hello, \" . $name;"
+  },
+  ".=": {
+    "type": "operator",
+    "explanation": "מוסיף למשתנה מחרוזת, במקום. ‎$s .= \"x\" הוא קיצור ל-‎$s = $s . \"x\" .",
+    "example": "$out = \"\";\n$out .= \"line 1\\n\";"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק.",
+    "example": "$rest = 7 % 2;   // 1"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין למשתנה שמשמאל. להשוואה השתמשו ב-=== .",
+    "example": "$total = 10;"
   }
 }

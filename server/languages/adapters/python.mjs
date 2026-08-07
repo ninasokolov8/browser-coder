@@ -1,0 +1,355 @@
+/**
+ * Python adapter.
+ *
+ * Consolidates `executePython`, `executePythonMulti`, and the two interactive
+ * Python paths into one implementation, so a program cannot behave differently
+ * depending on how it was launched.
+ *
+ * Also the adapter where the turtle graphics channel is wired: the shim is
+ * prepended to the entry file and told, via the environment, which
+ * service-chosen file to write to. See server/graphics/turtle.mjs for why that
+ * direction of information flow is the whole fix for V-01.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { runToCompletion } from '../../execution/process-runner.mjs';
+import { GRAPHICS_OUT_ENV, usesTurtle } from '../../graphics/turtle.mjs';
+import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
+import { log } from '../../logging.mjs';
+import SECURITY from '../../security/patterns.mjs';
+import { diagnostics, stripJobPaths } from '../adapter-kit.mjs';
+
+const LANGUAGES_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'languages',
+);
+
+const SHIM_PATH = path.join(LANGUAGES_ROOT, 'python', 'turtle_shim.py');
+const PREFLIGHT_PATH = path.join(LANGUAGES_ROOT, 'python', 'preflight.py');
+const FS_GUARD_PATH = path.join(LANGUAGES_ROOT, 'python', 'fs_guard.py');
+const DEBUG_ADAPTER_PATH = path.join(LANGUAGES_ROOT, 'python', 'debug_adapter.py');
+
+/** Environment variable naming the directory a program may open files in. */
+export const WORKSPACE_ENV = 'BROWSER_CODER_WORKSPACE';
+
+/** Where the debug adapter finds the turtle shim. Set only when one was written. */
+export const TURTLE_SHIM_ENV = 'BROWSER_CODER_TURTLE_SHIM';
+
+/**
+ * The filesystem guard, loaded once.
+ *
+ * Unlike the turtle shim this is NOT concatenated into the student's file. It is
+ * executed by the bootstrap before their module is loaded, which keeps it out of
+ * their namespace and leaves every traceback line number unshifted.
+ *
+ * If it cannot be read the run is refused rather than proceeding unguarded - the
+ * turtle shim can degrade to "no drawing", but a missing guard would silently mean
+ * "every file on the container is readable".
+ */
+let fsGuardSource = null;
+function fsGuard() {
+  if (fsGuardSource !== null) return fsGuardSource;
+  fsGuardSource = fs.readFileSync(FS_GUARD_PATH, 'utf8');
+  return fsGuardSource;
+}
+
+/** Separator between the shim and user code. Line count must stay in sync. */
+/**
+ * Where the turtle shim is written inside the job directory.
+ *
+ * Leading dot and a namespaced name so it cannot collide with a file the student
+ * created, and so the explorer's own conventions keep it out of sight.
+ */
+const TURTLE_SHIM_FILE = '.browser-coder-turtle-shim.py';
+
+let shimSource = null;
+function turtleShim() {
+  if (shimSource !== null) return shimSource;
+  try {
+    shimSource = fs.readFileSync(SHIM_PATH, 'utf8');
+  } catch (error) {
+    log('warn', 'turtle_shim_unavailable', { error: error.message });
+    shimSource = '';
+  }
+  return shimSource;
+}
+
+/**
+ * Drop traceback frames for files WE put in the job directory.
+ *
+ * The filesystem guard and the turtle shim are ours, not the student's. A frame
+ * pointing at either names a file they cannot open, at a line they did not write, and
+ * reading it is a dead end - the useful frames are the ones above and below it.
+ *
+ * This replaces an arithmetic version. The shim used to be prepended to the entry file,
+ * so a traceback reported the student's line 6 as line 1,589 and every frame had to be
+ * shifted back by the length of the shim. Giving the shim its own file removed the
+ * shift; all that is left is deciding whose frame it is, which is a question about the
+ * filename rather than about arithmetic that can silently go stale when the shim grows.
+ */
+export function dropInjectedFrames(text, injectedFiles) {
+  if (!text) return text || '';
+
+  const names = (injectedFiles ?? []).map(file => path.basename(file));
+
+  /*
+   * The launcher's own frames, which are ours for the same reason.
+   *
+   * `<string>` is the `-c` bootstrap and `<frozen runpy>` is the stdlib machinery it
+   * calls; both sit above every student traceback and neither can be opened. They were
+   * never filtered - the old rewriter only looked at frames matching the entry file's
+   * name - so a one-line NameError arrived with four frames of our plumbing in front
+   * of it, and the student's own line last.
+   */
+  const launcherFrame = /^<string>$|^<frozen .+>$/;
+  const lines = text.split('\n');
+  const out = [];
+  // Tolerates a trailing \r so CRLF and LF both parse.
+  const frameRe = /^(\s*File\s+")([^"]*)("\s*,\s+line\s+)(\d+)(.*?)\r?$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(frameRe);
+    if (!match) {
+      out.push(lines[i]);
+      continue;
+    }
+
+    const filePath = match[2];
+    const ours = launcherFrame.test(filePath) || names.some(name => filePath.endsWith(name));
+    if (!ours) {
+      out.push(lines[i]);
+      continue;
+    }
+
+    // Drop the frame and every indented continuation line beneath it - the source
+    // snippet and its caret, which belong to the frame and are meaningless without it.
+    while (i + 1 < lines.length) {
+      const next = lines[i + 1];
+      if (frameRe.test(next) || !/^\s{2,}\S/.test(next)) break;
+      i++;
+    }
+  }
+
+  return out.join('\n');
+}
+
+/** Format preflight problems as a Python-style error block. */
+function formatProblems(problems, filename) {
+  return problems
+    .map(problem => {
+      const lines = [`  File "${filename}", line ${problem.line}`];
+      if (problem.text) {
+        lines.push(`    ${problem.text.replace(/\s+$/, '')}`);
+        const caretColumn = Math.max(1, Number(problem.col) || 1);
+        lines.push(`${' '.repeat(4 + caretColumn - 1)}^`);
+      }
+      lines.push(problem.msg);
+      return lines.join('\n');
+    })
+    .join('\n\n');
+}
+
+/**
+ * Static pre-run check: refuse to start a program with a syntax error or an
+ * undefined name, so nothing runs half-way and then dies on a broken line.
+ *
+ * Fail-open by design. A checker that is missing, slow or confused must never be
+ * the reason valid code is refused, so every failure path returns null and the
+ * program runs normally.
+ */
+async function preflight(ctx, source, displayName) {
+  if (!fs.existsSync(PREFLIGHT_PATH)) return null;
+
+  const probeFile = ctx.job.absolute('.preflight-input.py');
+  try {
+    fs.writeFileSync(probeFile, source, { encoding: 'utf8', mode: 0o600 });
+
+    const result = await runToCompletion({
+      command: ctx.config.tools.python,
+      args: ['-I', '-S', '-B', PREFLIGHT_PATH, probeFile],
+      cwd: ctx.job.dir,
+      env: ctx.sandboxEnv,
+      timeoutMs: 8000,
+      maxOutputChars: 200000,
+    });
+
+    if (!result.stdout) return null;
+
+    let problems;
+    try {
+      problems = JSON.parse(result.stdout.trim());
+    } catch {
+      return null;
+    }
+    if (!Array.isArray(problems) || problems.length === 0) return null;
+
+    // A security refusal is not a compile error; it reuses the request-level
+    // wording and the `blocked` flag so the two paths are indistinguishable to
+    // a caller.
+    const securityProblems = problems.filter(problem => problem.kind === 'security');
+    if (securityProblems.length > 0) {
+      return {
+        ...diagnostics(
+          `${SECURITY.messages.python}\n\n${formatProblems(securityProblems, displayName)}`,
+          result.durationMs,
+        ),
+        blocked: true,
+      };
+    }
+
+    return diagnostics(formatProblems(problems, displayName), result.durationMs);
+  } catch {
+    return null;
+  } finally {
+    try {
+      fs.unlinkSync(probeFile);
+    } catch {
+      /* nothing to clean */
+    }
+  }
+}
+
+export const pythonAdapter = {
+  id: 'python',
+
+  /**
+   * Python can be debugged.
+   *
+   * Declared rather than assumed, so the pipeline only pays for a listening socket
+   * on a language that has an adapter to connect back - and so a client asking to
+   * debug Java gets an honest refusal instead of a run that silently ignores every
+   * breakpoint.
+   */
+  supportsDebug: true,
+
+  defaultEntryName() {
+    return 'main.py';
+  },
+
+  async prepare(ctx) {
+    const { job, files, entryPoint } = ctx;
+    const entryAbsolute = job.absolute(entryPoint);
+    const displayName = path.basename(entryPoint);
+
+    if (!job.exists(entryPoint)) {
+      throw new Error(`Python entry point was not written: ${entryPoint}`);
+    }
+
+    // Runs against the student's original source, before any shim injection, so
+    // reported positions are theirs.
+    const problems = await preflight(ctx, job.readFile(entryPoint), displayName);
+    if (problems) return problems;
+
+    /*
+     * The turtle shim goes in a file of its own, NOT in front of the student's code.
+     *
+     * It used to be concatenated onto the entry file, which made every line of that
+     * file 1,585 lines further down than the editor thought. Tracebacks were corrected
+     * for the shift; breakpoints were not. Debugging a turtle program therefore armed
+     * every breakpoint inside the shim - a student who set one on line 6 of a fifteen
+     * line drawing stopped somewhere in our renderer, or nowhere at all.
+     *
+     * The offset was never necessary. All the shim does is put a synthetic module into
+     * `sys.modules['turtle']`, so it only has to RUN before the student's `import
+     * turtle` - it does not have to share a file with it. Executed separately, the
+     * student's file is the file they wrote, at the line numbers they wrote it at, for
+     * the debugger and the traceback alike.
+     *
+     * Injected when ANY file in the project imports turtle: a helper module may be the
+     * one drawing.
+     */
+    let shimPath = null;
+    const anyTurtle = files.some(file => file.name.endsWith('.py') && usesTurtle(file.content));
+    if (anyTurtle && turtleShim()) {
+      shimPath = job.writeFile(TURTLE_SHIM_FILE, turtleShim());
+    }
+
+    // Make every workspace folder importable, so moving a file into a folder does
+    // not break an existing bare import. Entry directory and project root first,
+    // then every nested directory in deterministic order, which supports both
+    // `from helper import x` and `from pkg.helper import x`.
+    const importDirs = Array.from(
+      new Set([
+        path.dirname(entryAbsolute),
+        path.resolve(job.dir),
+        ...job.directories().sort((a, b) => a.localeCompare(b)),
+      ]),
+    );
+
+    // The guard is written into the job directory and executed by the bootstrap.
+    // Passing it inline through -c would work but puts several kilobytes on the
+    // command line, and a file gives any traceback a real name to point at.
+    const guardPath = job.writeFile('.browser-coder-fs-guard.py', fsGuard());
+
+    /** `exec` a file we wrote, under a name that is not the student's. */
+    const execFileLine = (file, moduleName) =>
+      `exec(compile(open(${JSON.stringify(file)}).read(), ${JSON.stringify(file)}, "exec"), `
+      + `{"__name__": ${JSON.stringify(moduleName)}})`;
+
+    const bootstrap = [
+      'import runpy, sys',
+      // Install the filesystem guard FIRST, so nothing the student's program can
+      // reach - including an import of one of their own modules - runs before
+      // `open` is confined to the workspace.
+      `exec(compile(open(${JSON.stringify(guardPath)}).read(), ${JSON.stringify(guardPath)}, "exec"), {"__name__": "_bc_fs_guard"})`,
+      // Then the turtle shim, if this project draws. After the guard, because the shim
+      // is ordinary code and gets no more filesystem than the student does; before the
+      // program, because it must own `sys.modules['turtle']` by the time they import it.
+      ...(shimPath ? [execFileLine(shimPath, '_bc_turtle_shim')] : []),
+      `sys.path[:0] = ${JSON.stringify(importDirs)}`,
+      `runpy.run_path(${JSON.stringify(entryAbsolute)}, run_name="__main__")`,
+    ].join('\n');
+
+    /*
+     * A debug run launches the adapter instead of the bootstrap.
+     *
+     * `debug_adapter.py` installs its own trace hook and then executes the entry
+     * file itself, so the two launches are exclusive. The filesystem guard is
+     * exec'd by the adapter for the same reason it is by the bootstrap - the
+     * program must be as confined under the debugger as without it, or "run" and
+     * "debug" would have different security postures and students would discover
+     * which one is looser.
+     *
+     * The turtle shim still applies: it was prepended to the entry file above, and
+     * the adapter compiles that file as-is.
+     */
+    const debugging = ctx.debug?.enabled === true;
+    const adapterArgs = debugging
+      ? ['-u', '-I', '-S', '-B', DEBUG_ADAPTER_PATH]
+      : ['-u', '-I', '-S', '-B', '-c', bootstrap];
+
+    return {
+      kind: 'launch',
+      command: ctx.config.tools.python,
+      // -u unbuffered so a prompt with no trailing newline reaches the user
+      // immediately; -I isolated; -S no site; -B no .pyc beside the source.
+      args: adapterArgs,
+      cwd: job.dir,
+      timeoutMs: ctx.timeoutMs,
+      extraEnv: {
+        // The one directory a program may open files in. Read by fs_guard.py.
+        [WORKSPACE_ENV]: path.resolve(job.dir),
+        ...(ctx.graphics ? { [GRAPHICS_OUT_ENV]: ctx.graphics.path } : {}),
+        // Which file the adapter should run. The port and token are already in the
+        // sandbox environment, put there by the pipeline before the spawn.
+        ...(debugging ? { [DEBUG_PROGRAM_ENV]: entryAbsolute } : {}),
+        // Only set when a shim was actually written, which is what tells the debug
+        // adapter to load one - see `_install_turtle_shim`. The ordinary bootstrap
+        // has the path inlined and does not read this.
+        ...(debugging && shimPath ? { [TURTLE_SHIM_ENV]: shimPath } : {}),
+      },
+      transformStderr: text => {
+        const out = stripJobPaths(text, job.dir);
+        return dropInjectedFrames(out, [guardPath, ...(shimPath ? [shimPath] : [])]);
+      },
+    };
+  },
+};
+
+export default pythonAdapter;

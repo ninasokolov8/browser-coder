@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Workspace smoke</title>
+  </head>
+  <body>
+    <!--
+      Browser smoke test for the workspace domain.
+
+      The unit tests cover the logic, including the timing races, because they can
+      drive a controllable store. What they cannot cover is the WIRING: that
+      Monaco's model really becomes the document's authoritative buffer, that a
+      rename really re-points the URI, and that real IndexedDB really round-trips.
+      Those only fail in a browser, so this runs in one.
+
+      Results are written into the DOM so `chrome --headless --dump-dom` can read
+      them without a CDP client.
+    -->
+    <pre id="results">running…</pre>
+    <script type="module" src="./workspace-smoke.ts"></script>
+  </body>
+</html>

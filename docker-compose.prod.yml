@@ -36,14 +36,32 @@ services:
       retries: 3
 
   # ============================================
-  # PREVIEW STORAGE INIT - Fix named-volume permissions
+  # SHARED STORAGE INIT - Fix named-volume permissions
   # ============================================
-  preview-storage-init:
+  #
+  # Three stores, not one. Previews were here from the start; the blob cache and share
+  # snapshots were added later and defaulted to `os.tmpdir()`, which in this image is
+  # TMPDIR=/app/sandbox - a per-container tmpfs. With `replicas: ${REPLICAS:-2}` behind
+  # nginx `least_conn` and no session affinity, that meant:
+  #
+  #   - a share published through one replica was 404 when opened through the other,
+  #   - an asset uploaded to one replica was "not cached" when the run landed on the
+  #     other, failing the run outright.
+  #
+  # Both server config blocks already SAID the storage had to be shared. Nothing made
+  # it so. check-ops-config.mjs now fails when a store that requires shared storage is
+  # not on a named volume.
+  shared-storage-init:
     image: busybox:1.36
     user: "0:0"
-    command: ["sh", "-c", "mkdir -p /preview-data && chown -R 1001:1001 /preview-data && chmod 770 /preview-data"]
+    command:
+      - "sh"
+      - "-c"
+      - "for d in /preview-data /blob-cache /share-data; do mkdir -p $$d && chown -R 1001:1001 $$d && chmod 770 $$d; done"
     volumes:
       - browser_coder_previews:/preview-data
+      - browser_coder_blobs:/blob-cache
+      - browser_coder_shares:/share-data
     restart: "no"
     networks:
       - internal
@@ -52,6 +70,18 @@ services:
   # API - Uses pre-built image from GHCR
   # ============================================
   api:
+    # An init process, so an orphaned grandchild is reaped.
+    #
+    # A debug run is node -> adapter -> (JVM | php | dncdbg -> dotnet). If the
+    # adapter is killed - a run timeout, a closed session - its child is reparented
+    # to PID 1, and PID 1 here is the server: a Node process, which is not an init
+    # and does not reap strangers. Each one then sits as a zombie holding a PID, and
+    # `pids_limit` below is 512, so a long-running replica eventually cannot fork at
+    # all - at which point EVERY language stops running, not just the debugger.
+    #
+    # The adapters also wait for their own child before exiting; this is the backstop
+    # for the case where they are not given the chance.
+    init: true
     image: ${BROWSER_CODER_IMAGE:-ghcr.io/ninasokolov8/browser-coder:latest}
     pull_policy: always
     build:
@@ -62,13 +92,19 @@ services:
     volumes:
       - ./security/reports:/app/security/reports:rw
       - browser_coder_previews:/preview-data:rw
+      - browser_coder_blobs:/blob-cache:rw
+      - browser_coder_shares:/share-data:rw
     environment:
       - NODE_ENV=production
       - PORT=3001
       - RATE_LIMIT_MAX=200
       - RUN_TIMEOUT_MS=10000
       - MAX_SCALE=${MAX_SCALE:-8}
-      - MAX_CODE_CHARS=750000
+      # Kept in step with docker-compose.yml. The raise to 8 MB was applied to the
+      # dev file only, so in production a student could publish an 8 MB preview but
+      # not RUN a project over 750 KB - the feature worked in dev and silently did
+      # not in prod. check-ops-config.mjs now fails when the two files disagree.
+      - MAX_CODE_CHARS=8388608
       - PREVIEW_STORAGE_DIR=/preview-data
       - PREVIEW_MAX_BYTES=8388608
       - PREVIEW_TTL_MS=604800000
@@ -76,10 +112,24 @@ services:
       - PREVIEW_MAX_STORAGE_BYTES=1073741824
       - PREVIEW_MAX_FILES=50000
       - PREVIEW_PUBLISHES_PER_MINUTE=10
+      # Both stores must be reachable from EVERY replica - see shared-storage-init.
+      - BLOB_CACHE_DIR=/blob-cache
+      - SHARE_STORAGE_DIR=/share-data
     depends_on:
-      preview-storage-init:
+      shared-storage-init:
         condition: service_completed_successfully
     # SECURITY: Container-level sandboxing
+    # N-05: the fork-bomb limit the comment claimed.
+    #
+    # docker-compose.yml said "# SECURITY: Limit PIDs to prevent fork bombs" under
+    # deploy.resources and then set NOTHING. Containment did not exist.
+    #
+    # It has to be the top-level `pids_limit`, not a deploy.resources entry:
+    # `docker compose up` ignores most of `deploy` outside swarm mode, which is
+    # part of why the gap went unnoticed. 512 is comfortably above what a
+    # legitimate compile needs (javac and dotnet each spawn a handful) and far
+    # below what a fork bomb needs to hurt the host.
+    pids_limit: 512
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -102,6 +152,10 @@ services:
         limits:
           memory: 512M
           cpus: '1.0'
+          # Kept in step with the top-level pids_limit above: compose refuses a
+          # project where the two disagree, and swarm reads this one while
+          # `docker compose up` reads the other.
+          pids: 512
         reservations:
           memory: 256M
           cpus: '0.25'
@@ -135,11 +189,25 @@ services:
     profiles:
       - autoscale  # Only runs with: docker compose --profile autoscale up
 
+# ── V-07: the network named "internal" was not internal ─────────────────────
+# `driver: bridge` alone creates an ordinary bridge WITH NAT egress, so the
+# comment "no external network access" on the api service described a property
+# the file did not configure. `internal: true` is the attribute that actually
+# removes the default route, and without it a student's program could reach the
+# internet from inside the sandbox.
+#
+# Everything this stack needs is reachable without egress: nginx talks to api
+# over this network, the security tests talk to api by service name, and the
+# language toolchains are baked into the image. The api service is on `internal`
+# ONLY; nginx is additionally on `default` so it can be published.
 networks:
   internal:
     driver: bridge
+    internal: true
   default:
     driver: bridge
 
 volumes:
   browser_coder_previews:
+  browser_coder_blobs:
+  browser_coder_shares:

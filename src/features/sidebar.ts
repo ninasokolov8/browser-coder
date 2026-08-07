@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { runtime } from '../app/runtime';
 import { appConfig, policyState, normalizePanels, type IdePanel } from '../app/config';
 import {
@@ -6,8 +5,9 @@ import {
   emptyStateNewFileBtn, searchInput,
 } from '../components/dom';
 import { saveSettings } from '../components/settings';
+import { lazyRef } from '../app/lazy';
 
-const editor = new Proxy({} as any, { get: (_t, p) => (runtime.editor as any)[p] });
+const editor = lazyRef(() => runtime.editor, 'editor');
 
 // ===== SIDEBAR PANEL SWITCHING =====
 function panelIsVisible(panelName: string): boolean {
@@ -56,6 +56,9 @@ export function applyPolicyFromMessage(data: { readonly?: boolean; lockStructure
   });
 
   applyIdePolicy();
+  // Policy just changed, so every bound control must re-read its enablement.
+  // Without this a button stays clickable after a stepup:set-readonly (V-17).
+  runtime.commands?.notifyPolicyChanged();
 }
 
 export function switchSidebarPanel(panelName: string) {

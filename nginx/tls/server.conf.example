@@ -1,0 +1,147 @@
+# Copy to server.conf and edit the three marked values.
+#
+# This file is included from inside the `http` block of nginx.conf, so it declares
+# a whole `server`. It intentionally repeats the proxy blocks rather than sharing
+# them with the port-80 server: nginx has no server-level inheritance for locations,
+# and a partial copy that silently lacked the interactive streaming settings would
+# be worse than an explicit duplicate.
+#
+# Read nginx/tls/README.md before enabling this.
+
+server {
+    listen 443 ssl;
+    http2 on;
+
+    server_name coder.example.org;                       # <-- EDIT
+
+    ssl_certificate     /etc/letsencrypt/live/coder.example.org/fullchain.pem;   # <-- EDIT
+    ssl_certificate_key /etc/letsencrypt/live/coder.example.org/privkey.pem;     # <-- EDIT
+
+    # Modern-compatible. TLS 1.0/1.1 are not offered; nothing that can run this IDE
+    # is limited to them.
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    limit_conn conn_limit 400;
+
+    location = /health {
+        proxy_pass http://api_servers/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        access_log off;
+    }
+
+    location ^~ /assets/ {
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_intercept_errors off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Streaming. See the long note in nginx.conf: buffering this route makes the
+    # interactive console non-functional rather than merely slow.
+    location ^~ /api/run/interactive {
+        limit_req zone=interactive_limit burst=20 nodelay;
+        client_max_body_size 3m;
+
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        add_header X-Accel-Buffering "no" always;
+
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 1h;
+        proxy_read_timeout 1h;
+    }
+
+    location = /api/previews {
+        limit_req zone=preview_publish_limit burst=5 nodelay;
+        client_max_body_size 12m;
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 15s;
+    }
+
+    location ^~ /preview/ {
+        limit_req zone=preview_read_limit burst=40 nodelay;
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 15s;
+    }
+
+    location = /api/run {
+        limit_req zone=api_limit burst=50 nodelay;
+        client_max_body_size 3m;
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        add_header X-Content-Type-Options "nosniff" always;
+        proxy_read_timeout 90s;
+    }
+
+    location /api/ {
+        limit_req zone=api_limit burst=50 nodelay;
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        proxy_read_timeout 30s;
+    }
+
+    # No X-Frame-Options: Step-Up embeds this document. See nginx.conf.
+    location / {
+        proxy_pass http://api_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+}

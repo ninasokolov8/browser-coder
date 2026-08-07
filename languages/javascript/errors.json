@@ -1,0 +1,92 @@
+{
+  "ReferenceError": {
+    "type": "name error",
+    "explanation": "JavaScript reached a name it has never seen. Every name must be created before it is used - with let, const, function, or an import.",
+    "cause": "A spelling mistake, or using a let/const variable on a line that runs before the line that declares it.",
+    "example": "console.log(totl);      // never declared\nlet total = 10;\nconsole.log(total);     // works, and comes after the declaration"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "You did something to a value that does not support it - reading a property of undefined, or calling something that is not a function.",
+    "cause": "Almost always a value that is undefined or null when you expected an object. Something earlier returned nothing.",
+    "example": "const user = users.find(u => u.id === 9);   // no match, so undefined\nconsole.log(user.name);                    // undefined has no .name\nconsole.log(user?.name);                   // ?. gives undefined instead of failing"
+  },
+  "SyntaxError": {
+    "type": "syntax error",
+    "explanation": "JavaScript could not understand the shape of your code and stopped before running any of it. Nothing in the file ran.",
+    "cause": "An unclosed bracket, brace or quote, or a missing comma in an object or array. Check the line above the one named - an unclosed bracket is only noticed later.",
+    "example": "const nums = [1, 2, 3;   // ] missing\nconst nums = [1, 2, 3];"
+  },
+  "RangeError": {
+    "type": "value error",
+    "explanation": "A value was outside the range that operation allows.",
+    "cause": "Most often infinite recursion, or creating an array with a negative or absurd length.",
+    "example": "new Array(-1);       // an array cannot have -1 items\nnew Array(3);        // fine\n// \"Maximum call stack size exceeded\" means a function calls itself forever."
+  },
+  "RangeError: Maximum call stack size exceeded": {
+    "type": "runtime error",
+    "explanation": "A function called itself over and over until JavaScript ran out of room to remember the calls.",
+    "cause": "A recursive function whose stopping condition is missing or never reached.",
+    "example": "function count(n) { return count(n - 1); }        // never stops\nfunction countOk(n) { return n <= 0 ? 0 : countOk(n - 1); }"
+  },
+  "SyntaxError: Unexpected end of JSON input": {
+    "type": "value error",
+    "explanation": "JSON.parse was given text that stops in the middle - most often an empty string.",
+    "cause": "Parsing a response or a file that turned out to be empty.",
+    "example": "JSON.parse(\"\");        // nothing to parse\nJSON.parse(\"{}\");      // an empty object is valid JSON"
+  },
+  "SyntaxError: Unexpected token": {
+    "type": "syntax error",
+    "explanation": "JavaScript found a character where that character cannot appear. The named token is where it noticed, which is often just after the real mistake.",
+    "cause": "A missing comma or bracket, or JSON.parse being handed something that is not JSON at all.",
+    "example": "const person = { name: \"Ada\" age: 36 };   // comma missing\nconst person = { name: \"Ada\", age: 36 };"
+  },
+  "Error": {
+    "type": "runtime error",
+    "explanation": "The program stopped because something threw a general failure. The message after the colon is written by whoever threw it, and is the useful part.",
+    "cause": "Code that checked a condition and gave up deliberately, or a library reporting a problem.",
+    "example": "if (!name) {\n  throw new Error(\"name is required\");   // this message is what you see\n}"
+  },
+  "EvalError": {
+    "type": "runtime error",
+    "explanation": "Something went wrong inside eval(). Modern JavaScript almost never produces this.",
+    "cause": "Using eval at all, which is very rarely the right tool.",
+    "example": "eval(\"2 +\");        // not complete code\n// Prefer a real function to eval - it is easier to read and safer."
+  },
+  "URIError": {
+    "type": "value error",
+    "explanation": "A URL encoding or decoding function was given text it cannot handle.",
+    "cause": "decodeURIComponent on text containing a stray % that is not part of an escape.",
+    "example": "decodeURIComponent(\"100%\");     // % must be followed by two hex digits\ndecodeURIComponent(\"100%25\");   // %25 is an encoded %"
+  },
+  "ERR_MODULE_NOT_FOUND": {
+    "type": "import error",
+    "explanation": "The file or package you imported could not be found.",
+    "cause": "A path that does not match a real file - in modules the extension is required - or a package that is not available in this sandbox.",
+    "example": "import { add } from \"./math\";        // no extension\nimport { add } from \"./math.mjs\";    // this resolves"
+  },
+  "ERR_REQUIRE_ESM": {
+    "type": "import error",
+    "explanation": "require() was used to load a file that is written as an ES module. The two module systems cannot be mixed that way.",
+    "cause": "Copying require() from an older example into a project that uses import/export.",
+    "example": "const math = require(\"./math.mjs\");   // not allowed for an ES module\nimport * as math from \"./math.mjs\";   // use import instead"
+  },
+  "ERR_UNSUPPORTED_DIR_IMPORT": {
+    "type": "import error",
+    "explanation": "You imported a folder. An ES module import has to name a file.",
+    "cause": "Importing \"./utils\" and expecting it to find \"./utils/index.mjs\" the way older code did.",
+    "example": "import helpers from \"./utils\";             // a folder\nimport helpers from \"./utils/index.mjs\";   // name the file"
+  },
+  "EACCES": {
+    "type": "runtime error",
+    "explanation": "The program tried to read or write a file it is not allowed to touch. Programs here may only use files inside their own project.",
+    "cause": "A path leading outside the project, such as one starting with / or containing ..",
+    "example": "// Only project files are reachable:\n// \"data.txt\" - yes\n// \"../other/data.txt\" - no"
+  },
+  "ENOENT": {
+    "type": "runtime error",
+    "explanation": "The file was not found. The program looked for it and nothing was there.",
+    "cause": "The file is not in the project yet, or the name does not match exactly, including capital letters.",
+    "example": "// The project has data.txt\n// \"Data.txt\" - not found\n// \"data.txt\" - found"
+  }
+}

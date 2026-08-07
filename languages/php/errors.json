@@ -1,0 +1,86 @@
+{
+  "syntax error": {
+    "type": "syntax error",
+    "explanation": "PHP could not understand the shape of your code and stopped before running any of it. Nothing in the file ran.",
+    "cause": "A missing semicolon, an unclosed brace or quote, or a forgotten $ on a variable. Look at the line ABOVE the one PHP names.",
+    "example": "$total = 5\necho $total;   // PHP complains here; the semicolon is missing above\n$total = 5;"
+  },
+  "Undefined variable": {
+    "type": "name error",
+    "explanation": "You read a variable that has never been given a value. PHP carries on with an empty value, but it is telling you that this was probably not intended.",
+    "cause": "A spelling mistake, or a variable set inside an if that did not run.",
+    "example": "$total = 5;\necho $totl;                   // spelled differently\necho $total;\necho $maybe ?? 'default';     // ?? supplies a value when it is unset"
+  },
+  "Undefined array key": {
+    "type": "key error",
+    "explanation": "You asked an array for a key it does not have.",
+    "cause": "A typo in the key, or reading a key before anything put it there.",
+    "example": "$ages = ['sam' => 12];\necho $ages['Sam'];              // capital S is a different key\necho $ages['Sam'] ?? 0;         // ?? gives a default instead"
+  },
+  "Call to undefined function": {
+    "type": "name error",
+    "explanation": "PHP could not find a function with that name. Either it is spelled differently, or it is defined in a file that was never included.",
+    "cause": "A spelling mistake, or calling a function before the file that defines it is loaded.",
+    "example": "echo strlen('abc');    // a real built-in\necho strLen('abc');    // PHP function names are case-insensitive,\n                       // but your OWN functions must match how they were defined"
+  },
+  "TypeError": {
+    "type": "type error",
+    "explanation": "A value of the wrong type was used - passed to a function that declares a different type, or combined with an operator that does not accept it.",
+    "cause": "Text where a number was expected, often straight from user input.",
+    "example": "function double(int $n) { return $n * 2; }\ndouble('abc');       // not a number\ndouble((int) '12');  // convert first"
+  },
+  "ValueError": {
+    "type": "value error",
+    "explanation": "The type was right but the value itself was not allowed for that function.",
+    "cause": "A negative length, an empty array where one item was required, or a value outside the range a function accepts.",
+    "example": "array_rand([]);        // there is nothing to pick from\narray_rand([1, 2, 3]);"
+  },
+  "DivisionByZeroError": {
+    "type": "runtime error",
+    "explanation": "Something was divided by zero, which has no answer.",
+    "cause": "A count or a length that turned out to be 0.",
+    "example": "$average = $total / count($scores);   // count is 0\nif (count($scores) > 0) { $average = $total / count($scores); }"
+  },
+  "ArgumentCountError": {
+    "type": "type error",
+    "explanation": "A function was called with fewer arguments than it requires.",
+    "cause": "Forgetting an argument, or changing a function's parameters without updating the calls.",
+    "example": "function greet($name, $greeting) { }\ngreet('Ada');                              // one argument short\nfunction greetOk($name, $greeting = 'Hi') { }   // a default makes it optional"
+  },
+  "ParseError": {
+    "type": "syntax error",
+    "explanation": "PHP could not read the code as PHP at all.",
+    "cause": "Usually a missing <?php at the top of the file, or a stray character in the middle.",
+    "example": "<?php\necho 'hello';   // every PHP file starts with the opening tag"
+  },
+  "Error": {
+    "type": "runtime error",
+    "explanation": "A fatal problem stopped the program. The message after the colon says what it was.",
+    "cause": "Calling a method on something that is not an object, or another mistake PHP cannot recover from.",
+    "example": "$user = null;\n$user->getName();     // null is not an object\nif ($user !== null) { $user->getName(); }"
+  },
+  "Exception": {
+    "type": "runtime error",
+    "explanation": "Something threw an exception and nothing caught it, so the program stopped. The message is written by whoever threw it.",
+    "cause": "A deliberate throw in your code or a library's, on a condition that turned out to be true.",
+    "example": "try {\n    risky();\n} catch (Exception $e) {\n    echo 'Could not do it: ' . $e->getMessage();\n}"
+  },
+  "Undefined property": {
+    "type": "name error",
+    "explanation": "You read a property that the object does not have.",
+    "cause": "A spelling mistake, or a property that is only set in some code paths.",
+    "example": "class User { public $name; }\n$u = new User();\necho $u->nmae;    // spelled differently\necho $u->name;"
+  },
+  "Undefined method": {
+    "type": "name error",
+    "explanation": "You called a method that the class does not define.",
+    "cause": "A spelling mistake, or calling a method on the wrong kind of object.",
+    "example": "class User { function getName() { } }\n$u = new User();\n$u->getname();    // your own method names ARE case-insensitive in PHP,\n$u->getName();    // but matching how you defined it keeps the code readable"
+  },
+  "Cannot modify header information": {
+    "type": "runtime error",
+    "explanation": "Headers must be sent before any output. Something was already printed, so it is too late to set one.",
+    "cause": "An echo, a blank line, or whitespace before the opening <?php tag.",
+    "example": "<?php\nheader('Content-Type: text/plain');   // must come before any echo\necho 'hello';"
+  }
+}
