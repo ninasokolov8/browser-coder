@@ -7956,10 +7956,11 @@ exists it skips, honestly.
   project's nor fixable from the image.
 - **PHP debugging.** Done in section 48, once Docker made it possible to check rather
   than guess: `php-pecl-xdebug` is in Alpine's repositories after all.
-- **Conditional breakpoints.** The watch work added expression evaluation to the client;
-  attaching one to a breakpoint is a separate surface and is not built.
-- **Operator help**, **multipart asset upload**, **tests the student can run**, and
-  **collaboration**, all as described in section 44 and none of them started.
+- **Conditional breakpoints** - done in section 51.1, in all six languages.
+- **Operator help** - section 51.3. **Tests the student can run** - section 51.5.
+  **The asset upload** - section 51.6, as content addressing rather than multipart,
+  for reasons given there. **Collaboration** - section 52, where the live-editing half
+  is refused explicitly and the reasoning recorded.
 
 ---
 
@@ -8620,3 +8621,90 @@ same bytes a different way and finally gave a test something to compare against.
 Each new behaviour was re-broken and the suite confirmed to fail before the fix was
 restored: the Java condition evaluator, the capability mirror, the pending-breakpoint
 rule, and the two protocol bugs in section 50.
+
+---
+
+## 52. Collaboration: what was built, and what was refused
+
+Section 44.6 listed collaboration last and framed it as a decision rather than a task:
+
+> Every commercial teaching IDE has some form of shared session or teacher-can-see-my-
+> screen. This architecture has no CRDT, no presence and no shared document; it would be
+> a large piece of work and should be a deliberate decision rather than something that
+> arrives by accident.
+
+This is the decision.
+
+### 52.1 What was built: a project snapshot behind a link
+
+A student publishes their whole project and gets a URL. Whoever opens it sees exactly
+the files they had. `POST /api/shares` stores the snapshot and returns a 22-character
+id; `GET /api/shares/:id` reads it back; the IDE opens it read-only.
+
+It is immutable. Re-sharing produces a new id, so a link always shows what was sent
+rather than whatever the student did to their code afterwards — which is the entire
+value of sending one to somebody who will look at it tomorrow.
+
+### 52.2 What was refused, and why it is a refusal rather than a first step
+
+Live co-editing needs four things this architecture does not have, and each of them
+becomes load-bearing the moment a student trusts it with their homework:
+
+- **A convergent data structure.** Two people typing on the same line is not a merge
+  problem you can solve with last-write-wins; it needs a CRDT or OT, and a wrong one
+  loses text silently.
+- **A stateful hub every replica can reach.** Runs are stateless by design and the
+  deployment scales horizontally. A session pinned to one replica breaks on the next
+  deploy; one that is not pinned needs a shared bus that does not exist here.
+- **A conflict and permission model.** Who may edit, what happens when the owner leaves,
+  whether a teacher's change is a suggestion or an edit. These are product decisions,
+  not implementation details, and nobody has made them.
+- **A persistence story.** The workspace lives in the student's own IndexedDB. A shared
+  document has to live somewhere else, and then "which one is real" has an answer that
+  someone can be wrong about.
+
+**Half of it is worse than none.** A shared session that mostly works teaches a student
+to rely on it, and the failure is their coursework. A snapshot cannot fail that way: the
+worst case is a stale link, which is visible and harmless.
+
+### 52.3 Why a snapshot answers the actual need
+
+The case 44.6 named is "teacher-can-see-my-screen". A live session answers it only when
+both people are present at the same moment. A student stuck at nine in the evening sends
+a link and the teacher reads it in the morning — and the teacher sees the state the
+student was stuck in, not whatever they poked at afterwards, which a live session would
+not have preserved.
+
+### 52.4 A capability URL, and the consequences taken seriously
+
+The id is 128 random bits and holding one is permission to read, so:
+
+- **An unknown link and an expired one give the same 404.** Distinguishing them is an
+  oracle: it turns guessing ids into a search with feedback, which is most of the work
+  of finding a live one.
+- **No list route and no delete route.** A capability is only a capability if holding one
+  tells you nothing about the others, and if a stranger cannot revoke somebody's link.
+- **The id is never logged.** A log line is a copy of the secret in a place the publisher
+  did not choose and cannot delete.
+- **Paths get the same containment rule a run payload gets, for a sharper reason.** These
+  files are written into somebody *else's* workspace, and they never saw the project
+  before opening it.
+- **Shares expire.** A share is a message, not an archive — and reading one does not
+  extend it, because its author expected it to expire when they published it.
+
+### 52.5 Not the preview store, though it looks like it
+
+A preview publishes a **website** for a browser to render: HTML, sandboxed, served under
+a CSP that travels on the response. A share publishes a **project** for the IDE to open:
+any language, no execution, and the payload is the file list a run already speaks.
+
+Different validation, different lifetimes, different threat models. Folding them together
+would mean one route inspecting the files to work out which kind of thing it was holding.
+
+### 52.6 If live collaboration is ever wanted
+
+It is not blocked by anything here — the snapshot is not a foundation to build on, and it
+is not in the way either. It would want its own service: a document server with a CRDT,
+addressed separately from the run pipeline, with the IDE as one client among several.
+That is a project, and this section exists so that whoever starts it knows it was
+considered and deferred rather than missed.
