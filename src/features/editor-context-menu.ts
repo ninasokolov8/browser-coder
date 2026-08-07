@@ -11,7 +11,7 @@ import * as monaco from 'monaco-editor';
 import { getKeywordExplanation, languageCan } from '../languages';
 import { t } from '../i18n';
 import { getUILang } from './wrapped-i18n';
-import { runtime } from '../app/runtime';
+import { runtime, requireEditor, requireTabManager } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runCode } from './execution';
 import {
@@ -21,16 +21,9 @@ import {
   type LineRange,
 } from './selection-run.ts';
 
-function requireEditor(): monaco.editor.IStandaloneCodeEditor {
-  const editor = runtime.editor;
-  if (!editor) {
-    throw new Error('IDE is not ready yet. Please wait for initialization to finish.');
-  }
-  return editor;
-}
-
+// The shared accessors, not a private copy. See the note in app/runtime.ts.
 const editor = requireEditor();
-const tabManager = runtime.tabManager!;
+const tabManager = requireTabManager();
 
 // "Explain this keyword" - right-click a keyword to see a plain-English
 // explanation + example, backed by languages/*/keywords.json.

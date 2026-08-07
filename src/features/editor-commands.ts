@@ -14,7 +14,7 @@
 
 import * as monaco from 'monaco-editor';
 
-import { runtime } from '../app/runtime';
+import { runtime, requireEditor, requireTabManager } from '../app/runtime';
 import { debugBtn, runBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
@@ -27,18 +27,9 @@ import { explorerState } from './explorer/state';
 import { runStudentTests } from './tests/run.ts';
 import { shareProject } from './share.ts';
 
-function requireRuntime() {
-  const editor = runtime.editor;
-  const tabManager = runtime.tabManager;
-  if (!editor || !tabManager) {
-    throw new Error('IDE is not ready yet. Please wait for initialization to finish.');
-  }
-  return { editor, tabManager };
-}
-
-const initialized = requireRuntime();
-const editor = initialized.editor;
-const tabManager = initialized.tabManager;
+// The shared accessors, not a private copy. See the note in app/runtime.ts.
+const editor = requireEditor();
+const tabManager = requireTabManager();
 
 // ── Commands (V-17) ─────────────────────────────────────────────────────────
 //

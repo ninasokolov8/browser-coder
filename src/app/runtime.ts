@@ -76,27 +76,41 @@ export const runtime: {
   notifyWorkspaceChanged: () => {},
 };
 
+/*
+ * The accessors. There is one of each, here, deliberately.
+ *
+ * features/editor-commands.ts, features/execution.ts and features/editor-context-menu.ts
+ * each had a private `requireRuntime()`/`requireEditor()` doing the same job with a
+ * different message, so "the IDE is not ready" failed in three different ways depending
+ * on which module noticed - and any new feature had a fourth version to invent.
+ *
+ * The message is the one those copies used, because it is the better one: these throws
+ * can reach a student through a command handler, and "Editor has not been initialized"
+ * is a sentence about our object graph.
+ */
+const NOT_READY = 'IDE is not ready yet. Please wait for initialization to finish.';
+
 export function requireEditor(): Monaco.editor.IStandaloneCodeEditor {
-  if (!runtime.editor) throw new Error('Editor has not been initialized');
+  if (!runtime.editor) throw new Error(NOT_READY);
   return runtime.editor;
 }
 
 export function requireTabManager(): TabManager {
-  if (!runtime.tabManager) throw new Error('Tab manager has not been initialized');
+  if (!runtime.tabManager) throw new Error(NOT_READY);
   return runtime.tabManager;
 }
 
 export function requireStorage(): StorageApi {
-  if (!runtime.storage) throw new Error('Storage has not been initialized');
+  if (!runtime.storage) throw new Error(NOT_READY);
   return runtime.storage;
 }
 
 export function requireWorkspace(): WorkspaceService {
-  if (!runtime.workspace) throw new Error('Workspace has not been initialized');
+  if (!runtime.workspace) throw new Error(NOT_READY);
   return runtime.workspace;
 }
 
 export function requireModels(): MonacoModelRegistry {
-  if (!runtime.models) throw new Error('Model registry has not been initialized');
+  if (!runtime.models) throw new Error(NOT_READY);
   return runtime.models;
 }

@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor';
 import { getErrorExplanation, getLanguage } from '../languages';
-import { runtime } from '../app/runtime';
+import { runtime, requireEditor, requireStorage, requireTabManager } from '../app/runtime';
 import { appConfig } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
@@ -22,14 +22,14 @@ import { buildErrorHelpBlock, selectErrorKey } from './error-help.ts';
 import { getUILang } from './wrapped-i18n';
 import { announce, describeRunOutcome } from '../components/announce.ts';
 
+/**
+ * The three the run path needs, resolved together.
+ *
+ * A thin grouping over the shared accessors in app/runtime.ts rather than a fourth
+ * private copy of the readiness check - it used to be one, with its own message.
+ */
 function requireRuntime() {
-  const editor = runtime.editor;
-  const tabManager = runtime.tabManager;
-  const storage = runtime.storage;
-  if (!editor || !tabManager || !storage) {
-    throw new Error('IDE is not ready yet. Please wait for initialization to finish.');
-  }
-  return { editor, tabManager, storage };
+  return { editor: requireEditor(), tabManager: requireTabManager(), storage: requireStorage() };
 }
 
 // ── Output helpers ──────────────────────────────────────────────────────────
