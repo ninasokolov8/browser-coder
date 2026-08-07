@@ -33,6 +33,7 @@ import { panelContentEl, runBtn } from './dom';
 import { setStatus } from './output';
 import { renderTurtle } from './turtle';
 import { t } from '../i18n';
+import { inlineMissingAssets, isMissingBlobResponse } from '../features/asset-transport.ts';
 
 export interface RunConsoleOptions {
   /**
@@ -370,11 +371,12 @@ export function runProgram(
       };
 
       try {
-        const resp = await fetch('/api/run/interactive', {
+        const send = (files: unknown) => fetch('/api/run/interactive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...payload,
+            ...(files ? { files } : {}),
             language: langId,
             // Omitted entirely unless asked for, so the request a v1 client sends is
             // unchanged rather than carrying `debug: false`.
@@ -382,6 +384,28 @@ export function runProgram(
           }),
           signal: controller.signal,
         });
+
+        let resp = await send(null);
+
+        /*
+         * The asset cache said the server had these bytes and it does not.
+         *
+         * Between the check and this request the entry can be swept on its TTL, or -
+         * in production, behind least_conn with no session affinity - the run can
+         * simply land on a different replica than the upload did. Neither is the
+         * student's doing, and both are recoverable by sending the bytes the long way
+         * exactly once. Only once: a second 409 is a real failure, not a race.
+         */
+        if (resp.status === 409) {
+          const detail = await resp.clone().json().catch(() => null);
+          if (isMissingBlobResponse(resp.status, detail)) {
+            const inlined = inlineMissingAssets(
+              (payload.files || []) as Parameters<typeof inlineMissingAssets>[0],
+              detail.missing,
+            );
+            resp = await send(inlined);
+          }
+        }
 
         // Errors and compile failures are returned as a normal JSON body
         // BEFORE the stream starts, so they are safe to read whole.

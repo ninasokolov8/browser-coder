@@ -66,7 +66,7 @@ mkdir -p security/reports
 chmod 770 security/reports 2>/dev/null || sudo chmod 770 security/reports
 
 log "📥 Pulling production images"
-docker compose -f "$COMPOSE_FILE" pull api nginx preview-storage-init
+docker compose -f "$COMPOSE_FILE" pull api nginx shared-storage-init
 
 log "🛑 Removing previous production containers"
 docker compose -f "$COMPOSE_FILE" down --remove-orphans
@@ -81,8 +81,8 @@ while IFS= read -r container_id; do
   fi
 done < <(docker ps -aq --filter 'name=browser_coder-api-' || true)
 
-log "🔐 Preparing persistent preview storage"
-docker compose -f "$COMPOSE_FILE" up --no-deps --force-recreate preview-storage-init
+log "🔐 Preparing persistent shared storage (previews, blob cache, shares)"
+docker compose -f "$COMPOSE_FILE" up --no-deps --force-recreate shared-storage-init
 
 log "🚀 Starting production services"
 docker compose -f "$COMPOSE_FILE" up \

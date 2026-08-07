@@ -40,6 +40,32 @@ services:
       retries: 3
  
   # ============================================
+  # SHARED STORAGE INIT - Fix named-volume permissions
+  # ============================================
+  #
+  # This stack runs ${INITIAL_REPLICAS:-2} replicas behind nginx too, so it had the same
+  # per-replica storage bug as production and for all three stores rather than two: not
+  # even PREVIEW_STORAGE_DIR was set here, so a preview published locally was a coin
+  # flip to open. See docker-compose.prod.yml for the full account.
+  #
+  # A named volume is created root-owned and the container runs as 1001, which is what
+  # this one-shot exists to fix.
+  shared-storage-init:
+    image: busybox:1.36
+    user: "0:0"
+    command:
+      - "sh"
+      - "-c"
+      - "for d in /preview-data /blob-cache /share-data; do mkdir -p $$d && chown -R 1001:1001 $$d && chmod 770 $$d; done"
+    volumes:
+      - browser_coder_previews:/preview-data
+      - browser_coder_blobs:/blob-cache
+      - browser_coder_shares:/share-data
+    restart: "no"
+    networks:
+      - internal
+
+  # ============================================
   # API - Smart Auto-Scaling Server (SANDBOXED)
   # ============================================
   api:
@@ -62,6 +88,9 @@ services:
       - "3001"
     volumes:
       - ./security/reports:/app/security/reports:rw
+      - browser_coder_previews:/preview-data:rw
+      - browser_coder_blobs:/blob-cache:rw
+      - browser_coder_shares:/share-data:rw
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -69,6 +98,13 @@ services:
       - RUN_TIMEOUT_MS=10000
       - MAX_SCALE=${MAX_SCALE:-8}
       - MAX_CODE_CHARS=8388608
+      # All three must be reachable from EVERY replica - see shared-storage-init.
+      - PREVIEW_STORAGE_DIR=/preview-data
+      - BLOB_CACHE_DIR=/blob-cache
+      - SHARE_STORAGE_DIR=/share-data
+    depends_on:
+      shared-storage-init:
+        condition: service_completed_successfully
     # SECURITY: Container-level sandboxing
     # N-05: the fork-bomb limit the comment claimed.
     #
@@ -187,3 +223,8 @@ networks:
     internal: true
   default:
     driver: bridge
+
+volumes:
+  browser_coder_previews:
+  browser_coder_blobs:
+  browser_coder_shares:

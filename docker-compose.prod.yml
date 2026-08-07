@@ -36,14 +36,32 @@ services:
       retries: 3
 
   # ============================================
-  # PREVIEW STORAGE INIT - Fix named-volume permissions
+  # SHARED STORAGE INIT - Fix named-volume permissions
   # ============================================
-  preview-storage-init:
+  #
+  # Three stores, not one. Previews were here from the start; the blob cache and share
+  # snapshots were added later and defaulted to `os.tmpdir()`, which in this image is
+  # TMPDIR=/app/sandbox - a per-container tmpfs. With `replicas: ${REPLICAS:-2}` behind
+  # nginx `least_conn` and no session affinity, that meant:
+  #
+  #   - a share published through one replica was 404 when opened through the other,
+  #   - an asset uploaded to one replica was "not cached" when the run landed on the
+  #     other, failing the run outright.
+  #
+  # Both server config blocks already SAID the storage had to be shared. Nothing made
+  # it so. check-ops-config.mjs now fails when a store that requires shared storage is
+  # not on a named volume.
+  shared-storage-init:
     image: busybox:1.36
     user: "0:0"
-    command: ["sh", "-c", "mkdir -p /preview-data && chown -R 1001:1001 /preview-data && chmod 770 /preview-data"]
+    command:
+      - "sh"
+      - "-c"
+      - "for d in /preview-data /blob-cache /share-data; do mkdir -p $$d && chown -R 1001:1001 $$d && chmod 770 $$d; done"
     volumes:
       - browser_coder_previews:/preview-data
+      - browser_coder_blobs:/blob-cache
+      - browser_coder_shares:/share-data
     restart: "no"
     networks:
       - internal
@@ -74,6 +92,8 @@ services:
     volumes:
       - ./security/reports:/app/security/reports:rw
       - browser_coder_previews:/preview-data:rw
+      - browser_coder_blobs:/blob-cache:rw
+      - browser_coder_shares:/share-data:rw
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -92,8 +112,11 @@ services:
       - PREVIEW_MAX_STORAGE_BYTES=1073741824
       - PREVIEW_MAX_FILES=50000
       - PREVIEW_PUBLISHES_PER_MINUTE=10
+      # Both stores must be reachable from EVERY replica - see shared-storage-init.
+      - BLOB_CACHE_DIR=/blob-cache
+      - SHARE_STORAGE_DIR=/share-data
     depends_on:
-      preview-storage-init:
+      shared-storage-init:
         condition: service_completed_successfully
     # SECURITY: Container-level sandboxing
     # N-05: the fork-bomb limit the comment claimed.
@@ -186,3 +209,5 @@ networks:
 
 volumes:
   browser_coder_previews:
+  browser_coder_blobs:
+  browser_coder_shares:

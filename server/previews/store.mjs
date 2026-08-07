@@ -256,6 +256,114 @@ export class PreviewStore {
         }
       }
     }));
+
+    await this.enforceStorageCap();
+  }
+
+  /**
+   * Keep total storage under `maxStorageBytes`, oldest first.
+   *
+   * `PREVIEW_MAX_STORAGE_BYTES` was parsed and never enforced. The config even said so
+   * - "Set in docker-compose.prod.yml but never read... Phase B enforces them" - and
+   * Phase B came and went. So the only bound on preview storage was the 30-day TTL,
+   * which on a shared volume means a class publishing all term fills the disk, and when
+   * it fills, everything else sharing that mount fails too.
+   *
+   * Zero means unlimited, which is the default and preserves the behaviour of every
+   * deployment that never set it.
+   *
+   * Oldest first rather than least-recently-read: a preview is a link somebody was
+   * given, and reading one does not make it more permanent - the same rule shares use,
+   * and the opposite of the blob cache, where an entry being read again is exactly the
+   * evidence that it is worth keeping.
+   */
+  async enforceStorageCap() {
+    const cap = this.#limits.maxStorageBytes;
+    if (!cap || cap <= 0) return;
+
+    const measure = async target => {
+      let total = 0;
+      const stack = [target];
+      while (stack.length > 0) {
+        const current = stack.pop();
+        let listing;
+        try {
+          listing = await fs.promises.readdir(current, { withFileTypes: true });
+        } catch {
+          continue;
+        }
+        for (const item of listing) {
+          const full = path.join(current, item.name);
+          if (item.isDirectory()) stack.push(full);
+          else {
+            try { total += (await fs.promises.stat(full)).size; } catch { /* vanished */ }
+          }
+        }
+      }
+      return total;
+    };
+
+    let entries;
+    try {
+      entries = await fs.promises.readdir(this.#storageDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const previews = [];
+    let total = 0;
+
+    for (const entry of entries) {
+      const isPreview =
+        (entry.isDirectory() && PREVIEW_ID_PATTERN.test(entry.name))
+        || (entry.isFile() && /^[A-Za-z0-9_-]{22}\.html$/.test(entry.name));
+      if (!isPreview) continue;
+
+      const full = path.join(this.#storageDir, entry.name);
+      try {
+        const stat = await fs.promises.stat(full);
+        const size = entry.isDirectory() ? await measure(full) : stat.size;
+
+        // The same age the expiry sweep uses, so the two cannot disagree about which
+        // preview is older. The manifest date is the truthful one - a directory mtime
+        // survives neither a volume restore nor a `cp -r`, and getting the order wrong
+        // here means evicting the wrong student's work.
+        const manifest = entry.isDirectory()
+          ? await this.readManifest(entry.name).catch(() => null)
+          : null;
+
+        previews.push({
+          path: full,
+          size,
+          createdAt: manifest?.createdAt ?? stat.mtimeMs,
+          isDirectory: entry.isDirectory(),
+        });
+        total += size;
+      } catch {
+        // Gone mid-sweep.
+      }
+    }
+
+    if (total <= cap) return;
+
+    previews.sort((left, right) => left.createdAt - right.createdAt);
+
+    let removed = 0;
+    for (const preview of previews) {
+      if (total <= cap) break;
+      try {
+        if (preview.isDirectory) await fs.promises.rm(preview.path, { recursive: true, force: true });
+        else await fs.promises.unlink(preview.path);
+        total -= preview.size;
+        removed += 1;
+      } catch {
+        // Something else removed it.
+      }
+    }
+
+    if (removed > 0) {
+      this.#log('info', 'preview_storage_capped', { removed, remainingBytes: total, cap });
+    }
   }
 
   // ===== internals =====

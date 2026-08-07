@@ -33,6 +33,13 @@ const SANDBOXED_SERVICES = ['api'];
 const MIN_PIDS_LIMIT = 1;
 const MAX_PIDS_LIMIT = 4096;
 
+/** Stores that must be reachable from every replica, and the env var pointing at each. */
+const SHARED_STORES = [
+  { env: 'PREVIEW_STORAGE_DIR', what: 'published previews' },
+  { env: 'BLOB_CACHE_DIR', what: 'the asset cache' },
+  { env: 'SHARE_STORAGE_DIR', what: 'share snapshots' },
+];
+
 let failures = 0;
 
 function fail(message) {
@@ -110,6 +117,55 @@ for (const file of files) {
       pass(`${name} sets no-new-privileges`);
     } else {
       fail(`${name} does not set no-new-privileges`);
+    }
+
+    checkSharedStores(name, service, resolved, file);
+  }
+}
+
+/**
+ * Stores that must be reachable from every replica, and the env var that points at each.
+ *
+ * The server's config already documented this requirement - the `shares` block says in
+ * as many words that "a link published through one replica and opened through another
+ * must work" - and production satisfied it for previews only. Blobs and shares fell back
+ * to `os.tmpdir()`, which under Dockerfile.production is TMPDIR=/app/sandbox, a
+ * per-container tmpfs. Behind `least_conn` with no session affinity and two replicas,
+ * roughly half of every share link 404'd and roughly half of every run carrying an image
+ * failed with "Some assets are not cached."
+ *
+ * Nothing about that was visible in development, where there is one replica and one tmp
+ * directory, which is why it needs a check rather than a comment.
+ */
+function checkSharedStores(name, service, resolved, file) {
+  // Single-replica files are exempt: there is no second replica to disagree with, and
+  // the dev compose deliberately keeps these on tmp so a `down` leaves nothing behind.
+  const replicas = Number(service.deploy?.replicas ?? 1);
+  if (!Number.isFinite(replicas) || replicas <= 1) {
+    pass(`${name} runs a single replica, so per-replica storage is not a hazard`);
+    return;
+  }
+
+  // Which container paths are backed by a NAMED volume, as opposed to a bind mount or
+  // - the failure this exists to catch - a tmpfs.
+  const shared = (service.volumes ?? [])
+    .filter(volume => volume.type === 'volume' && resolved.volumes?.[volume.source] !== undefined)
+    .map(volume => volume.target);
+
+  for (const { env, what } of SHARED_STORES) {
+    const configured = service.environment?.[env];
+    if (!configured) {
+      fail(`${name} runs ${replicas} replicas but ${env} is unset, so ${what} is per-replica (${file})`);
+      continue;
+    }
+
+    const onSharedVolume = shared.some(
+      target => configured === target || configured.startsWith(`${target}/`),
+    );
+    if (onSharedVolume) {
+      pass(`${env} points at a named volume, so ${what} is shared across replicas`);
+    } else {
+      fail(`${name}: ${env}=${configured} is not on a named volume, so ${what} is per-replica`);
     }
   }
 }

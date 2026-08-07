@@ -104,6 +104,7 @@ export function parseTestReport(stdout: string): TestReport {
   let done = false;
   let present = false;
   let seen = 0;
+  const tally: Record<TestStatus, number> = { pass: 0, fail: 0, skip: 0 };
 
   for (const rawLine of String(stdout ?? '').split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -141,12 +142,26 @@ export function parseTestReport(stdout: string): TestReport {
     const at = words.findIndex(word => STATUSES.includes(word.toLowerCase()));
     if (at < 1) continue;
 
+    const status = words[at].toLowerCase() as TestStatus;
+
     seen += 1;
+    /*
+     * Tally every case, list only the first MAX_CASES.
+     *
+     * These have to be counted here rather than over `cases` at the end. A harness that
+     * loops - "your sort, on 1000 random arrays" - overruns the display cap, and
+     * counting the listed subset would report `failed: 0` for a student whose failures
+     * all happened to land past the cap. The IDE would then say "All checks passed"
+     * about a run that did not pass, which is the one thing this feature must never do.
+     * `truncated` is what tells the student the LIST is short; the verdict is not.
+     */
+    tally[status] += 1;
+
     if (cases.length >= MAX_CASES) continue;
 
     cases.push({
       name: clamp(words.slice(0, at).join(' '), MAX_NAME_CHARS),
-      status: words[at].toLowerCase() as TestStatus,
+      status,
       detail: clamp(words.slice(at + 1).join(' '), MAX_DETAIL_CHARS),
     });
   }
@@ -157,10 +172,9 @@ export function parseTestReport(stdout: string): TestReport {
     cases,
     done,
     truncated: seen > cases.length,
-    // Counted over everything seen, not only what is listed.
-    passed: cases.filter(entry => entry.status === 'pass').length,
-    failed: cases.filter(entry => entry.status === 'fail').length,
-    skipped: cases.filter(entry => entry.status === 'skip').length,
+    passed: tally.pass,
+    failed: tally.fail,
+    skipped: tally.skip,
   };
 }
 
@@ -195,7 +209,9 @@ export function summariseReport(report: TestReport): string {
     return 'The marking harness produced no results. It may have crashed before it ran.';
   }
 
-  const total = report.cases.length;
+  // Over everything the harness reported, not over what the list shows. `cases` is
+  // capped at MAX_CASES, so on a looping harness this read "598 of 500 checks passed".
+  const total = report.passed + report.failed + report.skipped;
   const parts: string[] = [`${report.passed} of ${total} checks passed`];
 
   if (report.skipped > 0) parts.push(`${report.skipped} skipped`);
@@ -212,6 +228,13 @@ export function summariseReport(report: TestReport): string {
       firstFailure.detail
         ? `first failure: ${firstFailure.name} — ${firstFailure.detail}`
         : `first failure: ${firstFailure.name}`,
+    );
+  } else if (report.failed > 0) {
+    // Failures exist but every one of them is past the display cap. Saying nothing
+    // here is how "0 of the listed cases failed" became "everything passed".
+    parts.push(
+      `${report.failed} ${report.failed === 1 ? 'check' : 'checks'} failed further down `
+      + 'than the list shows',
     );
   }
 

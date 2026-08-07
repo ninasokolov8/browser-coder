@@ -222,20 +222,25 @@ export const CONFIG = {
     maxInteractiveSessionsPerIp: intFromEnv('MAX_INTERACTIVE_PER_IP', 50),
   },
 
-  circuitBreaker: {
-    failureThreshold: 5,
-    resetTimeoutMs: 30000,
-    halfOpenRequests: 3,
-  },
+  /*
+   * `circuitBreaker` and `health` were here, and both are gone.
+   *
+   * Neither described anything. There is no circuit breaker in this codebase - nothing
+   * counts failures, nothing opens, nothing half-opens - and the health route answers
+   * per request from live state rather than polling on an interval, so it never had a
+   * `checkIntervalMs` or an `unhealthyThreshold` to read. Five hardcoded numbers, no
+   * environment variables, and no consumer.
+   *
+   * Deleted for the reason V-35 gives for deleting the `scaling` block: configuration
+   * describing machinery the system does not have is worse than absent, because it
+   * tells the next reader there is something here to tune. Somebody lowering
+   * `failureThreshold` to make the service fail faster under load would have changed
+   * nothing at all and had no way to find that out.
+   */
 
   rateLimit: {
     windowMs: 60000,
     maxRequests: intFromEnv('RATE_LIMIT_MAX', 100),
-  },
-
-  health: {
-    checkIntervalMs: 10000,
-    unhealthyThreshold: 3,
   },
 
   /**

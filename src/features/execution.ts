@@ -301,6 +301,9 @@ const languageFiles = workspaceFiles.filter(file =>
 const storedActiveFile = await storage.getFile(activeTab.file.id);
 
 const entryPoint = normalizeProjectPath(
+  // "Check my work" runs the marking harness as the program and the student's own
+  // file as one of its imports, so the override wins over the active tab.
+  options.entryPointOverride ||
   storedActiveFile?.path ||
   activeTab.file.path ||
   activeTab.file.name

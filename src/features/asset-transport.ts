@@ -137,11 +137,11 @@ export async function withCachedAssets(files: RunFile[]): Promise<RunFile[]> {
   /*
    * Upload the misses BEFORE the run, not during it.
    *
-   * The server would answer 409 with the missing list and the client could retry, and
-   * that path exists as a backstop - but doing it here means the common case is one
-   * check plus the run, and the cold case is one check, the uploads, and the run.
-   * Discovering the miss from a failed run would put an extra full round trip in front
-   * of every first Run of a session.
+   * The server answers 409 with the missing list and the caller retries inline via
+   * `inlineMissingAssets` - but that is the backstop, not the plan. Doing it here means
+   * the common case is one check plus the run, and the cold case is one check, the
+   * uploads, and the run. Discovering the miss from a failed run would put an extra full
+   * round trip in front of every first Run of a session.
    */
   const uploaded = new Set(have);
   for (const [asset, token] of digests) {
@@ -159,4 +159,53 @@ export async function withCachedAssets(files: RunFile[]): Promise<RunFile[]> {
     void content;
     return { ...rest, digest: token };
   });
+}
+
+/**
+ * Put the bytes back for digests the server turned out not to have.
+ *
+ * The check and the run are two requests, and between them the digest can stop being
+ * valid: the cache sweeps on a TTL, and in production the request can simply land on a
+ * different replica. Without this, a student whose project contains an image sees their
+ * Run fail outright with "Some assets are not cached." - a message about our storage,
+ * for something they did nothing wrong to cause.
+ *
+ * The bytes come from `digestCache`, which is keyed BY the base64 content, so the
+ * strings are already retained and reading them back adds no retention. Scanning it is
+ * O(entries) with at most 200 entries, on a path that only runs after a failed run.
+ *
+ * Anything not recoverable is left as a digest. Re-sending it unchanged would fail
+ * identically, and the caller's second 409 is a real error rather than a loop.
+ */
+export function inlineMissingAssets(files: RunFile[], missingDigests: string[]): RunFile[] {
+  const wanted = new Set(missingDigests);
+  if (wanted.size === 0) return files;
+
+  const contentByToken = new Map<string, string>();
+  for (const [base64, token] of digestCache) {
+    if (wanted.has(token)) contentByToken.set(token, base64);
+  }
+  if (contentByToken.size === 0) return files;
+
+  return files.map(file => {
+    const content = file.digest ? contentByToken.get(file.digest) : undefined;
+    if (content === undefined) return file;
+
+    const { digest, ...rest } = file;
+    void digest;
+    return { ...rest, content };
+  });
+}
+
+/** Whether a failed response is the server saying "re-send those assets inline". */
+export function isMissingBlobResponse(
+  status: number,
+  body: unknown,
+): body is { missing: string[] } {
+  return (
+    status === 409
+    && !!body
+    && (body as { code?: string }).code === 'blob_missing'
+    && Array.isArray((body as { missing?: unknown }).missing)
+  );
 }

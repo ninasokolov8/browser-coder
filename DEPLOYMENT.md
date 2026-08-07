@@ -7,14 +7,14 @@ support, load balancing, reports, and static frontend behavior are preserved.
 
 ```bash
 docker compose -f docker-compose.prod.yml stop api nginx
-docker compose -f docker-compose.prod.yml rm -f api nginx preview-storage-init
+docker compose -f docker-compose.prod.yml rm -f api nginx shared-storage-init
 docker compose -f docker-compose.prod.yml build --no-cache --pull api
-docker compose -f docker-compose.prod.yml up -d --force-recreate preview-storage-init
+docker compose -f docker-compose.prod.yml up -d --force-recreate shared-storage-init
 docker compose -f docker-compose.prod.yml up -d --force-recreate api nginx
 docker compose -f docker-compose.prod.yml logs --tail=200 -f api nginx
 ```
 
-Do not use `down -v`; that removes the preview volume.
+Do not use `down -v`; that removes the preview, blob-cache and share volumes.
 
 ## Security behavior
 

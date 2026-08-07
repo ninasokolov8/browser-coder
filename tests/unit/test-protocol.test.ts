@@ -226,3 +226,51 @@ describe('finding the harness', () => {
     assert.deepEqual(result, { kind: 'none' });
   });
 });
+
+describe('a report longer than the display cap', () => {
+  /*
+   * The failure this guards against: a harness that loops - "your sort, on 1000 random
+   * arrays" - prints more cases than the IDE lists, and the tallies were computed over
+   * the LISTED subset. A student whose failures all landed past the cap was told "All
+   * checks passed".
+   */
+  const CAP = 500;
+
+  function report(total: number, failAt: number[]) {
+    const failing = new Set(failAt);
+    const lines = [`BCTEST plan ${total}`];
+    for (let index = 0; index < total; index++) {
+      lines.push(`BCTEST case n${index} ${failing.has(index) ? 'fail' : 'pass'}`);
+    }
+    lines.push('BCTEST done');
+    return parseTestReport(lines.join('\n'));
+  }
+
+  test('failures past the cap are still counted, and still fail the run', () => {
+    const parsed = report(600, [550, 560]);
+
+    assert.equal(parsed.cases.length, CAP, 'the LIST is capped');
+    assert.equal(parsed.truncated, true, 'and says so');
+
+    assert.equal(parsed.failed, 2, 'but the tally covers every case seen');
+    assert.equal(parsed.passed, 598);
+
+    // The two things a student must never be told here.
+    const summary = summariseReport(parsed);
+    assert.match(summary, /598 of 600 checks passed/, 'not "598 of 500"');
+    assert.match(summary, /2 checks failed further down/, 'the failures are mentioned');
+  });
+
+  test('the tallies add up to everything seen, not to what is listed', () => {
+    const parsed = report(600, [10]);
+    assert.equal(parsed.passed + parsed.failed + parsed.skipped, 600);
+  });
+
+  test('an uncapped report is unchanged', () => {
+    const parsed = report(3, [1]);
+    assert.equal(parsed.truncated, false);
+    assert.equal(parsed.passed, 2);
+    assert.equal(parsed.failed, 1);
+    assert.equal(parsed.cases.length, 3);
+  });
+});
