@@ -43,6 +43,8 @@ import { registerLanguageRoutes } from './server/http/routes/languages.mjs';
 import { registerPreviewRoutes } from './server/http/routes/previews.mjs';
 import { registerBlobRoutes } from './server/http/routes/blobs.mjs';
 import { BlobStore } from './server/blobs/store.mjs';
+import { registerShareRoutes } from './server/http/routes/shares.mjs';
+import { ShareStore } from './server/shares/store.mjs';
 import { registerReportRoutes } from './server/http/routes/reports.mjs';
 import { registerRunRoutes } from './server/http/routes/run.mjs';
 import { createLifecycle } from './server/http/lifecycle.mjs';
@@ -89,6 +91,15 @@ const blobStore = new BlobStore({
   log,
 });
 
+const shareStore = new ShareStore({
+  directory: CONFIG.shares.directory,
+  ttlMs: CONFIG.shares.ttlMs,
+  maxBytes: CONFIG.shares.maxBytes,
+  maxFiles: CONFIG.shares.maxFiles,
+  sweepIntervalMs: CONFIG.shares.sweepIntervalMs,
+  log,
+});
+
 const previewStore = new PreviewStore({
   storageDir: CONFIG.preview.storageDir,
   limits: CONFIG.preview,
@@ -108,7 +119,7 @@ const lifecycle = createLifecycle({
   pipeline,
   sessions,
   log,
-  stoppables: [previewStore, blobStore, rateLimiter, { stop: () => clearInterval(jobReaper) }],
+  stoppables: [previewStore, blobStore, shareStore, rateLimiter, { stop: () => clearInterval(jobReaper) }],
   // Live directories are already empty here: every session was terminated first.
   finalSweep: () => reapAbandonedJobs(EXECUTION_ROOT, 0, new Set()),
 });
@@ -122,6 +133,7 @@ rateLimiter.start();
 // carries on unaffected.
 previewStore.start();
 blobStore.start();
+shareStore.start();
 
 // ── Request pipeline. Order is behaviour. ───────────────────────────────────
 
@@ -167,6 +179,7 @@ registerLanguageRoutes(app, { rootDir: __dirname, log });
 // request and the result back into the frozen v1 envelope.
 registerRunRoutes(app, { pipeline, sessions, config: CONFIG, blobStore });
 registerBlobRoutes(app, { store: blobStore, config: CONFIG, log });
+registerShareRoutes(app, { store: shareStore, log });
 
 // Reading a published artifact stays open; commanding the service to run the suite
 // requires ADMIN_TOKEN and fails closed (V-45, N-08).

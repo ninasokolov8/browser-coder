@@ -25,6 +25,7 @@ import { describeFormatResult, hasFormatter, takeLastFormatResult } from './form
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';
 import { explorerState } from './explorer/state';
 import { runStudentTests } from './tests/run.ts';
+import { shareProject } from './share.ts';
 
 function requireRuntime() {
   const editor = runtime.editor;
@@ -89,6 +90,32 @@ commands.register({
   title: 'Check my work',
   capability: 'run',
   run: () => runStudentTests(),
+});
+
+/*
+ * Share a snapshot of this project.
+ *
+ * No capability gate. Sharing is not running and not editing - a read-only embed is
+ * exactly the situation where a student most wants to send somebody what they are
+ * looking at, and there is no host permission that means 'may not be seen'.
+ */
+commands.register({
+  id: 'workspace.share',
+  title: 'Share a link to this project',
+  run: async () => {
+    const link = await shareProject();
+    if (!link) return;
+
+    // Copying can fail - clipboard access needs a secure context and, in some
+    // browsers, a recent user gesture. The link is shown either way, because a link
+    // the student can read and retype beats a silent failure.
+    try {
+      await navigator.clipboard?.writeText(link);
+      setStatus('Share link copied to the clipboard');
+    } catch {
+      setStatus('Share link: ' + link);
+    }
+  },
 });
 
 commands.register({

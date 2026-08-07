@@ -263,6 +263,26 @@ export const CONFIG = {
     maxBlobBytes: intFromEnv('BLOB_MAX_BYTES', 4 * 1024 * 1024),
   },
 
+  /**
+   * Shared project snapshots.
+   *
+   * A student sends a link; whoever opens it sees exactly the files they had,
+   * read-only. Not live collaboration - see blueprint section 52 for why that is a
+   * refusal rather than a first step.
+   *
+   * Shared storage across replicas, like previews: a link published through one
+   * replica and opened through another must work, and a per-replica directory would
+   * fail in proportion to the replica count.
+   */
+  shares: {
+    directory: process.env.SHARE_STORAGE_DIR || path.join(os.tmpdir(), 'browser-coder-shares'),
+    /** A share is a message, not an archive. */
+    ttlMs: intFromEnv('SHARE_TTL_MS', 30 * 24 * 60 * 60 * 1000),
+    maxBytes: intFromEnv('SHARE_MAX_BYTES', 5 * 1024 * 1024),
+    maxFiles: intFromEnv('SHARE_MAX_FILES', 300),
+    sweepIntervalMs: intFromEnv('SHARE_SWEEP_MS', 60 * 60 * 1000),
+  },
+
   preview: {
     maxHtmlBytes: intFromEnv('PREVIEW_MAX_BYTES', 5 * 1024 * 1024),
     maxFileCount: intFromEnv('PREVIEW_MAX_FILES', 250),

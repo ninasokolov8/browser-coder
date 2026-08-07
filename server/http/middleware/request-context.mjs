@@ -70,6 +70,10 @@ export function applyRequestContext(app, { config, runBodyLimitBytes, runGate = 
   // otherwise swallow its JSON body as a Buffer, and the handler would see no digests
   // and answer that the cache has nothing - so every run would upload everything.
   app.use('/api/blobs/check', express.json({ limit: '64kb' }));
+
+  // A shared project is a whole workspace, so it needs the same allowance a preview
+  // publish gets rather than the 100kb default.
+  app.use('/api/shares', express.json({ limit: config.shares.maxBytes * 2 + 1024 * 1024 }));
   app.use('/api/blobs', express.raw({ type: '*/*', limit: config.blobs.maxBlobBytes }));
 
   app.use(express.json({ limit: '100kb' }));
