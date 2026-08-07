@@ -27,19 +27,12 @@
 
 import * as monaco from 'monaco-editor';
 
-import { getKeywordExplanation, languagesThatCan } from '../languages';
+import { getKeywordExplanation, getLanguage, languagesThatCan } from '../languages';
 import { getUILang } from './wrapped-i18n';
 import { maskCommentsAndStrings, syntaxFor } from '../languages/syntax.ts';
 import { renderHover } from './hover-content.ts';
+import { hoverTargetAt } from './hover-symbols.ts';
 import type { Disposable } from '../workspace/types.ts';
-
-/**
- * Languages with curated explanations.
- *
- * Explicit rather than derived from "does keywords.json exist", so a provider can never
- * be registered for a language with no data - an empty hover that appears and says
- * nothing teaches the student the feature is unreliable.
- */
 
 /**
  * Whether this position is inside real code.
@@ -67,6 +60,23 @@ function isInCode(
 
 let subscriptions: monaco.IDisposable[] = [];
 
+/**
+ * Every key a language explains, cached per language.
+ *
+ * Cached because this is asked on EVERY hover, and the answer only changes when the
+ * bundle does - the keyword files are imported at build time.
+ */
+const keyCache = new Map<string, string[]>();
+
+function keysFor(languageId: string): string[] {
+  let keys = keyCache.get(languageId);
+  if (!keys) {
+    keys = Object.keys(getLanguage(languageId)?.keywords ?? {});
+    keyCache.set(languageId, keys);
+  }
+  return keys;
+}
+
 /** Register the teaching hover for every language that has explanations. */
 export function initializeHoverHelp(): Disposable {
   if (subscriptions.length > 0) return { dispose: () => {} };
@@ -75,12 +85,32 @@ export function initializeHoverHelp(): Disposable {
     subscriptions.push(
       monaco.languages.registerHoverProvider(languageId, {
         provideHover(model, position) {
-          const found = model.getWordAtPosition(position);
+          /*
+           * A word if there is one, otherwise an OPERATOR.
+           *
+           * `getWordAtPosition` returns runs of identifier characters by definition, so
+           * on its own it explains `total` - the student's own variable - and says
+           * nothing about `//`, which is the thing they do not recognise. Blueprint
+           * 40.5 recorded that as a gap.
+           *
+           * The candidate set is this language's own keys, so `//` is only offered
+           * where the language defines it: integer division in Python, and nothing at
+           * all in the C-family, where it starts a comment. `isInCode` below refuses
+           * inside comments anyway, so there are two independent reasons the wrong
+           * answer cannot be given.
+           */
+          const word = model.getWordAtPosition(position);
+          const found = hoverTargetAt(
+            model.getLineContent(position.lineNumber),
+            position.column,
+            word ? { text: word.word, startColumn: word.startColumn, endColumn: word.endColumn } : null,
+            keysFor(languageId),
+          );
           if (!found) return null;
 
           if (!isInCode(languageId, model, position)) return null;
 
-          const entry = getKeywordExplanation(languageId, found.word, getUILang());
+          const entry = getKeywordExplanation(languageId, found.text, getUILang());
           if (!entry) return null;
 
           return {
@@ -92,7 +122,7 @@ export function initializeHoverHelp(): Disposable {
             ),
             contents: [
               {
-                value: renderHover(languageId, found.word, entry),
+                value: renderHover(languageId, found.text, entry),
                 // No HTML, and untrusted: the content is data from a JSON file, and
                 // there is no reason for a teaching note to be able to render markup.
                 isTrusted: false,

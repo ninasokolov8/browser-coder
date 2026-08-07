@@ -671,8 +671,8 @@
   },
   "=>": {
     "type": "operator",
-    "explanation": "הטוקן שמשמש להגדרת פונקציות חץ.",
-    "example": "const double = x => x * 2;"
+    "explanation": "פונקציית חץ: דרך קצרה לכתוב פונקציה. עם ביטוי יחיד התוצאה מוחזרת אוטומטית.",
+    "example": "const double = n => n * 2;\n[1, 2].map(n => n + 1);"
   },
   "spread": {
     "type": "syntax-pattern",
@@ -686,8 +686,8 @@
   },
   "...": {
     "type": "operator",
-    "explanation": "הטוקן המשמש לתחביר spread ולפרמטרים/מאפייני rest, בהתאם להקשר.",
-    "example": "const copy = { ...original };\nfunction f(...args) {}"
+    "explanation": "פריסה או איסוף: פורס רשימה לפריטים נפרדים, או אוסף פריטים נפרדים לרשימה.",
+    "example": "const both = [...first, ...second];\nfunction sum(...numbers) { }"
   },
   "destructuring": {
     "type": "syntax-pattern",
@@ -711,8 +711,8 @@
   },
   "?.": {
     "type": "operator",
-    "explanation": "אופרטור optional chaining. הוא מחזיר undefined במקום לזרוק שגיאה כאשר הצד השמאלי הוא null או undefined.",
-    "example": "const city = user?.address?.city;"
+    "explanation": "שרשור אופציונלי: קורא מאפיין רק אם האובייקט קיים, במקום לזרוק שגיאה.",
+    "example": "user?.address?.city"
   },
   "nullish coalescing": {
     "type": "operator",
@@ -721,8 +721,8 @@
   },
   "??": {
     "type": "operator",
-    "explanation": "אופרטור nullish coalescing. בניגוד ל־||, הוא שומר ערכי falsy תקינים כמו 0 ו־\"\".",
-    "example": "const count = value ?? 0;"
+    "explanation": "איחוד null: משתמש בצד ימין רק כאשר השמאלי הוא null או undefined. בשונה מ-|| , שומר על 0 ועל \"\" .",
+    "example": "const count = input ?? 0;   // 0 stays 0\nconst bad = 0 || 5;         // 5 - probably not wanted"
   },
   "logical AND": {
     "type": "operator",
@@ -1048,5 +1048,55 @@
     "type": "legacy-future-reserved-word",
     "explanation": "שמורה במפרטי ECMAScript ישנים יותר לשימוש עתידי. אין לה התנהגות JavaScript תקנית כיום.",
     "example": "// Avoid using `volatile` as an identifier in compatibility-sensitive code."
+  },
+  "===": {
+    "type": "operator",
+    "explanation": "שוויון קפדני: שווה וגם מאותו טיפוס. עדיף על == , שממיר טיפוסים קודם ויוצר הפתעות כמו \"\" == 0 שמחזיר true.",
+    "example": "1 === 1     // true\n1 === \"1\"   // false"
+  },
+  "!==": {
+    "type": "operator",
+    "explanation": "אי-שוויון קפדני: שונה בערך או בטיפוס.",
+    "example": "if (answer !== 42) { }"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "שוויון רופף: ממיר את שני הצדדים לטיפוס משותף לפני ההשוואה, ולכן \"\" == 0 וגם \"1\" == 1 מחזירים true. השתמשו ב-=== אלא אם אתם דווקא רוצים בכך.",
+    "example": "\"1\" == 1    // true\n\"1\" === 1   // false"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת.",
+    "example": "if (age >= 18 && hasTicket) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת. זהירות כברירת מחדל - הוא מחליף גם 0 וגם \"\" ; ?? לא.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק. n % 2 === 0 אומר ש-n זוגי.",
+    "example": "7 % 2   // 1"
+  },
+  "**": {
+    "type": "operator",
+    "explanation": "חזקה: מעלה את המספר השמאלי בחזקת המספר הימני.",
+    "example": "2 ** 3  // 8"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "מוסיף אחד למשתנה, במקום.",
+    "example": "let i = 0;\ni++;   // i is 1"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "מוסיף למשתנה ושומר את התוצאה בחזרה בתוכו.",
+    "example": "total += 5;"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין לשם שמשמאל. להשוואה השתמשו ב-=== .",
+    "example": "let total = 10;"
   }
 }

@@ -671,8 +671,8 @@
   },
   "=>": {
     "type": "operator",
-    "explanation": "The token used to define arrow functions.",
-    "example": "const double = x => x * 2;"
+    "explanation": "Arrow function: a shorter way to write a function. With one expression the result is returned automatically.",
+    "example": "const double = n => n * 2;\n[1, 2].map(n => n + 1);"
   },
   "spread": {
     "type": "syntax-pattern",
@@ -686,8 +686,8 @@
   },
   "...": {
     "type": "operator",
-    "explanation": "The token used for spread syntax and rest parameters/properties, depending on context.",
-    "example": "const copy = { ...original };\nfunction f(...args) {}"
+    "explanation": "Spread or rest: spreads a list into separate items, or collects separate items into a list.",
+    "example": "const both = [...first, ...second];\nfunction sum(...numbers) { }"
   },
   "destructuring": {
     "type": "syntax-pattern",
@@ -711,8 +711,8 @@
   },
   "?.": {
     "type": "operator",
-    "explanation": "Optional chaining operator. It returns undefined instead of throwing when the left side is null or undefined.",
-    "example": "const city = user?.address?.city;"
+    "explanation": "Optional chaining: read a property only if the thing exists, instead of throwing.",
+    "example": "user?.address?.city"
   },
   "nullish coalescing": {
     "type": "operator",
@@ -721,8 +721,8 @@
   },
   "??": {
     "type": "operator",
-    "explanation": "Nullish coalescing operator. Unlike ||, it preserves valid falsy values like 0 and \"\".",
-    "example": "const count = value ?? 0;"
+    "explanation": "Nullish coalescing: use the right side only when the left is null or undefined. Unlike || , it keeps 0 and \"\" .",
+    "example": "const count = input ?? 0;   // 0 stays 0\nconst bad = 0 || 5;         // 5 - probably not wanted"
   },
   "logical AND": {
     "type": "operator",
@@ -1048,5 +1048,55 @@
     "type": "legacy-future-reserved-word",
     "explanation": "Reserved by older ECMAScript specifications for future use. It has no standard JavaScript behavior today.",
     "example": "// Avoid using `volatile` as an identifier in compatibility-sensitive code."
+  },
+  "===": {
+    "type": "operator",
+    "explanation": "Strict equality: equal AND the same type. Prefer this over == , which converts types first and produces surprises like \"\" == 0 being true.",
+    "example": "1 === 1     // true\n1 === \"1\"   // false"
+  },
+  "!==": {
+    "type": "operator",
+    "explanation": "Strict inequality: different in value OR in type.",
+    "example": "if (answer !== 42) { }"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Loose equality: converts the two sides to a common type BEFORE comparing, which makes \"\" == 0 and \"1\" == 1 both true. Use === unless you specifically want that.",
+    "example": "\"1\" == 1    // true\n\"1\" === 1   // false"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side.",
+    "example": "if (age >= 18 && hasTicket) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "Logical OR: true when either side is true. Careful as a default value - it replaces 0 and \"\" too; ?? does not.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. n % 2 === 0 means n is even.",
+    "example": "7 % 2   // 1"
+  },
+  "**": {
+    "type": "operator",
+    "explanation": "Power: raises the left number to the power of the right one.",
+    "example": "2 ** 3  // 8"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "Adds one to a variable, in place.",
+    "example": "let i = 0;\ni++;   // i is 1"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it.",
+    "example": "total += 5;"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the name on the left. To COMPARE use === .",
+    "example": "let total = 10;"
   }
 }

@@ -943,5 +943,60 @@
     "type": "typing_type",
     "explanation": "Creates a generic type variable for type hints.",
     "example": "from typing import TypeVar\nT = TypeVar('T')"
+  },
+  "//": {
+    "type": "operator",
+    "explanation": "Integer division: divides and throws away the remainder, so the answer is always a whole number. Ordinary / always gives a decimal, even for 6 / 2.",
+    "example": "7 // 2   # 3\n7 / 2    # 3.5"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. Most often used to ask \"is this divisible?\" - n % 2 == 0 means n is even.",
+    "example": "7 % 2    # 1\nif n % 2 == 0:\n    print(\"even\")"
+  },
+  "**": {
+    "type": "operator",
+    "explanation": "Power: raises the left number to the power of the right one.",
+    "example": "2 ** 3   # 8\n9 ** 0.5 # 3.0 (square root)"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values and gives True or False. Not the same as a single = , which ASSIGNS a value.",
+    "example": "if answer == 42:\n    print(\"correct\")"
+  },
+  "!=": {
+    "type": "operator",
+    "explanation": "\"Is not equal to\". Gives True when the two values differ.",
+    "example": "if name != \"\":\n    print(\"hello\", name)"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the name on the left. To COMPARE two values use == instead.",
+    "example": "total = 10"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it. total += 5 is short for total = total + 5.",
+    "example": "total = 0\nfor n in [1, 2, 3]:\n    total += n"
+  },
+  "-=": {
+    "type": "operator",
+    "explanation": "Subtracts from a variable and stores the result back in it.",
+    "example": "lives = 3\nlives -= 1"
+  },
+  "<=": {
+    "type": "operator",
+    "explanation": "\"Is less than or equal to\".",
+    "example": "if score <= 100:\n    print(\"valid\")"
+  },
+  ">=": {
+    "type": "operator",
+    "explanation": "\"Is greater than or equal to\".",
+    "example": "if age >= 18:\n    print(\"adult\")"
+  },
+  "->": {
+    "type": "operator",
+    "explanation": "Return type hint on a function. A note for readers and tools - Python does not enforce it.",
+    "example": "def double(n: int) -> int:\n    return n * 2"
   }
 }

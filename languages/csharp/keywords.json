@@ -1038,5 +1038,65 @@
     "type": "preprocessor_directive",
     "explanation": "Controls nullable reference type warnings and annotations.",
     "example": "#nullable enable\nstring? name = null;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values. For strings C# compares the TEXT, which is different from Java - but for your own classes it compares identity unless the class says otherwise.",
+    "example": "if (name == \"Ada\") { }   // works in C#"
+  },
+  "!=": {
+    "type": "operator",
+    "explanation": "\"Is not equal to\".",
+    "example": "if (total != 0) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. n % 2 == 0 means n is even.",
+    "example": "int rest = 7 % 2;   // 1"
+  },
+  "/": {
+    "type": "operator",
+    "explanation": "Division. Between two INTEGERS the remainder is thrown away: 7 / 2 is 3. Make one side a double to get a decimal.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "Adds one to a variable, in place.",
+    "example": "for (int i = 0; i < 5; i++) { }"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it.",
+    "example": "total += n;"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side.",
+    "example": "if (list != null && list.Count > 0) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "Logical OR: true when either side is true.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "Null coalescing: use the right side only when the left is null.",
+    "example": "string display = name ?? \"unknown\";"
+  },
+  "?.": {
+    "type": "operator",
+    "explanation": "Null-conditional: read a member only if the object is not null, instead of throwing.",
+    "example": "int? length = name?.Length;"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "Lambda, or an expression-bodied member: a short way to write a function or a property.",
+    "example": "list.ForEach(item => Console.WriteLine(item));"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
+    "example": "int total = 10;"
   }
 }

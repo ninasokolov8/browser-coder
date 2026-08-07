@@ -216,12 +216,20 @@ describe('the curated data, read from disk', () => {
 });
 
 describe('coverage the data does not have', () => {
-  test('operators are not covered, and that is recorded rather than assumed', () => {
-    // A beginner asking what `//` or `%` means gets nothing today. Adding them is a
-    // data change, not a code change - noted so the gap is explicit.
+  test('operators ARE covered now, which this test used to record as a gap', () => {
+    /*
+     * It used to assert the opposite - that `%` and `//` were absent - as a way of
+     * writing the gap down rather than leaving it implied. The data is there now, and
+     * finding the symbol under the cursor is `hover-symbols.ts`, because
+     * `getWordAtPosition` returns words and `//` is not one.
+     *
+     * Inverted rather than deleted: the assertion is still the useful one, and if the
+     * data is ever dropped this says so.
+     */
     const python = keywords('python');
-    assert.ok(!('%' in python));
-    assert.ok(!('//' in python));
+    assert.equal(python['%']?.type, 'operator');
+    assert.equal(python['//']?.type, 'operator');
+    assert.match(python['//']?.explanation ?? '', /whole number|integer/i);
   });
 
   test('html, css, json and markdown have no curated help', () => {

@@ -963,5 +963,65 @@
     "type": "concurrency_class",
     "explanation": "Future implementation that supports chaining asynchronous operations.",
     "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values. For objects - INCLUDING Strings - this asks whether they are the same object in memory, not whether they look the same. Use .equals() to compare text.",
+    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
+  },
+  "!=": {
+    "type": "operator",
+    "explanation": "\"Is not equal to\". For objects this compares identity, like == does.",
+    "example": "if (total != 0) { }"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. n % 2 == 0 means n is even.",
+    "example": "int rest = 7 % 2;   // 1"
+  },
+  "/": {
+    "type": "operator",
+    "explanation": "Division. Between two INTEGERS this throws away the remainder: 7 / 2 is 3, not 3.5. Make one side a double to get a decimal.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "Adds one to a variable, in place.",
+    "example": "for (int i = 0; i < 5; i++) { }"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it.",
+    "example": "total += n;"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side, so the right side is not even evaluated.",
+    "example": "if (list != null && list.size() > 0) { }"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "Logical OR: true when either side is true.",
+    "example": "if (isAdmin || isOwner) { }"
+  },
+  "<=": {
+    "type": "operator",
+    "explanation": "\"Is less than or equal to\".",
+    "example": "if (score <= 100) { }"
+  },
+  ">=": {
+    "type": "operator",
+    "explanation": "\"Is greater than or equal to\".",
+    "example": "if (age >= 18) { }"
+  },
+  "->": {
+    "type": "operator",
+    "explanation": "Lambda: a short unnamed function.",
+    "example": "list.forEach(item -> System.out.println(item));"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
+    "example": "int total = 10;"
   }
 }
