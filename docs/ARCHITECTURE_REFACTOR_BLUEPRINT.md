@@ -8717,3 +8717,156 @@ is not in the way either. It would want its own service: a document server with 
 addressed separately from the run pipeline, with the IDE as one client among several.
 That is a project, and this section exists so that whoever starts it knows it was
 considered and deferred rather than missed.
+
+## 53. A sweep for what the blueprint never listed
+
+Everything up to here was found by working through this document. This section is the
+result of the opposite exercise: reading the code with no list in hand, asking only "what
+would a student actually hit", and checking every candidate against the code rather than
+against the plan.
+
+It found fourteen defects. Six of them were in work this document describes as finished,
+which is the more useful half of the result — the plan was a good map of what to build
+and a poor map of what was broken.
+
+### 53.1 The shape they share
+
+Almost every one is the same failure, and it is worth naming because it is the thing to
+look for next time:
+
+> A comment, a config block, or a doc string states a property. Nothing implements it.
+> Both halves look right on their own.
+
+- `asset-transport.ts` promised "a digest evicted between the check and the run … ends
+  with the asset inline". No code handled the server's 409.
+- The `shares` config block said in as many words that the storage had to be shared
+  across replicas. Production never set the variable.
+- `DiagnosticsStore.invalidate()` was documented as "called when a document changes".
+  It was called by nothing.
+- `parseTestReport` said its tallies were "counted over everything seen, not only what
+  is listed". They were counted over the listed subset.
+- The Python adapter's comment said the turtle shim being prepended to the entry file
+  was fine for debugging. It made debugging turtle programs impossible.
+- `initializeAssetViewer()`'s comment described it as what keeps the viewer in step
+  "rather than every call site that opens a file" — the exact opposite of the truth,
+  and it was never called at all.
+- `storage.ts` described `setDbName` as the switch that isolates an embedded IDE's
+  database. Nothing wrote it or read it.
+
+None of these is a hard bug to fix. All of them are hard bugs to *see*, because reading
+the file convinces you the behaviour exists.
+
+### 53.2 The second shape: one rule, two implementations
+
+The other recurring cause, and the more damaging one, because it survives being fixed:
+
+- **Search and Replace All.** Two scans of the same file that had already disagreed twice
+  before (the pattern built without the language; the comment/string mask applied on one
+  side only). Both were fixed by sharing a little more. They still built their own scans,
+  and disagreed a third time about what `^` means. Now there is one scan.
+- **The Step-Up origin allowlist.** Written in the server's CORS middleware and again in
+  the client's postMessage guard. Already drifted in both directions.
+- **The dirty-marking listener.** The identical five lines in `workspace-init.ts` and
+  `integrations/stepup.ts`. Fixing the asset-corruption bug in one left the other still
+  writing Python into the student's image — the browser test caught it still failing
+  after the "fix".
+- **Drag-and-drop.** Two drop targets implementing one operation; the positional one
+  swallowed a failed import rewrite and reported success.
+- **The readiness check.** `app/runtime.ts` exported the accessors; three feature modules
+  had private near-duplicates anyway.
+
+The lesson is narrower than "don't duplicate". It is that **fixing a duplicated rule in
+one place is not a fix**, and the only durable repair is to leave one implementation
+behind.
+
+### 53.3 What was found, by consequence
+
+**A student is told something false.**
+
+- "Check my work" ran the student's own file, never the marking harness. The option was
+  threaded through the type and consulted in one place — and never used to choose the
+  entry point. The contract test passed because it posts `entryPoint` straight to
+  `/api/run` and never exercises the client path that computes it.
+- "All checks passed" for a run that failed, when the harness printed more than 500
+  cases and the failures landed past the display cap. `summariseReport` had the same bug
+  twice more: "598 of 500 checks passed", and a first-failure lookup that could not see
+  a failure past the cap.
+- A compile error stayed squiggled on its original line through every edit that followed,
+  including the one that fixed it.
+- A drag-and-drop that broke the project's imports reported "Moved 1 item".
+
+**A student loses work.**
+
+- Closing a tab left the file unreadable: `release()` disposed the Monaco model without
+  handing the buffer back, so the next read threw `Model is disposed!`. Run, search and
+  the Step-Up snapshot all go through that read.
+- An open image collected the source file's text, because the editor keeps the previous
+  file's model attached behind the asset viewer and the listener attributed the change to
+  the active tab. Autosave then persisted it over the image.
+- A failed IndexedDB write was recorded, kept the document dirty, fired an event — and
+  nothing subscribed. The IDE looked like it was autosaving and was not.
+- Nothing flushed before the page went away, so a student who typed and closed the tab
+  lost whatever was inside the one-second debounce.
+
+**It works in development and not in production.**
+
+- The blob cache and share snapshots were per-replica in both compose files. Behind
+  `least_conn` with two replicas and no session affinity, roughly half of every share
+  link 404'd and roughly half of every run carrying an image failed outright.
+- Stop did nothing during a compile — up to 45 s for C# — because the client claimed the
+  session only when the server named it, which is after the compile.
+- A disconnect during a compile leaked the sandbox, because the close handler was armed
+  after the await and `close` fires once.
+- Debugging any turtle program was broken: 1,583 lines of shim were prepended to the
+  student's file, tracebacks were corrected for the shift and breakpoints were not.
+
+### 53.4 Two fixes worth reading
+
+**The turtle shim.** The obvious repair was to thread the offset through the debug
+adapter and translate in both directions. The right repair was to notice the offset was
+never necessary: the shim's whole job is to put a module into `sys.modules['turtle']`, so
+it has to *run* before the student's import, not share a file with it. Giving it its own
+file deleted the offset, the traceback arithmetic, and the class of bug — and let the
+frame filter become a question about filenames instead of a number that goes stale
+whenever the shim grows.
+
+**check-ops-config.mjs.** The per-replica storage bug was invisible in development, where
+there is one replica and one tmp directory. So the fix is not only the compose change but
+a check that fails when a multi-replica service points a shared store anywhere but a
+named volume — in the same spirit as the V-07 and N-05 checks already there. It found the
+same bug a second time immediately, in `docker-compose.yml`, which set none of the three
+variables including previews.
+
+### 53.5 What the sweep says about the test suite
+
+The suite is good and it missed all of this. Where the gaps were:
+
+- **Modules that import the DOM cannot be tested from node**, so their rules were never
+  asserted. Three bugs lived in `search.ts` for that reason alone. Fixed the way this
+  refactor fixes it everywhere else: the rules moved to `search-core.ts` taking options
+  as an argument, and now have 33 tests including the invariant across all sixteen option
+  combinations.
+- **A unit test of a unit cannot see a missing wire.** `DiagnosticsStore.invalidate()`
+  was thoroughly tested and never called. The new tests drive the real `WorkspaceService`,
+  because the connection is the thing that was broken.
+- **`MemoryBuffer` has no disposed state**, so no node test could ever have caught the
+  tab-close bug. The registry's own comment on `#reconcile` already said this, about a
+  different bug, in the same file. It needed a browser test, and now has one.
+- **A contract test that posts to the API bypasses the client that builds the request.**
+  That is exactly how "Check my work" shipped broken with a passing test.
+
+### 53.6 What was deliberately not changed
+
+- **`arc.co` and `stepup.zone`** are kept in the merged origin allowlist. Nothing in
+  either repository references them and both look stale, but each was live on one side,
+  and pruning an origin this repository cannot verify is a decision for whoever owns the
+  DNS. They are flagged in the module header rather than removed.
+- **The union, not the intersection.** Merging the two allowlists necessarily granted
+  the server three origins it previously refused — including `localhost:8080`, which is
+  the `APP_URL` in Step-Up's own `.env.example`, so a developer running Step-Up locally
+  was being refused by CORS. The one rule NOT shared is the server's: a subdomain grant
+  is still refused over plain http outside development, and there is a test asserting
+  that this did not become shared by accident.
+- **`PREVIEW_MAX_STORAGE_BYTES` defaults to unlimited.** The cap is now enforced, but
+  zero still means no cap, so no existing deployment starts deleting student work
+  because it upgraded.
