@@ -9,6 +9,7 @@ import { saveSettings } from '../components/settings';
 import { getOrCreateModel, updateEmptyState } from './editor-core';
 import { isAssetFile, showAssetViewer } from './asset-viewer.ts';
 import { renderFileTree } from './explorer';
+import { loadSharedProject, requestedShareId } from './share.ts';
 
 export async function initializeWorkspace(): Promise<void> {
 const editor = runtime.editor;
@@ -27,6 +28,19 @@ if (appConfig.isEmbedded) {
   updateEmptyState(true);
   editor.setModel(null);
   setStatus("Waiting for content…");
+} else if (await openSharedProjectIfRequested()) {
+  /*
+   * The page was opened from a share link, and the shared files are now the workspace.
+   *
+   * Before the normal restore, deliberately: `tabManager.init()` reopens whatever this
+   * browser had last time, and a share link that dropped somebody into their OWN old
+   * project would be worse than useless - they would see the wrong code and have no
+   * idea why.
+   *
+   * Not offered for an embedded IDE. There, Step-Up owns what is on screen and pushes
+   * it over postMessage; a link that replaced the task's files would be the IDE
+   * overruling the platform that framed it.
+   */
 } else {
   const initialTab = await tabManager.init(runtime.currentLang, runtime.currentVersion);
 
@@ -189,4 +203,63 @@ downloadBtn.addEventListener("click", () => {
 });
 
 // Run button
+}
+
+/**
+ * If this page was opened from a share link, make its files the workspace.
+ *
+ * Returns true when it did, so the caller skips the ordinary restore - reopening the
+ * viewer's OWN last project on top of a share link would show them the wrong code with
+ * no explanation.
+ *
+ * Read-only is not enforced by locking the editor, and that is deliberate. The natural
+ * next thing after reading somebody's broken code is to try a fix, and the copy is
+ * theirs: it lives in their browser, it cannot touch the original, and re-sharing makes
+ * a new link. What must not happen is silent CONFUSION about which is which, so the
+ * status line says whose it is.
+ *
+ * Any failure returns false and the IDE starts normally. A share link that cannot be
+ * fetched must not leave a student with no workspace at all.
+ */
+async function openSharedProjectIfRequested(): Promise<boolean> {
+  const id = requestedShareId();
+  if (!id) return false;
+
+  const { editor, tabManager } = { editor: runtime.editor, tabManager: runtime.tabManager };
+  if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) return false;
+
+  setStatus('Opening shared project…');
+
+  const project = await loadSharedProject(id);
+  if (!project || !Array.isArray(project.files) || project.files.length === 0) {
+    // `loadSharedProject` has already said why on the status line.
+    return false;
+  }
+
+  try {
+    const tab = await tabManager.replaceAllFiles(
+      project.files.map(file => ({
+        path: file.path,
+        content: file.content,
+        language: file.language,
+      })),
+      runtime.currentLang,
+      runtime.currentVersion,
+    );
+
+    if (tab && !isAssetFile(tab.file)) {
+      editor.setModel(getOrCreateModel(tab));
+      updateEmptyState(false);
+    } else {
+      editor.setModel(null);
+      updateEmptyState(!tab);
+    }
+
+    renderFileTree();
+    setStatus(`Opened a shared project — ${project.files.length} files. This is your own copy.`);
+    return true;
+  } catch {
+    setStatus('That shared project could not be opened.');
+    return false;
+  }
 }

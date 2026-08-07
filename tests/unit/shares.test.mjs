@@ -220,3 +220,67 @@ describe('expiry', () => {
     assert.equal(store.read('A'.repeat(22)), null);
   });
 });
+
+describe('the client half of a share link', () => {
+  test('a share id is read from the query string, and only a well-formed one', async () => {
+    /*
+     * This is the READ side, and it existed with nothing calling it.
+     *
+     * `shareProject()` created a link and the command copied it, but nothing on
+     * startup ever looked for `?share=`, so a student could produce a link that did
+     * absolutely nothing when opened. The feature was write-only and the tests did not
+     * notice, because both halves individually did what they said.
+     *
+     * `workspace-init.ts` calls `openSharedProjectIfRequested()` now, and this pins the
+     * parsing half - the wiring itself is covered by the browser suite.
+     */
+    const { requestedShareId } = await import('../../src/features/share-link.ts');
+
+    assert.equal(requestedShareId(`?share=${'A'.repeat(22)}`), 'A'.repeat(22));
+    assert.equal(requestedShareId(`?other=1&share=${'b'.repeat(22)}`), 'b'.repeat(22));
+
+    for (const bad of ['', '?share=', '?share=short', `?share=${'A'.repeat(23)}`, '?share=../../etc']) {
+      assert.equal(requestedShareId(bad), null, `accepted ${bad}`);
+    }
+  });
+
+  test('the parser agrees with the server about what an id is', async () => {
+    // Two definitions of "a valid share id" would mean a link the client refuses and
+    // the server would have served, or the reverse.
+    const { requestedShareId } = await import('../../src/features/share-link.ts');
+
+    for (const id of ['A'.repeat(22), 'a1_-'.repeat(5) + 'xy']) {
+      const clientAccepts = requestedShareId(`?share=${id}`) !== null;
+      const serverAccepts = parseShareId(id) !== null;
+      assert.equal(clientAccepts, serverAccepts, `disagreed about ${id}`);
+    }
+  });
+});
+
+describe('building the link to hand somebody', () => {
+  test('only the share parameter survives', async () => {
+    /*
+     * A teacher demonstrating inside a read-only embedded frame would otherwise send
+     * links carrying `readonly=1`, and nobody who opened one could type in it. The
+     * publisher's own session settings are not part of what they are sharing.
+     */
+    const { buildShareLink } = await import('../../src/features/share-link.ts');
+
+    const link = buildShareLink(
+      'https://coder.example.com/?embed=1&mode=snippet&readonly=1&lang=python#frag',
+      'A'.repeat(22),
+    );
+
+    assert.equal(link, `https://coder.example.com/?share=${'A'.repeat(22)}`);
+    assert.ok(!link.includes('readonly'));
+    assert.ok(!link.includes('#'));
+  });
+
+  test('the path is kept, because an IDE can be served under one', async () => {
+    // Step-Up proxies this under /coder/, so dropping the path would produce a link
+    // to the LMS root.
+    const { buildShareLink } = await import('../../src/features/share-link.ts');
+    const link = buildShareLink('https://school.example/coder/?lang=java', 'B'.repeat(22));
+    assert.equal(link, `https://school.example/coder/?share=${'B'.repeat(22)}`);
+  });
+});

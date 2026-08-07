@@ -27,9 +27,7 @@ import { runtime } from '../app/runtime';
 import { setStatus } from '../components/output';
 import { announce } from '../components/announce.ts';
 import { collectWorkspaceSnapshot } from './workspace';
-
-/** The query parameter a share link carries. */
-export const SHARE_PARAM = 'share';
+import { buildShareLink, requestedShareId as parseShareParam } from './share-link.ts';
 
 export interface SharedProject {
   readonly version: number;
@@ -79,26 +77,16 @@ export async function shareProject(): Promise<string | null> {
     }
 
     const { id } = await response.json();
-    const link = new URL(window.location.href);
-    // Only the share parameter survives: carrying `readonly`, `mode` or a stale
-    // `lang` from the publisher's own session would impose their embed settings on
-    // whoever opens it.
-    link.search = `?${SHARE_PARAM}=${encodeURIComponent(id)}`;
-    link.hash = '';
-    return link.toString();
+    return buildShareLink(window.location.href, id);
   } catch {
     setStatus('Could not reach the server to create a share link.');
     return null;
   }
 }
 
-/** The share id in this page's URL, if it has one. */
-export function requestedShareId(search: string = window.location.search): string | null {
-  const id = new URLSearchParams(search).get(SHARE_PARAM);
-  // Validated here as well as on the server: this value goes into a URL the browser
-  // then fetches, and a client that will fetch anything it is told to is one redirect
-  // away from being useful to somebody else.
-  return id && /^[A-Za-z0-9_-]{22}$/.test(id) ? id : null;
+/** The share id in THIS page's URL, if it has one. Parsing is in `share-link.ts`. */
+export function requestedShareId(): string | null {
+  return parseShareParam(window.location.search);
 }
 
 /** Fetch a shared project, or null with the reason already shown. */
