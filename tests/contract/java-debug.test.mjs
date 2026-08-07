@@ -236,11 +236,19 @@ describe('breakpoints, stepping and variables', { skip }, () => {
     assert.equal(hello.token, 'contract-token');
   });
 
-  test('it attaches to the JVM over JDWP before the program runs', async () => {
-    await debug.waitFor('attached');
-  });
-
-  test('a breakpoint set before launch is armed and reported back', async () => {
+  test('a breakpoint sent the instant it says hello is queued, not lost', async () => {
+    /*
+     * The bug this pins.
+     *
+     * `hello` is what makes the server report `debug:attached`, and a client reacts
+     * to that immediately - but `hello` has to go out before the JVM is attached, or
+     * the channel's connect timeout fires. A command arriving in that window used to
+     * throw inside the handler and vanish: nothing armed, the "first setBreakpoints"
+     * gate never released, and five seconds later the fallback timer let the program
+     * run straight past the student's breakpoint.
+     *
+     * Sending it here, with no wait after `hello`, is the race.
+     */
     debug.send({ command: 'setBreakpoints', lines: [10] });
     const armed = await debug.waitFor('breakpoints');
     // Nothing has loaded yet: `Main` does not exist until the VM resumes, so the
@@ -358,7 +366,7 @@ describe('packages, several files and nested classes', { skip }, () => {
       'app.Main',
     );
     await debug.start();
-    await debug.waitFor('attached');
+    await debug.waitFor('hello');
   });
 
   after(() => debug?.dispose());

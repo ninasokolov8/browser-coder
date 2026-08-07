@@ -134,6 +134,19 @@ php.on('exit', code => {
   finish();
 });
 
+/**
+ * End the session, and do not leave a zombie behind.
+ *
+ * Usually reached from the interpreter's own `exit` handler, where there is nothing
+ * left to wait for - but not always: an Xdebug that never dials back, or a teardown
+ * from the IDE, both get here with PHP still running. Exiting then reparents it to
+ * PID 1, which in this image is the server, and a Node process is not an init and does
+ * not reap strangers. The production compose sets `pids_limit: 512`, so leaked PIDs
+ * eventually stop the container forking anything.
+ *
+ * So: wait for it, bounded - a process that will not die must not hold the job open
+ * either, and the container's init (`init: true` in compose) reaps what is left.
+ */
 function finish() {
   try { session?.close(); } catch { /* already gone */ }
   try { listener.close(); } catch { /* already closed */ }
@@ -141,7 +154,20 @@ function finish() {
     channelClosed = true;
     try { channel.end(); } catch { /* already gone */ }
   }
-  setTimeout(() => process.exit(exitCode), 50);
+
+  const leave = () => process.exit(exitCode);
+
+  if (php.exitCode !== null || php.signalCode !== null) {
+    setTimeout(leave, 50);
+    return;
+  }
+
+  const giveUp = setTimeout(leave, 2000);
+  php.once('exit', () => {
+    clearTimeout(giveUp);
+    setTimeout(leave, 50);
+  });
+  try { php.kill(); } catch { /* already gone */ }
 }
 
 // ── Session state ───────────────────────────────────────────────────────────
@@ -434,7 +460,18 @@ async function handleCommand(command) {
  * `DbgpSession` serialises the wire, but `proceed` also reads state around its call, so
  * the handler is serialised too.
  */
-let handling = Promise.resolve();
+/*
+ * ...and they are held until the engine exists.
+ *
+ * `hello` is what makes the server report `debug:attached`, and a client reacts to
+ * that by sending `setBreakpoints` at once - but `hello` goes out when the socket to
+ * the IDE opens, which is before Xdebug has dialled back. A command arriving in that
+ * window has no engine to reach, and dropping it means nothing is armed and the
+ * program runs straight past the student's breakpoint.
+ */
+let markReady = () => {};
+const ready = new Promise(resolve => { markReady = resolve; });
+let handling = ready;
 
 channel.on('data', chunk => {
   channelBuffer += chunk.toString('utf8');
@@ -481,7 +518,10 @@ await session.next();
 await session.command('feature_set', '-n max_depth -v 1');
 await session.command('feature_set', '-n max_children -v 100');
 
-send({ type: 'attached' });
+// Anything the client already sent runs now. No `attached` frame: the server derives
+// `debug:attached` from `hello`, and sending one as well made the client see the same
+// event twice.
+markReady();
 
 // Xdebug is holding the program before its first line, which is exactly the pause the
 // other adapters have to engineer. Do not waste it.

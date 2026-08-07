@@ -20,6 +20,7 @@ RUN mkdir -p /opt/stage && \
     curl -sSL "https://github.com/viewizard/dncdbg/releases/download/v${DNCDBG_VERSION}/dncdbg-${DNCDBG_VERSION}-linux-musl-x64.tar.gz" \
       | tar -xz -C /opt/stage 2>/dev/null; \
     mv /opt/stage/dncdbg /opt/dncdbg && rm -rf /opt/stage /opt/dncdbg/._* && \
+    chown -R root:root /opt/dncdbg && \
     chmod 755 /opt/dncdbg/dncdbg && /opt/dncdbg/dncdbg --version
 
 # .NET environment

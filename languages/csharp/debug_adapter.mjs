@@ -126,6 +126,25 @@ const connection = new DapConnection(debugger_.stdin, debugger_.stdout);
 let exitCode = 0;
 let finished = false;
 
+/**
+ * End the session, and do not leave a zombie behind.
+ *
+ * The obvious teardown - kill the debugger, then exit on a short timer - leaks a
+ * process every single debug run. Node reaps its own children, but only while it is
+ * alive: exiting immediately after `kill()` reparents the dying debugger to PID 1,
+ * which in this image is the server itself, and a Node process is not an init and
+ * does not reap strangers. Measured: one `[dncdbg]` zombie per C# debug run, none for
+ * an ordinary run.
+ *
+ * That is not cosmetic. The production compose sets `pids_limit: 512`, so a
+ * long-running replica accumulating one dead PID per debug session eventually cannot
+ * fork at all - and the first symptom is every language failing to run, not
+ * debugging.
+ *
+ * So: ask it to stop, WAIT for it, and only then exit. The wait is bounded, because a
+ * debugger that will not die must not hold the job open either - and if that bound is
+ * ever hit, the container's init reaps what is left (`init: true` in compose).
+ */
 function finish() {
   if (finished) return;
   finished = true;
@@ -133,10 +152,20 @@ function finish() {
     channelClosed = true;
     try { channel.end(); } catch { /* already gone */ }
   }
-  setTimeout(() => {
-    try { debugger_.kill(); } catch { /* gone */ }
-    process.exit(exitCode);
-  }, 50);
+
+  const leave = () => process.exit(exitCode);
+
+  if (debugger_.exitCode !== null || debugger_.signalCode !== null) {
+    setTimeout(leave, 50);
+    return;
+  }
+
+  const giveUp = setTimeout(leave, 2000);
+  debugger_.once('exit', () => {
+    clearTimeout(giveUp);
+    setTimeout(leave, 50);
+  });
+  try { debugger_.kill(); } catch { /* already gone */ }
 }
 
 debugger_.on('exit', () => {
@@ -514,7 +543,19 @@ async function handleCommand(command) {
  * comes back, and `pausedThread` is read and cleared around each one. Serialising the
  * handler keeps that consistent; DAP itself would happily interleave them.
  */
-let handling = Promise.resolve();
+/*
+ * ...and they are held until the debugger is configurable.
+ *
+ * `hello` is what makes the server report `debug:attached`, and a client reacts to
+ * that by sending `setBreakpoints` at once - but `hello` goes out when the socket to
+ * the IDE opens, before `initialize` has even been sent. DAP will not accept
+ * breakpoints until the `initialized` event, so a command arriving in that window has
+ * nowhere to go, and dropping it means nothing is armed and the program runs straight
+ * past the student's breakpoint.
+ */
+let markReady = () => {};
+const ready = new Promise(resolve => { markReady = resolve; });
+let handling = ready;
 
 channel.on('data', chunk => {
   channelBuffer += chunk.toString('utf8');
@@ -579,7 +620,10 @@ const launch = connection.request('launch', {
 });
 
 await initialized;
-send({ type: 'attached' });
+// Anything the client already sent runs now. No `attached` frame: the server derives
+// `debug:attached` from `hello`, and sending one as well made the client see the same
+// event twice.
+markReady();
 
 // The one window in which breakpoints may be set. Do not waste it.
 await firstBreakpointsCommand;

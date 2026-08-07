@@ -43,6 +43,18 @@ services:
   # API - Smart Auto-Scaling Server (SANDBOXED)
   # ============================================
   api:
+    # An init process, so an orphaned grandchild is reaped.
+    #
+    # A debug run is node -> adapter -> (JVM | php | dncdbg -> dotnet). If the
+    # adapter is killed - a run timeout, a closed session - its child is reparented
+    # to PID 1, and PID 1 here is the server: a Node process, which is not an init
+    # and does not reap strangers. Each one then sits as a zombie holding a PID, and
+    # `pids_limit` below is 512, so a long-running replica eventually cannot fork at
+    # all - at which point EVERY language stops running, not just the debugger.
+    #
+    # The adapters also wait for their own child before exiting; this is the backstop
+    # for the case where they are not given the chance.
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.production

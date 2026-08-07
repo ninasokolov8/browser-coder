@@ -827,3 +827,126 @@ describe('a debug run that does not compile', requires('typescript'), () => {
     await run.close();
   });
 });
+
+/**
+ * Debugging the three languages whose adapters supervise a separate process.
+ *
+ * Their own contract suites drive the adapters directly, which is the right place to
+ * assert protocol behaviour - but it bypasses everything above them: the route that
+ * decides a run is a debug run, the channel that relays commands, and the session that
+ * ties the two together.
+ *
+ * That gap was not theoretical. Driving a real Java debug run over HTTP is how the
+ * "command arrives before the adapter can serve it" bug was found: `setBreakpoints`
+ * landed between `hello` and the JVM being attached, threw, and was lost - so nothing
+ * armed and the program ran to completion. Every adapter-level test still passed,
+ * because none of them send a command that early.
+ */
+describe('debugging a supervised language over HTTP', () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  /**
+   * Each case stops on a line that has already assigned something, so the locals are
+   * worth asserting on rather than being all defaults.
+   */
+  const CASES = [
+    {
+      language: 'java',
+      version: 'java17',
+      line: 4,
+      code: [
+        'public class Main {',                          // 1
+        '  public static void main(String[] args) {',   // 2
+        '    int total = 1 + 2;',                       // 3
+        '    System.out.println(total);',               // 4
+        '    System.out.println("done");',              // 5
+        '  }',                                          // 6
+        '}',                                            // 7
+      ].join('\n'),
+      local: 'total',
+    },
+    {
+      language: 'php',
+      version: 'php8',
+      line: 3,
+      code: ['<?php', '$total = 1 + 2;', 'echo $total . "\n";', 'echo "done\n";'].join('\n'),
+      local: '$total',
+    },
+    {
+      language: 'csharp',
+      version: 'csharp12',
+      line: 4,
+      code: [
+        'class Program {',                              // 1
+        '  static void Main() {',                       // 2
+        '    int total = 1 + 2;',                       // 3
+        '    System.Console.WriteLine(total);',         // 4
+        '    System.Console.WriteLine("done");',        // 5
+        '  }',                                          // 6
+        '}',                                            // 7
+      ].join('\n'),
+      local: 'total',
+    },
+  ];
+
+  for (const testCase of CASES) {
+    /*
+     * `requires` checks the interpreter, which is not quite the whole story for PHP
+     * (Xdebug is a compiled extension, and for C# the debugger is a separate binary).
+     * A host with the language but not its debugger will fail here rather than skip -
+     * which is the right way round: the image has both, and a deployment that lost one
+     * should be loud.
+     */
+    describe(`${testCase.language} over HTTP`, requires(testCase.language), () => {
+      test('stops at the breakpoint, then runs to the end', async () => {
+        const run = await new StreamedRun(base).start({
+          language: testCase.language,
+          version: testCase.version,
+          code: testCase.code,
+          debug: true,
+        });
+
+        await run.waitFor('debug:attached');
+
+        // Sent immediately, with no further wait: this is the race described above.
+        assert.equal(await run.debug('setBreakpoints', { lines: [testCase.line] }), 200);
+        await run.waitFor('debug:breakpoints');
+
+        const stopped = await run.waitFor('debug:stopped');
+        assert.equal(stopped.line, testCase.line);
+        const names = (stopped.locals ?? []).map(local => local.name);
+        assert.ok(
+          names.includes(testCase.local),
+          `expected a local named ${testCase.local}, saw ${names.join(', ')}`,
+        );
+
+        await run.debug('continue');
+        const exit = await run.waitFor('exit');
+        assert.equal(exit.exitCode, 0);
+
+        const printed = run.events
+          .filter(event => event.type === 'stdout')
+          .map(event => event.data)
+          .join('');
+        assert.match(printed, /3/);
+        assert.match(printed, /done/);
+
+        // Exactly one attach per run. The adapters used to send an `attached` frame of
+        // their own ON TOP of the handshake, so the client saw the event twice.
+        assert.equal(run.seen('debug:attached').length, 1);
+
+        await run.close();
+      });
+    });
+  }
+});

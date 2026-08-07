@@ -130,13 +130,39 @@ jvm.on('exit', code => {
   finish();
 });
 
+/**
+ * End the session, and do not leave a zombie behind.
+ *
+ * Usually this is reached from the JVM's own `exit` handler, so there is nothing left
+ * to wait for. It is also reached when the debugger could not attach at all, and there
+ * the JVM is still running: exiting then reparents it to PID 1, which in this image is
+ * the server, and a Node process is not an init and does not reap strangers. The
+ * production compose sets `pids_limit: 512`, so leaked PIDs eventually stop the
+ * container forking anything.
+ *
+ * So: wait for it, bounded - a JVM that will not die must not hold the job open
+ * either, and the container's init (`init: true` in compose) reaps what is left.
+ */
 function finish() {
   try { connection?.close(); } catch { /* already gone */ }
   if (!channelClosed) {
     channelClosed = true;
     try { channel.end(); } catch { /* already gone */ }
   }
-  setTimeout(() => process.exit(exitCode), 50);
+
+  const leave = () => process.exit(exitCode);
+
+  if (jvm.exitCode !== null || jvm.signalCode !== null) {
+    setTimeout(leave, 50);
+    return;
+  }
+
+  const giveUp = setTimeout(leave, 2000);
+  jvm.once('exit', () => {
+    clearTimeout(giveUp);
+    setTimeout(leave, 50);
+  });
+  try { jvm.kill(); } catch { /* already gone */ }
 }
 
 // ── JDWP state ──────────────────────────────────────────────────────────────
@@ -895,6 +921,27 @@ async function handleCommand(command) {
   }
 }
 
+/*
+ * Commands are held until the debugger can act on them, and then run in order.
+ *
+ * `hello` is what makes the server report `debug:attached`, and a client reacts to
+ * that by sending `setBreakpoints` immediately - but `hello` has to go out early or
+ * the channel's own connect timeout fires. So between the two there is a window in
+ * which a command can arrive with no JDWP connection to serve it.
+ *
+ * It is not hypothetical: driving a real Java debug run over HTTP, `setBreakpoints`
+ * landed before the JVM was attached, threw inside the handler, and was lost. Nothing
+ * was armed, `markBreakpointsReceived` never fired, and the program ran to completion
+ * five seconds later when the fallback timer gave up - a breakpoint in the margin and
+ * a program that ignored it.
+ *
+ * Python's adapter has always queued for exactly this reason; its own comment says
+ * so. This is the same fix.
+ */
+let markReady = () => {};
+const ready = new Promise(resolve => { markReady = resolve; });
+let handling = ready;
+
 channel.on('data', chunk => {
   channelBuffer += chunk.toString('utf8');
   let index;
@@ -902,11 +949,20 @@ channel.on('data', chunk => {
     const line = channelBuffer.slice(0, index);
     channelBuffer = channelBuffer.slice(index + 1);
     if (!line.trim()) continue;
+
+    let command;
     try {
-      void handleCommand(JSON.parse(line));
+      command = JSON.parse(line);
     } catch {
-      /* a malformed frame must not end the session */
+      // A malformed frame must not end the session.
+      continue;
     }
+
+    handling = handling
+      .then(() => handleCommand(command), () => handleCommand(command))
+      .catch(error => {
+        process.stderr.write(`java debug adapter: ${error?.stack || error}\n`);
+      });
   }
 });
 
@@ -1053,7 +1109,10 @@ channel.on('connect', async () => {
   // its first line and the suspend bookkeeping came apart under the volume.
   await watchClass(MAIN_CLASS.split('.').pop());
 
-  send({ type: 'attached', pid: jvm.pid });
+  // Only now can a command be served, so anything the client already sent runs here.
+  // No `attached` frame: the server derives `debug:attached` from `hello`, and
+  // sending one as well made the client see the same event twice.
+  markReady();
 
   /*
    * Wait for the IDE's first `setBreakpoints` before letting the program run.

@@ -232,12 +232,17 @@ describe('breakpoints, stepping and variables', { skip }, () => {
     assert.equal(hello.language, 'csharp');
   });
 
-  test('the debugger is up before the program starts', async () => {
-    await debug.waitFor('attached');
-  });
-
-  test('breakpoints arm in two files at once, by workspace path', async () => {
+  test('breakpoints sent the instant it says hello arm in two files at once', async () => {
     /*
+     * Sent with no wait after `hello`, deliberately - that is the race.
+     *
+     * `hello` is what makes the server report `debug:attached`, and a client reacts
+     * to that at once. But `hello` goes out when the socket to the IDE opens, before
+     * `initialize` has even been sent, and DAP will not accept breakpoints until the
+     * `initialized` event. A command arriving in that window used to be dropped:
+     * nothing armed, and the program ran straight past the student's breakpoint.
+     * Commands are queued until the debugger is configurable.
+     *
      * Pending counts as armed.
      *
      * The debugger answers before the program exists, with `verified: false` and
@@ -356,7 +361,7 @@ describe('a program with no breakpoints still runs', { skip }, () => {
       'Program.cs': 'class Program { static void Main() { System.Console.WriteLine("straight through"); } }',
     });
     await debug.start();
-    await debug.waitFor('attached');
+    await debug.waitFor('hello');
   });
 
   after(() => debug?.dispose());
@@ -376,7 +381,7 @@ describe('a path outside the workspace', { skip }, () => {
   before(async () => {
     debug = session({ 'Program.cs': 'class Program { static void Main() { System.Console.WriteLine("safe"); } }' });
     await debug.start();
-    await debug.waitFor('attached');
+    await debug.waitFor('hello');
   });
 
   after(() => debug?.dispose());

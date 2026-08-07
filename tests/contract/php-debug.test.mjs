@@ -222,11 +222,17 @@ describe('breakpoints, stepping and variables', { skip }, () => {
     assert.equal(hello.language, 'php');
   });
 
-  test('Xdebug dials back before the first line of the program runs', async () => {
-    await debug.waitFor('attached');
-  });
-
-  test('breakpoints arm in two files at once, by workspace path', async () => {
+  test('breakpoints sent the instant it says hello arm in two files at once', async () => {
+    /*
+     * Sent with no wait after `hello`, deliberately - that is the race.
+     *
+     * `hello` is what makes the server report `debug:attached`, and a client reacts
+     * to that at once. But `hello` goes out when the socket to the IDE opens, which
+     * is before Xdebug has dialled back, so a command arriving in that window has no
+     * engine to reach. It used to be dropped: nothing armed, and the program ran
+     * straight past the student's breakpoint five seconds later when the fallback
+     * timer gave up. Commands are queued until the engine exists.
+     */
     debug.send({
       command: 'setBreakpoints',
       lines: [],
@@ -340,7 +346,7 @@ describe('a program with no breakpoints still runs', { skip }, () => {
   before(async () => {
     debug = session({ 'main.php': '<?php\necho "straight through\\n";\n' });
     await debug.start();
-    await debug.waitFor('attached');
+    await debug.waitFor('hello');
   });
 
   after(() => debug?.dispose());
@@ -362,7 +368,7 @@ describe('a path outside the workspace', { skip }, () => {
   before(async () => {
     debug = session({ 'main.php': '<?php\necho "safe\\n";\n' });
     await debug.start();
-    await debug.waitFor('attached');
+    await debug.waitFor('hello');
   });
 
   after(() => debug?.dispose());
