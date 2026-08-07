@@ -19,32 +19,7 @@ import { debugBtn, runBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
 import { runCode } from './execution';
-/**
- * Languages with a debug adapter on the server.
- *
- * Mirrors `supportsDebug` in the server adapters. Duplicated rather than fetched
- * because the button's enablement is needed before any request is made - and the
- * server still refuses honestly if this list is ever wrong, so the two cannot
- * disagree in a way that misleads: at worst the button is offered and the run
- * reports `debug:unsupported`.
- */
-// TypeScript is here now: it is still compiled before it runs, but the compiler emits
-// a source map for a debug run and the JavaScript debugger uses it in both directions -
-// a .ts breakpoint arms against the .js line it became, and a stop is reported back in
-// the file the student wrote.
-// Java is here now too, through JDWP - the JVM's own debug protocol, spoken by a
-// client written for this project rather than a dependency. Breakpoints, stepping,
-// locals and field-path watches all work; see languages/java/jdwp.mjs.
-//
-// And PHP, through Xdebug over DBGp (languages/php/dbgp.mjs). That one needs the
-// extension present in the image; it is installed but not enabled, and the adapter
-// loads it per process, so an ordinary PHP run is unaffected.
-//
-// And C#, over DAP to dncdbg (languages/csharp/dap.mjs) - which completes the set:
-// every language this IDE runs can now be debugged.
-const DEBUGGABLE_LANGUAGES = new Set([
-  'python', 'javascript', 'typescript', 'java', 'php', 'csharp',
-]);
+import { languageCan } from '../languages/loader';
 import { getOrCreateModel } from './editor-core';
 import { describeFormatResult, hasFormatter, takeLastFormatResult } from './formatting';
 import { downloadSelectedItem, importFromPicker } from './explorer/operations';
@@ -91,7 +66,7 @@ commands.register({
     const model = editor.getModel();
     // Offered only where it can work. A greyed button with a tooltip is honest;
     // a button that starts a run which silently ignores every breakpoint is not.
-    return model !== null && DEBUGGABLE_LANGUAGES.has(model.getLanguageId());
+    return model !== null && languageCan(model.getLanguageId(), 'debug');
   },
   run: () => runCode(editor.getValue(), { debug: true }),
 });

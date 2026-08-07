@@ -11,12 +11,38 @@ export interface VersionConfig {
   sourceLevel?: string;
 }
 
-export interface RunnerConfig {
-  command: string;
-  args?: string[];
-  stdin?: boolean;
-  tempFile?: boolean;
-  compile?: boolean;
+/**
+ * What the IDE may offer for a language.
+ *
+ * ## Why this is data and not four lists in four files
+ *
+ * It used to be four: `DEBUGGABLE_LANGUAGES` in editor-commands, `TAUGHT_LANGUAGES` in
+ * hover-help, `SELECTION_RUNNABLE_LANGUAGES` in selection-run, and `LANGUAGE_ICONS` in
+ * this file. Every one of them was a hand-maintained mirror of a fact that belongs to
+ * the language, and adding a language meant finding all four - which is precisely the
+ * kind of edit that gets three of them.
+ *
+ * Debugging is the case that proves it: the server decides whether a language can be
+ * debugged (`supportsDebug` on its adapter), and the client had its own copy of that
+ * list. The two agreeing was a matter of somebody remembering. Now both read the same
+ * `config.json`, and `tests/contract/adapter-manifest.test.mjs` fails if they diverge.
+ *
+ * Every field is optional and defaults to false, so a new language gets nothing until
+ * somebody says it works - which is the right default for a promise to a student.
+ */
+export interface LanguageCapabilities {
+  /** The Debug button is offered. Must match the server adapter's `supportsDebug`. */
+  debug?: boolean;
+  /** Hover explains this language's keywords and operators (languages/<id>/keywords.json). */
+  taughtKeywords?: boolean;
+  /**
+   * "Run selection" is offered.
+   *
+   * False for Java on purpose: its adapter needs a file declaring a class with `main`,
+   * so a selection of statements can never compile, and offering it would produce
+   * "class, interface, or enum expected" for a gesture that looks reasonable.
+   */
+  runSelection?: boolean;
 }
 
 export interface LanguageConfig {
@@ -36,7 +62,8 @@ export interface LanguageConfig {
   monacoLanguage: string;
   icon?: string; // Emoji icon for file tree
   versions: VersionConfig[];
-  runner: RunnerConfig;
+  /** What the IDE may offer. Absent means "nothing beyond running it". */
+  capabilities?: LanguageCapabilities;
 }
 
 export interface KeywordEntry {

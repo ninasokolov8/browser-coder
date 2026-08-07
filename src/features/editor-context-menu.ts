@@ -8,14 +8,13 @@
 
 import * as monaco from 'monaco-editor';
 
-import { getKeywordExplanation } from '../languages';
+import { getKeywordExplanation, languageCan } from '../languages';
 import { t } from '../i18n';
 import { getUILang } from './wrapped-i18n';
 import { runtime } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runCode } from './execution';
 import {
-  canRunSelection,
   coversWholeLines,
   dedent,
   selectedLineRange,
@@ -134,7 +133,7 @@ function activeLanguageId(): string | undefined {
 function hasRunnableSelection(): boolean {
   const selection = editor.getSelection();
   const model = editor.getModel();
-  if (!selection || !model || !canRunSelection(activeLanguageId())) return false;
+  if (!selection || !model || !languageCan(activeLanguageId(), 'runSelection')) return false;
   return coversWholeLines(selection, line => model.getLineMaxColumn(line));
 }
 

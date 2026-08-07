@@ -10,7 +10,6 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  canRunSelection,
   coversWholeLines,
   dedent,
   selectedLineRange,
@@ -140,34 +139,5 @@ describe('dedenting the block', () => {
   test('an empty selection is returned unchanged', () => {
     assert.equal(dedent(''), '');
     assert.equal(dedent('\n\n'), '\n\n');
-  });
-});
-
-describe('which languages can run a fragment', () => {
-  test('the executed languages can', () => {
-    for (const language of ['python', 'javascript', 'typescript', 'php', 'csharp']) {
-      assert.equal(canRunSelection(language), true, language);
-    }
-  });
-
-  test('Java cannot, because a fragment can never compile', () => {
-    // The adapter requires a file declaring a class with `main`. Offering the item
-    // would produce "class, interface, or enum expected" for a reasonable gesture.
-    assert.equal(canRunSelection('java'), false);
-  });
-
-  test('the rendered and validated languages cannot', () => {
-    // For these, Run ignores the argument entirely (html/css/markdown render the whole
-    // document; svg shows an image) or reports the fragment as an invalid document
-    // (json). Offering the item promises something that cannot happen.
-    for (const language of ['html', 'css', 'markdown', 'json', 'svg']) {
-      assert.equal(canRunSelection(language), false, language);
-    }
-  });
-
-  test('an unknown or missing language is refused', () => {
-    assert.equal(canRunSelection(undefined), false);
-    assert.equal(canRunSelection(''), false);
-    assert.equal(canRunSelection('brainfuck'), false);
   });
 });

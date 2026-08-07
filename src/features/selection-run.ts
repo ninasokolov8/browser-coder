@@ -148,24 +148,16 @@ export function dedent(code: string): string {
   return lines.map(line => (line.startsWith(common) ? line.slice(common.length) : line)).join('\n');
 }
 
-/**
- * Languages where running a selection means anything.
+/*
+ * `canRunSelection` used to live here, over a hardcoded set of language ids.
  *
- * Explicit rather than "everything except the previewed ones", so a language added
- * later has to be considered rather than silently inheriting a promise.
+ * It is now `languageCan(id, 'runSelection')`, read from each language's config.json,
+ * and it is called from `editor-context-menu.ts` instead - because the loader uses
+ * Vite's `import.meta.glob`, and importing it here would end this module's ability to
+ * run under node. That is not a small loss: this file's whole reason for existing
+ * apart from the context menu is that its three decisions are unit-tested, and the
+ * header above says so.
  *
- * Java is excluded on purpose: the adapter requires a file declaring a class with
- * `main`, and a selection of statements can never compile. Offering it would produce
- * "class, interface, or enum expected" for a gesture that looks reasonable.
+ * The capability data itself is covered by tests/unit/language-capabilities.test.mjs,
+ * which reads the real config.json files rather than a copy of what they should say.
  */
-export const SELECTION_RUNNABLE_LANGUAGES: ReadonlySet<string> = new Set([
-  'python',
-  'javascript',
-  'typescript',
-  'php',
-  'csharp',
-]);
-
-export function canRunSelection(languageId: string | undefined | null): boolean {
-  return !!languageId && SELECTION_RUNNABLE_LANGUAGES.has(languageId);
-}

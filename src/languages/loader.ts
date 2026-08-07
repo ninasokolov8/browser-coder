@@ -2,7 +2,7 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { ErrorEntry, KeywordEntry, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry, VersionConfig } from "./types";
+import type { ErrorEntry, KeywordEntry, LanguageCapabilities, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry, VersionConfig } from "./types";
 import { LANGUAGE_ICONS } from "./types";
 import { ASSET_LANGUAGE_ID, ASSET_TYPES } from "../workspace/assets.ts";
 
@@ -54,7 +54,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'html',
     icon: LANGUAGE_ICONS.html || '🌐',
     versions: [{ id: 'html5', name: 'HTML5', default: true }],
-    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -68,7 +67,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'css',
     icon: LANGUAGE_ICONS.css || '🎨',
     versions: [{ id: 'css3', name: 'CSS3', default: true }],
-    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -85,7 +83,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'xml',
     icon: LANGUAGE_ICONS.svg || '🖼️',
     versions: [{ id: 'svg11', name: 'SVG 1.1', default: true }],
-    runner: { command: 'asset' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -102,7 +99,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'json',
     icon: LANGUAGE_ICONS.json || '⚙️',
     versions: [{ id: 'json', name: 'JSON', default: true }],
-    runner: { command: 'data' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -134,7 +130,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
       name: type.mediaType,
       default: type.extension === 'png',
     })),
-    runner: { command: 'asset' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -162,7 +157,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'plaintext',
     icon: LANGUAGE_ICONS.text || '📄',
     versions: [{ id: 'text', name: 'Plain text', default: true }],
-    runner: { command: 'data' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -179,7 +173,6 @@ const BUILTIN_LANGUAGES: LoadedLanguage[] = [
     monacoLanguage: 'markdown',
     icon: LANGUAGE_ICONS.markdown || '📝',
     versions: [{ id: 'commonmark', name: 'Markdown', default: true }],
-    runner: { command: 'preview' },
     starters: {},
     keywords: {},
     keywordsHe: {},
@@ -350,6 +343,33 @@ export function getAllLanguages(): LoadedLanguage[] {
 
 export function getLanguageIds(): string[] {
   return Array.from(languages.keys());
+}
+
+/**
+ * Does this language offer that capability?
+ *
+ * The single question that replaced four hand-maintained lists - `DEBUGGABLE_LANGUAGES`,
+ * `TAUGHT_LANGUAGES`, `SELECTION_RUNNABLE_LANGUAGES` and the executable half of
+ * `LANGUAGE_ICONS`. Each was a copy of a fact belonging to the language, and adding a
+ * language meant finding all four.
+ *
+ * Absent means NO. A language that has not said it can be debugged does not get a
+ * Debug button, which is the right default for a promise made to a student: the worst
+ * outcome here is a button that starts a run which ignores every breakpoint.
+ */
+export function languageCan(
+  languageId: string | undefined | null,
+  capability: keyof LanguageCapabilities,
+): boolean {
+  if (!languageId) return false;
+  return languages.get(languageId)?.capabilities?.[capability] === true;
+}
+
+/** Every language declaring a capability, in registration order. */
+export function languagesThatCan(capability: keyof LanguageCapabilities): string[] {
+  return Array.from(languages.values())
+    .filter(language => language.capabilities?.[capability] === true)
+    .map(language => language.id);
 }
 
 // Check if cache entry is valid

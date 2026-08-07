@@ -27,7 +27,7 @@
 
 import * as monaco from 'monaco-editor';
 
-import { getKeywordExplanation } from '../languages';
+import { getKeywordExplanation, languagesThatCan } from '../languages';
 import { getUILang } from './wrapped-i18n';
 import { maskCommentsAndStrings, syntaxFor } from '../languages/syntax.ts';
 import { renderHover } from './hover-content.ts';
@@ -40,7 +40,6 @@ import type { Disposable } from '../workspace/types.ts';
  * be registered for a language with no data - an empty hover that appears and says
  * nothing teaches the student the feature is unreliable.
  */
-const TAUGHT_LANGUAGES = ['python', 'javascript', 'typescript', 'java', 'php', 'csharp'] as const;
 
 /**
  * Whether this position is inside real code.
@@ -72,7 +71,7 @@ let subscriptions: monaco.IDisposable[] = [];
 export function initializeHoverHelp(): Disposable {
   if (subscriptions.length > 0) return { dispose: () => {} };
 
-  for (const languageId of TAUGHT_LANGUAGES) {
+  for (const languageId of languagesThatCan('taughtKeywords')) {
     subscriptions.push(
       monaco.languages.registerHoverProvider(languageId, {
         provideHover(model, position) {
