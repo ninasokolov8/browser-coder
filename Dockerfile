@@ -14,10 +14,15 @@ RUN apk add --no-cache python3 openjdk17-jdk php php-pecl-xdebug bash dotnet8-sd
 # launches a program: on musl CoreCLR's PAL probes the stack with _alloca(1.5 MB) from
 # a thread whose stack is exactly 1.5 MB (dotnet/runtime#103741, Samsung/netcoredbg#206,
 # both open). dncdbg is the netcoredbg maintainer's own fork with that fixed, and the
-# only .NET debugger that publishes a linux-musl-x64 build. See blueprint section 49.
+# only .NET debugger that publishes musl builds at all. See blueprint section 49.
+#
+# TARGETARCH is supplied by buildx; dncdbg ships musl builds for both, and hardcoding
+# x64 would produce an arm64 image whose debugger cannot execute.
+ARG TARGETARCH
 ARG DNCDBG_VERSION=1.1.0
-RUN mkdir -p /opt/stage && \
-    curl -sSL "https://github.com/viewizard/dncdbg/releases/download/v${DNCDBG_VERSION}/dncdbg-${DNCDBG_VERSION}-linux-musl-x64.tar.gz" \
+RUN DNCDBG_ARCH=$(case "${TARGETARCH:-amd64}" in arm64) echo arm64 ;; *) echo x64 ;; esac) && \
+    mkdir -p /opt/stage && \
+    curl -sSL "https://github.com/viewizard/dncdbg/releases/download/v${DNCDBG_VERSION}/dncdbg-${DNCDBG_VERSION}-linux-musl-${DNCDBG_ARCH}.tar.gz" \
       | tar -xz -C /opt/stage 2>/dev/null; \
     mv /opt/stage/dncdbg /opt/dncdbg && rm -rf /opt/stage /opt/dncdbg/._* && \
     chown -R root:root /opt/dncdbg && \

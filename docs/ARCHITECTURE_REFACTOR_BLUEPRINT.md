@@ -8251,3 +8251,155 @@ honestly, and its probe checks that a debugger *runs*, not merely that a file ex
 | C# | DAP to dncdbg | protocol client written here |
 
 Six languages, four protocols, no debugging dependency in `package.json`.
+
+---
+
+## 50. Running the tests inside the image that ships
+
+Sections 47 to 49 each ended with "verified". Every one of those verifications ran on
+the development host, or in a container assembled for that language alone. This section
+is what happened when the whole suite was run inside an image built from
+`Dockerfile.production` - which this project had never done - and then against that
+image over HTTP, the way Step-Up reaches it.
+
+It found four defects. Three were introduced by the debugger work in this session. One
+had been in production since JavaScript debugging shipped.
+
+### 50.1 The host is not the image, and Node 20 is not Node 22
+
+The first run in the production image failed one test that is green on the development
+host. The image runs **Node 20**; the host runs Node 22.
+
+The program is loaded with a dynamic `import()`, so a throw at module top level rejects
+the loader's promise rather than propagating as an uncaught throw. Node 22 does not
+pause for that, so the adapter reconstructs a post-mortem stop from the error's stack.
+**Node 20 does pause**, with `reason: "promiseRejection"` - and only `"exception"` was
+handled, so the pause fell through to the `hitBreakpoints` test and came out as a
+*step*.
+
+What a student on production saw when their program threw: the debugger stopped on a
+line, with no reason given, no error attached anywhere, and the line was 325 of
+`node:internal/modules` - because the rejection is observed in the loader, by which
+point the student's frames have already unwound. Not one frame of their own code was on
+the stack.
+
+Two changes. `promiseRejection` counts as an exception. And a rejection pause carrying
+none of the student's frames is not reported as a place at all - it resumes, and the
+post-mortem path reports the real location, exactly as on Node 22.
+
+**This one was not caused by this session's work.** The same test fails identically at
+commit `6b18944`, before any of it. It had simply never been run on the runtime that
+ships.
+
+### 50.2 A breakpoint sent the moment the debugger attaches was being lost
+
+Driving a real debug run over HTTP - not the adapter directly - produced this, for all
+three new languages:
+
+```
+session, debug:attached, debug:attached, waiting, debug:started, stdout, exit
+```
+
+No `debug:breakpoints`, no stop, and `debug:started` arriving exactly five seconds
+after the attach: the fallback timer.
+
+`hello` is what makes the server report `debug:attached`, and a client reacts to that
+immediately - but `hello` has to go out early, or the channel's twenty-second connect
+timeout fires. Between the two there is a window with no JDWP connection, no Xdebug and
+no DAP session. A `setBreakpoints` arriving there threw inside the handler and vanished.
+Nothing armed, the "wait for the first setBreakpoints" gate never released, and five
+seconds later the program ran straight past the student's breakpoint.
+
+Every adapter-level contract test passed throughout, because none of them sends a
+command that early. Python's adapter has queued for exactly this reason since it was
+written, and its own comment says why; the three new ones now do the same.
+
+### 50.3 Two attaches for one attach
+
+The same trace shows `debug:attached` twice, with different pids. The server derives
+that event from the `hello` handshake, and all three new adapters also sent an
+`attached` frame of their own, which the channel namespaces and forwards. The frame is
+gone: the handshake is the attach, as it always was for Python and JavaScript.
+
+### 50.4 One leaked process per debug run
+
+Measured in a running container: an ordinary run leaves nothing; a C# debug run leaves
+one `[dncdbg]` zombie.
+
+Node reaps its own children, but only while it is alive. Killing the debugger and
+exiting on a fifty-millisecond timer reparents the dying process to PID 1 - which in
+this image is the server, a Node process, which is not an init and does not reap
+strangers.
+
+That is not cosmetic. `docker-compose.prod.yml` sets `pids_limit: 512`, so a
+long-running replica accumulating one dead PID per debug session eventually cannot fork
+at all - and the first symptom is **every language failing to run**, with nothing
+pointing at the debugger.
+
+Fixed twice over, because the two failure modes are different:
+
+- each adapter now waits for its own child before exiting, bounded, so a process that
+  will not die cannot hold the job open either;
+- both compose files gain `init: true`, for the case where the adapter is killed by a
+  run timeout and never gets the chance.
+
+### 50.5 A test gate that asked the wrong question
+
+The new HTTP-level tests gated on `requires(language)`, which asks whether the
+interpreter runs. For these three that is the wrong question, and the development host
+proved it: .NET 6 is installed, so the gate passed, and the test then failed because
+the SDK cannot build `net8.0` and dncdbg is not present at all.
+
+A red suite on every contributor's laptop is worse than a gap - it teaches people to
+ignore failures. `requiresDebugger` asks the real question: a matching javac/java pair,
+an Xdebug that **loads**, and for C# both an SDK and a musl-capable debugger that exists
+only in the runtime image.
+
+### 50.6 What Step-Up sees
+
+Checked against Step-Up on `dev`. A note on its state: local `dev` (`c7bec734`, the
+repo owner's unpushed "split the public and internal IDE URLs" commit) has diverged from
+`origin/dev`, which has gained Arc Gaming work. Nothing was merged or rebased - the
+remote commits touch no file the IDE integration uses, so local `dev` is the
+authoritative picture of the integration surface, and the divergence is the owner's to
+resolve.
+
+| Surface | Result |
+| --- | --- |
+| `GET /health` | 200 |
+| All four iframe URL shapes `IdeHelper::url()` builds | 200 each |
+| `POST /api/run` for python, javascript, typescript, java, php, csharp | all correct output and exit codes |
+| The response envelope `CodeRunner` reads | unchanged: `stdout`, `stderr`, `exitCode`, `durationMs` all present and correctly typed |
+| `GET /api/languages` | keys are `extension, icon, id, monacoLanguage, name, runner, versions` - **`supportsDebug` did not leak into the public catalogue** |
+| postMessage vocabulary | Step-Up sends `init, run, set-code, set-files, get-files, set-readonly, paint-blank-hints`; the IDE handles all but the last, which Step-Up's own comment calls a deliberate no-op. Unchanged by this work |
+| `ALLOWED_BASE_DOMAINS` | `arcacademy.games`, new in Step-Up's remote work, is the Arc Gaming service's own origin rather than a Step-Up front-end, and `arcacademy.co` already covers `dev.arcacademy.co`. No change needed |
+| Xdebug on an ordinary PHP run | **not loaded** - asserted against the running image, not assumed from the Dockerfile |
+| The unprivileged `app` user | runs all four debuggers; 68 of 68 contract tests as `app` |
+
+One thing to know rather than fix: `php` rejects a version id of `8.2` with
+`Unknown PHP version "8.2". Available: php8`. That is correct behaviour and predates
+this work, but a caller passing a semantic version rather than the catalogue id gets a
+clean 4xx rather than a run.
+
+### 50.7 Verified, and not
+
+**Verified in an image built from `Dockerfile.production`:** the whole contract suite
+with **zero skips** - every language, every debugger, the frozen HTTP surface, the
+defects suite and turtle - plus all three supervised languages stopping at a breakpoint
+over the real HTTP API with correct locals, zero zombies after repeated debug runs, and
+every debugger working as the unprivileged `app` user.
+
+**Verified on the development host:** both typecheck configurations, 957 unit tests, all
+three browser suites, and the contract suite skipping honestly for each absent
+toolchain and each absent debugger.
+
+**Not verified, and still cannot be from here:**
+
+- Step-Up's own PHP test suite, including `BrowserCoderTransportTest`. There is no PHP
+  on this host and Step-Up's container was not brought up.
+- The embed inside a live Step-Up instance. Everything above tests the IDE's half of the
+  contract against the requests Step-Up's code is written to make; it does not replace
+  loading a real task page once.
+- The image on arm64. The Dockerfiles now select the architecture from buildx's
+  `TARGETARCH` rather than pinning x64, because dncdbg publishes both - but only the
+  x64 build has been run here, so arm64 is written and unproven.
