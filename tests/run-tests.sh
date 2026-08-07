@@ -55,33 +55,39 @@ run_language_tests() {
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}${CYAN}                    LANGUAGE TESTS                             ${NC}"
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    if [ -f "languages/language-tests.mjs" ]; then
-        node languages/language-tests.mjs --server="${SERVER_URL}"
-    else
-        echo -e "${YELLOW}Language tests not yet implemented${NC}"
+    if [ ! -f "languages/language-tests.mjs" ]; then
+        # A runner that prints a banner and exits 0 is worse than a missing runner: the
+        # pipeline goes green and nobody notices nothing ran.
+        echo -e "${RED}Language tests are not implemented - there is no languages/language-tests.mjs${NC}" >&2
+        return 1
     fi
+    node languages/language-tests.mjs --server="${SERVER_URL}"
 }
 
 run_stress_tests() {
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}${CYAN}                    STRESS TESTS                               ${NC}"
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    if [ -f "stress/stress-tests.mjs" ]; then
-        node stress/stress-tests.mjs --server="${SERVER_URL}"
-    else
-        echo -e "${YELLOW}Stress tests not yet implemented${NC}"
+    if [ ! -f "stress/stress-tests.mjs" ]; then
+        # A runner that prints a banner and exits 0 is worse than a missing runner: the
+        # pipeline goes green and nobody notices nothing ran.
+        echo -e "${RED}Stress tests are not implemented - there is no stress/stress-tests.mjs${NC}" >&2
+        return 1
     fi
+    node stress/stress-tests.mjs --server="${SERVER_URL}"
 }
 
 run_feature_tests() {
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}${CYAN}                    FEATURE TESTS                              ${NC}"
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    if [ -f "features/feature-tests.mjs" ]; then
-        node features/feature-tests.mjs --server="${SERVER_URL}"
-    else
-        echo -e "${YELLOW}Feature tests not yet implemented${NC}"
+    if [ ! -f "features/feature-tests.mjs" ]; then
+        # A runner that prints a banner and exits 0 is worse than a missing runner: the
+        # pipeline goes green and nobody notices nothing ran.
+        echo -e "${RED}Feature tests are not implemented - there is no features/feature-tests.mjs${NC}" >&2
+        return 1
     fi
+    node features/feature-tests.mjs --server="${SERVER_URL}"
 }
 
 case "$TEST_TYPE" in
