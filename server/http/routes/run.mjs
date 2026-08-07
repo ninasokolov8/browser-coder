@@ -18,6 +18,7 @@
  *                                 session | stdout | stderr | waiting | ping | exit.
  */
 
+import { resolveBlobFiles } from '../../blobs/resolve.mjs';
 import { TerminationReason, toLegacyExitCode, toLegacyNote } from '../../domain/termination.mjs';
 import { ExecutionRefused } from '../../execution/pipeline.mjs';
 import { FORWARDED_HEADER } from '../../execution/session-registry.mjs';
@@ -128,10 +129,34 @@ const WAITING_DELAY_AFTER_LINE_MS = 1500;
 const WAITING_DELAY_INITIAL_MS = 1200;
 const PING_INTERVAL_MS = 15000;
 
-export function registerRunRoutes(app, { pipeline, sessions, config }) {
+export function registerRunRoutes(app, { pipeline, sessions, config, blobStore = null }) {
+  /**
+   * Turn any cached-asset digests in a payload into content.
+   *
+   * Answers 409 with the digests the cache does not have, which the client uploads
+   * before retrying. Returns null when the caller should stop.
+   *
+   * A cold cache therefore costs ONE extra round trip, and a warm one saves the whole
+   * asset - which for a 2 MiB image is 2.8 MB of base64 per run.
+   */
+  function resolveAssets(body, res) {
+    const outcome = resolveBlobFiles(body.files, blobStore);
+    if (!outcome.missing) return outcome.files;
+
+    res.status(409).json({
+      error: 'Some assets are not cached.',
+      code: 'blob_missing',
+      missing: outcome.missing,
+    });
+    return null;
+  }
+
   // ── POST /api/run ─────────────────────────────────────────────────────────
   app.post('/api/run', async (req, res) => {
-    const { language, version, code, files, entryPoint } = req.body || {};
+    const { language, version, code, entryPoint } = req.body || {};
+
+    const files = resolveAssets(req.body || {}, res);
+    if (files === null) return undefined;
 
     let handle;
     try {
@@ -178,8 +203,11 @@ export function registerRunRoutes(app, { pipeline, sessions, config }) {
 
   // ── POST /api/run/interactive ─────────────────────────────────────────────
   app.post('/api/run/interactive', async (req, res) => {
-    const { language, version, code, files, entryPoint } = req.body || {};
+    const { language, version, code, entryPoint } = req.body || {};
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+
+    const files = resolveAssets(req.body || {}, res);
+    if (files === null) return undefined;
 
     /*
      * Debugging is an additive flag on the existing route, not a new endpoint.

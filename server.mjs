@@ -41,6 +41,8 @@ import { RateLimiter, createRateLimitMiddleware } from './server/http/middleware
 import { registerHealthRoutes } from './server/http/routes/health.mjs';
 import { registerLanguageRoutes } from './server/http/routes/languages.mjs';
 import { registerPreviewRoutes } from './server/http/routes/previews.mjs';
+import { registerBlobRoutes } from './server/http/routes/blobs.mjs';
+import { BlobStore } from './server/blobs/store.mjs';
 import { registerReportRoutes } from './server/http/routes/reports.mjs';
 import { registerRunRoutes } from './server/http/routes/run.mjs';
 import { createLifecycle } from './server/http/lifecycle.mjs';
@@ -71,6 +73,22 @@ const rateLimiter = new RateLimiter({
   maxRequests: CONFIG.rateLimit.maxRequests,
 });
 
+/*
+ * The asset cache. Shared, content-addressed and entirely optional.
+ *
+ * When its directory is not writable it reports `isReady === false`, the check route
+ * answers `available: false`, and every run carries its assets inline exactly as it did
+ * before this existed. There is no degraded mode to reason about: it either helps or it
+ * is invisible.
+ */
+const blobStore = new BlobStore({
+  directory: CONFIG.blobs.directory,
+  maxBytes: CONFIG.blobs.maxBytes,
+  ttlMs: CONFIG.blobs.ttlMs,
+  sweepIntervalMs: CONFIG.blobs.sweepIntervalMs,
+  log,
+});
+
 const previewStore = new PreviewStore({
   storageDir: CONFIG.preview.storageDir,
   limits: CONFIG.preview,
@@ -90,7 +108,7 @@ const lifecycle = createLifecycle({
   pipeline,
   sessions,
   log,
-  stoppables: [previewStore, rateLimiter, { stop: () => clearInterval(jobReaper) }],
+  stoppables: [previewStore, blobStore, rateLimiter, { stop: () => clearInterval(jobReaper) }],
   // Live directories are already empty here: every session was terminated first.
   finalSweep: () => reapAbandonedJobs(EXECUTION_ROOT, 0, new Set()),
 });
@@ -103,6 +121,7 @@ rateLimiter.start();
 // A failure is reported and survivable: previews answer 503 while code execution
 // carries on unaffected.
 previewStore.start();
+blobStore.start();
 
 // ── Request pipeline. Order is behaviour. ───────────────────────────────────
 
@@ -146,7 +165,8 @@ registerLanguageRoutes(app, { rootDir: __dirname, log });
 
 // These handlers hold no language logic: they translate HTTP into a pipeline
 // request and the result back into the frozen v1 envelope.
-registerRunRoutes(app, { pipeline, sessions, config: CONFIG });
+registerRunRoutes(app, { pipeline, sessions, config: CONFIG, blobStore });
+registerBlobRoutes(app, { store: blobStore, config: CONFIG, log });
 
 // Reading a published artifact stays open; commanding the service to run the suite
 // requires ADMIN_TOKEN and fails closed (V-45, N-08).

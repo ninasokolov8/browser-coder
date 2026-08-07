@@ -238,6 +238,31 @@ export const CONFIG = {
     unhealthyThreshold: 3,
   },
 
+  /**
+   * The asset cache: content-addressed, shared, and disposable.
+   *
+   * A project with a 2 MiB image sends it base64-encoded on EVERY run - 2.8 MB each
+   * time. Thirty runs while working on one exercise is 84 MB of the same picture.
+   * Sending a digest instead, and the bytes only when the server does not have them,
+   * makes that 2.8 MB plus twenty-nine short requests.
+   *
+   * `directory` MUST be shared across replicas to be worth anything - a per-replica
+   * cache hits 1/N of the time and a miss costs an extra round trip. Where it is not
+   * writable the feature simply does not engage and every run carries its assets
+   * inline, exactly as before.
+   *
+   * It is a cache and never a store of record: the browser workspace is where a
+   * student's files live, and losing every entry here costs one re-upload.
+   */
+  blobs: {
+    directory: process.env.BLOB_CACHE_DIR || path.join(os.tmpdir(), 'browser-coder-blobs'),
+    maxBytes: intFromEnv('BLOB_CACHE_MAX_BYTES', 512 * 1024 * 1024),
+    ttlMs: intFromEnv('BLOB_CACHE_TTL_MS', 7 * 24 * 60 * 60 * 1000),
+    sweepIntervalMs: intFromEnv('BLOB_CACHE_SWEEP_MS', 60 * 60 * 1000),
+    /** Largest single asset accepted. Matches the client-side import limit. */
+    maxBlobBytes: intFromEnv('BLOB_MAX_BYTES', 4 * 1024 * 1024),
+  },
+
   preview: {
     maxHtmlBytes: intFromEnv('PREVIEW_MAX_BYTES', 5 * 1024 * 1024),
     maxFileCount: intFromEnv('PREVIEW_MAX_FILES', 250),

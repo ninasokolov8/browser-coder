@@ -56,6 +56,22 @@ export function applyRequestContext(app, { config, runBodyLimitBytes, runGate = 
 
   app.use('/api/run', express.json({ limit: runBodyLimitBytes }));
 
+  /*
+   * An asset upload is RAW BYTES, not JSON and not multipart.
+   *
+   * The client already has the bytes and the server already knows the name from the
+   * URL, so an envelope would add only cost: JSON would mean base64 and its 33%, and
+   * multipart would mean hand-writing a boundary parser - there is no multipart
+   * dependency here and none is wanted for what a raw body does natively.
+   *
+   * Registered before the general JSON parser so it wins for this path.
+   */
+  // The check route FIRST, and the order is load-bearing: `type: '*/*'` below would
+  // otherwise swallow its JSON body as a Buffer, and the handler would see no digests
+  // and answer that the cache has nothing - so every run would upload everything.
+  app.use('/api/blobs/check', express.json({ limit: '64kb' }));
+  app.use('/api/blobs', express.raw({ type: '*/*', limit: config.blobs.maxBlobBytes }));
+
   app.use(express.json({ limit: '100kb' }));
 
   // Every log line and every error response can be tied back to one request.

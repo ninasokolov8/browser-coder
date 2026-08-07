@@ -4,6 +4,7 @@ import { runtime } from '../app/runtime';
 import { appConfig } from '../app/config';
 import { normalizeProjectPath } from '../components/project-path';
 import { collectWorkspaceSnapshot } from './workspace';
+import { withCachedAssets } from './asset-transport.ts';
 import { notifyRunResult } from '../integrations/stepup-bus';
 import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
 import { startRunLoader, stopRunLoader } from '../components/run-loader';
@@ -335,9 +336,16 @@ requestBody = {
   // Mark the active file explicitly as well as sending entryPoint. This keeps
   // native and embedded/project execution correct even with older compatible
   // backends that prefer the per-file isMain flag.
-  files: languageFiles.map(file => ({
-    ...file,
-    isMain: normalizeProjectPath(file.path) === entryPoint })),
+  //
+  // Assets that the server already has are replaced by their digest, so a project
+  // with a 2 MiB image does not send 2.8 MB of base64 on every single Run. Any
+  // failure - no secure context, no cache configured, a failed upload - returns the
+  // files untouched, which is the shape that has always worked.
+  files: await withCachedAssets(
+    languageFiles.map(file => ({
+      ...file,
+      isMain: normalizeProjectPath(file.path) === entryPoint })),
+  ),
   entryPoint };
 }
 

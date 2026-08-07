@@ -28,6 +28,35 @@ import { log } from '../logging.mjs';
 /** Directory name prefix, also used by the reaper to recognise its own garbage. */
 const JOB_PREFIX = 'job-';
 
+/**
+ * Is this file a binary asset, whose content is base64 rather than text?
+ *
+ * The language id is what the client sends for an image, an audio file or a font, and
+ * it is the only reliable signal - an extension can be anything, and a text file that
+ * happens to be called `notes.png` is still text.
+ *
+ * The extension list is a fallback for a caller that sent no language at all, which the
+ * frozen v1 payload permits: Step-Up posts `{language, version, code}` server-to-server
+ * and a future caller could post files without per-file languages. Writing base64 to
+ * disk for those would be the old bug wearing a different hat.
+ */
+const ASSET_LANGUAGE = 'asset';
+
+const BINARY_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif',
+  'mp3', 'wav', 'ogg', 'm4a', 'mp4', 'webm',
+  'ttf', 'otf', 'woff', 'woff2', 'zip', 'pdf',
+]);
+
+function isBinaryAsset(file) {
+  if (file?.language === ASSET_LANGUAGE) return true;
+  // A stated language that is not `asset` means text, whatever the name says.
+  if (file?.language) return false;
+
+  const extension = String(file?.name || '').split('.').pop()?.toLowerCase();
+  return extension ? BINARY_EXTENSIONS.has(extension) : false;
+}
+
 export class Job {
   /**
    * @param {string} root parent directory for all jobs
@@ -74,9 +103,28 @@ export class Job {
   }
 
   /** Write one file, creating parent directories as needed. */
-  writeFile(relativePath, content) {
+  writeFile(relativePath, content, { binary = false } = {}) {
     const target = this.absolute(relativePath);
     fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+
+    if (binary) {
+      /*
+       * A binary asset arrives base64-encoded and must be DECODED on the way to disk.
+       *
+       * Blueprint 39.2 says exactly that - "the client encodes and the server decodes"
+       * - and the decode was never written. So a student's image was written to the job
+       * directory as its base64 TEXT: 96 characters where the PNG is 70 bytes. Any
+       * program that opened one got the encoding instead of the picture, and it failed
+       * on a file the IDE displayed perfectly well in its own viewer, because the
+       * viewer decodes in the browser.
+       *
+       * Found by the asset-cache work, which sends the same bytes a different way and
+       * so finally had something to compare against.
+       */
+      fs.writeFileSync(target, Buffer.from(content, 'base64'), { mode: 0o600 });
+      return target;
+    }
+
     // Exact bytes: the content is written as UTF-8 with no normalization, no
     // trailing-newline insertion and no EOL rewriting. Whitespace is program
     // text in Python and significant in every language's string literals.
@@ -86,7 +134,9 @@ export class Job {
 
   /** Write a whole validated file set. */
   writeFiles(files) {
-    for (const file of files) this.writeFile(file.name, file.content);
+    for (const file of files) {
+      this.writeFile(file.name, file.content, { binary: isBinaryAsset(file) });
+    }
   }
 
   readFile(relativePath) {
