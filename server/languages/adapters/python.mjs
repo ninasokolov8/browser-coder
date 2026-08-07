@@ -38,6 +38,9 @@ const DEBUG_ADAPTER_PATH = path.join(LANGUAGES_ROOT, 'python', 'debug_adapter.py
 /** Environment variable naming the directory a program may open files in. */
 export const WORKSPACE_ENV = 'BROWSER_CODER_WORKSPACE';
 
+/** Where the debug adapter finds the turtle shim. Set only when one was written. */
+export const TURTLE_SHIM_ENV = 'BROWSER_CODER_TURTLE_SHIM';
+
 /**
  * The filesystem guard, loaded once.
  *
@@ -57,7 +60,13 @@ function fsGuard() {
 }
 
 /** Separator between the shim and user code. Line count must stay in sync. */
-const USER_CODE_SEPARATOR = '\n\n# ── user code ──\n';
+/**
+ * Where the turtle shim is written inside the job directory.
+ *
+ * Leading dot and a namespaced name so it cannot collide with a file the student
+ * created, and so the explorer's own conventions keep it out of sight.
+ */
+const TURTLE_SHIM_FILE = '.browser-coder-turtle-shim.py';
 
 let shimSource = null;
 function turtleShim() {
@@ -72,31 +81,33 @@ function turtleShim() {
 }
 
 /**
- * Lines the shim occupies before the user's first line.
+ * Drop traceback frames for files WE put in the job directory.
  *
- * A traceback reports positions in the combined file, so this offset is what
- * turns "line 769" back into the line the student actually wrote.
+ * The filesystem guard and the turtle shim are ours, not the student's. A frame
+ * pointing at either names a file they cannot open, at a line they did not write, and
+ * reading it is a dead end - the useful frames are the ones above and below it.
+ *
+ * This replaces an arithmetic version. The shim used to be prepended to the entry file,
+ * so a traceback reported the student's line 6 as line 1,589 and every frame had to be
+ * shifted back by the length of the shim. Giving the shim its own file removed the
+ * shift; all that is left is deciding whose frame it is, which is a question about the
+ * filename rather than about arithmetic that can silently go stale when the shim grows.
  */
-function shimLineOffset() {
-  const shim = turtleShim();
-  if (!shim) return 0;
-  const prefix = shim + USER_CODE_SEPARATOR;
-  let count = 0;
-  for (let i = 0; i < prefix.length; i++) if (prefix[i] === '\n') count++;
-  return count;
-}
+export function dropInjectedFrames(text, injectedFiles) {
+  if (!text) return text || '';
 
-/**
- * Rewrite a traceback so line numbers match the editor when the shim was
- * prepended.
- *
- * User-code frames shift back by the offset. Shim-internal frames are dropped
- * along with their indented source snippet and caret line, because they are
- * implementation detail the student never wrote and would only confuse. Frames
- * for other files are already correct and are left alone.
- */
-export function adjustTracebackForShim(text, offset, fileMatch) {
-  if (!text || !offset) return text || '';
+  const names = (injectedFiles ?? []).map(file => path.basename(file));
+
+  /*
+   * The launcher's own frames, which are ours for the same reason.
+   *
+   * `<string>` is the `-c` bootstrap and `<frozen runpy>` is the stdlib machinery it
+   * calls; both sit above every student traceback and neither can be opened. They were
+   * never filtered - the old rewriter only looked at frames matching the entry file's
+   * name - so a one-line NameError arrived with four frames of our plumbing in front
+   * of it, and the student's own line last.
+   */
+  const launcherFrame = /^<string>$|^<frozen .+>$/;
   const lines = text.split('\n');
   const out = [];
   // Tolerates a trailing \r so CRLF and LF both parse.
@@ -110,21 +121,18 @@ export function adjustTracebackForShim(text, offset, fileMatch) {
     }
 
     const filePath = match[2];
-    const lineNumber = Number.parseInt(match[4], 10);
-    if (fileMatch && !filePath.includes(fileMatch)) {
+    const ours = launcherFrame.test(filePath) || names.some(name => filePath.endsWith(name));
+    if (!ours) {
       out.push(lines[i]);
       continue;
     }
 
-    if (lineNumber > offset) {
-      out.push(match[1] + match[2] + match[3] + (lineNumber - offset) + match[5]);
-    } else {
-      // Drop the frame and every indented continuation line beneath it.
-      while (i + 1 < lines.length) {
-        const next = lines[i + 1];
-        if (frameRe.test(next) || !/^\s{2,}\S/.test(next)) break;
-        i++;
-      }
+    // Drop the frame and every indented continuation line beneath it - the source
+    // snippet and its caret, which belong to the frame and are meaningless without it.
+    while (i + 1 < lines.length) {
+      const next = lines[i + 1];
+      if (frameRe.test(next) || !/^\s{2,}\S/.test(next)) break;
+      i++;
     }
   }
 
@@ -238,13 +246,28 @@ export const pythonAdapter = {
     const problems = await preflight(ctx, job.readFile(entryPoint), displayName);
     if (problems) return problems;
 
-    // Prepend the shim when ANY file in the project imports turtle - a helper
-    // module may be the one drawing.
-    let shimInjected = false;
+    /*
+     * The turtle shim goes in a file of its own, NOT in front of the student's code.
+     *
+     * It used to be concatenated onto the entry file, which made every line of that
+     * file 1,585 lines further down than the editor thought. Tracebacks were corrected
+     * for the shift; breakpoints were not. Debugging a turtle program therefore armed
+     * every breakpoint inside the shim - a student who set one on line 6 of a fifteen
+     * line drawing stopped somewhere in our renderer, or nowhere at all.
+     *
+     * The offset was never necessary. All the shim does is put a synthetic module into
+     * `sys.modules['turtle']`, so it only has to RUN before the student's `import
+     * turtle` - it does not have to share a file with it. Executed separately, the
+     * student's file is the file they wrote, at the line numbers they wrote it at, for
+     * the debugger and the traceback alike.
+     *
+     * Injected when ANY file in the project imports turtle: a helper module may be the
+     * one drawing.
+     */
+    let shimPath = null;
     const anyTurtle = files.some(file => file.name.endsWith('.py') && usesTurtle(file.content));
     if (anyTurtle && turtleShim()) {
-      job.writeFile(entryPoint, turtleShim() + USER_CODE_SEPARATOR + job.readFile(entryPoint));
-      shimInjected = true;
+      shimPath = job.writeFile(TURTLE_SHIM_FILE, turtleShim());
     }
 
     // Make every workspace folder importable, so moving a file into a folder does
@@ -264,17 +287,24 @@ export const pythonAdapter = {
     // command line, and a file gives any traceback a real name to point at.
     const guardPath = job.writeFile('.browser-coder-fs-guard.py', fsGuard());
 
+    /** `exec` a file we wrote, under a name that is not the student's. */
+    const execFileLine = (file, moduleName) =>
+      `exec(compile(open(${JSON.stringify(file)}).read(), ${JSON.stringify(file)}, "exec"), `
+      + `{"__name__": ${JSON.stringify(moduleName)}})`;
+
     const bootstrap = [
       'import runpy, sys',
       // Install the filesystem guard FIRST, so nothing the student's program can
       // reach - including an import of one of their own modules - runs before
       // `open` is confined to the workspace.
       `exec(compile(open(${JSON.stringify(guardPath)}).read(), ${JSON.stringify(guardPath)}, "exec"), {"__name__": "_bc_fs_guard"})`,
+      // Then the turtle shim, if this project draws. After the guard, because the shim
+      // is ordinary code and gets no more filesystem than the student does; before the
+      // program, because it must own `sys.modules['turtle']` by the time they import it.
+      ...(shimPath ? [execFileLine(shimPath, '_bc_turtle_shim')] : []),
       `sys.path[:0] = ${JSON.stringify(importDirs)}`,
       `runpy.run_path(${JSON.stringify(entryAbsolute)}, run_name="__main__")`,
     ].join('\n');
-
-    const offset = shimLineOffset();
 
     /*
      * A debug run launches the adapter instead of the bootstrap.
@@ -309,11 +339,14 @@ export const pythonAdapter = {
         // Which file the adapter should run. The port and token are already in the
         // sandbox environment, put there by the pipeline before the spawn.
         ...(debugging ? { [DEBUG_PROGRAM_ENV]: entryAbsolute } : {}),
+        // Only set when a shim was actually written, which is what tells the debug
+        // adapter to load one - see `_install_turtle_shim`. The ordinary bootstrap
+        // has the path inlined and does not read this.
+        ...(debugging && shimPath ? { [TURTLE_SHIM_ENV]: shimPath } : {}),
       },
       transformStderr: text => {
-        let out = stripJobPaths(text, job.dir);
-        if (shimInjected) out = adjustTracebackForShim(out, offset, displayName);
-        return out;
+        const out = stripJobPaths(text, job.dir);
+        return dropInjectedFrames(out, [guardPath, ...(shimPath ? [shimPath] : [])]);
       },
     };
   },

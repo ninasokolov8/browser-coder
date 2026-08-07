@@ -629,6 +629,32 @@ def _install_fs_guard_for_debug():
     exec(compile(source, guard, 'exec'), {'__name__': '_bc_fs_guard'})    # noqa: S102
 
 
+def _install_turtle_shim():
+    """Register the turtle shim, if this project draws.
+
+    Mirrors the ordinary bootstrap, which execs the same file for the same reason: the
+    shim's whole job is to put a synthetic module into `sys.modules['turtle']`, so it
+    only has to run before the student's `import turtle`.
+
+    It used to arrive by being prepended to the student's entry file, which is why
+    debugging a turtle program was broken - every breakpoint the student set landed
+    1,585 lines earlier than they meant, inside the shim. Reading it from a separate
+    file is what lets their line 6 stay line 6.
+
+    The path comes from the environment rather than being guessed from the job
+    directory. The server sets it ONLY when it wrote a shim, so a student who happens to
+    create a file by that name never has it executed as one - and the entry file may sit
+    in a subdirectory, which a guessed path would miss anyway.
+    """
+    shim = os.environ.get('BROWSER_CODER_TURTLE_SHIM')
+    if not shim:
+        return
+
+    with open(shim, 'r', encoding='utf-8') as handle:
+        source = handle.read()
+    exec(compile(source, shim, 'exec'), {'__name__': '_bc_turtle_shim'})    # noqa: S102
+
+
 def _add_import_dirs(program):
     """Put the student's own folders on sys.path, deterministically.
 
@@ -691,6 +717,10 @@ def main():
     # students would find out which of the two buttons is looser. "Run" and "Debug"
     # must have one security posture.
     _install_fs_guard_for_debug()
+
+    # Then the shim, after the guard for the same reason the bootstrap does it in that
+    # order: it is ordinary code and gets no more filesystem than the student does.
+    _install_turtle_shim()
 
     # Make the student's own modules importable, exactly as the ordinary bootstrap
     # does with `sys.path[:0] = importDirs`.

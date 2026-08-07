@@ -21,11 +21,12 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const ADAPTER = resolve(import.meta.dirname, '../../languages/python/debug_adapter.py');
+const TURTLE_SHIM = resolve(import.meta.dirname, '../../languages/python/turtle_shim.py');
 
 /**
  * The interpreter to test against, or null.
@@ -60,8 +61,9 @@ class DebugSession {
   stderr = '';
   exited = null;
 
-  constructor(dir, source) {
+  constructor(dir, source, extraEnv = {}) {
     this.dir = dir;
+    this.extraEnv = extraEnv;
     this.programPath = join(dir, 'main.py');
     writeFileSync(this.programPath, source, 'utf8');
   }
@@ -89,6 +91,7 @@ class DebugSession {
         // Without it the guard falls back to cwd and a workspace write would land
         // somewhere else - so the harness has to mirror what production does.
         BROWSER_CODER_WORKSPACE: this.dir,
+        ...this.extraEnv,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -170,8 +173,8 @@ class DebugSession {
   }
 }
 
-function session(source) {
-  return new DebugSession(mkdtempSync(join(tmpdir(), 'bc-dbg-')), source);
+function session(source, extraEnv) {
+  return new DebugSession(mkdtempSync(join(tmpdir(), 'bc-dbg-')), source, extraEnv);
 }
 
 const PROGRAM = [
@@ -473,5 +476,87 @@ describe('a breakpoint added while the program runs', { skip }, () => {
     assert.equal(stopped.line, 6);
     const total = stopped.locals.find(entry => entry.name === 'total');
     assert.equal(total.value.text, '3');
+  });
+});
+
+describe('debugging a program that draws', { skip }, () => {
+  /*
+   * The turtle shim used to be CONCATENATED onto the entry file - 1,583 lines of
+   * renderer, then the student's code. Tracebacks were corrected for the shift and
+   * breakpoints were not, so a student who set a breakpoint on line 6 of a fifteen-line
+   * drawing armed line 6 of our renderer instead. Nothing stopped where they asked.
+   *
+   * The shim is now its own file, exec'd before the program, and this is the test that
+   * says so: the line numbers below are the ones in the source above them, and they are
+   * only correct if nothing is prepended.
+   */
+  let debug;
+  let dir;
+
+  const SOURCE = [
+    'import turtle',                  // 1
+    '',                               // 2
+    'pen = turtle.Turtle()',          // 3
+    'side = 0',                       // 4
+    'for _ in range(4):',             // 5
+    '    pen.forward(50)',            // 6
+    '    pen.left(90)',               // 7
+    '    side = side + 1',            // 8
+    'print("sides", side)',           // 9
+  ].join('\n');
+
+  before(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bc-dbg-turtle-'));
+
+    // Exactly what the adapter does in prepare(): the shim written beside the program,
+    // and its path handed over in the environment.
+    const shimPath = join(dir, '.browser-coder-turtle-shim.py');
+    writeFileSync(shimPath, readFileSync(TURTLE_SHIM, 'utf8'), 'utf8');
+
+    debug = new DebugSession(dir, SOURCE, {
+      BROWSER_CODER_TURTLE_SHIM: shimPath,
+      BROWSER_CODER_GRAPHICS_OUT: join(dir, 'graphics.json'),
+    });
+    await debug.start();
+    await debug.waitFor('hello');
+  });
+
+  after(() => {
+    debug?.dispose();
+    try { rmSync(dir, { recursive: true, force: true }); } catch { /* fine */ }
+  });
+
+  test('a breakpoint stops on the line the student wrote, not 1,585 lines into ours',
+    async () => {
+      debug.send({ command: 'setBreakpoints', lines: [9] });
+      const accepted = await debug.waitFor('breakpoints');
+      assert.deepEqual(accepted.lines, [9], 'accepted as given, with no offset applied');
+
+      debug.send({ command: 'start' });
+      await debug.waitFor('started');
+
+      const stopped = await debug.waitFor('stopped');
+      assert.equal(stopped.line, 9, 'the print, which is where the breakpoint is');
+
+      // And the program really did draw on the way there - the shim is loaded, not
+      // merely absent. A stop on line 9 with `import turtle` failing would be a pass
+      // for the wrong reason.
+      const side = stopped.locals.find(entry => entry.name === 'side');
+      assert.equal(side.value.text, '4');
+    });
+
+  test('the drawing still reaches the graphics file', async () => {
+    debug.send({ command: 'continue' });
+
+    // The PROCESS, not the `terminated` frame. The shim serialises from an atexit
+    // handler, which runs after the adapter has already said it is done - the same
+    // distinction `waitForExit` exists for.
+    await debug.waitForExit();
+
+    // The shim serialises at exit through atexit, which only runs if the shim was
+    // genuinely installed as `turtle` rather than the real module being imported.
+    const drawing = JSON.parse(readFileSync(join(dir, 'graphics.json'), 'utf8'));
+    assert.ok(Array.isArray(drawing.shapes), 'a shape list');
+    assert.ok(drawing.shapes.length > 0, 'with the square in it');
   });
 });
