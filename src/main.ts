@@ -8,6 +8,7 @@ import { DiagnosticsStore } from './diagnostics/store';
 import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
 import { connectRunMarkers } from './diagnostics/server-source';
 import { connectDiagnosticStaleness } from './diagnostics/staleness';
+import { connectSaveStatus } from './features/save-status';
 import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
 import { initializeCommandPalette } from './features/command-palette';
 import { initializeQuickOpen } from './features/quick-open';
@@ -24,6 +25,7 @@ import { markWorkspaceReady, setupStepUpIntegration } from './integrations/stepu
 import { populateLanguageDropdown, populateVersionDropdown, configureMonacoForVersion } from './components/monaco-config';
 import { uiLangSel, langSel } from './components/dom';
 import { setStatus } from './components/output';
+import { announce } from './components/announce.ts';
 import { updateGridForRTL } from './features/ui-layout';
 import { initializeGoToDefinition } from './features/go-to-definition';
 import { initializeWebPreview } from './features/live-preview';
@@ -195,6 +197,10 @@ async function bootstrap(): Promise<void> {
   // recorded and never compared, so a compile error stayed squiggled on its original
   // line through every edit that followed - including the one that fixed it.
   connectDiagnosticStaleness({ store: diagnostics, service: workspace.service });
+
+  // Say so when autosave is failing, and flush what is pending before the page goes
+  // away. The persistence coordinator reported both and nothing listened.
+  connectSaveStatus(workspace.service, { status: setStatus, announce });
 
   initializeProblemsPanel(diagnostics);
 

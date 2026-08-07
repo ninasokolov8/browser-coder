@@ -1041,11 +1041,30 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
   await renderFileTree(tabManager);
   runtime.notifyWorkspaceChanged();
 
-  const moved = toMove.length - alreadyThere - (refusedCycle ? 1 : 0);
-  const refactorSuffix = refactorResult.replacements > 0
+  reportMove(toMove.length - alreadyThere - (refusedCycle ? 1 : 0), refactorResult, refactorError);
+}
+
+/**
+ * Say what a move did, including when the import rewrite failed.
+ *
+ * One function because there are two drop targets - into a folder, and between two rows
+ * - and they had already drifted. The positional one caught a refactor failure with
+ * `.catch(() => ({ replacements: 0, warnings: [] }))` and then said "Moved 1 item",
+ * so a student whose imports were now broken was told the move had gone fine, and had
+ * to discover it from the next run. It also never mentioned the imports it HAD updated.
+ *
+ * Moving files and fixing their imports is one operation as far as the student is
+ * concerned, so it gets one report.
+ */
+function reportMove(
+  moved: number,
+  refactorResult: { replacements: number; warnings: string[] },
+  refactorError?: unknown,
+): void {
+  const suffix = refactorResult.replacements > 0
     ? `; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`
     : '';
-  setStatus(`Moved ${moved} item${moved === 1 ? '' : 's'}${refactorSuffix}`);
+  setStatus(`Moved ${moved} item${moved === 1 ? '' : 's'}${suffix}`);
 
   if (refactorError) {
     setOutput(`Files moved, but imports could not be updated: ${refactorError}`);
@@ -1127,17 +1146,20 @@ export async function placeItemsBeside(
 
   await workspace.reorderChildren(parentId, arranged);
 
-  const refactorResult = await refactorWorkspaceImports(beforePaths).catch(() => ({
-    replacements: 0,
-    warnings: [] as string[],
-  }));
+  // Kept rather than swallowed: a failure here means the student's imports are now
+  // broken, and reporting the move as clean leaves them to find that out from the next
+  // run. `reportMove` is the same reporting the into-a-folder drop uses.
+  let refactorResult = { replacements: 0, warnings: [] as string[] };
+  let refactorError: unknown;
+  try {
+    refactorResult = await refactorWorkspaceImports(beforePaths);
+  } catch (error) {
+    refactorError = error;
+  }
 
   await renderFileTree(tabManager);
   runtime.notifyWorkspaceChanged();
-  setStatus(
-    toPlace.length === 1 ? 'Moved 1 item' : `Moved ${toPlace.length} items`,
-  );
-  if (refactorResult.warnings.length > 0) setOutput(refactorResult.warnings.join('\n'));
+  reportMove(toPlace.length, refactorResult, refactorError);
 }
 
 /**
