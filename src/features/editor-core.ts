@@ -152,6 +152,12 @@ export function createTabManager(hooks: {
       if (manager.getTabCount() === 0) {
         updateEmptyState(true);
         editor.setModel(null);
+        // Closing the LAST tab activates nothing, so `onTabSwitch` never runs and
+        // never hides the viewer. An image closed as the last tab stayed on screen
+        // over the empty state, and clicking it did nothing, because the tab it
+        // belonged to was gone. Closing any other tab is fine: the neighbour that
+        // becomes active goes through onTabSwitch, which hides it.
+        hideAssetViewer();
       }
       hooks.renderFileTree();
     },

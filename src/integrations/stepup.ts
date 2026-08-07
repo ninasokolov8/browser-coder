@@ -314,15 +314,22 @@ export function setupStepUpIntegration(): void {
   let codeChangeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   editor.onDidChangeModelContent(() => {
-    const activeTab = tabManager.getActiveTab();
-
-    if (activeTab) {
-      tabManager.markDirty(
-        activeTab.file.id,
-        editor.getValue()
-      );
-    }
-
+    /*
+     * Marking the document dirty used to happen HERE TOO.
+     *
+     * The identical five lines - `getActiveTab()`, then `markDirty(activeTab.file.id,
+     * editor.getValue())` - existed in features/workspace-init.ts as well, so every
+     * keystroke ran both. One responsibility, two implementations, in two modules that
+     * do not otherwise know about each other.
+     *
+     * That is how the asset-overwrite bug survived being fixed: attributing an edit to
+     * the ACTIVE TAB is wrong whenever the active tab is a binary asset, because the
+     * editor still holds the previously-opened source file's model behind the viewer -
+     * and correcting one copy left the other still writing Python into the student's
+     * image. The remaining copy attributes by MODEL, which is right in every case.
+     *
+     * This listener keeps only what belongs to the Step-Up integration.
+     */
     if (appConfig.isEmbedded && !policyState.readonly) {
       if (codeChangeTimeout) {
         clearTimeout(codeChangeTimeout);

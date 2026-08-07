@@ -21,7 +21,6 @@
  * keeps going through the text path that checks it.
  */
 
-import { runtime } from '../app/runtime';
 import {
   ASSET_LANGUAGE_ID,
   assetDataUrl,
@@ -30,7 +29,6 @@ import {
   formatBytes,
   type AssetType,
 } from '../workspace/assets.ts';
-import type { Disposable } from '../workspace/types.ts';
 
 const VIEWER_ID = 'asset-viewer';
 
@@ -172,43 +170,18 @@ export function showAssetViewer(file: { name: string; content: string; path?: st
   return true;
 }
 
-/**
- * Keep the viewer in step with the active tab.
+/*
+ * There was an `initializeAssetViewer()` here: a MutationObserver on the tab strip that
+ * showed or hid the viewer whenever the active tab changed.
  *
- * Driven by the tab manager's own change notification rather than by every call site
- * that opens a file, so a route into a file that nobody remembered to update - the
- * Problems panel, go-to-definition, quick-open - cannot leave an asset in the editor.
+ * It was exported and called by nobody, so none of it ran. Its doc comment claimed it
+ * was what kept the viewer in step "rather than every call site that opens a file",
+ * which described the opposite of what the code did - the call sites in
+ * features/editor-core.ts are the ones that actually drive it, and they always were.
+ *
+ * Deleted rather than wired up. Watching the DOM to infer which document is active is a
+ * worse mechanism than the tab manager's own callback, and having both would mean two
+ * things deciding when an image is on screen. The one gap it would genuinely have
+ * covered - closing the LAST tab activates nothing, so onTabSwitch never fires - is now
+ * handled in `onTabClose`, where the event actually happens.
  */
-export function initializeAssetViewer(): Disposable {
-  const update = (): void => {
-    const active = runtime.tabManager?.getActiveTab();
-    if (!active) {
-      hideAssetViewer();
-      return;
-    }
-    if (isAssetFile(active.file)) {
-      showAssetViewer({
-        name: active.file.name,
-        content: active.file.content,
-        path: active.file.path,
-      });
-    } else {
-      hideAssetViewer();
-    }
-  };
-
-  const tabs = document.getElementById('tabs');
-  const observer = tabs
-    ? new MutationObserver(update)
-    : null;
-  observer?.observe(tabs!, { childList: true, subtree: true, attributes: true });
-
-  update();
-
-  return {
-    dispose: () => {
-      observer?.disconnect();
-      hideAssetViewer();
-    },
-  };
-}

@@ -65,22 +65,15 @@ export interface WorkspaceState {
   theme: string;
 }
 
-const DEFAULT_DB_NAME = 'BrowserCoderDB';
-let dbName = DEFAULT_DB_NAME;
-
-/**
- * Override the IndexedDB name before the workspace is created.
+/*
+ * There was a `dbName` module variable here, with `setDbName`/`getDbName` around it and
+ * a comment explaining that this is how an embedded IDE gets an isolated database.
  *
- * Embedded mode isolates each iframe so several Step-Up parts on one page cannot
- * overwrite each other's files.
+ * Nothing wrote it and nothing read it. The isolation is real but it is done in
+ * main.ts, which computes the name from `appConfig.isEmbedded` and passes it to
+ * `createWorkspace` - so the comment described a switch that had no wire attached,
+ * pointing the next person at the wrong file to change.
  */
-export function setDbName(name: string): void {
-  dbName = name;
-}
-
-export function getDbName(): string {
-  return dbName;
-}
 
 let service: WorkspaceService | null = null;
 

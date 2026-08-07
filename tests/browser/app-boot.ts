@@ -1127,6 +1127,142 @@ async function checkRunErrorsBecomeMarkers(frameWindow: Window): Promise<void> {
 }
 
 /**
+ * Closing a tab must not break the file it closed.
+ *
+ * `onTabClose` disposes the Monaco model, but closing a tab does not delete the file -
+ * it is still in the workspace and still in the explorer. Acquiring a model makes it the
+ * document's authoritative buffer, and `release()` disposes it without detaching, so the
+ * document is left reading through a `MonacoBuffer` wrapping a disposed model.
+ * `getValue()` and `getRevision()` have no disposal guard, and Monaco throws.
+ *
+ * Everything that reads a document goes through there: collecting the workspace to Run,
+ * search, the snapshot Step-Up asks for. No node test can see it - `MemoryBuffer` has no
+ * disposed state, which is the same blind spot the registry's note on `#reconcile`
+ * already records.
+ */
+async function checkClosingATabKeepsTheFileUsable(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the tab-close check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { getContent(): string } | null;
+    allDocuments(): Array<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as {
+    switchToTab(id: string): Promise<unknown>;
+    closeTab(id: string): Promise<unknown>;
+  };
+
+  const doc = await workspace.createDocument({
+    name: 'closed-but-kept.py',
+    content: 'value = 41\nprint(value + 1)\n',
+    language: 'python',
+    version: 'python3',
+  });
+
+  // Open it, so it gets a model and that model becomes the document's buffer.
+  await tabManager.switchToTab(doc.id);
+  await tabManager.closeTab(doc.id);
+
+  check(
+    'closing a tab does not delete the file',
+    workspace.allDocuments().some(entry => entry.id === doc.id),
+  );
+
+  let content: string | null = null;
+  let threw = '';
+  try {
+    content = workspace.getDocument(doc.id)?.getContent() ?? null;
+  } catch (error) {
+    threw = String((error as Error)?.message || error);
+  }
+
+  check('the closed file can still be read', threw === '', threw);
+  check(
+    'and its content is intact',
+    content?.includes('value = 41') === true,
+    `read ${JSON.stringify(content)}`,
+  );
+}
+
+/**
+ * An open image must not collect the source file's text.
+ *
+ * With an asset tab active, `onTabSwitch` shows the viewer and returns BEFORE
+ * `editor.setModel(...)`, so the editor keeps the previously-opened source file's model
+ * attached and merely hidden. The content listener used to attribute any change to the
+ * ACTIVE TAB, so a change to that hidden model wrote Python into the image's document -
+ * and autosave persisted it over the student's file.
+ *
+ * Reachable without anything exotic: Replace All across files edits documents through
+ * their buffers, and for an open file that buffer IS the Monaco model.
+ */
+async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the asset-overwrite check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { getContent(): string } | null;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const models = runtime.models as {
+    peek(id: string): { setValue(value: string): void } | null;
+  };
+
+  const source = await workspace.createDocument({
+    name: 'beside-the-image.py',
+    content: 'first = 1\n',
+    language: 'python',
+    version: 'python3',
+  });
+
+  // A 1x1 PNG, stored the way an imported asset is.
+  const PIXEL =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const image = await workspace.createDocument({
+    name: 'picture.png',
+    content: PIXEL,
+    language: 'asset',
+    version: 'asset',
+  });
+
+  // Open the source file so its model is the one the editor holds, then switch to the
+  // image - which shows the viewer and leaves that model attached behind it.
+  await tabManager.switchToTab(source.id);
+  await tabManager.switchToTab(image.id);
+
+  // Something edits the still-attached model. Replace All is the realistic route.
+  const hidden = models.peek(source.id);
+  if (!hidden) {
+    check('the source model is still attached behind the viewer', false);
+    return;
+  }
+  hidden.setValue('first = 2\n');
+
+  const imageContent = workspace.getDocument(image.id)?.getContent() ?? null;
+  check(
+    'the image still holds its own bytes',
+    imageContent === PIXEL,
+    `image now: ${JSON.stringify(imageContent)?.slice(0, 60)}`,
+  );
+
+  const sourceContent = workspace.getDocument(source.id)?.getContent() ?? null;
+  check(
+    'and the edit landed on the file it belongs to',
+    sourceContent?.includes('first = 2') === true,
+    `source now: ${JSON.stringify(sourceContent)}`,
+  );
+}
+
+/**
  * Running only the selected lines must run only the selected lines.
  *
  * The gesture the feature advertises - triple-click, or a click in the line-number
@@ -1534,6 +1670,8 @@ async function run(): Promise<void> {
   await checkRunSelection(frameWindow);
   await checkErrorsAreExplained(frameWindow);
   await checkKeyboardAndScreenReader(frameWindow);
+  await checkClosingATabKeepsTheFileUsable(frameWindow);
+  await checkAnOpenImageIsNotOverwritten(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

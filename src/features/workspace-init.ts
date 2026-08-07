@@ -81,12 +81,25 @@ if (appConfig.isEmbedded) {
   }
 }
 
-// Listen to editor content changes for auto-save
+/*
+ * Editor content changed -> mark THAT model's document modified.
+ *
+ * Attributed by model, not by active tab, because the two are not always the same
+ * document. When the active tab is a binary asset, `onTabSwitch` shows the viewer and
+ * returns BEFORE `editor.setModel(...)`, so the editor keeps the previously-opened
+ * source file's model attached and merely hidden behind the viewer. Reading the active
+ * tab here meant that any change to that hidden model - a Replace All across files is
+ * the easy way to cause one - wrote the source file's text into the IMAGE's document,
+ * and autosave then persisted it over the student's file.
+ *
+ * The model is the document's authoritative buffer, so the text has already landed by
+ * the time this fires. What is left is recording that the student modified it and
+ * re-rendering the tab strip.
+ */
 editor.onDidChangeModelContent(() => {
-  const activeTab = tabManager.getActiveTab();
-  if (activeTab) {
-    tabManager.markDirty(activeTab.file.id, editor.getValue());
-  }
+  const model = editor.getModel();
+  const fileId = model ? runtime.models?.documentIdFor(model) : null;
+  if (fileId) tabManager.markDirty(fileId, editor.getValue());
 });
 
 // Theme selector

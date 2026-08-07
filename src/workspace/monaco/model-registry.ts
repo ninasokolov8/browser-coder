@@ -30,6 +30,7 @@
 import * as monaco from 'monaco-editor';
 
 import { MonacoBuffer } from './buffer.ts';
+import { MemoryBuffer } from '../buffer.ts';
 import type { WorkspaceDocument } from '../document.ts';
 import type { WorkspaceService } from '../service.ts';
 import type { DocumentId } from '../types.ts';
@@ -98,6 +99,21 @@ export class MonacoModelRegistry {
     return entry.model;
   }
 
+  /**
+   * Which document a model belongs to.
+   *
+   * The editor's model and the ACTIVE TAB are not always the same document, and code
+   * that assumed they were wrote one file's text into another - see the note on the
+   * content listener in features/workspace-init.ts. Asking the registry is the only
+   * answer that is right in every case.
+   */
+  documentIdFor(model: monaco.editor.ITextModel): DocumentId | null {
+    for (const [id, entry] of this.#entries) {
+      if (entry.model === model) return id;
+    }
+    return null;
+  }
+
   /** Re-point a model at its current path and language after a metadata change. */
   sync(document: WorkspaceDocument): void {
     const entry = this.#entries.get(document.id);
@@ -105,10 +121,39 @@ export class MonacoModelRegistry {
     this.#reconcile(document, entry);
   }
 
+  /**
+   * Give up this document's model, handing its text back to the document first.
+   *
+   * The handover is the point. `acquire` makes the model the document's authoritative
+   * buffer, so disposing it without replacing it leaves the document reading through a
+   * `MonacoBuffer` wrapping a dead model - and `getValue()` has no disposal guard, so
+   * every later read throws "Model is disposed!".
+   *
+   * That is what closing a tab did. Closing a tab does not delete the file: it is still
+   * in the workspace and still in the explorer, and the next thing to read it - Run
+   * collecting the workspace, a search across files, the snapshot Step-Up asks for -
+   * threw, for a file the student had done nothing to but close. Only a real browser
+   * could catch it, because `MemoryBuffer` has no disposed state, which is the same
+   * blind spot `#reconcile` below already records.
+   *
+   * The order is the one `#reconcile` uses and for the same reason: attach the
+   * replacement BEFORE disposing, because reading the outgoing text is part of
+   * attaching.
+   */
   release(id: DocumentId): void {
     const entry = this.#entries.get(id);
     this.#entries.delete(id);
-    if (entry && !entry.model.isDisposed()) entry.model.dispose();
+    if (!entry || entry.model.isDisposed()) return;
+
+    // The document may be gone already - this is also the path a deletion takes -
+    // in which case there is nothing to hand back to.
+    const document = this.#service.getDocument(id);
+    if (document) {
+      const wasDirty = document.isDirty;
+      document.attachBuffer(new MemoryBuffer(entry.model.getValue()), { dirty: wasDirty });
+    }
+
+    entry.model.dispose();
   }
 
   releaseAll(): void {
