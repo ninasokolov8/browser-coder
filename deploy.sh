@@ -68,8 +68,16 @@ chmod 770 security/reports 2>/dev/null || sudo chmod 770 security/reports
 log "📥 Pulling production images"
 docker compose -f "$COMPOSE_FILE" pull api nginx shared-storage-init
 
-log "🛑 Removing previous production containers"
-docker compose -f "$COMPOSE_FILE" down --remove-orphans
+log "🛑 Removing previous production containers and reconciling networks"
+# `down --remove-orphans` alone is not enough, and the way it is not enough is
+# silent: it reports "Resource is still in use" for a network it cannot remove and
+# then exits 0. The deploy would carry on against a network that keeps whatever
+# settings it was created with - so `internal: true` would not be applied and the
+# sandbox would have internet egress, on a green deploy. The script below does the
+# `down`, detaches whatever compose could not, and refuses to continue if a project
+# network survives. Shared with .github/workflows/deploy.yml so both deployment
+# paths handle this the same way.
+bash "${PROJECT_DIR}/scripts/deploy-reset-networks.sh" "$COMPOSE_FILE"
 
 # Remove only legacy autoscaler-created containers. Compose-managed containers
 # were already removed by `docker compose down` above.

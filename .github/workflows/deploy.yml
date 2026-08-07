@@ -74,9 +74,63 @@ jobs:
 
             # Pull new images using production compose file (pre-built GHCR image)
             docker compose -f docker-compose.prod.yml pull
+
+            # Recreate the project's networks when their definition has changed.
+            #
+            # This step exists because the deploy that added `internal: true` to the
+            # `internal` network (V-07 - no NAT egress from the sandbox) died here.
+            # A network's attributes are fixed at creation, so compose had to delete
+            # and recreate it, and the profile-gated autoscaler was still attached:
+            #
+            #   Error response from daemon: error while removing network:
+            #   network browser-coder_internal has active endpoints
+            #   (name:"browser-coder-autoscaler-1")
+            #
+            # It failed AFTER stopping nginx and api, so the site was down and a
+            # plain re-run failed identically. See the script for why it refuses to
+            # continue rather than deploying against a stale network.
+            bash scripts/deploy-reset-networks.sh docker-compose.prod.yml
+
             # --force-recreate ensures containers restart with the updated
             # compose env + freshly pulled image, not a cached container.
             docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+
+            # A deploy that leaves the API unhealthy is a failed deploy, not a
+            # successful one with a broken site - and this script previously
+            # reported success the moment `up` returned, which is before the
+            # container has started, let alone passed a health check.
+            # Read the state with `docker inspect` rather than `compose ps --format
+            # json`: the compose JSON shape has changed between versions, and a health
+            # gate that silently never matches would fail every deploy of a working
+            # site - which is worse than no gate, because a red deploy nobody believes
+            # is a red deploy nobody reads.
+            echo "⏳ Waiting for the API to become healthy"
+            healthy=""
+            for attempt in $(seq 1 60); do
+              for cid in $(docker compose -f docker-compose.prod.yml ps -q api); do
+                state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo unknown)"
+                if [ "$state" = "healthy" ]; then healthy="yes"; break; fi
+              done
+              [ -n "$healthy" ] && break
+
+              if [ "$attempt" -eq 60 ]; then
+                echo "✗ No API replica became healthy within 120s" >&2
+                docker compose -f docker-compose.prod.yml ps >&2
+                docker compose -f docker-compose.prod.yml logs --tail=100 api nginx >&2
+                exit 1
+              fi
+              sleep 2
+            done
+            echo "✓ API is healthy"
+
+            # And that the site actually answers through nginx, which is the thing a
+            # student loads. A healthy api behind a broken proxy is still an outage.
+            if ! curl -fsS -o /dev/null --max-time 10 http://127.0.0.1/health; then
+              echo "✗ nginx is not serving /health" >&2
+              docker compose -f docker-compose.prod.yml logs --tail=100 nginx >&2
+              exit 1
+            fi
+            echo "✓ nginx is serving"
             
             # Cleanup old images
             docker image prune -f
