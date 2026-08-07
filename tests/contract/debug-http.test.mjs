@@ -18,7 +18,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { startServer } from './support/server.mjs';
-import { requires } from './support/toolchain.mjs';
+import { requires, requiresDebugger } from './support/toolchain.mjs';
 
 const PROGRAM = [
   'total = 0',                 // 1
@@ -907,7 +907,7 @@ describe('debugging a supervised language over HTTP', () => {
      * which is the right way round: the image has both, and a deployment that lost one
      * should be loud.
      */
-    describe(`${testCase.language} over HTTP`, requires(testCase.language), () => {
+    describe(`${testCase.language} over HTTP`, requiresDebugger(testCase.language), () => {
       test('stops at the breakpoint, then runs to the end', async () => {
         const run = await new StreamedRun(base).start({
           language: testCase.language,

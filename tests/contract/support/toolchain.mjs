@@ -211,6 +211,57 @@ export function requires(languageId) {
   };
 }
 
+/**
+ * Can this language actually be DEBUGGED here?
+ *
+ * A separate question from whether it runs, and for three languages the answer
+ * differs. Java needs a matching javac/java pair; PHP needs Xdebug, which is a
+ * compiled extension rather than a binary on a PATH; C# needs both a .NET SDK that
+ * can build the target framework AND a musl-capable debugger that is not packaged
+ * anywhere and only exists in the runtime image.
+ *
+ * Without this, `requires('csharp')` passed on a development host with .NET 6 and no
+ * debugger, and the debug test then failed rather than skipping - which trains people
+ * to ignore a red suite. The image has all of it and runs every one of these.
+ */
+const DEBUGGER_PROBES = {
+  java: () => hasToolchain('java'),
+  javascript: () => hasToolchain('javascript'),
+  typescript: () => hasToolchain('typescript'),
+  python: () => hasToolchain('python'),
+  php: () =>
+    probe(process.env.PHP_BIN || 'php', [
+      '-dzend_extension=xdebug',
+      '-r',
+      'echo extension_loaded("xdebug") ? "ok" : "";',
+    ]) !== null,
+  csharp: () => {
+    if (!hasToolchain('csharp')) return false;
+    for (const candidate of [process.env.DOTNET_DEBUGGER_BIN, '/opt/dncdbg/dncdbg', 'dncdbg']) {
+      if (candidate && probe(candidate, ['--version'])) return true;
+    }
+    return false;
+  },
+};
+
+const debuggerDetected = new Map();
+
+export function hasDebugger(languageId) {
+  if (debuggerDetected.has(languageId)) return debuggerDetected.get(languageId);
+  const check = DEBUGGER_PROBES[languageId];
+  const answer = check ? check() === true : false;
+  debuggerDetected.set(languageId, answer);
+  return answer;
+}
+
+/** Like `requires`, but for a test that needs the language's DEBUGGER. */
+export function requiresDebugger(languageId) {
+  if (hasDebugger(languageId)) return {};
+  return {
+    skip: `${languageId} debugger unavailable on this host - debugging NOT verified`,
+  };
+}
+
 export function toolchainReport() {
   const lines = [];
   for (const id of Object.keys(PROBES)) {
