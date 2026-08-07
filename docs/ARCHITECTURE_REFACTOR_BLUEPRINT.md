@@ -8403,3 +8403,220 @@ toolchain and each absent debugger.
 - The image on arm64. The Dockerfiles now select the architecture from buildx's
   `TARGETARCH` rather than pinning x64, because dncdbg publishes both - but only the
   x64 build has been run here, so arm64 is written and unproven.
+
+---
+
+## 51. Closing the rest of section 44
+
+Section 47.7 left five things open. This section is what happened to four of them, plus
+the structural work an audit of the whole tree turned up on the way. Collaboration is
+section 52, because it is a different kind of decision.
+
+Three of the six commits below fixed a bug that had nothing to do with the feature being
+built. That is not a coincidence: each of these features was the first thing to exercise
+a path from an angle nothing had used before.
+
+### 51.1 Conditional breakpoints
+
+`setBreakpoints` gains `conditions`, keyed exactly like the breakpoints themselves - a
+workspace path to a map of line to expression, with the **empty string** meaning the
+entry file. That key is not invented here; the explorer's manual ordering already uses
+it for the workspace root, for the same reason: a place with no name of its own that
+still has to be addressable alongside things that have one.
+
+Additive throughout. An adapter that ignores the field arms an unconditional
+breakpoint - the safe direction, because stopping too often is visible and explicable.
+
+Five of the six languages hand the condition straight to the engine, so a condition on a
+loop never round-trips: `bdb`'s `set_break(cond=)`, V8's
+`setBreakpointByUrl({condition})`, DAP's `SourceBreakpoint.condition`, and - verified
+against Xdebug 3.5 rather than read from the specification - DBGp's separate
+`conditional` breakpoint **type**, which takes the expression as its base64 payload
+rather than as a flag on a line breakpoint.
+
+**Java has nothing.** JDWP's event modifiers are Count, ThreadOnly, ClassOnly,
+ClassMatch, ClassExclude, LocationOnly, ExceptionOnly, FieldOnly, Step, InstanceOnly and
+SourceNameMatch. The specification reserves modKind 8 as "Conditional" and marks it "For
+the future"; no JVM implements it. So the Java adapter stops, decides and resumes - one
+round trip per iteration, which is exactly why its grammar is deliberately narrow rather
+than a general evaluator: a name, or a comparison of a field path against a literal or
+another path.
+
+Anything outside that grammar is **refused at arm time and reported**, never silently
+ignored. A breakpoint that quietly drops its condition is indistinguishable from one
+whose condition is false, and a student cannot tell "this never happened" from "the IDE
+ignored me". And the evaluator **fails open**: anything it cannot answer stops, because
+a breakpoint that fails to stop is invisible.
+
+The grammar lives in `languages/java/condition.mjs` - pure, unit-tested - because
+`debug_adapter.mjs` spawns a JVM the moment it is imported and no test can load it. The
+same split the PHP path helpers needed, for the same reason.
+
+Client: Shift+F9, which is what every other IDE binds it to. A conditional breakpoint is
+drawn **hollow** and its hover states the condition, because "why didn't it stop" is the
+question a student will actually have.
+
+### 51.2 A language declares what it can do, once
+
+Four hand-maintained lists, in four files, each a copy of a fact belonging to the
+language: `DEBUGGABLE_LANGUAGES`, `TAUGHT_LANGUAGES`, `SELECTION_RUNNABLE_LANGUAGES`, and
+the executable half of `LANGUAGE_ICONS`. Adding a language meant finding all four, which
+is the kind of edit that finds three.
+
+They are one `capabilities` block in each `languages/<id>/config.json` now, read through
+`languageCan(id, capability)`.
+
+The debug one was the worst, and its own comment admitted it: *"Duplicated rather than
+fetched... the server still refuses honestly if this list is ever wrong."* Honest refusal
+is not good enough. A student who clicks a Debug button the IDE offered and then watches
+the run report `debug:unsupported` has been lied to by the button.
+`tests/unit/language-capabilities.test.mjs` reads both the config and the server adapter
+and fails if they disagree.
+
+Also deleted: the `runner` block. A **required** field on every language config that
+nothing read, for which the loader fabricated values like `{ command: 'preview' }` for
+seven built-in languages purely to satisfy the type. Configuration describing machinery
+the system does not have is worse than absent - the same reasoning that removed the
+`scaling` block in V-35.
+
+One thing deliberately did **not** move. `canRunSelection` stayed out of
+`selection-run.ts`, because that module is Monaco-free so node can test it and the loader
+uses Vite's `import.meta.glob`. Importing it there would have traded a unit-tested module
+for a tidier call site.
+
+### 51.3 Hover explains the symbols
+
+A beginner pointing at `total` got a curated explanation; a beginner pointing at `//` got
+nothing. Backwards: `total` is their own variable.
+
+The cause was structural rather than missing data. The hover asked
+`getWordAtPosition`, which by definition returns runs of identifier characters, so no
+symbol could ever be looked up whatever the keyword files contained.
+`src/features/hover-symbols.ts` finds the operator instead.
+
+Longest match is the whole difficulty: `===` contains `==` contains `=`, and a naive scan
+finds the shortest - so a student hovering `===` would be told about **loose** equality,
+the exact opposite of what they are looking at.
+
+77 operator entries across the six languages, English and Hebrew, generated by one script
+rather than twelve hand-edits, because a translation added to one file and pasted into
+the other is how half the students silently get the wrong language. A test asserts every
+Hebrew entry contains Hebrew characters and is not a copy of the English.
+
+The explanations answer what a beginner is confused by rather than what the grammar says:
+`==` in Java compares object identity **including for Strings**; `??` keeps `0` and `""`
+where `||` replaces them; PHP joins strings with a dot and `+` on two strings is an error;
+integer `/` in Java and C# silently discards the remainder.
+
+The `//` ambiguity - integer division in Python, a comment everywhere else - needs no
+special case: the candidate set is the language's own keys, and `isInCode` already refuses
+to hover inside a comment.
+
+### 51.4 Things that reported success without doing anything
+
+An audit of the tree against the blueprint's own structure rules found four problems
+sharing one shape.
+
+**A forked security corpus.** Two copies of the attack fixtures. Five of the six were
+byte-identical and `python.mjs` had diverged - 1190 lines against 1307 - so the two
+runners were asserting different things about the same product. CI runs the `tests/` one,
+which makes it canonical; the other was stale and nothing said so. Blueprint 21.1 asks for
+exactly one canonical source.
+
+**Three test modes that passed by printing a banner.** `tests/run-tests.sh` printed
+"LANGUAGE TESTS", then "Language tests not yet implemented", then exited 0. A runner that
+exits 0 for work that never ran is worse than a missing runner: the pipeline is green and
+the log says the tests happened.
+
+**Four compose services pointing at nothing.** `docker-compose.test.yml` declared
+`test-languages`, `test-stress`, `test-features` and `test-all`, whose entry points do not
+exist in this tree.
+
+**A report script reading the wrong directory.** `run-security-tests.sh` read
+`tests/reports/` while the compose file mounts `security/reports/`, so it printed whatever
+run happened to be in the other directory.
+
+Plus `_test_suite.mjs` - 863 lines at the repository root testing a `server.mjs` that no
+longer exists in that shape, referenced by nothing - and four top-level READMEs describing
+three preview designs, two of which are gone. `STATELESS_PREVIEW_README.md` documented the
+fragment-URL route as current long after `SHORT_PREVIEW_README.md` recorded its removal.
+They are one `docs/PREVIEWS.md`, checked against the routes rather than against each other.
+
+7,499 lines removed.
+
+### 51.5 Check my work
+
+A teacher ships a marking harness as an `X_HIDDEN_` file; the student presses Check my
+work and gets a line per check.
+
+**The protocol is a printed line**, and that is not a shortcut. A test framework cannot be
+reached from inside this sandbox in five of the six languages, structurally: C# builds
+`--no-restore` with an empty `<RestoreSources>` because restore must never reach the
+network, Java invokes `javac` directly with no Maven or Gradle, PHP has no phar, JS and TS
+have no `node_modules` and no installer, and Python runs `-I -S` with no site-packages. A
+framework would buy two languages and need four vendored binaries plus four result formats
+for the rest.
+
+```
+BCTEST case adds two numbers pass
+BCTEST case handles zero fail expected 0 but got 1
+BCTEST done
+```
+
+The status word comes **after** the name, so a name can contain spaces with no quoting
+rule for a teacher to remember, and the parser scans forward for it. Two harnesses in one
+task is refused rather than resolved by picking the first: marking a student against an
+arbitrary one, differently depending on file order, is worse than saying nothing ran.
+
+**And the bug it uncovered: a PHP project could not span files.**
+`server/security/patterns.mjs` matched `/\binclude\s*[^;]+/i` and three siblings - every
+include there has ever been. So `require_once __DIR__ . '/helper.php'`, the first thing
+anybody writes after their first file, was refused with a message telling the student
+their code contained shell commands. It had been true for every multi-file PHP project all
+along; a marking harness has to import the file it is marking, which is what finally
+exercised it.
+
+The threat is Local File Inclusion, not inclusion. Four precise rules now block a quoted
+absolute path, a variable target, a stream wrapper or URL, and a traversal. Every fixture
+in the attack corpus uses an absolute path, so all 322 still fail - measured against the
+live server, not reasoned about.
+
+### 51.6 An image is sent once, not on every Run
+
+Blueprint 44.6 asked for "a multipart upload for assets, so a project with images is not
+re-uploaded in full on every Run". Those are two different things, and only the second is
+the goal.
+
+A 2 MiB image is 2.8 MB of base64 per run; thirty runs is 84 MB of the same picture.
+Multipart removes base64's 33% and nothing else - 84 MB becomes 63 MB - and costs a
+hand-written streaming boundary parser. Content addressing removes the **repetition**:
+2.8 MB and twenty-nine short requests.
+
+It is safe because the name is derived from the content, so the server verifies what it
+**received** rather than what the client claimed - otherwise a shared cache is a way to
+hand one student a file another student will run. There is no GET and no DELETE: an
+anonymous, publicly-writable, content-addressed store with a read route is a file host.
+
+Every failure falls back to inline bytes - no secure context (this is deployed over plain
+HTTP today), no cache directory, a failed upload, an eviction between the check and the
+run. The optimisation is invisible when it cannot help.
+
+**And the bug it uncovered, which is much older:**
+
+> Binary assets were written to the job directory as base64 TEXT.
+
+Blueprint 39.2 says "the client encodes and the server decodes". The decode was never
+written. A 70-byte PNG landed on disk as 96 characters, so any program that opened an
+image got the encoding rather than the picture - while the IDE's own viewer showed it
+perfectly, because that decodes in the browser. Found only because the cache sends the
+same bytes a different way and finally gave a test something to compare against.
+
+### 51.7 Verified
+
+**Image, built from `Dockerfile.production`:** 215 contract tests, zero skips.
+**Host:** 1092 unit tests, all three browser suites, both typecheck configurations.
+**Security:** 322 of 322 against the live container.
+
+Each new behaviour was re-broken and the suite confirmed to fail before the fix was
+restored: the Java condition evaluator, the capability mirror, the pending-breakpoint
+rule, and the two protocol bugs in section 50.
