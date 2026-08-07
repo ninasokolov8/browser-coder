@@ -282,7 +282,53 @@ const COMMAND_SHAPES = {
       }
     }
 
-    return { command: 'setBreakpoints', lines: clean, files };
+    /*
+     * Conditions, keyed the same way the breakpoints themselves are.
+     *
+     * `conditions` maps a workspace path to a map of line number to expression, and the
+     * EMPTY STRING means the entry file - the same file `lines` refers to. That is the
+     * convention the explorer's ordering already uses for the workspace root, so it is
+     * not a new idea to learn.
+     *
+     * Additive: a client that sends none behaves exactly as before, and an adapter that
+     * ignores the field arms an unconditional breakpoint, which is the safe direction to
+     * be wrong in - it stops too often rather than not at all.
+     *
+     * A condition is only kept for a line that is actually being armed. Otherwise a
+     * stale one could sit in the map forever, and the next `setBreakpoints` that happens
+     * to use that line would silently inherit it.
+     */
+    const conditions = {};
+    let conditionCount = 0;
+
+    const takeConditions = (rawFor, allowedLines, key) => {
+      if (!rawFor || typeof rawFor !== 'object' || Array.isArray(rawFor)) return;
+      const allowed = new Set(allowedLines);
+      const forFile = {};
+
+      for (const [rawLine, rawExpression] of Object.entries(rawFor)) {
+        if (conditionCount >= MAX_BREAKPOINTS) break;
+        const line = Number(rawLine);
+        if (!Number.isInteger(line) || !allowed.has(line)) continue;
+
+        const expression = typeof rawExpression === 'string' ? rawExpression.trim() : '';
+        if (expression.length === 0 || expression.length > MAX_EXPRESSION_CHARS) continue;
+
+        forFile[line] = expression;
+        conditionCount += 1;
+      }
+
+      if (Object.keys(forFile).length > 0) conditions[key] = forFile;
+    };
+
+    if (body?.conditions && typeof body.conditions === 'object' && !Array.isArray(body.conditions)) {
+      takeConditions(body.conditions[''], clean, '');
+      for (const [path, lines] of Object.entries(files)) {
+        takeConditions(body.conditions[path], lines, path);
+      }
+    }
+
+    return { command: 'setBreakpoints', lines: clean, files, conditions };
   },
 
   evaluate: body => {

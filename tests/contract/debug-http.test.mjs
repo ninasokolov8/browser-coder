@@ -950,3 +950,120 @@ describe('debugging a supervised language over HTTP', () => {
     });
   }
 });
+
+/**
+ * Conditional breakpoints, for every language that has a debugger.
+ *
+ * One test body across all six, because the whole point of the wire format is that the
+ * client does not know which mechanism is underneath. They are very different:
+ *
+ *   Python      bdb's `set_break(cond=...)` - the engine compiles and tests it
+ *   JavaScript  `Debugger.setBreakpointByUrl({condition})` - V8 tests it
+ *   TypeScript  the same, against the mapped `.js` line
+ *   PHP         DBGp's separate `conditional` breakpoint type
+ *   C#          DAP's `SourceBreakpoint.condition`
+ *   Java        NOTHING. JDWP has no expression modifier, so the adapter stops,
+ *               evaluates, and resumes - see languages/java/condition.mjs
+ *
+ * The loop runs five times and the condition selects the fourth, so a breakpoint that
+ * ignored its condition would stop on the first iteration and fail on the VALUE rather
+ * than on some downstream symptom.
+ */
+describe('conditional breakpoints', () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  const CASES = [
+    {
+      language: 'python', version: 'python3', line: 3, condition: 'i == 3', local: 'i',
+      code: ['total = 0', 'for i in range(5):', '    total += i', 'print("done")'].join('\n'),
+    },
+    {
+      language: 'javascript', version: 'es2022', line: 3, condition: 'i === 3', local: 'i',
+      code: ['let total = 0;', 'for (let i = 0; i < 5; i++) {', '  total += i;', '}', 'console.log("done");'].join('\n'),
+    },
+    {
+      language: 'php', version: 'php8', line: 4, condition: '$i == 3', local: '$i',
+      code: ['<?php', '$total = 0;', 'for ($i = 0; $i < 5; $i++) {', '  $total += $i;', '}', 'echo "done\n";'].join('\n'),
+    },
+    {
+      language: 'java', version: 'java17', line: 5, condition: 'i == 3', local: 'i',
+      code: [
+        'public class Main {',                              // 1
+        '  public static void main(String[] args) {',       // 2
+        '    int total = 0;',                               // 3
+        '    for (int i = 0; i < 5; i++) {',                // 4
+        '      total += i;',                                // 5
+        '    }',                                            // 6
+        '    System.out.println("done");',                  // 7
+        '  }',                                              // 8
+        '}',                                                // 9
+      ].join('\n'),
+    },
+    {
+      language: 'csharp', version: 'csharp12', line: 5, condition: 'i == 3', local: 'i',
+      code: [
+        'class Program {',                                  // 1
+        '  static void Main() {',                           // 2
+        '    int total = 0;',                               // 3
+        '    for (int i = 0; i < 5; i++) {',                // 4
+        '      total += i;',                                // 5
+        '    }',                                            // 6
+        '    System.Console.WriteLine("done");',            // 7
+        '  }',                                              // 8
+        '}',                                                // 9
+      ].join('\n'),
+    },
+  ];
+
+  for (const testCase of CASES) {
+    describe(testCase.language, requiresDebugger(testCase.language), () => {
+      test('stops on the iteration the condition names, not the first', async () => {
+        const run = await new StreamedRun(base).start({
+          language: testCase.language,
+          version: testCase.version,
+          code: testCase.code,
+          debug: true,
+        });
+
+        await run.waitFor('debug:attached');
+        assert.equal(
+          await run.debug('setBreakpoints', {
+            lines: [testCase.line],
+            conditions: { '': { [testCase.line]: testCase.condition } },
+          }),
+          200,
+        );
+        await run.waitFor('debug:breakpoints');
+
+        const stopped = await run.waitFor('debug:stopped');
+        assert.equal(stopped.line, testCase.line);
+
+        const loopVariable = (stopped.locals ?? []).find(local => local.name === testCase.local);
+        assert.ok(loopVariable, `no local named ${testCase.local}: ${JSON.stringify(stopped.locals)}`);
+        assert.equal(
+          loopVariable.value.text,
+          '3',
+          'stopped on the wrong iteration - the condition was ignored',
+        );
+
+        await run.debug('continue');
+        const exit = await run.waitFor('exit');
+        assert.equal(exit.exitCode, 0);
+
+        // Exactly one stop: the condition is false on the other four iterations.
+        assert.equal(run.seen('debug:stopped').length, 1);
+        await run.close();
+      });
+    });
+  }
+});

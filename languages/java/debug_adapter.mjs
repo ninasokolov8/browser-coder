@@ -39,6 +39,12 @@ import {
   SUSPEND_POLICY,
   TAG,
 } from './jdwp.mjs';
+import {
+  compareValues,
+  conditionIsSupported,
+  FIELD_PATH,
+  parseCondition,
+} from './condition.mjs';
 
 const PORT = Number(process.env.BROWSER_CODER_DEBUG_PORT || 0);
 const TOKEN = process.env.BROWSER_CODER_DEBUG_TOKEN || '';
@@ -173,6 +179,16 @@ let wanted = new Map();
 const classes = new Map();
 /** Active breakpoint request ids, so a replacement can clear them. */
 let breakpointRequests = [];
+/** Conditions the IDE asked for: source file name -> line -> expression. */
+let wantedConditions = new Map();
+/**
+ * The condition attached to each ARMED location, keyed `sourceName:line`.
+ *
+ * Separate from `wantedConditions` because a stop knows where it is, not what was
+ * requested - and only conditions this adapter can actually evaluate get in here, so
+ * an unsupported one cannot silently suppress a stop.
+ */
+const armedConditions = new Map();
 /** The thread the program is stopped on, or null. */
 let pausedThread = null;
 /** The top frame of that thread. Frame ids die the moment the thread resumes. */
@@ -310,8 +326,11 @@ async function applyBreakpoints() {
     );
   }
   breakpointRequests = [];
+  armedConditions.clear();
 
   const acceptedByFile = {};
+  /** Conditions asked for that this adapter cannot evaluate, reported rather than dropped. */
+  const rejectedConditions = {};
 
   for (const [sourceName, lines] of wanted) {
     /*
@@ -352,9 +371,34 @@ async function applyBreakpoints() {
 
       breakpointRequests.push(reply.data.readInt32BE(0));
       accepted.push(line);
+
+      /*
+       * A condition is only armed if it can be evaluated. An unsupported one is
+       * reported, and the breakpoint stops unconditionally - which is the safe
+       * direction: too many stops is visible and explicable, a breakpoint that never
+       * fires looks like the debugger is broken.
+       */
+      const expression = (wantedConditions.get(sourceName) ?? {})[line];
+      if (expression) {
+        if (conditionIsSupported(expression)) {
+          armedConditions.set(`${sourceName}:${line}`, expression);
+        } else {
+          (rejectedConditions[sourceName] ??= {})[line] = expression;
+        }
+      }
     }
 
     if (accepted.length > 0) acceptedByFile[sourceName] = accepted.sort((a, b) => a - b);
+  }
+
+  if (Object.keys(rejectedConditions).length > 0) {
+    send({
+      type: 'error',
+      message:
+        'Java breakpoint conditions support a variable, or a comparison against a '
+        + 'literal (like i == 5 or total > 100). The others will stop every time.',
+      conditions: rejectedConditions,
+    });
   }
 
   const entrySource = `${MAIN_CLASS.split('.').pop()}.java`;
@@ -577,6 +621,53 @@ function signatureTag(signature) {
   return signature.charCodeAt(0);
 }
 
+/** The armed condition for the location an event fired at, or null. */
+async function conditionAt(event) {
+  if (armedConditions.size === 0) return null;
+
+  const described = await describeFrame({ location: event.location, frameId: 0n });
+  if (!described.file) return null;
+  return armedConditions.get(`${described.file}:${described.line}`) ?? null;
+}
+
+/**
+ * Run something with the thread's top frame available to the evaluator, then put the
+ * paused state back exactly as it was.
+ *
+ * A condition is evaluated BEFORE anyone has been told the program stopped, so the
+ * adapter is not really paused - but `resolvePath` reads `pausedThread` and
+ * `pausedFrame`, and giving it a second way to find a frame would be two code paths
+ * for one question. Restoring afterwards matters: if the condition is false the
+ * program resumes, and leaving a stale frame id behind would make the next watch
+ * expression read a frame that no longer exists.
+ */
+async function withPausedFrame(thread, work) {
+  const heldThread = pausedThread;
+  const heldFrame = pausedFrame;
+
+  try {
+    const reply = await connection.command(
+      SET.THREAD_REFERENCE,
+      6,
+      connection.writer().objectId(thread).int(0).int(1).build(),
+    );
+    if (reply.errorCode !== 0) return true;
+
+    const reader = connection.reader(reply.data);
+    if (reader.int() < 1) return true;
+
+    pausedThread = thread;
+    pausedFrame = { frameId: reader.frameId(), location: reader.location() };
+    return await work();
+  } catch {
+    // Fails open, like the evaluator itself: an unanswerable condition stops.
+    return true;
+  } finally {
+    pausedThread = heldThread;
+    pausedFrame = heldFrame;
+  }
+}
+
 // ── Stopping ────────────────────────────────────────────────────────────────
 
 /** Report a stop: where, the stack, and the locals of the top frame. */
@@ -708,11 +799,14 @@ async function resume() {
 
 // ── Watch expressions ───────────────────────────────────────────────────────
 
-/**
- * A name, or a path of field accesses through names: `total`, `node.next.value`,
- * `args.length`. Nothing else - see `evaluateExpression`.
+/*
+ * `FIELD_PATH` is imported rather than declared here.
+ *
+ * A watch and a breakpoint condition accept the SAME thing on the left - a name, or a
+ * path of field accesses like `node.next.value` - and two copies of that rule would
+ * eventually disagree, which would mean an expression the watch panel accepts and the
+ * condition refuses, for no reason a student could see.
  */
-const FIELD_PATH = /^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*$/;
 
 /** Every field of a type and its supertypes, as name -> {fieldId, typeId, isStatic}. */
 async function fieldsOf(typeId) {
@@ -811,16 +905,16 @@ async function staticField(typeId, name) {
  * a student is told "this shape is not supported" rather than shown a wrong answer or
  * a JDWP error code.
  */
-async function evaluateExpression(expression) {
-  const text = String(expression ?? '').trim();
-  if (!text) return { error: 'Nothing to evaluate' };
-  if (pausedThread === null || pausedFrame === null) {
-    return { error: 'The program is not paused' };
-  }
+/**
+ * Resolve a field path to a RAW value, or an error.
+ *
+ * Split out of `evaluateExpression` because a breakpoint condition needs the value
+ * itself in order to compare it, not a rendering of it: `{ text: '3' }` cannot be
+ * compared with a number without parsing back what was just formatted.
+ */
+async function resolvePath(text) {
   if (!FIELD_PATH.test(text)) {
-    return {
-      error: 'Java watches support a variable or a field path (like total or node.next.value)',
-    };
+    return { error: `${text} is not a variable or a field path` };
   }
 
   const parts = text.split('.').map(part => part.trim());
@@ -854,7 +948,100 @@ async function evaluateExpression(expression) {
     current = next;
   }
 
-  return { value: await render(current) };
+  return { raw: current };
+}
+
+async function evaluateExpression(expression) {
+  const text = String(expression ?? '').trim();
+  if (!text) return { error: 'Nothing to evaluate' };
+  if (pausedThread === null || pausedFrame === null) {
+    return { error: 'The program is not paused' };
+  }
+  if (!FIELD_PATH.test(text)) {
+    return {
+      error: 'Java watches support a variable or a field path (like total or node.next.value)',
+    };
+  }
+
+  const resolved = await resolvePath(text);
+  if (resolved.error) return { error: resolved.error };
+  return { value: await render(resolved.raw) };
+}
+
+// ── Breakpoint conditions ───────────────────────────────────────────────────
+
+/*
+ * Java is the one language here whose debugger cannot do this for us: JDWP has no
+ * expression modifier, so this adapter stops, decides, and resumes. The grammar and
+ * the reasoning behind it are in `condition.mjs`, which is pure and unit-tested; what
+ * is here is the half that needs a live JVM - turning a path into a value.
+ */
+const NUMERIC_TAGS = new Set([TAG.BYTE, TAG.CHAR, TAG.SHORT, TAG.INT, TAG.LONG, TAG.FLOAT, TAG.DOUBLE]);
+
+/** A raw JDWP value as something comparable, or `undefined` when it is an object. */
+async function comparable(raw) {
+  if (!raw) return undefined;
+  if (raw.tag === TAG.BOOLEAN) return raw.value;
+  if (NUMERIC_TAGS.has(raw.tag)) return typeof raw.value === 'bigint' ? Number(raw.value) : raw.value;
+
+  if (raw.tag === TAG.STRING) {
+    if (raw.id === 0n) return null;
+    const reply = await connection.command(
+      SET.STRING_REFERENCE,
+      1,
+      connection.writer().objectId(raw.id).build(),
+    );
+    if (reply.errorCode !== 0) return undefined;
+    return connection.reader(reply.data).string();
+  }
+
+  // Any other reference type: only its nullness is meaningful without invoking
+  // `equals`, and invoking a method is the machinery this deliberately avoids.
+  if (raw.id !== undefined) return raw.id === 0n ? null : undefined;
+  return undefined;
+}
+
+/** A path resolved in the paused frame, as something comparable. */
+async function pathValue(text) {
+  const resolved = await resolvePath(text);
+  if (resolved.error) return { error: resolved.error };
+  return { value: await comparable(resolved.raw) };
+}
+
+/**
+ * Should the program stop here?
+ *
+ * Fails OPEN: anything that cannot be evaluated stops. A breakpoint that fails to stop
+ * is invisible - the student watches their program run past a mark they placed, with no
+ * way to tell a false condition from a broken one - whereas one that stops too often is
+ * merely annoying, and they can see why.
+ */
+async function conditionHolds(text) {
+  const parsed = parseCondition(text);
+  if (!parsed) return true;
+
+  if (parsed.kind === 'truthy') {
+    const resolved = await pathValue(parsed.path);
+    if (resolved.error) return true;
+    // Java has no truthiness, so only a boolean is a condition on its own; anything
+    // else is a shape this cannot judge, and it stops.
+    return typeof resolved.value === 'boolean' ? resolved.value : true;
+  }
+
+  const left = await pathValue(parsed.left);
+  if (left.error || left.value === undefined) return true;
+
+  let right;
+  if ('literal' in parsed) {
+    right = parsed.literal;
+  } else {
+    const resolvedRight = await pathValue(parsed.right);
+    if (resolvedRight.error || resolvedRight.value === undefined) return true;
+    right = resolvedRight.value;
+  }
+
+  const answer = compareValues(left.value, parsed.operator, right);
+  return answer === null ? true : answer;
 }
 
 async function handleCommand(command) {
@@ -862,13 +1049,34 @@ async function handleCommand(command) {
     case 'setBreakpoints': {
       wanted = new Map();
       const entrySource = `${MAIN_CLASS.split('.').pop()}.java`;
+      wantedConditions = new Map();
+
+      /*
+       * Conditions are keyed by SOURCE FILE NAME, like the breakpoints themselves,
+       * because that is all JDWP knows a file by. The empty-string key in the command
+       * means the entry file, matching `lines`.
+       */
+      const conditions = command.conditions ?? {};
+      const takeConditions = (sourceName, forFile) => {
+        for (const [line, expression] of Object.entries(forFile ?? {})) {
+          const at = Number(line);
+          if (!Number.isInteger(at)) continue;
+          const held = wantedConditions.get(sourceName) ?? {};
+          held[at] = expression;
+          wantedConditions.set(sourceName, held);
+        }
+      };
+
       if (Array.isArray(command.lines) && command.lines.length > 0) {
         wanted.set(entrySource, [...command.lines]);
       }
+      takeConditions(entrySource, conditions['']);
+
       for (const [file, lines] of Object.entries(command.files ?? {})) {
         // The IDE names a path; JDWP knows only a source file name.
         const sourceName = path.basename(file);
         wanted.set(sourceName, [...(wanted.get(sourceName) ?? []), ...(lines ?? [])]);
+        takeConditions(sourceName, conditions[file]);
       }
 
       // Watch every class a breakpoint names, so one in a file that has not loaded yet
@@ -1003,6 +1211,18 @@ async function onComposite(composite) {
     }
 
     if (event.kind === EVENT_KIND.BREAKPOINT) {
+      /*
+       * The condition is evaluated HERE, because JDWP will not do it (see
+       * `conditionHolds`). The frame has to be set up first - the evaluator resolves
+       * names against `pausedFrame` - so this borrows the paused state, and puts it
+       * back if the answer is "do not stop".
+       */
+      const condition = await conditionAt(event);
+      if (condition) {
+        const holds = await withPausedFrame(event.thread, () => conditionHolds(condition));
+        if (!holds) continue;
+      }
+
       stayStopped = true;
       await reportStop(event.thread, 'breakpoint');
       continue;

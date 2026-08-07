@@ -177,6 +177,8 @@ let session = null;
 let wanted = new Map();
 /** Xdebug's ids for the breakpoints currently set, so a replacement can remove them. */
 let breakpointIds = [];
+/** The conditions for those breakpoints: absolute path -> line -> expression. */
+let wantedConditions = new Map();
 /** True between a `run`/`step_*` going out and its stop coming back. */
 let running = false;
 /** True once the program has stopped and is waiting for the student. */
@@ -341,10 +343,26 @@ async function applyBreakpoints() {
     const relative = workspaceRelative(absolute) ?? path.basename(absolute);
     const accepted = [];
 
+    const forFile = wantedConditions.get(absolute) ?? {};
+
     for (const line of lines) {
+      /*
+       * A condition makes it a different BREAKPOINT TYPE, not an extra argument.
+       *
+       * DBGp has no condition flag on a line breakpoint. It has a separate type,
+       * `conditional`, which takes a file and line like a line breakpoint and the
+       * expression as its base64 payload - and Xdebug evaluates it itself, so a loop
+       * with a condition never round-trips to this process. Verified against Xdebug
+       * 3.5: a condition of `$i == 3` on a five-iteration loop printed 0, 1, 2 and
+       * then stopped, with $i == 3 in the locals.
+       */
+      const condition = forFile[line];
       const reply = await session.command(
         'breakpoint_set',
-        `-t line -f ${uriFromPath(absolute)} -n ${line}`,
+        condition
+          ? `-t conditional -f ${uriFromPath(absolute)} -n ${line}`
+          : `-t line -f ${uriFromPath(absolute)} -n ${line}`,
+        condition ? Buffer.from(condition, 'utf8').toString('base64') : null,
       );
       // Xdebug accepts a line breakpoint without checking that the line can hold
       // one, so this only fails when the file or the request is malformed.
@@ -400,17 +418,30 @@ async function handleCommand(command) {
   switch (command?.command) {
     case 'setBreakpoints': {
       wanted = new Map();
+      wantedConditions = new Map();
 
-      const add = (absolute, lines) => {
+      const add = (absolute, lines, forFile) => {
         if (!absolute || !Array.isArray(lines)) return;
         const existing = wanted.get(absolute) ?? [];
         wanted.set(absolute, [...existing, ...lines.filter(line => Number.isInteger(line) && line > 0)]);
+
+        // Keyed by the same absolute path as the lines, so the two cannot disagree
+        // about which file a relative path meant.
+        for (const [line, expression] of Object.entries(forFile ?? {})) {
+          const at = Number(line);
+          if (!Number.isInteger(at)) continue;
+          const held = wantedConditions.get(absolute) ?? {};
+          held[at] = expression;
+          wantedConditions.set(absolute, held);
+        }
       };
 
-      // `lines` still means the entry file; `files` is the multi-file form.
-      add(programAbsolute, command.lines);
+      // `lines` still means the entry file; `files` is the multi-file form, and the
+      // empty-string key in `conditions` means the entry file too.
+      const conditions = command.conditions ?? {};
+      add(programAbsolute, command.lines, conditions['']);
       for (const [file, lines] of Object.entries(command.files ?? {})) {
-        add(resolveInWorkspace(file), lines);
+        add(resolveInWorkspace(file), lines, conditions[file]);
       }
 
       await applyBreakpoints();

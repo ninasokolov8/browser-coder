@@ -1157,6 +1157,15 @@
         border-radius: 50%;
         background: #e51400;
       }
+      /* A conditional breakpoint: hollow, so it reads as "sometimes" rather than
+         "always". A student whose program runs past a solid dot has no way to tell a
+         false condition from a broken debugger; a different shape is the whole point,
+         and it must survive high contrast, where subtle fills disappear. */
+      .debug-breakpoint-conditional::before {
+        background: transparent;
+        border: 2px solid #e51400;
+        width: 7px; height: 7px;
+      }
       .debug-current-glyph::before {
         content: '\25B6';
         color: var(--glyph-current);

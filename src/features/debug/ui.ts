@@ -26,6 +26,8 @@ import type { Disposable } from '../../workspace/types.ts';
 export const debugState = new DebugSessionState();
 
 const BREAKPOINT_GLYPH = 'debug-breakpoint-glyph';
+/** A breakpoint with a condition. Visibly different, or a student cannot tell why it did not stop. */
+const CONDITIONAL_GLYPH = 'debug-breakpoint-glyph debug-breakpoint-conditional';
 const CURRENT_LINE = 'debug-current-line';
 
 let decorations: monaco.editor.IEditorDecorationsCollection | null = null;
@@ -84,7 +86,23 @@ export function syncBreakpoints(): void {
     if (documentId === activeId) entryLines = lines;
   }
 
-  void sendCommand('setBreakpoints', { lines: entryLines, files });
+  /*
+   * Conditions travel keyed the same way the breakpoints are, and the EMPTY STRING
+   * means the entry file - the one `lines` refers to.
+   *
+   * That key is not invented here: the explorer's manual ordering already uses the
+   * empty string for the workspace root, for the same reason - a place that has no
+   * name of its own but has to be addressable alongside things that do.
+   */
+  const conditions: Record<string, Record<number, string>> = {};
+  for (const [documentId, forDocument] of debugState.allConditions()) {
+    const path = workspace?.pathOf(documentId);
+    if (!path) continue;
+    conditions[path] = forDocument;
+    if (documentId === activeId) conditions[''] = forDocument;
+  }
+
+  void sendCommand('setBreakpoints', { lines: entryLines, files, conditions });
 }
 
 // ── Editor decorations ──────────────────────────────────────────────────────
@@ -101,16 +119,33 @@ function renderDecorations(snapshot: DebugSnapshot): void {
   const lineCount = model.getLineCount();
   const wanted: monaco.editor.IModelDeltaDecoration[] = [];
 
+  const conditioned = new Set(snapshot.conditionedBreakpoints);
+
   for (const line of snapshot.breakpoints) {
     // Clamped: a breakpoint can outlive the lines it was set on if the student
     // deletes them, and Monaco throws on an out-of-range decoration.
     if (line > lineCount) continue;
+
+    /*
+     * A conditional breakpoint looks different, and its hover says the condition.
+     *
+     * Without that, a breakpoint that does not stop is indistinguishable from a broken
+     * debugger - which is the single most confusing thing this feature could do to a
+     * beginner. The condition itself is in the tooltip because it is the answer to the
+     * question they will actually be asking.
+     */
+    const condition = conditioned.has(line) ? debugState.breakpointCondition(line) : null;
+
     wanted.push({
       range: new monaco.Range(line, 1, line, 1),
       options: {
         isWholeLine: false,
-        glyphMarginClassName: BREAKPOINT_GLYPH,
-        glyphMarginHoverMessage: { value: 'Breakpoint — click to remove' },
+        glyphMarginClassName: condition ? CONDITIONAL_GLYPH : BREAKPOINT_GLYPH,
+        glyphMarginHoverMessage: {
+          value: condition
+            ? `Stops when \`${condition}\` — click to remove`
+            : 'Breakpoint — click to remove',
+        },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
     });
@@ -554,6 +589,42 @@ export function initializeDebugUi(): Disposable {
     if (!line) return;
     debugState.toggleBreakpoint(line);
     syncBreakpoints();
+  });
+
+  /*
+   * Shift+F9 puts a condition on the breakpoint at the cursor.
+   *
+   * A keyboard command rather than a right-click menu, for two reasons: the glyph
+   * margin's context menu is Monaco's, not ours, and the accessibility work made
+   * keyboard reach a requirement rather than a nicety. Shift+F9 is what every other
+   * IDE binds this to, so it is not a new thing to learn.
+   *
+   * `prompt` is the right control here despite being unfashionable: it is modal,
+   * focus-managed and screen-reader-announced by the browser itself, which a
+   * hand-rolled inline input in the glyph margin would have to reimplement. The
+   * existing text is pre-filled so editing one is not retyping it, and clearing the
+   * box removes the condition.
+   */
+  editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.F9, () => {
+    const line = editor.getPosition()?.lineNumber;
+    if (!line) return;
+
+    const existing = debugState.breakpointCondition(line);
+    const answer = window.prompt(
+      `Stop at line ${line} only when this is true (leave empty for always):`,
+      existing ?? '',
+    );
+    // Cancel is null and means "change nothing"; an empty string is a decision to
+    // remove the condition, and the two must not be confused.
+    if (answer === null) return;
+
+    debugState.setBreakpointCondition(line, answer);
+    syncBreakpoints();
+    setStatus(
+      answer.trim()
+        ? `Line ${line} now stops only when ${answer.trim()}`
+        : `Line ${line} now stops every time`,
+    );
   });
 
   return {

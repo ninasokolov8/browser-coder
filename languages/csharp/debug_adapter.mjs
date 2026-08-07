@@ -181,6 +181,8 @@ debugger_.on('exit', () => {
 
 /** Breakpoints the IDE asked for: absolute source path -> lines. */
 let wanted = new Map();
+/** The conditions for those breakpoints: absolute path -> line -> expression. */
+let wantedConditions = new Map();
 /** The thread the program is stopped on, and the frame a watch resolves against. */
 let pausedThread = null;
 let pausedFrame = null;
@@ -404,9 +406,22 @@ async function applyBreakpoints() {
 
   for (const [absolute, lines] of wanted) {
     const relative = workspaceRelative(workspaceRoot, absolute) ?? path.basename(absolute);
+
+    /*
+     * Conditions go to the debugger, which compiles and evaluates them itself.
+     *
+     * DAP's `SourceBreakpoint` carries a `condition`, and the initialize response
+     * reports `supportsConditionalBreakpoints: true` - so a loop with a condition on
+     * it never round-trips to this process. Evaluating here instead would mean a stop
+     * and a resume per iteration.
+     */
+    const forFile = wantedConditions.get(absolute) ?? {};
+
     const reply = await connection.request('setBreakpoints', {
       source: { path: absolute, name: path.basename(absolute) },
-      breakpoints: lines.map(line => ({ line })),
+      breakpoints: lines.map(line => (
+        forFile[line] ? { line, condition: forFile[line] } : { line }
+      )),
       lines,
     });
     if (!reply.success) continue;
@@ -479,18 +494,31 @@ async function handleCommand(command) {
   switch (command?.command) {
     case 'setBreakpoints': {
       wanted = new Map();
+      wantedConditions = new Map();
 
-      const add = (absolute, lines) => {
+      const add = (absolute, lines, forFile) => {
         if (!absolute || !Array.isArray(lines)) return;
         const valid = lines.filter(line => Number.isInteger(line) && line > 0);
         if (valid.length === 0) return;
         wanted.set(absolute, [...(wanted.get(absolute) ?? []), ...valid]);
+
+        // Resolved to the same absolute path as the lines they belong to, so the
+        // two cannot disagree about which file a relative path meant.
+        for (const [line, expression] of Object.entries(forFile ?? {})) {
+          const at = Number(line);
+          if (!Number.isInteger(at)) continue;
+          const existing = wantedConditions.get(absolute) ?? {};
+          existing[at] = expression;
+          wantedConditions.set(absolute, existing);
+        }
       };
 
-      // `lines` still means the entry file; `files` is the multi-file form.
-      add(resolveInWorkspace(workspaceRoot, ENTRY), command.lines);
+      // `lines` still means the entry file; `files` is the multi-file form. The
+      // empty-string key in `conditions` means the entry file too.
+      const conditions = command.conditions ?? {};
+      add(resolveInWorkspace(workspaceRoot, ENTRY), command.lines, conditions['']);
       for (const [file, lines] of Object.entries(command.files ?? {})) {
-        add(resolveInWorkspace(workspaceRoot, file), lines);
+        add(resolveInWorkspace(workspaceRoot, file), lines, conditions[file]);
       }
 
       await applyBreakpoints();

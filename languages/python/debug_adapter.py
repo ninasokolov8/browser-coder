@@ -499,25 +499,39 @@ class BrowserCoderDebugger(bdb.Bdb):
             return candidate
         return None
 
-    def apply_breakpoints(self, lines, files=None):
+    def apply_breakpoints(self, lines, files=None, conditions=None):
         """Replace the breakpoint set across every file it names.
 
         `lines` alone means the entry file and is the shape the first version of this
         spoke. `files` maps a workspace-relative path to its lines, which is what lets
         a student stop inside a module they imported - bdb has always supported a
         breakpoint in any file, and only this method was hardcoded to one.
+
+        `conditions` maps a path to a map of line to expression, with the empty string
+        meaning the entry file. bdb evaluates a condition itself - `set_break` takes a
+        `cond` string and `break_here` compiles and evaluates it in the stopped frame -
+        so nothing here has to interpret Python.
         """
         self.clear_all_breaks()
 
+        by_path = dict(conditions or {})
+
         wanted = {}
+        # Absolute path -> {line: condition}. Built alongside `wanted` so the two
+        # cannot disagree about which file a relative path resolved to.
+        conditions_for = {}
+
         if lines:
             wanted[self._program_path] = list(lines)
+            conditions_for[self._program_path] = by_path.get('', {}) or {}
 
         for relative_path, file_lines in (files or {}).items():
             resolved = self._resolve_in_workspace(relative_path)
             if resolved is None:
                 continue
             wanted.setdefault(resolved, []).extend(file_lines or [])
+            for line, expression in (by_path.get(relative_path) or {}).items():
+                conditions_for.setdefault(resolved, {})[str(line)] = expression
 
         accepted_by_path = {}
         for absolute, file_lines in wanted.items():
@@ -527,7 +541,8 @@ class BrowserCoderDebugger(bdb.Bdb):
                     # set_break returns an error STRING on failure, not an exception,
                     # and returns None on success - the opposite of the usual
                     # convention, which is easy to get backwards.
-                    problem = self.set_break(absolute, int(line))
+                    condition = (conditions_for.get(absolute) or {}).get(str(int(line)))
+                    problem = self.set_break(absolute, int(line), cond=condition)
                 except (TypeError, ValueError):
                     problem = 'not a line number'
                 if problem is None:
@@ -703,7 +718,11 @@ def main():
         """setBreakpoints and stop, honoured whatever the program is doing."""
         action = command.get('command')
         if action == 'setBreakpoints':
-            debugger.apply_breakpoints(command.get('lines') or [], command.get('files') or {})
+            debugger.apply_breakpoints(
+                command.get('lines') or [],
+                command.get('files') or {},
+                command.get('conditions') or {},
+            )
             started.set()
         elif action == 'stop':
             # Two halves, and both are needed.

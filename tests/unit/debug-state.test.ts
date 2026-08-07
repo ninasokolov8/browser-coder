@@ -504,3 +504,117 @@ describe('watch expressions', () => {
     assert.deepEqual(state.snapshot().watches, ['total']);
   });
 });
+
+describe('breakpoint conditions', () => {
+  test('a condition is attached to a line and read back', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.toggleBreakpoint(4);
+
+    assert.equal(state.setBreakpointCondition(4, 'i == 5'), true);
+    assert.equal(state.breakpointCondition(4), 'i == 5');
+    assert.deepEqual(state.conditionedLines(), [4]);
+  });
+
+  test('setting a condition on a bare line also sets the breakpoint', () => {
+    // A student who says "stop when i == 5" has said everything needed. Requiring
+    // them to place a mark first is a rule with no purpose.
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+
+    state.setBreakpointCondition(9, 'total > 3');
+    assert.equal(state.hasBreakpoint(9), true);
+    assert.deepEqual(state.breakpointLines(), [9]);
+  });
+
+  test('an empty condition removes it and leaves the breakpoint', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+
+    state.setBreakpointCondition(4, '');
+    assert.equal(state.breakpointCondition(4), null);
+    assert.equal(state.hasBreakpoint(4), true, 'the breakpoint itself must survive');
+  });
+
+  test('whitespace is not a condition', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+
+    state.setBreakpointCondition(4, '   ');
+    assert.equal(state.breakpointCondition(4), null);
+  });
+
+  test('removing a breakpoint takes its condition with it', () => {
+    /*
+     * Otherwise a student who removes a mark and puts it back gets a condition they
+     * cannot see and did not ask for a second time - and the only symptom is a
+     * breakpoint that mysteriously does not stop.
+     */
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+
+    state.toggleBreakpoint(4);
+    assert.equal(state.hasBreakpoint(4), false);
+    state.toggleBreakpoint(4);
+    assert.equal(state.hasBreakpoint(4), true);
+    assert.equal(state.breakpointCondition(4), null);
+  });
+
+  test('conditions are per document, like breakpoints', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+
+    state.setDocument('doc-2');
+    assert.equal(state.breakpointCondition(4), null);
+    assert.deepEqual(state.conditionedLines(), []);
+
+    state.setDocument('doc-1');
+    assert.equal(state.breakpointCondition(4), 'i == 5');
+  });
+
+  test('allConditions omits a condition whose breakpoint is gone', () => {
+    // The adapter can only arm a condition on a breakpoint. Sending an orphan would
+    // ask the server to hold state the student cannot see.
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+    state.setBreakpointCondition(7, 'x');
+    state.toggleBreakpoint(7);
+
+    assert.deepEqual([...state.allConditions()], [['doc-1', { 4: 'i == 5' }]]);
+  });
+
+  test('a condition longer than the channel accepts is refused here', () => {
+    // Refused where the student can see it and edit the text, rather than typed,
+    // sent, and dropped by the server with nothing shown.
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    assert.equal(state.setBreakpointCondition(4, 'x'.repeat(2001)), false);
+    assert.equal(state.breakpointCondition(4), null);
+  });
+
+  test('clearing breakpoints clears conditions too', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(4, 'i == 5');
+
+    state.clearBreakpoints();
+    assert.deepEqual([...state.allConditions()], []);
+    assert.deepEqual(state.conditionedLines(), []);
+  });
+
+  test('the snapshot separates conditioned lines from plain ones', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.toggleBreakpoint(2);
+    state.setBreakpointCondition(5, 'i == 1');
+
+    const snapshot = state.snapshot();
+    assert.deepEqual(snapshot.breakpoints, [2, 5]);
+    assert.deepEqual(snapshot.conditionedBreakpoints, [5]);
+  });
+});

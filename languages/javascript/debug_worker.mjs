@@ -202,7 +202,7 @@ function workspaceRelative(url) {
  * V8's answer rather than the request is what keeps the margin honest, and it is the
  * same contract the Python adapter has.
  */
-async function setBreakpoints(lines, files) {
+async function setBreakpoints(lines, files, conditions) {
   for (const id of breakpoints.values()) {
     await post('Debugger.removeBreakpoint', { breakpointId: id });
   }
@@ -213,6 +213,27 @@ async function setBreakpoints(lines, files) {
   // imported; V8 has always accepted a breakpoint in any script.
   const wanted = new Map();
   if (Array.isArray(lines) && lines.length > 0) wanted.set(PROGRAM_URL, [...lines]);
+
+  /*
+   * Conditions are V8's job, not this adapter's.
+   *
+   * `Debugger.setBreakpointByUrl` takes a `condition` string, evaluates it in the
+   * frame at the breakpoint, and only reports a pause when it is truthy - so a loop
+   * with a condition on it never round-trips to this process at all. Evaluating here
+   * instead would mean pausing on every iteration and resuming, which for a loop of
+   * ten thousand is ten thousand round trips the student watches happen.
+   *
+   * Keyed by GENERATED location, because that is what is armed: a `.ts` breakpoint is
+   * armed against the `.js` line it became, so its condition has to travel with it.
+   *
+   * The empty-string key means the entry file, matching `lines`.
+   */
+  const conditionByTarget = new Map();
+  const conditionsFor = forPath => (conditions ?? {})[forPath] ?? {};
+
+  for (const [line, expression] of Object.entries(conditionsFor(''))) {
+    conditionByTarget.set(`${PROGRAM_URL}:${Number(line)}`, expression);
+  }
 
   /**
    * Which original line each armed generated line came from.
@@ -235,15 +256,20 @@ async function setBreakpoints(lines, files) {
       if (target.path !== relativePath) {
         originalOf.set(`${url}:${target.line}`, { path: relativePath, line });
       }
+
+      const expression = conditionsFor(relativePath)[line];
+      if (expression) conditionByTarget.set(`${url}:${target.line}`, expression);
     }
   }
 
   const acceptedByPath = {};
   for (const [url, fileLines] of wanted) {
     for (const line of fileLines) {
+      const condition = conditionByTarget.get(`${url}:${line}`);
       const { result, error } = await post('Debugger.setBreakpointByUrl', {
         lineNumber: line - 1,
         url,
+        ...(condition ? { condition } : {}),
       });
       if (error || !result?.breakpointId) continue;
 
@@ -557,7 +583,11 @@ async function evaluate(expression) {
 function handleCommand(command) {
   switch (command?.command) {
     case 'setBreakpoints':
-      void setBreakpoints(Array.isArray(command.lines) ? command.lines : [], command.files);
+      void setBreakpoints(
+        Array.isArray(command.lines) ? command.lines : [],
+        command.files,
+        command.conditions,
+      );
       return;
     case 'continue':
       resumeIfPaused();

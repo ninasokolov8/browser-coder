@@ -58,6 +58,8 @@ export interface DebugSnapshot {
   readonly stop: DebugStop | null;
   /** Breakpoint lines for the file being debugged, ascending. */
   readonly breakpoints: readonly number[];
+  /** Of those, the ones carrying a condition, so the margin can mark them apart. */
+  readonly conditionedBreakpoints: readonly number[];
   /** The document breakpoints belong to, so they are not shown against another file. */
   readonly documentId: string | null;
   readonly lastError: string | null;
@@ -93,6 +95,15 @@ export interface DebugCapabilities {
 }
 
 const PAUSED_STATES: readonly DebugStatus[] = ['paused'];
+
+/**
+ * Longest breakpoint condition accepted.
+ *
+ * The same cap the debug channel puts on an expression, deliberately: refused here,
+ * where the student can see it happen and edit the text, rather than typed, sent, and
+ * dropped by the server with nothing shown.
+ */
+const MAX_CONDITION_CHARS = 2000;
 
 export function capabilitiesFor(status: DebugStatus): DebugCapabilities {
   const paused = PAUSED_STATES.includes(status);
@@ -134,6 +145,15 @@ export class DebugSessionState {
    * makes a breakpoint in an imported module possible at all.
    */
   #breakpoints = new Map<string, Set<number>>();
+  /**
+   * Conditions per document, then per line.
+   *
+   * Kept beside the breakpoints rather than inside them because the three callers ask
+   * different questions - "is there a mark on this line", "is it conditional", "what
+   * should the adapter arm" - and a Set of numbers answers the first fastest, which is
+   * the one the editor asks on every render of the glyph margin.
+   */
+  #conditions = new Map<string, Map<number, string>>();
   #documentId: string | null = null;
   #lastError: string | null = null;
   #evaluated: DebugSnapshot['evaluated'] = null;
@@ -166,6 +186,7 @@ export class DebugSessionState {
       status: this.#status,
       stop: this.#stop,
       breakpoints: this.breakpointLines(),
+      conditionedBreakpoints: this.conditionedLines(),
       documentId: this.#documentId,
       lastError: this.#lastError,
       evaluated: this.#evaluated,
@@ -253,8 +274,15 @@ export class DebugSessionState {
     if (this.#documentId === null) return false;
 
     const lines = this.#linesFor(this.#documentId);
-    if (lines.has(line)) lines.delete(line);
-    else lines.add(line);
+    if (lines.has(line)) {
+      lines.delete(line);
+      // A condition belongs to a breakpoint, not to a line. Leaving it behind would
+      // mean a student who removes a mark and puts it back gets a condition they
+      // cannot see and did not ask for a second time.
+      this.#conditions.get(this.#documentId)?.delete(line);
+    } else {
+      lines.add(line);
+    }
     this.#emit();
     return lines.has(line);
   }
@@ -263,10 +291,74 @@ export class DebugSessionState {
     return this.#breakpoints.get(this.#documentId ?? '')?.has(line) ?? false;
   }
 
+  /**
+   * Attach a condition to a breakpoint on the current document, or clear it.
+   *
+   * Setting one on a line with no breakpoint also SETS the breakpoint: a student who
+   * asks to stop when `i == 5` has said everything needed, and refusing until they
+   * place a mark first is a rule with no purpose.
+   */
+  setBreakpointCondition(line: number, expression: string | null): boolean {
+    if (!Number.isInteger(line) || line < 1) return false;
+    if (this.#documentId === null) return false;
+
+    const trimmed = (expression ?? '').trim();
+    const forDocument = this.#conditions.get(this.#documentId) ?? new Map<number, string>();
+
+    if (trimmed === '') {
+      if (!forDocument.delete(line)) return false;
+      this.#conditions.set(this.#documentId, forDocument);
+      this.#emit();
+      return true;
+    }
+
+    if (trimmed.length > MAX_CONDITION_CHARS) return false;
+
+    this.#linesFor(this.#documentId).add(line);
+    forDocument.set(line, trimmed);
+    this.#conditions.set(this.#documentId, forDocument);
+    this.#emit();
+    return true;
+  }
+
+  /** The condition on a line of the current document, or null. */
+  breakpointCondition(line: number): string | null {
+    return this.#conditions.get(this.#documentId ?? '')?.get(line) ?? null;
+  }
+
+  /** The conditioned lines of the current document, so the margin can mark them. */
+  conditionedLines(): number[] {
+    const forDocument = this.#conditions.get(this.#documentId ?? '');
+    return forDocument ? [...forDocument.keys()].sort((a, b) => a - b) : [];
+  }
+
+  /**
+   * Every condition, keyed by document id then line.
+   *
+   * Only for lines that still carry a breakpoint - a condition without one is not a
+   * thing the adapter can arm, and sending it would be asking the server to hold state
+   * the student cannot see.
+   */
+  allConditions(): Map<string, Record<number, string>> {
+    const all = new Map<string, Record<number, string>>();
+    for (const [documentId, forDocument] of this.#conditions) {
+      const lines = this.#breakpoints.get(documentId);
+      if (!lines || forDocument.size === 0) continue;
+
+      const kept: Record<number, string> = {};
+      for (const [line, expression] of forDocument) {
+        if (lines.has(line)) kept[line] = expression;
+      }
+      if (Object.keys(kept).length > 0) all.set(documentId, kept);
+    }
+    return all;
+  }
+
   /** Clear every breakpoint, in every file. */
   clearBreakpoints(): void {
-    if (this.#breakpoints.size === 0) return;
+    if (this.#breakpoints.size === 0 && this.#conditions.size === 0) return;
     this.#breakpoints.clear();
+    this.#conditions.clear();
     this.#emit();
   }
 

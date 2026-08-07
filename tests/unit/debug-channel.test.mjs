@@ -50,6 +50,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
       command: 'setBreakpoints',
       lines: [1, 5, 200],
       files: {},
+      conditions: {},
     });
   });
 
@@ -58,6 +59,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
       command: 'setBreakpoints',
       lines: [],
       files: {},
+      conditions: {},
     });
   });
 
@@ -66,6 +68,7 @@ describe('setBreakpoints is bounded at the boundary', () => {
       command: 'setBreakpoints',
       lines: [],
       files: {},
+      conditions: {},
     });
   });
 
@@ -357,6 +360,98 @@ describe('setBreakpoints across several files', () => {
       const built = buildDebugCommand('setBreakpoints', { lines: [1], files: junk });
       assert.deepEqual(built.files, {}, JSON.stringify(junk));
       assert.deepEqual(built.lines, [1]);
+    }
+  });
+});
+
+describe('breakpoint conditions on the wire', () => {
+  test('a condition rides along with the line it belongs to', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [4, 9],
+      files: { 'lib/helper.py': [3] },
+      conditions: { '': { 4: 'i == 5' }, 'lib/helper.py': { 3: 'n > 2' } },
+    });
+
+    assert.deepEqual(command, {
+      command: 'setBreakpoints',
+      lines: [4, 9],
+      files: { 'lib/helper.py': [3] },
+      // The empty string is the entry file, the same convention the explorer's manual
+      // ordering uses for the workspace root.
+      conditions: { '': { 4: 'i == 5' }, 'lib/helper.py': { 3: 'n > 2' } },
+    });
+  });
+
+  test('no conditions gives an empty map, not a missing field', () => {
+    // Additive, and consistently shaped: an adapter reads `command.conditions` without
+    // having to know whether the client is new enough to send it.
+    const command = buildDebugCommand('setBreakpoints', { lines: [1] });
+    assert.deepEqual(command.conditions, {});
+  });
+
+  test('a condition for a line with no breakpoint is dropped', () => {
+    /*
+     * Otherwise a stale condition sits in the map forever, and the next
+     * `setBreakpoints` that happens to use that line silently inherits it - a
+     * breakpoint that will not stop, for a reason nothing on screen explains.
+     */
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [4],
+      conditions: { '': { 4: 'ok', 99: 'never armed' } },
+    });
+    assert.deepEqual(command.conditions, { '': { 4: 'ok' } });
+  });
+
+  test('a condition for a file with no breakpoints is dropped', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [],
+      files: { 'a.py': [2] },
+      conditions: { 'a.py': { 2: 'yes' }, 'b.py': { 5: 'no such file here' } },
+    });
+    assert.deepEqual(command.conditions, { 'a.py': { 2: 'yes' } });
+  });
+
+  test('an empty or over-long condition is refused, and the breakpoint survives', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [1, 2, 3],
+      conditions: { '': { 1: '', 2: '   ', 3: 'x'.repeat(2001) } },
+    });
+    assert.deepEqual(command.lines, [1, 2, 3]);
+    assert.deepEqual(command.conditions, {});
+  });
+
+  test('a condition is trimmed, not passed through raw', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [1],
+      conditions: { '': { 1: '  i == 5  ' } },
+    });
+    assert.deepEqual(command.conditions, { '': { 1: 'i == 5' } });
+  });
+
+  test('a non-string condition is dropped rather than stringified', () => {
+    // `[object Object]` is not an expression, and sending it would produce an
+    // unreadable error from whichever engine tried to compile it.
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [1, 2],
+      conditions: { '': { 1: { evil: true }, 2: 42 } },
+    });
+    assert.deepEqual(command.conditions, {});
+  });
+
+  test('conditions for a traversal path go nowhere, like its lines', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [],
+      files: { '../escape.py': [1] },
+      conditions: { '../escape.py': { 1: 'anything' } },
+    });
+    assert.deepEqual(command.files, {});
+    assert.deepEqual(command.conditions, {});
+  });
+
+  test('a conditions field that is not an object is ignored', () => {
+    for (const bad of [null, 'nope', 42, ['a']]) {
+      const command = buildDebugCommand('setBreakpoints', { lines: [1], conditions: bad });
+      assert.deepEqual(command.conditions, {}, `for ${JSON.stringify(bad)}`);
     }
   });
 });
