@@ -132,15 +132,18 @@ export class DiagnosticsStore {
   forDocument(documentId: string): Diagnostic[] {
     const bySource = this.#byDocument.get(documentId);
     if (!bySource) return [];
-    return sortDiagnostics([...bySource.values()].flatMap(entry => [...entry.diagnostics]));
+    return sortDiagnostics(preferAuthoritative(bySource));
   }
 
   all(): Diagnostic[] {
-    const everything: Diagnostic[] = [];
+    const everything: Diagnostic[][] = [];
     for (const bySource of this.#byDocument.values()) {
-      for (const entry of bySource.values()) everything.push(...entry.diagnostics);
+      // Deduplicated per DOCUMENT, because the rule is about one line of one file.
+      // Pooling every file first would let a compiler error in one suppress the
+      // scanner's finding on the same line number of another.
+      everything.push(preferAuthoritative(bySource));
     }
-    return sortDiagnostics(everything);
+    return sortDiagnostics(everything.flat());
   }
 
   /** Grouped by path, in display order, for the Problems tree. */
@@ -183,6 +186,53 @@ export class DiagnosticsStore {
 }
 
 /** Errors first, then by position - the order a reader works through them. */
+/**
+ * The one producer that yields to the others: the instant client-side scanner.
+ *
+ * Stated as "everything else outranks this" rather than as a list of who is
+ * authoritative, so a producer added later is trusted by default. Getting that
+ * backwards would silently demote a real compiler the day it was introduced.
+ *
+ * This is the PRODUCER key - the second argument to `set()` - not `Diagnostic.source`,
+ * which is a display label ('python', 'javac', 'ts') and is not unique to a producer.
+ */
+const ADVISORY_PRODUCER = 'syntax';
+
+/**
+ * One problem per line, with the compiler winning.
+ *
+ * The instant scanner and the real compiler frequently find the SAME mistake - an
+ * unclosed bracket is exactly what both are best at - and a student who typed one
+ * error should be shown one error. Two squiggles on one line, worded differently,
+ * reads as two separate faults and sends them looking for a second bug that is not
+ * there.
+ *
+ * Suppression is by LINE rather than by exact position, deliberately. A scanner and a
+ * compiler routinely disagree about the column - the scanner points at the bracket
+ * that was opened, `javac` points at where it gave up - and matching on column would
+ * leave both showing, which is the case this exists to prevent.
+ *
+ * Applied at READ time, not when publishing. That matters: when the student edits and
+ * the compiler's result is invalidated as stale, the scanner's finding comes back on
+ * its own, with no republishing and nothing to keep in step.
+ */
+function preferAuthoritative(bySource: Map<string, Entry>): Diagnostic[] {
+  const spokenFor = new Set<number>();
+  for (const [producer, entry] of bySource) {
+    if (producer === ADVISORY_PRODUCER) continue;
+    for (const diagnostic of entry.diagnostics) spokenFor.add(diagnostic.line);
+  }
+
+  const kept: Diagnostic[] = [];
+  for (const [producer, entry] of bySource) {
+    for (const diagnostic of entry.diagnostics) {
+      if (producer === ADVISORY_PRODUCER && spokenFor.has(diagnostic.line)) continue;
+      kept.push(diagnostic);
+    }
+  }
+  return kept;
+}
+
 function sortDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
   return diagnostics.sort((a, b) => {
     if (a.path !== b.path) return a.path.localeCompare(b.path);

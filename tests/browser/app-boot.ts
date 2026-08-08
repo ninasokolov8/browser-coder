@@ -1263,6 +1263,74 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
 }
 
 /**
+ * Errors appear while typing, without pressing Run.
+ *
+ * Monaco squiggles TypeScript, JavaScript, CSS, HTML and JSON as you type because it
+ * ships language services for them. Python, Java, PHP and C# had NOTHING until a run
+ * finished - the editor looked clean while the student typed a broken line, and only
+ * admitted otherwise once they pressed Run. That is the opposite of what an IDE is for.
+ *
+ * Asserted through the real marker list rather than the store, because the store having
+ * the diagnostic and Monaco drawing it are two different things, and only the second one
+ * is what a student sees.
+ */
+async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') }).__bcMonaco;
+  if (!runtime || !monacoApi) {
+    check('runtime and monaco are reachable for the live-error check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { setContent(text: string): void } | null;
+  };
+  const models = runtime.models as { peek(id: string): { uri: unknown } | null };
+
+  const created = await workspace.createDocument({
+    name: 'live-errors.py',
+    content: 'print("ok")\n',
+    language: 'python',
+    version: 'python3',
+  });
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  await tabManager.switchToTab(created.id);
+
+  const markersFor = (): Array<{ message: string; startLineNumber: number }> => {
+    const model = models.peek(created.id);
+    if (!model) return [];
+    return monacoApi.editor.getModelMarkers({ resource: model.uri as never });
+  };
+
+  check('a correct file has no markers before running', markersFor().length === 0);
+
+  // Type something broken. No Run anywhere in this test.
+  workspace.getDocument(created.id)!.setContent('print("hello"\n');
+
+  const appeared = await waitFor(
+    'a squiggle to appear from typing alone',
+    () => markersFor().length > 0,
+    5000,
+  );
+  check('an error is marked without pressing Run', appeared, `markers: ${markersFor().length}`);
+
+  const [marker] = markersFor();
+  if (marker) {
+    check(
+      'and it points at the line the student broke',
+      marker.startLineNumber === 1,
+      `line ${marker.startLineNumber}: ${marker.message}`,
+    );
+  }
+
+  // Fixing it must clear the squiggle, or the mark outlives the mistake.
+  workspace.getDocument(created.id)!.setContent('print("hello")\n');
+  const cleared = await waitFor('the squiggle to clear once fixed', () => markersFor().length === 0, 5000);
+  check('fixing the code clears the mark', cleared, `still ${markersFor().length} marker(s)`);
+}
+
+/**
  * Running only the selected lines must run only the selected lines.
  *
  * The gesture the feature advertises - triple-click, or a click in the line-number
@@ -1784,6 +1852,7 @@ async function run(): Promise<void> {
   await checkClosingATabKeepsTheFileUsable(frameWindow);
   await checkAnOpenImageIsNotOverwritten(frameWindow);
   await checkRunStopAndDebugToolbarAreVisible(frameWindow);
+  await checkErrorsAppearWhileTyping(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

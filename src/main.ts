@@ -8,6 +8,7 @@ import { DiagnosticsStore } from './diagnostics/store';
 import { connectMonacoDiagnostics } from './diagnostics/monaco-source';
 import { connectRunMarkers } from './diagnostics/server-source';
 import { connectDiagnosticStaleness } from './diagnostics/staleness';
+import { connectSyntaxDiagnostics } from './diagnostics/syntax-source';
 import { connectSaveStatus } from './features/save-status';
 import { initializeProblemsPanel, showPanelTab } from './features/problems-panel';
 import { initializeCommandPalette } from './features/command-palette';
@@ -197,6 +198,10 @@ async function bootstrap(): Promise<void> {
   // recorded and never compared, so a compile error stayed squiggled on its original
   // line through every edit that followed - including the one that fixed it.
   connectDiagnosticStaleness({ store: diagnostics, service: workspace.service });
+  // Live squiggles for the four languages Monaco has no service for. Instant, from the
+  // text alone; the compiler still has the last word, and the store hides anything from
+  // here on a line the compiler has already explained.
+  connectSyntaxDiagnostics({ store: diagnostics, service: workspace.service });
 
   // Say so when autosave is failing, and flush what is pending before the page goes
   // away. The persistence coordinator reported both and nothing listened.

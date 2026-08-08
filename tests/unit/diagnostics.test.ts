@@ -202,3 +202,87 @@ describe('change notification', () => {
     assert.equal(changes, 0, 'a dropped result must not redraw the panel');
   });
 });
+
+describe('one problem per line: the compiler wins', () => {
+  /*
+   * The instant scanner and the real compiler routinely find the SAME mistake - an
+   * unclosed bracket is what both are best at. A student who typed one error must be
+   * shown one error; two squiggles worded differently reads as two faults and sends
+   * them hunting a second bug that does not exist.
+   */
+  const at = (line: number, source: string, message: string): Diagnostic => ({
+    documentId: 'doc-1',
+    path: 'main.py',
+    line,
+    column: source === 'syntax' ? 6 : 1,
+    severity: 'error',
+    message,
+    source,
+  });
+
+  test('the scanner is hidden on a line the compiler has spoken about', () => {
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'syntax', 1, [at(3, 'syntax', 'This ( is never closed')]);
+    store.set('doc-1', 'run', 1, [at(3, 'python', "SyntaxError: '(' was never closed")]);
+
+    const shown = store.forDocument('doc-1');
+    assert.equal(shown.length, 1, 'one line, one problem');
+    assert.equal(shown[0].source, 'python', 'and it is the compiler that is kept');
+  });
+
+  test('different columns on the same line still count as the same problem', () => {
+    // The scanner points at the bracket that was opened; javac points at where it
+    // gave up. Matching on column would leave both showing.
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'syntax', 1, [{ ...at(7, 'syntax', 'unclosed'), column: 6 }]);
+    store.set('doc-1', 'check', 1, [{ ...at(7, 'javac', 'reached end of file'), column: 41 }]);
+
+    assert.equal(store.forDocument('doc-1').length, 1);
+  });
+
+  test('the scanner is kept on lines the compiler said nothing about', () => {
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'syntax', 1, [at(3, 'syntax', 'unclosed'), at(9, 'syntax', 'needs a :')]);
+    store.set('doc-1', 'check', 1, [at(3, 'python', 'SyntaxError')]);
+
+    const shown = store.forDocument('doc-1');
+    assert.deepEqual(shown.map(entry => [entry.line, entry.source]), [[3, 'python'], [9, 'syntax']]);
+  });
+
+  test('it comes back when the compiler result is invalidated', () => {
+    // The student edits: the check for the old revision is dropped, and the scanner -
+    // which already re-ran on the new text - must be visible again on its own. This is
+    // why suppression happens when the list is READ rather than when it is published.
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'syntax', 5, [at(3, 'syntax', 'This ( is never closed')]);
+    store.set('doc-1', 'check', 4, [at(3, 'python', 'SyntaxError')]);
+    assert.equal(store.forDocument('doc-1').length, 1);
+
+    store.invalidate('doc-1', 5);
+
+    const shown = store.forDocument('doc-1');
+    assert.equal(shown.length, 1);
+    assert.equal(shown[0].source, 'syntax', 'the scanner is showing again');
+  });
+
+  test('two authoritative producers are both kept', () => {
+    // Monaco and a run are both real; neither is noise, and suppressing one would
+    // hide a type error behind a runtime error or the reverse.
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'ts', 1, [at(2, 'ts', 'Type error')]);
+    store.set('doc-1', 'run', 1, [at(2, 'node', 'ReferenceError')]);
+
+    assert.equal(store.forDocument('doc-1').length, 2);
+  });
+
+  test('a compiler error in ANOTHER file does not hide the scanner here', () => {
+    const store = new DiagnosticsStore();
+    store.set('doc-1', 'syntax', 1, [at(4, 'syntax', 'unclosed')]);
+    store.set('doc-2', 'check', 1, [
+      { ...at(4, 'python', 'SyntaxError'), documentId: 'doc-2', path: 'other.py' },
+    ]);
+
+    // Same line NUMBER, different file. Deduplication is per document.
+    assert.equal(store.all().length, 2);
+  });
+});
