@@ -1331,6 +1331,73 @@ async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> 
 }
 
 /**
+ * The compiler's answer arrives on its own, and the student is never shown the same
+ * mistake twice.
+ *
+ * Two producers report on the same file: the instant scanner, from the text alone, and
+ * the real toolchain via POST /api/check. They find the SAME mistake constantly - an
+ * unclosed bracket is what each is best at - so the store suppresses the scanner on any
+ * line the compiler has spoken about.
+ *
+ * Asserted through Monaco's marker list, because "one problem per line" is a claim
+ * about what is drawn, not about what is stored.
+ */
+async function checkTheCompilerAgreesWithoutDuplicating(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') }).__bcMonaco;
+  if (!runtime || !monacoApi) {
+    check('runtime and monaco are reachable for the compiler check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { setContent(text: string): void } | null;
+  };
+  const models = runtime.models as { peek(id: string): { uri: unknown } | null };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+
+  const created = await workspace.createDocument({
+    name: 'dedupe-probe.py',
+    content: 'x = 1\n',
+    language: 'python',
+    version: 'python3',
+  });
+  await tabManager.switchToTab(created.id);
+
+  const markers = (): Array<{ startLineNumber: number; message: string; source?: string }> => {
+    const model = models.peek(created.id);
+    if (!model) return [];
+    return monacoApi.editor.getModelMarkers({ resource: model.uri as never });
+  };
+
+  // An unclosed bracket: the one mistake BOTH producers reliably find.
+  workspace.getDocument(created.id)!.setContent('value = (1 + 2\nprint(value)\n');
+
+  const marked = await waitFor('the bracket error to be marked', () => markers().length > 0, 6000);
+  check('an unclosed bracket is marked while typing', marked);
+
+  /*
+   * Settle for longer than the Python debounce (400ms) plus a round trip, so the
+   * compiler's answer has landed too. If deduplication were broken, THIS is when the
+   * second squiggle would appear on the same line.
+   */
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  const onLineOne = markers().filter(marker => marker.startLineNumber === 1);
+  check(
+    'exactly one problem is shown on the broken line',
+    onLineOne.length === 1,
+    onLineOne.map(marker => marker.message).join(' || '),
+  );
+
+  // And fixing it clears everything, from both producers.
+  workspace.getDocument(created.id)!.setContent('value = (1 + 2)\nprint(value)\n');
+  const cleared = await waitFor('both producers to clear', () => markers().length === 0, 8000);
+  check('fixing it clears every mark', cleared, `${markers().length} left: ${markers().map(m => m.message).join(' || ')}`);
+}
+
+/**
  * Running only the selected lines must run only the selected lines.
  *
  * The gesture the feature advertises - triple-click, or a click in the line-number
@@ -1853,6 +1920,7 @@ async function run(): Promise<void> {
   await checkAnOpenImageIsNotOverwritten(frameWindow);
   await checkRunStopAndDebugToolbarAreVisible(frameWindow);
   await checkErrorsAppearWhileTyping(frameWindow);
+  await checkTheCompilerAgreesWithoutDuplicating(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

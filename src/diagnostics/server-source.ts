@@ -29,8 +29,17 @@ import type { Disposable } from '../workspace/types.ts';
  */
 export const RUN_MARKER_OWNER = 'browser-coder-run';
 
-/** Producer key in the store. */
+/** Producer key in the store for diagnostics from an actual run. */
 export const RUN_SOURCE = 'run';
+
+/**
+ * Producer key for the live check - the same compiler, invoked without executing.
+ *
+ * Kept apart from `run` because they answer at different times about different things:
+ * a run reports what happened when the program ran, a check reports whether it would
+ * compile at all. Merging them would mean whichever answered last erased the other.
+ */
+export const CHECK_SOURCE = 'check';
 
 /**
  * Which document a reported filename belongs to.
@@ -69,7 +78,9 @@ function resolveDocument(
 export interface PublishRunOptions {
   store: DiagnosticsStore;
   service: WorkspaceService;
-  models: MonacoModelRegistry;
+  // No `models` here. It was required, passed by the one caller, and never read: the
+  // markers are driven by `connectRunMarkers` watching the store, not written at
+  // publish time. Keeping it would have forced the live check to invent one.
   languageId: string;
   /** stderr and stdout concatenated - compilers use both. */
   output: string;
@@ -84,12 +95,41 @@ export interface PublishRunOptions {
  * a fixed error disappears instead of accumulating.
  */
 export function publishRunDiagnostics(options: PublishRunOptions): void {
-  const { store, service, languageId, output, entryDocumentId, documentCount } = options;
+  publishCompilerDiagnostics({ ...options, producer: RUN_SOURCE });
+}
+
+/**
+ * Turn raw compiler text into diagnostics under one producer.
+ *
+ * Shared by the run and the live check, which differ only in WHEN the compiler was
+ * asked. Everything after that - parsing its text, working out which file each
+ * message belongs to, binding the result to the revision that was compiled - is
+ * identical, and having it once is what stops a run and a check from attributing the
+ * same javac output to different files.
+ */
+export function publishCompilerDiagnostics(
+  options: PublishRunOptions & {
+    producer: string;
+    /**
+     * The revision that was COMPILED, per document.
+     *
+     * Reading `document.revision` at publish time is only safe when the compile just
+     * happened, which is true of a run and false of a debounced check: the student
+     * keeps typing while it is in flight, and stamping the answer with the revision
+     * they have now would present a stale result as current. Defaults to the live
+     * revision, which is the run's behaviour unchanged.
+     */
+    revisionOf?: (documentId: string) => number | undefined;
+  },
+): void {
+  const {
+    store, service, languageId, output, entryDocumentId, documentCount, producer, revisionOf,
+  } = options;
 
   // A new run supersedes the last one entirely. Without this, fixing one of two
   // errors leaves the fixed one on screen.
   for (const document of service.allDocuments()) {
-    store.clear(document.id, RUN_SOURCE);
+    store.clear(document.id, producer);
   }
 
   const parsed = parseCompilerOutput(languageId, output);
@@ -123,7 +163,7 @@ export function publishRunDiagnostics(options: PublishRunOptions): void {
     if (!document) continue;
     // Bound to the revision the run actually executed. If the student has already
     // edited since, the store discards these rather than pointing at moved lines.
-    store.set(documentId, RUN_SOURCE, document.revision, diagnostics);
+    store.set(documentId, producer, revisionOf?.(documentId) ?? document.revision, diagnostics);
   }
 }
 

@@ -17,7 +17,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { pinModuleType, stripJobPaths } from '../adapter-kit.mjs';
+import { diagnostics, pinModuleType, stripJobPaths } from '../adapter-kit.mjs';
+import { runToCompletion } from '../../execution/process-runner.mjs';
 import { DEBUG_PROGRAM_ENV } from '../../debug/channel.mjs';
 // The same variable Python's guard reads. One name for "the directory a program may
 // touch", so the two languages cannot describe confinement differently.
@@ -103,6 +104,36 @@ export const javascriptAdapter = {
 
     const entryAbsolute = job.absolute(entryPoint);
     const debugging = ctx.debug?.enabled === true;
+
+    /*
+     * Parse before running, the way every other language here does.
+     *
+     * Node compiles lazily, so a syntax error used to arrive as a RUNTIME crash after
+     * the process had started - reported under `phase: 'run'` with a stack trace,
+     * rather than as the compile error it is. Every other adapter answers a broken
+     * file with `kind: 'diagnostics'`, and JavaScript was the one that did not.
+     *
+     * `node --check` parses and exits without executing a line, which is both the
+     * honest answer for a run and the entire basis of the live check for this
+     * language - without it, /api/check could only ever say "looks fine".
+     *
+     * Only the entry file: --check takes one file, and an import that fails to parse
+     * surfaces when that module is the one being edited, which is when the student
+     * cares.
+     */
+    const parse = await runToCompletion({
+      command: ctx.config.tools.node,
+      args: ['--check', entryAbsolute],
+      cwd: job.dir,
+      env: ctx.sandboxEnv,
+      timeoutMs: 8000,
+      maxOutputChars: 100000,
+    });
+
+    if (!parse.termination.succeeded) {
+      const text = [parse.stderr, parse.stdout].filter(Boolean).join('\n');
+      return diagnostics(stripJobPaths(text, job.dir) || 'SyntaxError', parse.durationMs);
+    }
 
     return {
       kind: 'launch',

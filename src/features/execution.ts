@@ -402,7 +402,6 @@ requestBody = {
       publishRunDiagnostics({
         store: runtime.diagnostics,
         service: runtime.workspace,
-        models: runtime.models,
         languageId: lang.id,
         // Both streams: javac and node use stderr, php -l splits across the two,
         // and a Python traceback can arrive on either depending on the phase.
