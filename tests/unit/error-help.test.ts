@@ -17,6 +17,7 @@ import {
   buildErrorHelpBlock,
   errorKeyCandidates,
   errorKeyFrom,
+  formatErrorMarker,
   selectErrorKey,
 } from '../../src/features/error-help.ts';
 
@@ -385,5 +386,35 @@ describe('laying the explanation out', () => {
   test('rtl travels with the entry, because Hebrew punctuation lands wrong without it', () => {
     assert.equal(buildErrorHelpBlock('X', { explanation: 'א', rtl: true }).rtl, true);
     assert.equal(buildErrorHelpBlock('X', { explanation: 'a' }).rtl, false);
+  });
+
+  test('the marker separates the error, explanation, cause and example', () => {
+    const text = formatErrorMarker(
+      "NameError: name 'total' is not defined",
+      buildErrorHelpBlock('NameError', {
+        explanation: 'Python cannot find that name.',
+        cause: 'It may be misspelled.',
+        example: 'total = 10\nprint(total)',
+      }),
+    );
+
+    assert.equal(text, [
+      'ERROR',
+      "NameError: name 'total' is not defined",
+      '',
+      'WHAT THIS MEANS',
+      'Python cannot find that name.',
+      '',
+      'COMMON CAUSE',
+      'It may be misspelled.',
+      '',
+      'EXAMPLE',
+      'total = 10',
+      'print(total)',
+    ].join('\n'));
+  });
+
+  test('an error without curated help still has a clear error heading', () => {
+    assert.equal(formatErrorMarker('Unexpected token'), 'ERROR\nUnexpected token');
   });
 });

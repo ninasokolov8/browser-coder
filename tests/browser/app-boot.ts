@@ -899,6 +899,18 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   );
   check('the variables panel shows the variable', variablesShown);
 
+  const debugPanels = frameDocument.getElementById('debug-panels');
+  const minimizeDetails = frameDocument.getElementById('debug-panel-minimize') as HTMLButtonElement | null;
+  minimizeDetails?.click();
+  check('debugger details can be minimized to a small header', debugPanels?.classList.contains('collapsed') === true);
+  minimizeDetails?.click();
+  check('minimized debugger details can be expanded again', debugPanels?.classList.contains('collapsed') === false);
+
+  (frameDocument.getElementById('debug-panel-close') as HTMLButtonElement | null)?.click();
+  check('debugger details can be closed for the current run', debugPanels?.hidden === true);
+  (frameDocument.getElementById('debug-show-details') as HTMLButtonElement | null)?.click();
+  check('Show values reopens closed debugger details', debugPanels?.hidden === false);
+
   /*
    * A watch expression, end to end.
    *
@@ -950,6 +962,7 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   (frameDocument.getElementById('debug-continue') as HTMLButtonElement | null)?.click();
   const ended = await waitFor('the debug session to end', () => state().status === 'ended', 20000);
   check('the session ends when the program finishes', ended, `status ${state().status}`);
+  check('debugger details close automatically when the run finishes', debugPanels?.hidden === true);
 
   // Finished no longer means forgotten. Both pauses are recorded, so the student
   // can inspect how `total` changed even after Continue reached the end.
@@ -963,6 +976,7 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   const stepBack = frameDocument.getElementById('debug-step-back') as HTMLButtonElement | null;
   check('Step back is enabled when an earlier pause exists', stepBack !== null && !stepBack.disabled);
   stepBack?.click();
+  check('asking to review history reopens the debugger details', debugPanels?.hidden === false);
   check(
     'Step back reviews the earlier recorded line without rerunning',
     /Reviewing line 4/.test(frameDocument.getElementById('debug-status')?.textContent ?? ''),
@@ -1038,10 +1052,26 @@ async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
     content: ['for i in range(3):', '    value = i', 'print("done")'].join('\n'),
   });
   await tabManager.switchToTab(logDocument.id);
-  const debug = runtime.debug as {
-    setLogpoint(line: number, expression: string): boolean;
+  const editor = runtime.editor as {
+    setPosition(position: { lineNumber: number; column: number }): void;
+    getAction(id: string): { label: string; run(): Promise<void> } | null;
   };
-  check('a log point can be placed without a breakpoint', debug.setLogpoint(2, 'i'));
+  editor.setPosition({ lineNumber: 2, column: 5 });
+  const logpointAction = editor.getAction('logpointAtLine');
+  check(
+    'the code-line context menu explains what a log point does',
+    /Print a value when this line runs/.test(logpointAction?.label ?? ''),
+    logpointAction?.label ?? 'action missing',
+  );
+  const originalPrompt = frameWindow.prompt;
+  frameWindow.prompt = () => 'i';
+  await logpointAction?.run();
+  frameWindow.prompt = originalPrompt;
+  const debug = runtime.debug as { logpointExpression(line: number): string | null };
+  check(
+    'the context-menu action places a log point without a breakpoint',
+    debug.logpointExpression(2) === 'i',
+  );
   check(
     'a log point has a diamond gutter mark',
     models.peek(logDocument.id)?.getAllDecorations().some(entry =>
@@ -1160,7 +1190,7 @@ async function checkHoverTeaches(frameWindow: Window): Promise<void> {
 
   const forwardHover = help('python', 'forward');
   check(
-    'and it carries a runnable example',
+    'and it carries a worked example',
     Boolean(forwardHover && forwardHover.includes('```python')),
     String(forwardHover).slice(0, 140),
   );
@@ -1168,39 +1198,6 @@ async function checkHoverTeaches(frameWindow: Window): Promise<void> {
   lines.push(`INFO hover for range: ${String(rangeHover).split('\n')[0]}`);
   lines.push(`INFO hover for forward: ${String(forwardHover).split('\n')[0]}`);
 
-  /*
-   * "Try this", end to end.
-   *
-   * Every one of the 1,568 curated entries carries a runnable example, and until now it
-   * was text to look at. This drives the command the hover's link invokes and asserts
-   * the student ends up in a file they can run and edit - not a preview, not a modal.
-   */
-  const tryExample = (runtime as {
-    tryExample?: (language: string, word: string) => Promise<void>;
-  }).tryExample;
-  check('the Try this command is reachable', typeof tryExample === 'function');
-
-  if (typeof tryExample === 'function') {
-    await tryExample('python', 'forward');
-
-    const workspaceApi = runtime.workspace as {
-      allDocuments(): Array<{ id: string; name: string; getContent(): string }>;
-    };
-    const scratch = workspaceApi.allDocuments().find(item => item.name === 'try-it.py');
-    check('it creates a scratch file the student can edit', !!scratch, 'try-it.py missing');
-
-    if (scratch) {
-      const text = scratch.getContent();
-      check('holding the example from the hover', text.includes('pen.forward'), text.slice(0, 80));
-      check('with a header saying it is safe to change', /Try it/.test(text));
-
-      // Reused rather than accumulating: trying a second word must not add a file.
-      await tryExample('python', 'left');
-      const scratchFiles = workspaceApi.allDocuments().filter(item => item.name === 'try-it.py');
-      check('a second Try this reuses the same file', scratchFiles.length === 1, `${scratchFiles.length} files`);
-      check('and replaces its contents', scratchFiles[0].getContent().includes('pen.left'));
-    }
-  }
 }
 
 /**
@@ -1908,6 +1905,21 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
 
   const outcome = await commands.execute('workspace.run', { source: 'api' });
   check('the failing run executed', outcome.status === 'ran', `status ${outcome.status}`);
+
+  const monacoApi = (frameWindow as unknown as {
+    __bcMonaco?: typeof import('monaco-editor');
+  }).__bcMonaco;
+  const model = (runtime.models as {
+    peek(id: string): import('monaco-editor').editor.ITextModel | null;
+  }).peek(doc.id);
+  const marker = monacoApi && model
+    ? monacoApi.editor.getModelMarkers({ resource: model.uri })
+        .find(item => item.owner === 'browser-coder-run')
+    : null;
+  check('the error hover has a clear ERROR section', /^ERROR\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
+  check('the explanation is labeled separately', /\n\nWHAT THIS MEANS\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
+  check('the likely cause is labeled separately', /\n\nCOMMON CAUSE\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
+  check('the example is labeled as an example', /\n\nEXAMPLE\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
 
   const output = () => frame.contentDocument?.getElementById('panel-content')?.textContent ?? '';
   const explained = await waitFor(

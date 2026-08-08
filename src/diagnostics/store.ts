@@ -20,6 +20,14 @@ import type { Disposable } from '../workspace/types.ts';
 
 export type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
+export interface DiagnosticHelp {
+  readonly heading: string;
+  readonly explanation: string;
+  readonly cause: string | null;
+  readonly example: string | null;
+  readonly rtl: boolean;
+}
+
 export interface Diagnostic {
   readonly documentId: string;
   /** Canonical workspace path, for display and for grouping. */
@@ -42,7 +50,7 @@ export interface Diagnostic {
    * deliberately not in the Problems panel, where it would turn every row into a
    * paragraph.
    */
-  readonly help?: string;
+  readonly help?: DiagnosticHelp;
 }
 
 export interface DiagnosticCounts {

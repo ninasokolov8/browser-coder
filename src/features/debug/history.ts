@@ -50,6 +50,28 @@ export interface HistoryView {
   readonly canGoForward: boolean;
 }
 
+export interface HistoryCell {
+  readonly index: number;
+  readonly text: string | null;
+  readonly type: string | null;
+}
+
+/** A compact label for a value cell; the full value remains available in its tooltip. */
+export function historyValueLabel(text: string, type: string | null, maxLength = 36): string {
+  // Python's default object representation includes an implementation path and a
+  // memory address. Neither teaches a beginner anything, and fifty copies of it are
+  // exactly what used to make the tape overlap into an unreadable smear.
+  const object = text.match(/([A-Za-z_]\w*) object at 0x[0-9a-f]+>$/i);
+  if (object) {
+    const className = object[1].replace(/^_+/, '') || type?.replace(/^_+/, '') || 'Object';
+    return `${className} object`;
+  }
+
+  const withoutAddress = text.replace(/0x[0-9a-f]+/gi, 'memory address');
+  if (withoutAddress.length <= maxLength) return withoutAddress;
+  return `${withoutAddress.slice(0, Math.max(1, maxLength - 1))}…`;
+}
+
 export class StopHistory {
   #stops: DebugStop[] = [];
   /** null means "showing the newest", which is the normal state. */
@@ -126,10 +148,11 @@ export class StopHistory {
    * moment being viewed marked. A variable that did not exist yet at some stop is null
    * rather than absent, so the tape's positions line up with the history's.
    */
-  tape(name: string): Array<{ index: number; text: string | null }> {
+  tape(name: string): HistoryCell[] {
     return this.#stops.map((stop, index) => ({
       index,
       text: stop.locals.find(variable => variable.name === name)?.value.text ?? null,
+      type: stop.locals.find(variable => variable.name === name)?.value.type ?? null,
     }));
   }
 

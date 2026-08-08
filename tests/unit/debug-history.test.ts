@@ -9,7 +9,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { StopHistory } from '../../src/features/debug/history.ts';
+import { historyValueLabel, StopHistory } from '../../src/features/debug/history.ts';
 import type { DebugStop, DebugVariable } from '../../src/features/debug/state.ts';
 
 const v = (name: string, text: string): DebugVariable => ({ name, value: { text, type: 'int' } });
@@ -171,6 +171,19 @@ describe('the variable tape', () => {
   test('tracked names are everything that was ever a local', () => {
     const history = recorded(stopAt(1, v('a', '1')), stopAt(2, v('a', '1'), v('b', '2')));
     assert.deepEqual(history.trackedNames().sort(), ['a', 'b']);
+  });
+});
+
+describe('labels for values in the tape', () => {
+  test('turns a Python object address into a useful class label', () => {
+    assert.equal(
+      historyValueLabel('<bc_turtle.<locals>._Turtle object at 0x7f116858ee10>', '_Turtle'),
+      'Turtle object',
+    );
+  });
+
+  test('truncates a long collection without losing the full stored value', () => {
+    assert.equal(historyValueLabel('[1, 2, 3, 4, 5, 6]', 'list', 12), '[1, 2, 3, 4…');
   });
 });
 

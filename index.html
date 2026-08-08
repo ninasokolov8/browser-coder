@@ -1235,16 +1235,30 @@
       #debug-panels {
         display: flex;
         flex-direction: column;
-        gap: 2px;
         flex: 0 0 auto;
         max-height: 34vh;
-        overflow: auto;
-        padding: 4px 0;
+        overflow: hidden;
         font-size: 12px;
         background: var(--bg-panel, #252526);
         border-top: 1px solid var(--border-color, #3c3c3c);
       }
       #debug-panels[hidden] { display: none; }
+      .debug-panel-header {
+        display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 4px 8px 4px 10px;
+        border-bottom: 1px solid var(--border-color); background: var(--bg-tab);
+      }
+      .debug-panel-title { font-weight: 600; color: var(--text-primary); }
+      .debug-panel-hint { color: var(--text-secondary); font-size: 10px; }
+      .debug-panel-actions { display: flex; gap: 3px; margin-inline-start: auto; }
+      .debug-panel-control {
+        min-width: 26px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px;
+        background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+      }
+      .debug-panel-control:hover { background: var(--bg-hover-strong); color: var(--text-primary); }
+      .debug-panel-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      #debug-panel-content { min-height: 0; overflow: auto; padding: 4px 0; }
+      #debug-panels.collapsed { max-height: none; }
+      #debug-panels.collapsed #debug-panel-content { display: none; }
       .debug-section {
         padding: 3px 10px;
         font-size: 10px;
@@ -1271,7 +1285,10 @@
       .debug-var-was {
         color: var(--text-secondary, #7a8797);
         text-decoration: line-through;
-        flex: 0 0 auto;
+        flex: 0 1 30%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .debug-step-note {
         padding: 3px 10px 6px;
@@ -1292,18 +1309,21 @@
       }
       .error-first-aid:hover:not(:disabled) { background: #1177bb; }
       .error-first-aid:disabled { opacity: .7; cursor: default; }
-      .debug-history { padding: 2px 8px 8px; border-top: 1px solid var(--border-color); }
-      .debug-history-row { display: flex; gap: 8px; align-items: center; margin: 3px 0; min-width: 0; }
-      .debug-history-row > .debug-var-name { width: 74px; overflow: hidden; text-overflow: ellipsis; }
-      .debug-history-cells { display: flex; gap: 2px; overflow-x: auto; padding: 2px; }
+      .debug-history { padding: 4px 8px 8px; border-top: 1px solid var(--border-color); min-width: 0; }
+      .debug-history-guide { margin: 0 2px 6px; color: var(--text-secondary); font-size: 10px; }
+      .debug-history-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; align-items: center; margin: 4px 0; min-width: 0; }
+      .debug-history-row > .debug-var-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .debug-history-cells { display: flex; min-width: 0; gap: 3px; overflow-x: auto; padding: 2px; }
       .debug-history-cell {
         border: 1px solid var(--border-color); border-radius: 3px;
         background: var(--bg-input); color: var(--text-primary); min-width: 27px;
-        height: 23px; padding: 0 5px; font: 11px var(--font-mono); cursor: pointer;
+        max-width: 140px; height: 24px; padding: 0 7px; font: 11px var(--font-mono);
+        flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
       }
       .debug-history-cell.active { border-color: var(--accent); background: rgba(0,122,204,.28); }
       .debug-history-cell.future { opacity: .42; }
-      .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
+      .debug-history-cell.unchanged { color: var(--text-secondary); min-width: 27px; padding: 0 5px; }
+      .debug-var-name { color: var(--fg-symbol); flex: 0 1 auto; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .debug-var-value {
         color: var(--text-primary, #ddd);
         flex: 1 1 auto;
@@ -2453,9 +2473,19 @@
                sit next to the output, and the line the debugger is paused on stays
                where the student was already looking. -->
           <aside id="debug-panels" hidden>
-            <div id="debug-variables" aria-label="Variables"></div>
-            <div id="debug-callstack" aria-label="Call stack"></div>
-            <div id="debug-watch" aria-label="Watch expressions"></div>
+            <div class="debug-panel-header">
+              <span class="debug-panel-title">Debugger details</span>
+              <span class="debug-panel-hint">Values recorded at each pause</span>
+              <div class="debug-panel-actions">
+                <button id="debug-panel-minimize" class="debug-panel-control" type="button" aria-expanded="true" title="Minimize debugger details">−</button>
+                <button id="debug-panel-close" class="debug-panel-control" type="button" title="Close debugger details for this run" aria-label="Close debugger details">×</button>
+              </div>
+            </div>
+            <div id="debug-panel-content">
+              <div id="debug-variables" aria-label="Variables"></div>
+              <div id="debug-callstack" aria-label="Call stack"></div>
+              <div id="debug-watch" aria-label="Watch expressions"></div>
+            </div>
           </aside>
         </div>
         <div id="panel">

@@ -41,6 +41,7 @@
   "editor.newFile": "New File",
   "editor.explainKeyword": "💡 Explain this keyword",
   "editor.runSelected": "▶ Run Selected",
+  "editor.logpoint": "◆ Print a value when this line runs…",
   "editor.example": "Example:",
   "panel.output": "Output",
   "panel.clear": "Clear",
@@ -85,6 +86,5 @@
   "titlebar.more": "More tools",
   "titlebar.downloadFile": "Download this file",
   "titlebar.theme": "Theme",
-  "titlebar.uiLanguage": "Language",
-  "hover.tryThis": "Try this"
+  "titlebar.uiLanguage": "Language"
 }

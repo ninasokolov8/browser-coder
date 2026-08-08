@@ -95,8 +95,14 @@ function explainRunFailure(languageId: string, output: string, source: string, f
     `<span class="info">${esc(block.heading)}</span>`,
     `<span${dir}>${esc(block.explanation)}</span>`,
   ];
-  if (block.cause) lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
-  if (block.example) lines.push('', `<span class="success">${esc(block.example)}</span>`);
+  if (block.cause) {
+    lines.push('', '<span class="info">Common cause</span>');
+    lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
+  }
+  if (block.example) {
+    lines.push('', '<span class="info">Example</span>');
+    lines.push(`<span class="success">${esc(block.example)}</span>`);
+  }
   const fix = safeFixFor(languageId, source, diagnostic.line, diagnostic.message);
   if (fix) lines.push('', firstAidButtonHtml(fix, diagnostic.message, file));
 
