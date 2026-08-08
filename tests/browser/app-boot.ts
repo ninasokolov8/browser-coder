@@ -816,6 +816,51 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   // 0 + 1 + 2 by the time line 4 runs.
   check('the loop variable is reported with its value', total?.value.text === '3', JSON.stringify(total));
 
+  /*
+   * The line the debugger is paused on must be MARKED in the editor.
+   *
+   * This was the gap. Stopping worked, the call stack named the right line, and the
+   * editor showed nothing - because the check for "is the stop in the file on screen"
+   * compared strings, and a snippet is written into the job as `main.py` whatever the
+   * tab is called. A debugger that will not say where it is reads as a broken one.
+   *
+   * Asserted through Monaco's decoration list rather than by looking for a CSS class in
+   * the DOM: the decoration is the thing the feature creates, and a rendered line is
+   * only ever a consequence of it.
+   */
+  const model = (runtime.models as { peek(id: string): { getAllDecorations(): Array<{ options: { className?: string | null } }> } | null })
+    .peek(document.id);
+  check('the paused document still has a model', model !== null);
+
+  if (model) {
+    const highlighted = await waitFor(
+      'the paused line to be highlighted',
+      () => model.getAllDecorations().some(entry => entry.options.className === 'debug-current-line'),
+      8000,
+    );
+    check('the line the debugger stopped on is highlighted', highlighted);
+
+    const all = model.getAllDecorations() as Array<{
+      range: { startLineNumber: number };
+      options: { className?: string | null; glyphMarginClassName?: string | null };
+    }>;
+    lines.push(
+      'INFO decorations: ' +
+      all
+        .filter(entry => entry.options.className || entry.options.glyphMarginClassName)
+        .map(entry => `${entry.range.startLineNumber}:${entry.options.className || entry.options.glyphMarginClassName}`)
+        .join(', '),
+    );
+    lines.push(`INFO stop.file=${JSON.stringify((state().stop as { file?: string }).file)}`);
+
+    const current = all.filter(entry => entry.options.className === 'debug-current-line');
+    check(
+      'and it is the line it actually stopped on',
+      current.length === 1 && current[0].range.startLineNumber === 4,
+      `marked lines: ${current.map(entry => entry.range.startLineNumber).join(', ') || 'none'}`,
+    );
+  }
+
   // The variables panel shows it.
   const variablesShown = await waitFor(
     'the variables panel to render',

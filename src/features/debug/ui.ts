@@ -25,6 +25,7 @@ import {
   VariableHistory,
   type VariableChange,
 } from './variable-diff.ts';
+import { stopIsOnScreen } from './stop-location.ts';
 import type { Disposable } from '../../workspace/types.ts';
 
 /**
@@ -173,20 +174,22 @@ function renderDecorations(snapshot: DebugSnapshot): void {
     /*
      * Is the program stopped in the file on screen?
      *
-     * The adapter reports a workspace-relative PATH now that a breakpoint can be in any
-     * file - it used to report a bare basename, and comparing a path against a name
-     * would leave the arrow off every stop in a subfolder. Both are accepted: the path
-     * when the workspace can resolve one, and the name as the fallback that keeps a
-     * v1-shaped answer working.
+     * The rule is in stop-location.ts, with the single-document fallback that this
+     * comparison was missing: a snippet is written into the job as `main.py` whatever
+     * the tab is called, so a student editing `main_1.py` got a stop in `main.py`, the
+     * files "differed", and the line the debugger was paused on was never highlighted.
      */
     const activeTab = runtime.tabManager?.getActiveTab();
-    const activePath = activeTab ? runtime.workspace?.pathOf(activeTab.file.id) : null;
-    const activeName = activeTab?.file.name;
-    const sameFile = !stop.file
-      || (activePath ? stop.file === activePath : false)
-      || (activeName ? stop.file === activeName : false);
 
-    if (sameFile) {
+    const workspace = runtime.workspace;
+    if (stopIsOnScreen({
+      stopFile: stop.file,
+      activePath: activeTab ? workspace?.pathOf(activeTab.file.id) : null,
+      activeName: activeTab?.file.name,
+      workspacePaths: workspace
+        ? workspace.allDocuments().map(item => workspace.pathOf(item.id) ?? item.name)
+        : [],
+    })) {
       wanted.push({
         range: new monaco.Range(stop.line, 1, stop.line, 1),
         options: {
