@@ -1329,6 +1329,56 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
 }
 
 /**
+ * The titlebar a student sees first.
+ *
+ * It held eleven controls in one flat row. The most prominent - bright green, leftmost
+ * - was Hack Lab, a read-only security report with nothing to do with writing a
+ * program; "Clear", which ERASES the workspace, sat one button from "Download"; and Run
+ * and Debug were in the middle with the same weight as a theme picker. Meanwhile "Check
+ * my work" had no control at all and was reachable only from the command palette.
+ *
+ * These assertions are about priority rather than pixels: what is top-level, what is
+ * behind the menu, and that nothing became unreachable in the move.
+ */
+async function checkTheTitlebarIsSimple(frameWindow: Window): Promise<void> {
+  const frameDocument = frameWindow.document;
+
+  const menu = frameDocument.getElementById('more-menu');
+  const toggle = frameDocument.getElementById('more-toggle');
+  check('there is a single overflow menu', !!menu && !!toggle);
+  if (!menu || !toggle) return;
+
+  check('it starts closed', menu.hidden);
+  check('and says so for a screen reader', toggle.getAttribute('aria-expanded') === 'false');
+
+  // The four things a lesson uses, together and top-level.
+  for (const id of ['run', 'stop', 'debug', 'check-work']) {
+    const button = frameDocument.getElementById(id);
+    check(`${id} is a top-level action`, !!button && !menu.contains(button));
+  }
+
+  check(
+    'Check my work has a button at all, not just a palette entry',
+    !!frameDocument.getElementById('check-work'),
+  );
+
+  // The occasional and the dangerous are behind the menu.
+  for (const id of ['btn-hack-lab', 'btn-clear-cache', 'btn-download-project', 'theme', 'ui-lang']) {
+    const element = frameDocument.getElementById(id);
+    check(`${id} moved into the menu`, !!element && menu.contains(element));
+  }
+
+  // Opening it works, and Escape closes it and gives focus back.
+  (toggle as HTMLElement).click();
+  check('the menu opens', !menu.hidden);
+  check('and reports it', toggle.getAttribute('aria-expanded') === 'true');
+
+  frameDocument.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape closes it', menu.hidden);
+  check('and focus returns to the button', frameDocument.activeElement === toggle);
+}
+
+/**
  * Errors appear while typing, without pressing Run.
  *
  * Monaco squiggles TypeScript, JavaScript, CSS, HTML and JSON as you type because it
@@ -1985,6 +2035,7 @@ async function run(): Promise<void> {
   await checkClosingATabKeepsTheFileUsable(frameWindow);
   await checkAnOpenImageIsNotOverwritten(frameWindow);
   await checkRunStopAndDebugToolbarAreVisible(frameWindow);
+  await checkTheTitlebarIsSimple(frameWindow);
   await checkErrorsAppearWhileTyping(frameWindow);
   await checkTheCompilerAgreesWithoutDuplicating(frameWindow);
 

@@ -203,7 +203,82 @@
         gap: 12px;
       }
       #titlebar .logo { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-      #titlebar .controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+      #titlebar .controls { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+
+      /*
+       * Grouping.
+       *
+       * `gap` between the groups is nearly double the gap inside one, which is what
+       * makes them read as groups at a glance rather than as eleven equal things. The
+       * "do" group is boxed so the actions of a lesson - run it, stop it, debug it,
+       * check it - are one object a student can find without reading every label.
+       */
+      #titlebar .do-group {
+        display: flex; align-items: center; gap: 5px;
+        padding: 3px; border-radius: 7px;
+        background: var(--bg-sidebar);
+        border: 1px solid var(--border-color);
+      }
+      #titlebar .set-group { display: flex; align-items: center; gap: 5px; }
+
+      /* Run is the primary action on this screen and is the only filled button. */
+      #titlebar .btn-primary { background: var(--accent); color: #fff; font-weight: 600; }
+
+      /* The overflow menu. */
+      #titlebar .more { position: relative; }
+      #titlebar #more-toggle { min-width: 30px; padding: 0 8px; font-size: 15px; line-height: 1; }
+      .more-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        inset-inline-end: 0;
+        z-index: 60;
+        min-width: 232px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: var(--bg-panel, #252526);
+        border: 1px solid var(--border-color, #3c3c3c);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+      }
+      .more-menu[hidden] { display: none; }
+      .more-item {
+        display: flex; align-items: center; gap: 9px;
+        width: 100%;
+        padding: 7px 9px;
+        background: transparent;
+        border: none;
+        border-radius: 5px;
+        color: var(--text-primary, #ddd);
+        font: inherit;
+        font-size: 12.5px;
+        text-align: start;
+        cursor: pointer;
+      }
+      .more-item:hover { background: var(--bg-hover-strong, #3a3a3a); }
+      .more-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      /* Erasing the workspace is not the same kind of thing as downloading a file. */
+      .more-item-danger { color: #f0999a; }
+      .more-item-danger:hover { background: #c62828; color: #fff; }
+      .more-sep { height: 1px; margin: 5px 4px; background: var(--border-color, #3c3c3c); }
+      .more-field {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 5px 9px;
+        font-size: 12.5px;
+        color: var(--text-secondary, #999);
+      }
+      .more-field select { min-width: 108px; }
+
+      /*
+       * Narrow screens drop the words from the action group and keep the icons. The
+       * group box and the ordering still carry the meaning, and every button keeps its
+       * title, so nothing becomes unreachable - it becomes shorter.
+       */
+      @media (max-width: 1080px) {
+        #titlebar .do-group .btn span[data-i18n] { display: none; }
+        #titlebar .do-group .btn { padding: 0 8px; }
+      }
       #titlebar select {
         height: 24px; font-size: 12px; padding: 0 6px;
         background: var(--bg-sidebar); color: var(--text-primary);
@@ -2069,42 +2144,86 @@
         <span id="status" role="status" aria-live="polite" aria-atomic="true"
               style="color: var(--text-secondary); font-size: 12px;">Starting...</span>
         <div class="controls">
-          <button id="btn-hack-lab" class="btn btn-hack" data-i18n-title="titlebar.hackLab" onclick="window.open('/reports/', '_blank')">🔓 <span data-i18n="titlebar.hackLab">Hack Lab</span></button>
-          <span class="titlebar-separator"></span>
-          <button id="btn-download-project" class="btn btn-secondary" data-i18n-title="sidebar.downloadProject">📦 <span data-i18n="titlebar.download">Download</span></button>
-          <button id="btn-clear-cache" class="btn btn-danger" data-i18n-title="sidebar.clearCache">🗑️ <span data-i18n="titlebar.clear">Clear</span></button>
-          <span class="titlebar-separator"></span>
-          <select id="lang" title="Language">
-            <option value="javascript">JavaScript</option>
-          </select>
-          <select id="version" title="Version"></select>
-          <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
-          <!-- Stop. Shown only while something is running.
+          <!--
+            Grouped by what a student is doing, not by what the code does.
 
-               There was no way to stop a program at all. `startRunLoader()` DISABLED
-               the Run button and put a spinner in it, so a student whose program had
-               an endless loop, or was waiting on input that never came, could only
-               wait for the timeout or reload the page and lose the console. A separate
-               button rather than a Run button that changes meaning: two clearly
-               labelled controls are easier to learn than one that morphs, and a
-               student who has just written an infinite loop should not have to notice
-               that Run has become Stop. -->
-          <button id="stop" class="btn btn-stop" title="Stop (Shift+F5)" hidden>⏹ <span data-i18n="titlebar.stop">Stop</span></button>
-          <!-- Debug. Greyed for a language with no adapter rather than hidden, so the
-               feature is discoverable and its absence is explained by the tooltip. -->
-          <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
-          <button id="download" class="btn btn-secondary" title="Download file">↓</button>
-          <select id="theme" title="Theme">
-            <option value="vs-dark">Dark</option>
-            <option value="vs">Light</option>
-            <option value="hc-black">High contrast</option>
-          </select>
-          <span class="titlebar-separator"></span>
-          <div id="lang-selector">
-            <select id="ui-lang" title="Language">
-              <option value="en">EN</option>
-              <option value="he">עב</option>
+            This row used to hold eleven controls in one flat line, in this order: Hack
+            Lab, Download project, Clear, language, version, Run, Stop, Debug, download
+            file, theme, UI language. Three problems for a fifteen-year-old:
+
+              - the most visually prominent control - bright green, first in the row -
+                was Hack Lab, which opens a read-only security report and has nothing to
+                do with writing a program;
+              - "Clear" ERASES the workspace, and sat one button away from "Download";
+              - Run and Debug, the two things every lesson uses, were buried in the
+                middle with equal weight to a theme picker.
+
+            Now: what you DO is together and primary, what you SET is next to it, and
+            everything occasional lives behind one menu. Six things instead of eleven.
+          -->
+          <div class="do-group" role="group" aria-label="Run your program">
+            <button id="run" class="btn btn-primary" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
+            <!-- Shown only while something is running. A separate control rather than a
+                 Run button that changes meaning: a student who has just written an
+                 infinite loop should not have to notice that Run became Stop. -->
+            <button id="stop" class="btn btn-stop" title="Stop (Shift+F5)" hidden>⏹ <span data-i18n="titlebar.stop">Stop</span></button>
+            <!-- Greyed for a language with no adapter rather than hidden, so the feature
+                 is discoverable and its absence is explained by the tooltip. -->
+            <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
+            <!-- Check my work had NO button at all. It was registered as a command and
+                 reachable only through the palette, which a student will never open, so
+                 the marking harness, the BCTEST protocol and the checklist were
+                 invisible to the person they were built for. -->
+            <button id="check-work" class="btn btn-secondary" title="Check my work" data-i18n-title="titlebar.checkWork">✓ <span data-i18n="titlebar.checkWork">Check my work</span></button>
+          </div>
+
+          <div class="set-group" role="group" aria-label="Language">
+            <select id="lang" title="Language">
+              <option value="javascript">JavaScript</option>
             </select>
+            <select id="version" title="Version"></select>
+          </div>
+
+          <!--
+            One menu for everything occasional. The controls keep their ids and stay in
+            the document, so every binding and every test that reaches for them by id is
+            unaffected - they are simply no longer competing with Run for attention.
+          -->
+          <div id="more" class="more">
+            <button id="more-toggle" class="btn btn-secondary" aria-expanded="false"
+                    aria-haspopup="true" aria-controls="more-menu"
+                    title="More tools" data-i18n-title="titlebar.more">⋯</button>
+            <div id="more-menu" class="more-menu" role="menu" aria-labelledby="more-toggle" hidden>
+              <button id="download" class="more-item" role="menuitem" title="Download file">↓ <span data-i18n="titlebar.downloadFile">Download this file</span></button>
+              <button id="btn-download-project" class="more-item" role="menuitem" data-i18n-title="sidebar.downloadProject">📦 <span data-i18n="titlebar.download">Download everything</span></button>
+
+              <div class="more-sep" role="separator"></div>
+
+              <label class="more-field">
+                <span data-i18n="titlebar.theme">Theme</span>
+                <select id="theme" title="Theme">
+                  <option value="vs-dark">Dark</option>
+                  <option value="vs">Light</option>
+                  <option value="hc-black">High contrast</option>
+                </select>
+              </label>
+              <label class="more-field">
+                <span data-i18n="titlebar.uiLanguage">Language</span>
+                <div id="lang-selector">
+                  <select id="ui-lang" title="Language">
+                    <option value="en">EN</option>
+                    <option value="he">עב</option>
+                  </select>
+                </div>
+              </label>
+
+              <div class="more-sep" role="separator"></div>
+
+              <button id="btn-hack-lab" class="more-item" role="menuitem" data-i18n-title="titlebar.hackLab" onclick="window.open('/reports/', '_blank')">🔓 <span data-i18n="titlebar.hackLab">Hack Lab</span></button>
+              <!-- Last, and marked, because it erases the workspace. It used to sit
+                   between Download and a language picker. -->
+              <button id="btn-clear-cache" class="more-item more-item-danger" role="menuitem" data-i18n-title="sidebar.clearCache">🗑️ <span data-i18n="titlebar.clear">Erase everything</span></button>
+            </div>
           </div>
         </div>
       </div>

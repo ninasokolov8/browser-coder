@@ -80,5 +80,10 @@
   "panel.endInput": "End input",
   "panel.endInputHint": "Send end-of-input (Ctrl+D), so a program that reads until EOF can finish",
   "titlebar.debug": "Debug",
-  "command.debug": "Start debugging"
+  "command.debug": "Start debugging",
+  "titlebar.checkWork": "Check my work",
+  "titlebar.more": "More tools",
+  "titlebar.downloadFile": "Download this file",
+  "titlebar.theme": "Theme",
+  "titlebar.uiLanguage": "Language"
 }
