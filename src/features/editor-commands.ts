@@ -15,7 +15,7 @@
 import * as monaco from 'monaco-editor';
 
 import { runtime, requireEditor, requireTabManager } from '../app/runtime';
-import { debugBtn, runBtn, stopBtn } from '../components/dom';
+import { checkWorkBtn, debugBtn, runBtn, stopBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
 import { isRunActive, requestStop } from '../components/run-controls.ts';
@@ -225,6 +225,10 @@ commands.register({
 
 bindButton(commands, runBtn, 'workspace.run');
 bindButton(commands, stopBtn, 'workspace.stopRun');
+// `workspace.runTests` had no control. It was reachable only through the command
+// palette, which a high-school student will never open - so the marking harness,
+// the BCTEST protocol and the checklist were invisible to the person they exist for.
+bindButton(commands, checkWorkBtn, 'workspace.runTests');
 // Bound through the registry like every other control, so its enabled state and its
 // refusal both come from the command's own declaration rather than from CSS.
 bindButton(commands, debugBtn, 'workspace.debug');

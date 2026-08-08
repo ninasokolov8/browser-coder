@@ -23,6 +23,7 @@ import { renderFileTree } from './features/explorer';
 import { highlightSearchMatchesInEditor } from './features/search';
 import { initializeWorkspace } from './features/workspace-init';
 import { initializeLayout } from './features/layout';
+import { initializeMoreMenu } from './features/more-menu';
 import { markWorkspaceReady, setupStepUpIntegration } from './integrations/stepup';
 import { populateLanguageDropdown, populateVersionDropdown, configureMonacoForVersion } from './components/monaco-config';
 import { uiLangSel, langSel } from './components/dom';
@@ -235,6 +236,7 @@ async function bootstrap(): Promise<void> {
   initializeDebugUi();
 
   initializeLayout();
+  initializeMoreMenu();
   setStatus('Ready ✅ (Ctrl+Enter to run)');
 
   // Only now is it true. Host messages that arrived earlier were queued and are

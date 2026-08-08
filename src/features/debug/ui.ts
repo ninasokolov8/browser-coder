@@ -25,6 +25,13 @@ import {
   VariableHistory,
   type VariableChange,
 } from './variable-diff.ts';
+import { stopIsOnScreen } from './stop-location.ts';
+import {
+  buildToolbar,
+  debugActions,
+  renderToolbar,
+  type ToolbarAction,
+} from './toolbar.ts';
 import type { Disposable } from '../../workspace/types.ts';
 
 /**
@@ -173,20 +180,22 @@ function renderDecorations(snapshot: DebugSnapshot): void {
     /*
      * Is the program stopped in the file on screen?
      *
-     * The adapter reports a workspace-relative PATH now that a breakpoint can be in any
-     * file - it used to report a bare basename, and comparing a path against a name
-     * would leave the arrow off every stop in a subfolder. Both are accepted: the path
-     * when the workspace can resolve one, and the name as the fallback that keeps a
-     * v1-shaped answer working.
+     * The rule is in stop-location.ts, with the single-document fallback that this
+     * comparison was missing: a snippet is written into the job as `main.py` whatever
+     * the tab is called, so a student editing `main_1.py` got a stop in `main.py`, the
+     * files "differed", and the line the debugger was paused on was never highlighted.
      */
     const activeTab = runtime.tabManager?.getActiveTab();
-    const activePath = activeTab ? runtime.workspace?.pathOf(activeTab.file.id) : null;
-    const activeName = activeTab?.file.name;
-    const sameFile = !stop.file
-      || (activePath ? stop.file === activePath : false)
-      || (activeName ? stop.file === activeName : false);
 
-    if (sameFile) {
+    const workspace = runtime.workspace;
+    if (stopIsOnScreen({
+      stopFile: stop.file,
+      activePath: activeTab ? workspace?.pathOf(activeTab.file.id) : null,
+      activeName: activeTab?.file.name,
+      workspacePaths: workspace
+        ? workspace.allDocuments().map(item => workspace.pathOf(item.id) ?? item.name)
+        : [],
+    })) {
       wanted.push({
         range: new monaco.Range(stop.line, 1, stop.line, 1),
         options: {
@@ -201,85 +210,6 @@ function renderDecorations(snapshot: DebugSnapshot): void {
   }
 
   decorations.set(wanted);
-}
-
-// ── Toolbar ─────────────────────────────────────────────────────────────────
-
-interface ToolbarButton {
-  readonly id: string;
-  readonly label: string;
-  readonly title: string;
-  readonly enabled: (snapshot: DebugSnapshot) => boolean;
-  readonly run: () => void;
-}
-
-const BUTTONS: readonly ToolbarButton[] = [
-  {
-    id: 'debug-continue',
-    label: '▶',
-    title: 'Continue (F5)',
-    enabled: () => debugState.capabilities().canContinue,
-    run: () => void sendCommand('continue'),
-  },
-  {
-    id: 'debug-step-over',
-    label: '⤼',
-    title: 'Step over (F10)',
-    enabled: () => debugState.capabilities().canStepOver,
-    run: () => void sendCommand('next'),
-  },
-  {
-    id: 'debug-step-in',
-    label: '⤓',
-    title: 'Step into (F11)',
-    enabled: () => debugState.capabilities().canStepIn,
-    run: () => void sendCommand('stepIn'),
-  },
-  {
-    id: 'debug-step-out',
-    label: '⤒',
-    title: 'Step out (Shift+F11)',
-    enabled: () => debugState.capabilities().canStepOut,
-    run: () => void sendCommand('stepOut'),
-  },
-  {
-    id: 'debug-stop',
-    label: '■',
-    title: 'Stop debugging (Shift+F5)',
-    enabled: () => debugState.capabilities().canStop,
-    run: () => void sendCommand('stop'),
-  },
-];
-
-function buildToolbar(host: HTMLElement): void {
-  if (host.dataset.built === '1') return;
-  host.dataset.built = '1';
-
-  for (const button of BUTTONS) {
-    const element = document.createElement('button');
-    element.id = button.id;
-    element.type = 'button';
-    element.className = 'debug-btn';
-    element.textContent = button.label;
-    element.title = button.title;
-    element.addEventListener('click', () => {
-      // Re-checked at click time rather than trusting the disabled attribute: a
-      // stale button is exactly how a command reaches a session that cannot serve it.
-      if (button.enabled(debugState.snapshot())) button.run();
-    });
-    host.appendChild(element);
-  }
-}
-
-function renderToolbar(host: HTMLElement, snapshot: DebugSnapshot): void {
-  for (const button of BUTTONS) {
-    const element = document.getElementById(button.id) as HTMLButtonElement | null;
-    if (!element) continue;
-    const enabled = button.enabled(snapshot);
-    element.disabled = !enabled;
-    element.classList.toggle('disabled', !enabled);
-  }
-  host.hidden = snapshot.status === 'idle';
 }
 
 // ── Variables and call stack ────────────────────────────────────────────────
@@ -543,7 +473,16 @@ export function initializeDebugUi(): Disposable {
     return { dispose: () => {} };
   }
 
-  buildToolbar(toolbarHost);
+  /*
+   * The controls, with their labels and the status sentence. Defined in toolbar.ts;
+   * the handlers and the capability predicates are passed in, so that module decides
+   * what a student sees and this one decides how a command reaches the adapter.
+   */
+  const actions: ToolbarAction[] = debugActions(
+    () => debugState.capabilities(),
+    command => void sendCommand(command),
+  );
+  buildToolbar(toolbarHost, actions, () => debugState.snapshot());
 
   // Clicking the glyph margin toggles a breakpoint, which is where every IDE puts it.
   const marginSubscription = editor.onMouseDown(event => {
@@ -612,7 +551,7 @@ export function initializeDebugUi(): Disposable {
 
   const unsubscribe = debugState.subscribe(snapshot => {
     renderDecorations(snapshot);
-    renderToolbar(toolbarHost, snapshot);
+    renderToolbar(toolbarHost, actions, snapshot);
     renderVariables(variablesHost, snapshot);
     renderCallStack(stackHost, snapshot);
     if (watchHost) renderWatches(watchHost, snapshot);

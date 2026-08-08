@@ -121,17 +121,82 @@ export const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
  * clicking Debug on a program with a syntax error reports the error rather than
  * starting a session against an assembly that was never produced.
  */
-async function prepareDebugLaunch(ctx, startedAt) {
-  const { job, entryPoint } = ctx;
+/**
+ * Compile the project in place, without running it.
+ *
+ * One implementation, used by the debug launch (which needs an assembly to attach to)
+ * and by the live check (which needs to know whether one COULD be produced). Two copies
+ * of a `dotnet build` invocation would eventually differ in a flag and give the two
+ * paths different opinions about the same project.
+ *
+ * `--no-restore` is safe and deliberate: the warm template is already restored, and it
+ * is also what keeps the build from attempting network access.
+ */
+/**
+ * Put the job directory into a buildable state: the warm template, then the trusted
+ * project file.
+ *
+ * Shared by `prepare` and `check` so a live check compiles exactly the project a run
+ * would. Returns a diagnostics result when there is nothing to build, or null when the
+ * directory is ready.
+ */
+async function setUpProject(ctx, startedAt) {
+  const { job, files, profile } = ctx;
 
-  const build = await runToCompletion({
+  const sourceFiles = files.filter(file => file.name.toLowerCase().endsWith('.cs'));
+  if (sourceFiles.length === 0) {
+    return diagnostics('No .cs source files were provided.', Date.now() - startedAt);
+  }
+
+  // Copy the warm template in, then write the trusted project file. Order matters: the
+  // template's own project file must not survive, because it may have been generated
+  // for a different language level.
+  try {
+    const templateDir = await ensureTemplate(ctx, profile);
+    if (fs.existsSync(templateDir)) {
+      // NEVER copy the template's source. The pipeline writes the student's files into
+      // job.dir BEFORE prepare() runs, and `force: true` overwrote them - so the
+      // template's placeholder `Console.WriteLine("template")` replaced Program.cs and
+      // EVERY C# program printed "template" and exited 0. The student's code was never
+      // compiled.
+      //
+      // Only the build state is worth copying: obj/ and bin/ hold the restored package
+      // graph, which is the entire point of warming a template.
+      fs.cpSync(templateDir, job.dir, {
+        recursive: true,
+        force: true,
+        filter: source => !source.toLowerCase().endsWith('.cs'),
+      });
+    }
+  } catch (error) {
+    log('warn', 'csharp_template_copy_failed', { error: error.message });
+  }
+
+  fs.writeFileSync(path.join(job.dir, PROJECT_FILE_NAME), projectFileContents(profile), {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+
+  return null;
+}
+
+function buildProject(ctx) {
+  return runToCompletion({
     command: ctx.config.tools.dotnet,
-    args: ['build', '-c', 'Debug', '--no-restore', '--nologo', '-v', 'q', job.dir],
-    cwd: job.dir,
+    args: ['build', '-c', 'Debug', '--no-restore', '--nologo', '-v', 'q', ctx.job.dir],
+    cwd: ctx.job.dir,
     env: ctx.sandboxEnv,
+    // The C# budget, not the generic one: a cold `dotnet build` is the slowest thing
+    // in this system and the adapter is what knows that.
     timeoutMs: ctx.config.execution.csharpTimeoutMs,
     maxOutputChars: ctx.config.execution.maxOutputChars,
   });
+}
+
+async function prepareDebugLaunch(ctx, startedAt) {
+  const { job, entryPoint } = ctx;
+
+  const build = await buildProject(ctx);
 
   if (!build.termination.succeeded) {
     // The compiler writes its errors to stdout here, as it does for a normal run.
@@ -264,49 +329,47 @@ export const csharpAdapter = {
    */
   supportsDebug: true,
 
+  /**
+   * Compile without running, for live error checking.
+   *
+   * C# is the ONE language here that needs this method, and the reason is the shape of
+   * its normal launch: `prepare()` returns `dotnet run`, which compiles as part of
+   * EXECUTING. Every other adapter compiles during prepare - javac, tsc, php -l,
+   * node --check, the Python preflight - so for them "prepare succeeded" already means
+   * "it compiles", and the pipeline can check by preparing and discarding the launch.
+   *
+   * Doing that for C# reported broken code as clean: prepare handed back a launch
+   * descriptor for a program that `dotnet run` would then refuse to build. That is the
+   * precise failure the live check exists to avoid - being told a file is fine and then
+   * watching it fail to run is worse than having no check at all. It is also why
+   * `classifyFailure` below exists, which was the standing evidence that this language
+   * reports its compile errors after the fact.
+   *
+   * The build is the same one the debug path performs, through the same helper, so a
+   * check and a Debug press cannot disagree about whether a project compiles.
+   */
+  async check(ctx) {
+    const startedAt = Date.now();
+
+    const refusal = await setUpProject(ctx, startedAt);
+    if (refusal) return refusal;
+
+    const build = await buildProject(ctx);
+    if (build.termination.succeeded) return null;
+
+    const message = cleanBuildOutput(build.stdout || build.stderr, ctx.job.dir).trim();
+    return diagnostics(
+      message || `dotnet build exited with ${build.termination.exitCode}`,
+      build.durationMs,
+    );
+  },
+
   async prepare(ctx) {
-    const { job, files, profile } = ctx;
     const startedAt = Date.now();
     const debugging = ctx.debug?.enabled === true;
 
-    const sourceFiles = files.filter(file => file.name.toLowerCase().endsWith('.cs'));
-    if (sourceFiles.length === 0) {
-      return diagnostics('No .cs source files were provided.', Date.now() - startedAt);
-    }
-
-    // Copy the warm template in, then write the trusted project file. Order
-    // matters: the template's own project file must not survive, because it may
-    // have been generated for a different language level.
-    try {
-      const templateDir = await ensureTemplate(ctx, profile);
-      if (fs.existsSync(templateDir)) {
-        // NEVER copy the template's source. The pipeline writes the student's
-        // files into job.dir BEFORE prepare() runs (see pipeline.mjs:
-        // job.writeFiles then adapter.prepare), and `force: true` overwrote them -
-        // so the template's placeholder `Console.WriteLine("template")` replaced
-        // Program.cs and EVERY C# program printed "template" and exited 0. The
-        // student's code was never compiled.
-        //
-        // The placeholder-removal guard below this used to be the only defence,
-        // and it only fired when the student had NOT supplied a Program.cs - which
-        // is the one case where nothing needed protecting.
-        //
-        // Only the build state is worth copying: obj/ and bin/ hold the restored
-        // package graph, which is the entire point of warming a template.
-        fs.cpSync(templateDir, job.dir, {
-          recursive: true,
-          force: true,
-          filter: source => !source.toLowerCase().endsWith('.cs'),
-        });
-      }
-    } catch (error) {
-      log('warn', 'csharp_template_copy_failed', { error: error.message });
-    }
-
-    fs.writeFileSync(path.join(job.dir, PROJECT_FILE_NAME), projectFileContents(profile), {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
+    const refusal = await setUpProject(ctx, startedAt);
+    if (refusal) return refusal;
 
     if (debugging) return prepareDebugLaunch(ctx, startedAt);
 
@@ -321,11 +384,11 @@ export const csharpAdapter = {
         '--no-restore',
         '--nologo',
         '-v', 'q',
-        '--project', job.dir,
+        '--project', ctx.job.dir,
       ],
-      cwd: job.dir,
+      cwd: ctx.job.dir,
       timeoutMs: ctx.config.execution.csharpTimeoutMs,
-      transformStderr: text => cleanBuildOutput(text, job.dir),
+      transformStderr: text => cleanBuildOutput(text, ctx.job.dir),
     };
   },
 

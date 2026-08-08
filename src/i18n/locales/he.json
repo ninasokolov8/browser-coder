@@ -80,5 +80,10 @@
   "panel.endInput": "סיום קלט",
   "panel.endInputHint": "שליחת סוף-קלט (Ctrl+D), כדי שתוכנית שקוראת עד סוף הקלט תוכל לסיים",
   "titlebar.debug": "ניפוי",
-  "command.debug": "התחלת ניפוי"
+  "command.debug": "התחלת ניפוי",
+  "titlebar.checkWork": "בדיקת העבודה",
+  "titlebar.more": "כלים נוספים",
+  "titlebar.downloadFile": "הורדת הקובץ",
+  "titlebar.theme": "ערכת נושא",
+  "titlebar.uiLanguage": "שפה"
 }

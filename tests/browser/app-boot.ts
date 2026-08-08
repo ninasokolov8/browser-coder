@@ -816,6 +816,51 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   // 0 + 1 + 2 by the time line 4 runs.
   check('the loop variable is reported with its value', total?.value.text === '3', JSON.stringify(total));
 
+  /*
+   * The line the debugger is paused on must be MARKED in the editor.
+   *
+   * This was the gap. Stopping worked, the call stack named the right line, and the
+   * editor showed nothing - because the check for "is the stop in the file on screen"
+   * compared strings, and a snippet is written into the job as `main.py` whatever the
+   * tab is called. A debugger that will not say where it is reads as a broken one.
+   *
+   * Asserted through Monaco's decoration list rather than by looking for a CSS class in
+   * the DOM: the decoration is the thing the feature creates, and a rendered line is
+   * only ever a consequence of it.
+   */
+  const model = (runtime.models as { peek(id: string): { getAllDecorations(): Array<{ options: { className?: string | null } }> } | null })
+    .peek(document.id);
+  check('the paused document still has a model', model !== null);
+
+  if (model) {
+    const highlighted = await waitFor(
+      'the paused line to be highlighted',
+      () => model.getAllDecorations().some(entry => entry.options.className === 'debug-current-line'),
+      8000,
+    );
+    check('the line the debugger stopped on is highlighted', highlighted);
+
+    const all = model.getAllDecorations() as Array<{
+      range: { startLineNumber: number };
+      options: { className?: string | null; glyphMarginClassName?: string | null };
+    }>;
+    lines.push(
+      'INFO decorations: ' +
+      all
+        .filter(entry => entry.options.className || entry.options.glyphMarginClassName)
+        .map(entry => `${entry.range.startLineNumber}:${entry.options.className || entry.options.glyphMarginClassName}`)
+        .join(', '),
+    );
+    lines.push(`INFO stop.file=${JSON.stringify((state().stop as { file?: string }).file)}`);
+
+    const current = all.filter(entry => entry.options.className === 'debug-current-line');
+    check(
+      'and it is the line it actually stopped on',
+      current.length === 1 && current[0].range.startLineNumber === 4,
+      `marked lines: ${current.map(entry => entry.range.startLineNumber).join(', ') || 'none'}`,
+    );
+  }
+
   // The variables panel shows it.
   const variablesShown = await waitFor(
     'the variables panel to render',
@@ -1281,6 +1326,56 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
     sourceContent?.includes('first = 2') === true,
     `source now: ${JSON.stringify(sourceContent)}`,
   );
+}
+
+/**
+ * The titlebar a student sees first.
+ *
+ * It held eleven controls in one flat row. The most prominent - bright green, leftmost
+ * - was Hack Lab, a read-only security report with nothing to do with writing a
+ * program; "Clear", which ERASES the workspace, sat one button from "Download"; and Run
+ * and Debug were in the middle with the same weight as a theme picker. Meanwhile "Check
+ * my work" had no control at all and was reachable only from the command palette.
+ *
+ * These assertions are about priority rather than pixels: what is top-level, what is
+ * behind the menu, and that nothing became unreachable in the move.
+ */
+async function checkTheTitlebarIsSimple(frameWindow: Window): Promise<void> {
+  const frameDocument = frameWindow.document;
+
+  const menu = frameDocument.getElementById('more-menu');
+  const toggle = frameDocument.getElementById('more-toggle');
+  check('there is a single overflow menu', !!menu && !!toggle);
+  if (!menu || !toggle) return;
+
+  check('it starts closed', menu.hidden);
+  check('and says so for a screen reader', toggle.getAttribute('aria-expanded') === 'false');
+
+  // The four things a lesson uses, together and top-level.
+  for (const id of ['run', 'stop', 'debug', 'check-work']) {
+    const button = frameDocument.getElementById(id);
+    check(`${id} is a top-level action`, !!button && !menu.contains(button));
+  }
+
+  check(
+    'Check my work has a button at all, not just a palette entry',
+    !!frameDocument.getElementById('check-work'),
+  );
+
+  // The occasional and the dangerous are behind the menu.
+  for (const id of ['btn-hack-lab', 'btn-clear-cache', 'btn-download-project', 'theme', 'ui-lang']) {
+    const element = frameDocument.getElementById(id);
+    check(`${id} moved into the menu`, !!element && menu.contains(element));
+  }
+
+  // Opening it works, and Escape closes it and gives focus back.
+  (toggle as HTMLElement).click();
+  check('the menu opens', !menu.hidden);
+  check('and reports it', toggle.getAttribute('aria-expanded') === 'true');
+
+  frameDocument.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape closes it', menu.hidden);
+  check('and focus returns to the button', frameDocument.activeElement === toggle);
 }
 
 /**
@@ -1940,6 +2035,7 @@ async function run(): Promise<void> {
   await checkClosingATabKeepsTheFileUsable(frameWindow);
   await checkAnOpenImageIsNotOverwritten(frameWindow);
   await checkRunStopAndDebugToolbarAreVisible(frameWindow);
+  await checkTheTitlebarIsSimple(frameWindow);
   await checkErrorsAppearWhileTyping(frameWindow);
   await checkTheCompilerAgreesWithoutDuplicating(frameWindow);
 
