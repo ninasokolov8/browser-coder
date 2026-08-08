@@ -1052,28 +1052,97 @@
       }
 
       /* ── Debugger ─────────────────────────────────────────────────────── */
+      /*
+       * The debugger's controls.
+       *
+       * These were five 26x22 transparent squares holding bare glyphs. Against a dark
+       * panel they read as faint marks rather than buttons, and three of the glyphs
+       * (arc-over, arrow-in, arrow-out) mean nothing to a student who has not been
+       * taught them - which is everyone this IDE is for. Each control now carries its
+       * name, the row states what the program is doing, and Stop is visibly a different
+       * kind of action from the rest.
+       */
       #debug-toolbar {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 12px;
         flex: 0 0 auto;
-        padding: 3px 8px;
+        padding: 6px 10px;
         background: var(--bg-panel, #252526);
-        border-bottom: 1px solid var(--border-faint);
+        border-bottom: 1px solid var(--border-color, #3c3c3c);
       }
       #debug-toolbar[hidden] { display: none; }
-      .debug-btn {
-        width: 26px; height: 22px;
-        display: flex; align-items: center; justify-content: center;
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 3px;
+
+      /* The sentence. First, because it is the thing that changes on its own. */
+      .debug-status {
+        font-size: 12px;
+        font-weight: 500;
         color: var(--text-primary, #ddd);
-        font-size: 13px;
-        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .debug-btn:hover:not(:disabled) { background: var(--bg-hover-strong); }
-      .debug-btn:disabled { opacity: 0.35; cursor: default; }
+      .debug-status::before {
+        content: "";
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+        background: var(--text-secondary, #888);
+      }
+      /* Paused is the state a student acts from, so it is the one with a colour. */
+      .debug-status[data-state="paused"]::before { background: #e3b341; }
+      .debug-status[data-state="running"]::before {
+        background: #4ec98a;
+        animation: debug-pulse 1.4s ease-in-out infinite;
+      }
+      .debug-status[data-state="postMortem"]::before { background: #e5534b; }
+      .debug-status[data-state="postMortem"] { color: #f0999a; }
+      @keyframes debug-pulse { 50% { opacity: 0.3; } }
+      @media (prefers-reduced-motion: reduce) {
+        .debug-status[data-state="running"]::before { animation: none; }
+      }
+
+      .debug-actions { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; }
+
+      .debug-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 11px;
+        background: var(--bg-tab, #2d2d2d);
+        border: 1px solid var(--border-color, #3c3c3c);
+        border-radius: 5px;
+        color: var(--text-primary, #ddd);
+        font-size: 12px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+      .debug-btn svg { flex: 0 0 auto; fill: currentColor; }
+      .debug-btn:hover:not(:disabled) {
+        background: var(--bg-hover-strong, #3a3a3a);
+        border-color: var(--border-hover, #555);
+      }
+      .debug-btn:disabled { opacity: 0.4; cursor: default; }
+      .debug-btn:focus-visible { outline: 2px solid var(--accent, #0a84ff); outline-offset: 1px; }
+
+      /* Stop ends the session. Coloured so it is never the button pressed by mistake. */
+      .debug-btn-stop { color: #f0999a; border-color: #6b3436; }
+      .debug-btn-stop:hover:not(:disabled) { background: #c62828; border-color: #c62828; color: #fff; }
+
+      /*
+       * Below ~900px the labels go and the icons carry it. The title attribute keeps
+       * the name reachable, and the row never wraps into two.
+       */
+      @media (max-width: 900px) {
+        .debug-btn-label { display: none; }
+        .debug-btn { padding: 0 8px; }
+      }
 
       #debug-panels {
         display: flex;

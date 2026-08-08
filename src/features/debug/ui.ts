@@ -26,6 +26,12 @@ import {
   type VariableChange,
 } from './variable-diff.ts';
 import { stopIsOnScreen } from './stop-location.ts';
+import {
+  buildToolbar,
+  debugActions,
+  renderToolbar,
+  type ToolbarAction,
+} from './toolbar.ts';
 import type { Disposable } from '../../workspace/types.ts';
 
 /**
@@ -204,85 +210,6 @@ function renderDecorations(snapshot: DebugSnapshot): void {
   }
 
   decorations.set(wanted);
-}
-
-// ── Toolbar ─────────────────────────────────────────────────────────────────
-
-interface ToolbarButton {
-  readonly id: string;
-  readonly label: string;
-  readonly title: string;
-  readonly enabled: (snapshot: DebugSnapshot) => boolean;
-  readonly run: () => void;
-}
-
-const BUTTONS: readonly ToolbarButton[] = [
-  {
-    id: 'debug-continue',
-    label: '▶',
-    title: 'Continue (F5)',
-    enabled: () => debugState.capabilities().canContinue,
-    run: () => void sendCommand('continue'),
-  },
-  {
-    id: 'debug-step-over',
-    label: '⤼',
-    title: 'Step over (F10)',
-    enabled: () => debugState.capabilities().canStepOver,
-    run: () => void sendCommand('next'),
-  },
-  {
-    id: 'debug-step-in',
-    label: '⤓',
-    title: 'Step into (F11)',
-    enabled: () => debugState.capabilities().canStepIn,
-    run: () => void sendCommand('stepIn'),
-  },
-  {
-    id: 'debug-step-out',
-    label: '⤒',
-    title: 'Step out (Shift+F11)',
-    enabled: () => debugState.capabilities().canStepOut,
-    run: () => void sendCommand('stepOut'),
-  },
-  {
-    id: 'debug-stop',
-    label: '■',
-    title: 'Stop debugging (Shift+F5)',
-    enabled: () => debugState.capabilities().canStop,
-    run: () => void sendCommand('stop'),
-  },
-];
-
-function buildToolbar(host: HTMLElement): void {
-  if (host.dataset.built === '1') return;
-  host.dataset.built = '1';
-
-  for (const button of BUTTONS) {
-    const element = document.createElement('button');
-    element.id = button.id;
-    element.type = 'button';
-    element.className = 'debug-btn';
-    element.textContent = button.label;
-    element.title = button.title;
-    element.addEventListener('click', () => {
-      // Re-checked at click time rather than trusting the disabled attribute: a
-      // stale button is exactly how a command reaches a session that cannot serve it.
-      if (button.enabled(debugState.snapshot())) button.run();
-    });
-    host.appendChild(element);
-  }
-}
-
-function renderToolbar(host: HTMLElement, snapshot: DebugSnapshot): void {
-  for (const button of BUTTONS) {
-    const element = document.getElementById(button.id) as HTMLButtonElement | null;
-    if (!element) continue;
-    const enabled = button.enabled(snapshot);
-    element.disabled = !enabled;
-    element.classList.toggle('disabled', !enabled);
-  }
-  host.hidden = snapshot.status === 'idle';
 }
 
 // ── Variables and call stack ────────────────────────────────────────────────
@@ -546,7 +473,16 @@ export function initializeDebugUi(): Disposable {
     return { dispose: () => {} };
   }
 
-  buildToolbar(toolbarHost);
+  /*
+   * The controls, with their labels and the status sentence. Defined in toolbar.ts;
+   * the handlers and the capability predicates are passed in, so that module decides
+   * what a student sees and this one decides how a command reaches the adapter.
+   */
+  const actions: ToolbarAction[] = debugActions(
+    () => debugState.capabilities(),
+    command => void sendCommand(command),
+  );
+  buildToolbar(toolbarHost, actions, () => debugState.snapshot());
 
   // Clicking the glyph margin toggles a breakpoint, which is where every IDE puts it.
   const marginSubscription = editor.onMouseDown(event => {
@@ -615,7 +551,7 @@ export function initializeDebugUi(): Disposable {
 
   const unsubscribe = debugState.subscribe(snapshot => {
     renderDecorations(snapshot);
-    renderToolbar(toolbarHost, snapshot);
+    renderToolbar(toolbarHost, actions, snapshot);
     renderVariables(variablesHost, snapshot);
     renderCallStack(stackHost, snapshot);
     if (watchHost) renderWatches(watchHost, snapshot);
