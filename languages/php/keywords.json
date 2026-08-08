@@ -1,563 +1,8 @@
 {
-  "<?php": {
-    "type": "opening_tag",
-    "explanation": "The opening tag that tells the PHP interpreter where PHP code starts. Most PHP files start with this tag.",
-    "example": "<?php\necho 'Hello, World!';"
-  },
-  "?>": {
-    "type": "closing_tag",
-    "explanation": "The optional closing tag that ends a PHP code block. In pure PHP files it is commonly omitted to avoid accidental whitespace output.",
-    "example": "<?php\necho 'Hello';\n?>"
-  },
-  "declare": {
-    "type": "keyword",
-    "explanation": "Sets execution directives for a block or file, most commonly strict type checking with strict_types.",
-    "example": "<?php\ndeclare(strict_types=1);\n\nfunction add(int $a, int $b): int {\n    return $a + $b;\n}"
-  },
-  "__halt_compiler": {
-    "type": "keyword",
-    "explanation": "Stops the PHP compiler from reading the rest of the file. Rarely used, mostly for embedding data after PHP code.",
-    "example": "<?php\n__halt_compiler();\nraw data can appear after this point"
-  },
-  "echo": {
-    "type": "language_construct",
-    "explanation": "Outputs one or more strings. It is a language construct, not a normal function, so parentheses are optional.",
-    "example": "<?php\necho 'Hello, World!';"
-  },
-  "print": {
-    "type": "language_construct",
-    "explanation": "Outputs a single string and returns 1, so it can be used inside expressions.",
-    "example": "<?php\n$result = print 'Hello!';"
-  },
-  "exit": {
-    "type": "language_construct",
-    "explanation": "Stops script execution immediately. It can optionally output a message or use an exit status code.",
-    "example": "<?php\nif (!$allowed) {\n    exit('Access denied');\n}"
-  },
-  "die": {
-    "type": "language_construct",
-    "explanation": "Alias of exit; stops script execution immediately.",
-    "example": "<?php\nif (!$db) {\n    die('Database connection failed');\n}"
-  },
-  "eval": {
-    "type": "language_construct",
-    "explanation": "Executes a string as PHP code. Avoid it in normal application code because it is dangerous and hard to debug.",
-    "example": "<?php\n$code = 'return 2 + 3;';\n$result = eval($code);"
-  },
-  "include": {
-    "type": "language_construct",
-    "explanation": "Includes and runs another PHP file. If the file is missing, PHP raises a warning and continues.",
-    "example": "<?php\ninclude 'header.php';"
-  },
-  "include_once": {
-    "type": "language_construct",
-    "explanation": "Includes another PHP file only once, preventing duplicate definitions if it was already included.",
-    "example": "<?php\ninclude_once 'helpers.php';"
-  },
-  "require": {
-    "type": "language_construct",
-    "explanation": "Includes and runs another PHP file. If the file is missing, PHP stops with a fatal error.",
-    "example": "<?php\nrequire 'config.php';"
-  },
-  "require_once": {
-    "type": "language_construct",
-    "explanation": "Requires another PHP file only once, preventing duplicate definitions while still failing fatally if missing.",
-    "example": "<?php\nrequire_once 'bootstrap.php';"
-  },
-  "if": {
-    "type": "control_structure",
-    "explanation": "Runs a block of code only when a condition is true.",
-    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n}"
-  },
-  "elseif": {
-    "type": "control_structure",
-    "explanation": "Checks another condition when the previous if or elseif condition was false. Can also be written as else if.",
-    "example": "<?php\nif ($score >= 90) {\n    echo 'A';\n} elseif ($score >= 80) {\n    echo 'B';\n} else {\n    echo 'C';\n}"
-  },
-  "else": {
-    "type": "control_structure",
-    "explanation": "Runs a block of code when the preceding if or elseif condition was false.",
-    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n} else {\n    echo 'Minor';\n}"
-  },
-  "endif": {
-    "type": "alternative_syntax",
-    "explanation": "Ends an if block when using PHP's colon-based alternative syntax, often used in templates.",
-    "example": "<?php if ($loggedIn): ?>\n    Welcome\n<?php endif; ?>"
-  },
-  "switch": {
-    "type": "control_structure",
-    "explanation": "Compares a value against several cases and runs the matching branch.",
-    "example": "<?php\nswitch ($day) {\n    case 'Mon':\n        echo 'Start of week';\n        break;\n    default:\n        echo 'Another day';\n}"
-  },
-  "case": {
-    "type": "control_structure",
-    "explanation": "Defines one branch inside a switch statement or a match expression.",
-    "example": "<?php\nswitch ($grade) {\n    case 'A':\n        echo 'Great!';\n        break;\n}"
-  },
-  "default": {
-    "type": "control_structure",
-    "explanation": "Defines the fallback branch in a switch statement or match expression.",
-    "example": "<?php\nswitch ($status) {\n    default:\n        echo 'Unknown';\n}"
-  },
-  "endswitch": {
-    "type": "alternative_syntax",
-    "explanation": "Ends a switch block when using PHP's colon-based alternative syntax.",
-    "example": "<?php switch ($role):\ncase 'admin': echo 'Admin'; break;\ndefault: echo 'User';\nendswitch; ?>"
-  },
-  "match": {
-    "type": "control_structure",
-    "explanation": "A PHP 8+ expression that compares strictly, returns a value directly, and does not require break statements.",
-    "example": "<?php\n$result = match ($status) {\n    1 => 'Active',\n    2 => 'Inactive',\n    default => 'Unknown',\n};"
-  },
-  "for": {
-    "type": "control_structure",
-    "explanation": "Repeats a block of code using initialization, condition, and update expressions.",
-    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    echo $i;\n}"
-  },
-  "endfor": {
-    "type": "alternative_syntax",
-    "explanation": "Ends a for loop when using PHP's colon-based alternative syntax.",
-    "example": "<?php for ($i = 0; $i < 3; $i++): ?>\n    <?= $i ?>\n<?php endfor; ?>"
-  },
-  "foreach": {
-    "type": "control_structure",
-    "explanation": "Loops over each element of an array or Traversable object, optionally exposing both key and value.",
-    "example": "<?php\n$arr = ['a' => 1, 'b' => 2];\nforeach ($arr as $key => $value) {\n    echo $key . ': ' . $value;\n}"
-  },
-  "endforeach": {
-    "type": "alternative_syntax",
-    "explanation": "Ends a foreach loop when using PHP's colon-based alternative syntax.",
-    "example": "<?php foreach ($users as $user): ?>\n    <?= $user->name ?>\n<?php endforeach; ?>"
-  },
-  "while": {
-    "type": "control_structure",
-    "explanation": "Repeats a block of code while a condition remains true. The condition is checked before each iteration.",
-    "example": "<?php\n$n = 3;\nwhile ($n > 0) {\n    echo $n;\n    $n--;\n}"
-  },
-  "endwhile": {
-    "type": "alternative_syntax",
-    "explanation": "Ends a while loop when using PHP's colon-based alternative syntax.",
-    "example": "<?php while ($row = fetchRow()): ?>\n    <?= $row['name'] ?>\n<?php endwhile; ?>"
-  },
-  "do": {
-    "type": "control_structure",
-    "explanation": "Starts a do-while loop, which runs once before checking the condition.",
-    "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
-  },
-  "do-while": {
-    "type": "syntax_pattern",
-    "explanation": "A loop pattern built from do and while. The body runs at least once before the condition is checked.",
-    "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
-  },
-  "break": {
-    "type": "control_structure",
-    "explanation": "Immediately exits the nearest loop or switch statement.",
-    "example": "<?php\nfor ($i = 0; $i < 10; $i++) {\n    if ($i === 3) break;\n    echo $i;\n}"
-  },
-  "continue": {
-    "type": "control_structure",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
-    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    if ($i % 2 === 0) continue;\n    echo $i;\n}"
-  },
-  "goto": {
-    "type": "control_structure",
-    "explanation": "Jumps to a labeled statement in the same file and context. Rarely used because it can make code hard to follow.",
-    "example": "<?php\ngoto end;\necho 'Skipped';\nend:\necho 'Done';"
-  },
-  "function": {
-    "type": "keyword",
-    "explanation": "Defines a reusable function or method that can take parameters and optionally return a value.",
-    "example": "<?php\nfunction add($a, $b) {\n    return $a + $b;\n}\necho add(2, 3);"
-  },
-  "return": {
-    "type": "keyword",
-    "explanation": "Exits a function or included file and optionally sends back a value.",
-    "example": "<?php\nfunction square($x) {\n    return $x * $x;\n}"
-  },
-  "fn": {
-    "type": "keyword",
-    "explanation": "Defines a short arrow function that automatically captures variables from the parent scope by value.",
-    "example": "<?php\n$double = fn($x) => $x * 2;\necho $double(5);"
-  },
-  "yield": {
-    "type": "keyword",
-    "explanation": "Produces a value from a generator function without returning all values at once.",
-    "example": "<?php\nfunction numbers() {\n    yield 1;\n    yield 2;\n}"
-  },
-  "yield from": {
-    "type": "syntax_pattern",
-    "explanation": "Delegates part of a generator to another iterable or generator.",
-    "example": "<?php\nfunction allNumbers() {\n    yield from [1, 2, 3];\n}"
-  },
-  "global": {
-    "type": "keyword",
-    "explanation": "Imports a global variable into the local scope of a function.",
-    "example": "<?php\n$count = 0;\nfunction inc() {\n    global $count;\n    $count++;\n}"
-  },
-  "static variable": {
-    "type": "syntax_pattern",
-    "explanation": "A local variable declared with static inside a function keeps its value between function calls.",
-    "example": "<?php\nfunction counter() {\n    static $count = 0;\n    return ++$count;\n}"
-  },
-  "...$args": {
-    "type": "syntax_pattern",
-    "explanation": "Collects a variable number of arguments into an array when used in a function parameter list.",
-    "example": "<?php\nfunction sum(...$numbers) {\n    return array_sum($numbers);\n}"
-  },
-  "spread operator": {
-    "type": "operator",
-    "explanation": "The ... syntax expands arrays into argument lists or array elements.",
-    "example": "<?php\n$nums = [1, 2, 3];\necho sum(...$nums);"
-  },
-  "try": {
-    "type": "control_structure",
-    "explanation": "Marks a block of code to attempt running so errors or exceptions can be caught.",
-    "example": "<?php\ntry {\n    riskyOperation();\n} catch (Exception $e) {\n    echo $e->getMessage();\n}"
-  },
-  "catch": {
-    "type": "control_structure",
-    "explanation": "Handles a matching exception or error thrown inside the corresponding try block.",
-    "example": "<?php\ntry {\n    intdiv(1, 0);\n} catch (DivisionByZeroError $e) {\n    echo $e->getMessage();\n}"
-  },
-  "finally": {
-    "type": "control_structure",
-    "explanation": "Runs after try/catch whether or not an exception occurred, usually for cleanup.",
-    "example": "<?php\ntry {\n    doWork();\n} finally {\n    echo 'Always runs';\n}"
-  },
-  "throw": {
-    "type": "keyword",
-    "explanation": "Raises an exception or error object, stopping normal execution unless it is caught.",
-    "example": "<?php\nfunction check($age) {\n    if ($age < 0) throw new InvalidArgumentException('Age cannot be negative');\n}"
-  },
-  "throws": {
-    "type": "concept",
-    "explanation": "PHP does not have a throws keyword. Exceptions are documented by convention, attributes, static analysis, or PHPDoc.",
-    "example": "<?php\n/** @throws RuntimeException */\nfunction loadConfig(): array {\n    throw new RuntimeException('Missing config');\n}"
-  },
-  "class": {
-    "type": "keyword",
-    "explanation": "Defines a blueprint for creating objects with properties, constants, and methods.",
-    "example": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n}"
-  },
-  "interface": {
-    "type": "keyword",
-    "explanation": "Defines a contract of methods that implementing classes must provide.",
-    "example": "<?php\ninterface Shape {\n    public function area(): float;\n}"
-  },
-  "trait": {
-    "type": "keyword",
-    "explanation": "Defines reusable methods and properties that can be inserted into multiple classes.",
-    "example": "<?php\ntrait Logs {\n    public function log(string $msg): void {\n        echo $msg;\n    }\n}"
-  },
-  "enum": {
-    "type": "keyword",
-    "explanation": "Defines a fixed set of named cases. PHP enums can be pure enums or backed by string/int values.",
-    "example": "<?php\nenum Status: string {\n    case Active = 'active';\n    case Inactive = 'inactive';\n}"
-  },
-  "extends": {
-    "type": "keyword",
-    "explanation": "Makes one class inherit from another class, or one interface inherit from another interface.",
-    "example": "<?php\nclass Dog extends Animal {\n    public function speak() { echo 'Woof!'; }\n}"
-  },
-  "implements": {
-    "type": "keyword",
-    "explanation": "Declares that a class provides all methods required by one or more interfaces.",
-    "example": "<?php\nclass Circle implements Shape {\n    public function area(): float { return 3.14; }\n}"
-  },
-  "new": {
-    "type": "keyword",
-    "explanation": "Creates a new object instance from a class.",
-    "example": "<?php\n$p = new Point();"
-  },
-  "clone": {
-    "type": "keyword",
-    "explanation": "Creates a shallow copy of an object, optionally triggering the object's __clone method.",
-    "example": "<?php\n$copy = clone $original;"
-  },
-  "instanceof": {
-    "type": "operator",
-    "explanation": "Checks whether an object is an instance of a class or implements an interface.",
-    "example": "<?php\nif ($value instanceof DateTimeInterface) {\n    echo $value->format('Y-m-d');\n}"
-  },
-  "insteadof": {
-    "type": "keyword",
-    "explanation": "Resolves method-name conflicts when a class uses multiple traits.",
-    "example": "<?php\nclass MyClass {\n    use A, B {\n        A::run insteadof B;\n    }\n}"
-  },
-  "abstract": {
-    "type": "keyword",
-    "explanation": "Marks a class as not directly instantiable, or marks a method that subclasses must implement.",
-    "example": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}"
-  },
-  "final": {
-    "type": "keyword",
-    "explanation": "Prevents a class from being extended, or prevents a method from being overridden.",
-    "example": "<?php\nfinal class Config {}"
-  },
-  "readonly": {
-    "type": "keyword",
-    "explanation": "Marks a property or class as readonly, meaning assigned values cannot be changed after initialization.",
-    "example": "<?php\nreadonly class UserData {\n    public function __construct(public string $name) {}\n}"
-  },
-  "public": {
-    "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible from anywhere.",
-    "example": "<?php\nclass User {\n    public string $name;\n}"
-  },
-  "private": {
-    "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible only inside the class where it is declared.",
-    "example": "<?php\nclass Account {\n    private float $balance = 0;\n}"
-  },
-  "protected": {
-    "type": "visibility_modifier",
-    "explanation": "Makes a class member accessible inside the declaring class and subclasses.",
-    "example": "<?php\nclass Base {\n    protected int $id = 1;\n}"
-  },
-  "static": {
-    "type": "keyword",
-    "explanation": "Defines a class-level property or method, or can be used as a late-static-bound type/reference.",
-    "example": "<?php\nclass MathUtils {\n    public static function square($x) { return $x * $x; }\n}\necho MathUtils::square(4);"
-  },
-  "const": {
-    "type": "keyword",
-    "explanation": "Defines a constant at class level or namespace/global level.",
-    "example": "<?php\nclass Circle {\n    public const PI = 3.14159;\n}"
-  },
-  "var": {
-    "type": "keyword",
-    "explanation": "Legacy visibility keyword for class properties. It behaves like public and is mostly replaced by explicit public/private/protected.",
-    "example": "<?php\nclass User {\n    var $name;\n}"
-  },
-  "$this": {
-    "type": "special_variable",
-    "explanation": "Inside an instance method, refers to the current object instance.",
-    "example": "<?php\nclass Counter {\n    private int $count = 0;\n    public function increment(): void { $this->count++; }\n}"
-  },
-  "self": {
-    "type": "reserved_word",
-    "explanation": "Refers to the current class where code is written, commonly used for constants, static methods, and return types.",
-    "example": "<?php\nclass Config {\n    public const NAME = 'app';\n    public static function name(): string { return self::NAME; }\n}"
-  },
-  "parent": {
-    "type": "reserved_word",
-    "explanation": "Refers to the parent class, commonly used to call a parent constructor or overridden method.",
-    "example": "<?php\nclass Dog extends Animal {\n    public function __construct($name) {\n        parent::__construct($name);\n    }\n}"
-  },
-  "::": {
-    "type": "operator",
-    "explanation": "Scope resolution operator used to access class constants, static methods, static properties, and parent/self references.",
-    "example": "<?php\necho User::class;\nConfig::load();"
-  },
-  "->": {
-    "type": "operator",
-    "explanation": "Reads a property or calls a method on an object.",
-    "example": "$person->name;\n$person->greet();"
-  },
-  "?->": {
-    "type": "operator",
-    "explanation": "Null-safe object operator. It accesses a property or method only if the left side is not null.",
-    "example": "<?php\n$city = $user?->address?->city;"
-  },
-  "::class": {
-    "type": "syntax_pattern",
-    "explanation": "Returns the fully qualified class name as a string.",
-    "example": "<?php\necho DateTime::class;"
-  },
-  "constructor": {
-    "type": "concept",
-    "explanation": "A method named __construct that runs when a new object is created.",
-    "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
-  },
-  "property promotion": {
-    "type": "syntax_pattern",
-    "explanation": "A constructor shorthand that declares and assigns properties directly from constructor parameters.",
-    "example": "<?php\nclass User {\n    public function __construct(public string $name, private int $age) {}\n}"
-  },
-  "namespace": {
-    "type": "keyword",
-    "explanation": "Groups related classes, interfaces, traits, enums, functions, and constants to avoid name collisions.",
-    "example": "<?php\nnamespace App\\Models;\n\nclass User {}"
-  },
-  "use": {
-    "type": "keyword",
-    "explanation": "Imports a class, function, constant, or trait into the current namespace/scope.",
-    "example": "<?php\nuse App\\Models\\User;\n\n$u = new User();"
-  },
-  "as": {
-    "type": "keyword",
-    "explanation": "Gives an alias in foreach loops, namespace imports, and trait conflict resolution.",
-    "example": "<?php\nuse App\\Models\\User as AppUser;\n\nforeach ($items as $item) {\n    echo $item;\n}"
-  },
-  "namespace\\name": {
-    "type": "syntax_pattern",
-    "explanation": "A namespaced identifier that refers to code inside a namespace hierarchy.",
-    "example": "<?php\n$user = new App\\Models\\User();"
-  },
-  "\\": {
-    "type": "namespace_separator",
-    "explanation": "The namespace separator used in fully qualified PHP names.",
-    "example": "<?php\n$date = new \\DateTimeImmutable();"
-  },
-  "global namespace": {
-    "type": "namespace",
-    "explanation": "The root namespace where PHP built-in classes/functions and non-namespaced user code live.",
-    "example": "<?php\n$value = \\strlen('hello');"
-  },
-  "int": {
-    "type": "type",
-    "explanation": "Integer type declaration for whole numbers.",
-    "example": "<?php\nfunction double(int $x): int {\n    return $x * 2;\n}"
-  },
-  "integer": {
-    "type": "type_alias",
-    "explanation": "Long-form name often returned by gettype for integers, but int is used in type declarations.",
-    "example": "<?php\n$x = 10;\necho gettype($x); // integer"
-  },
-  "float": {
-    "type": "type",
-    "explanation": "Floating-point number type declaration for decimal numbers.",
-    "example": "<?php\nfunction half(float $x): float {\n    return $x / 2;\n}"
-  },
-  "double": {
-    "type": "type_alias",
-    "explanation": "Historical/internal name related to floating-point numbers. In PHP type declarations, use float.",
-    "example": "<?php\n$x = 3.14;\necho gettype($x); // double"
-  },
-  "string": {
-    "type": "type",
-    "explanation": "Text value type declaration.",
-    "example": "<?php\nfunction greet(string $name): string {\n    return 'Hello ' . $name;\n}"
-  },
-  "bool": {
-    "type": "type",
-    "explanation": "Boolean type declaration for true/false values.",
-    "example": "<?php\nfunction isAdult(int $age): bool {\n    return $age >= 18;\n}"
-  },
-  "boolean": {
-    "type": "type_alias",
-    "explanation": "Long-form name commonly used in documentation/gettype for booleans. In type declarations, use bool.",
-    "example": "<?php\n$ok = true;\necho gettype($ok); // boolean"
-  },
-  "array": {
-    "type": "type",
-    "explanation": "PHP's ordered map type used for lists and key-value pairs. It can also be used as a type declaration.",
-    "example": "<?php\n$fruits = ['apple', 'banana'];\nfunction first(array $items): mixed { return $items[0] ?? null; }"
-  },
-  "object": {
-    "type": "type",
-    "explanation": "Type declaration requiring any object instance.",
-    "example": "<?php\nfunction inspect(object $obj): void {\n    var_dump($obj);\n}"
-  },
-  "callable": {
-    "type": "type",
-    "explanation": "Type declaration for something that can be called like a function, such as a closure, function name, or method pair.",
-    "example": "<?php\nfunction run(callable $fn): mixed {\n    return $fn();\n}"
-  },
-  "iterable": {
-    "type": "type",
-    "explanation": "Type declaration accepting arrays or objects that can be traversed with foreach.",
-    "example": "<?php\nfunction printAll(iterable $items): void {\n    foreach ($items as $item) echo $item;\n}"
-  },
-  "mixed": {
-    "type": "type",
-    "explanation": "Type declaration meaning any value is allowed.",
-    "example": "<?php\nfunction debug(mixed $value): void {\n    var_dump($value);\n}"
-  },
-  "void": {
-    "type": "type",
-    "explanation": "Return type meaning the function does not return a value.",
-    "example": "<?php\nfunction logMessage(string $msg): void {\n    echo $msg;\n}"
-  },
-  "never": {
-    "type": "type",
-    "explanation": "Return type meaning the function never returns normally because it always exits or throws.",
-    "example": "<?php\nfunction fail(string $message): never {\n    throw new RuntimeException($message);\n}"
-  },
-  "null": {
-    "type": "literal",
-    "explanation": "Represents the absence of a value.",
-    "example": "<?php\n$selected = null;"
-  },
-  "true": {
-    "type": "literal",
-    "explanation": "Boolean literal representing truth.",
-    "example": "<?php\n$isActive = true;"
-  },
-  "false": {
-    "type": "literal",
-    "explanation": "Boolean literal representing falsehood.",
-    "example": "<?php\n$isDeleted = false;"
-  },
-  "union type": {
-    "type": "syntax_pattern",
-    "explanation": "A type declaration using | to allow more than one possible type.",
-    "example": "<?php\nfunction parse(string|int $value): string {\n    return (string) $value;\n}"
-  },
-  "intersection type": {
-    "type": "syntax_pattern",
-    "explanation": "A type declaration using & to require a value to satisfy multiple class/interface types.",
-    "example": "<?php\nfunction handle(Countable&Iterator $items): void {\n    echo count($items);\n}"
-  },
-  "nullable type": {
-    "type": "syntax_pattern",
-    "explanation": "A type declaration prefixed with ? to allow either the type or null.",
-    "example": "<?php\nfunction findName(): ?string {\n    return null;\n}"
-  },
-  "true type": {
-    "type": "type",
-    "explanation": "A literal type that allows only true, available in modern PHP type declarations.",
-    "example": "<?php\nfunction enabled(): true {\n    return true;\n}"
-  },
-  "false type": {
-    "type": "type",
-    "explanation": "A literal type that allows only false, commonly used in legacy APIs that return a value or false.",
-    "example": "<?php\nfunction notFound(): false {\n    return false;\n}"
-  },
-  "null type": {
-    "type": "type",
-    "explanation": "A literal type that allows only null in type declarations.",
-    "example": "<?php\nfunction nothing(): null {\n    return null;\n}"
-  },
-  "and": {
-    "type": "operator",
-    "explanation": "Logical AND operator with lower precedence than &&.",
-    "example": "<?php\nif ($ready and $valid) {\n    echo 'OK';\n}"
-  },
-  "or": {
-    "type": "operator",
-    "explanation": "Logical OR operator with lower precedence than ||.",
-    "example": "<?php\nif ($admin or $owner) {\n    echo 'Allowed';\n}"
-  },
-  "xor": {
-    "type": "operator",
-    "explanation": "Logical exclusive OR: true only when exactly one side is true.",
-    "example": "<?php\nif ($a xor $b) {\n    echo 'Only one is true';\n}"
-  },
-  "&&": {
-    "type": "operator",
-    "explanation": "Logical AND: true only when both sides are true.",
-    "example": "if ($a && $b) { }"
-  },
-  "||": {
-    "type": "operator",
-    "explanation": "Logical OR: true when either side is true.",
-    "example": "if ($a || $b) { }"
-  },
   "!": {
     "type": "operator",
     "explanation": "Logical NOT operator. Reverses a boolean value.",
     "example": "<?php\nif (!$ready) {\n    echo 'Not ready';\n}"
-  },
-  "==": {
-    "type": "operator",
-    "explanation": "Loose equality: converts the two sides before comparing, which makes \"0\" == false true. Use === unless you want that.",
-    "example": "\"1\" == 1     // true"
-  },
-  "===": {
-    "type": "operator",
-    "explanation": "Strict equality: equal AND the same type. Prefer this - == converts types first, so \"0\" == false is true.",
-    "example": "0 === \"0\"    // false\n0 == \"0\"     // true"
   },
   "!=": {
     "type": "operator",
@@ -569,225 +14,30 @@
     "explanation": "Strict inequality: different in value OR in type.",
     "example": "if ($a !== $b) { }"
   },
-  "<=>": {
-    "type": "operator",
-    "explanation": "Spaceship comparison operator. Returns -1, 0, or 1 depending on ordering.",
-    "example": "<?php\necho 10 <=> 20; // -1"
-  },
-  "??": {
-    "type": "operator",
-    "explanation": "Null coalescing: use the right side when the left is null OR not set at all - so it does not warn about a missing key.",
-    "example": "$name = $_GET[\"name\"] ?? \"guest\";"
-  },
-  "??=": {
-    "type": "operator",
-    "explanation": "Null coalescing assignment. Assigns the right value only if the variable is null or not set.",
-    "example": "<?php\n$options['limit'] ??= 10;"
-  },
-  "?:": {
-    "type": "operator",
-    "explanation": "Elvis shorthand ternary operator. Returns the left expression if truthy, otherwise the right expression.",
-    "example": "<?php\n$name = $input ?: 'Guest';"
-  },
-  "? :": {
-    "type": "operator",
-    "explanation": "Ternary conditional operator. Chooses between two expressions based on a condition.",
-    "example": "<?php\n$type = $age >= 18 ? 'adult' : 'minor';"
-  },
-  "=>": {
-    "type": "operator",
-    "explanation": "Pairs a key with a value in an array, and names the pair in a foreach.",
-    "example": "$ages = [\"ada\" => 36];\nforeach ($ages as $name => $age) { }"
-  },
-  "@": {
-    "type": "operator",
-    "explanation": "Error control operator that suppresses errors from an expression. Avoid using it in clean code.",
-    "example": "<?php\n$content = @file_get_contents('missing.txt');"
-  },
-  "[]": {
-    "type": "syntax_pattern",
-    "explanation": "Short array syntax or array append syntax.",
-    "example": "<?php\n$list = [1, 2];\n$list[] = 3;"
-  },
-  "array()": {
-    "type": "syntax_pattern",
-    "explanation": "Legacy array creation syntax, equivalent to short [] array syntax.",
-    "example": "<?php\n$list = array(1, 2, 3);"
-  },
-  "list": {
-    "type": "language_construct",
-    "explanation": "Assigns array values to multiple variables at once.",
-    "example": "<?php\n[$a, $b] = [1, 2];\nlist($x, $y) = [3, 4];"
-  },
-  "destructuring": {
-    "type": "syntax_pattern",
-    "explanation": "Unpacks array values into variables using [] or list().",
-    "example": "<?php\n['name' => $name, 'age' => $age] = $user;"
-  },
-  "reference &": {
-    "type": "syntax_pattern",
-    "explanation": "Makes a variable, parameter, or return value refer to the same underlying value instead of a copy.",
-    "example": "<?php\nfunction addOne(int &$x): void {\n    $x++;\n}"
-  },
-  "arrow function": {
-    "type": "syntax_pattern",
-    "explanation": "A compact function syntax using fn($x) => expression.",
-    "example": "<?php\n$ids = array_map(fn($user) => $user->id, $users);"
-  },
-  "anonymous function": {
-    "type": "syntax_pattern",
-    "explanation": "A function without a name, often stored in a variable or passed as a callback.",
-    "example": "<?php\n$double = function ($x) {\n    return $x * 2;\n};"
-  },
-  "closure use": {
-    "type": "syntax_pattern",
-    "explanation": "Captures variables from the parent scope into an anonymous function.",
-    "example": "<?php\n$factor = 2;\n$double = function ($x) use ($factor) {\n    return $x * $factor;\n};"
-  },
-  "attribute": {
-    "type": "syntax_pattern",
-    "explanation": "Metadata added to declarations using #[...], available through reflection.",
-    "example": "<?php\n#[Route('/users')]\nclass UserController {}"
-  },
   "#[Attribute]": {
     "type": "attribute",
     "explanation": "Built-in attribute class used to define custom PHP attributes.",
     "example": "<?php\n#[Attribute]\nclass Route {\n    public function __construct(public string $path) {}\n}"
-  },
-  "__LINE__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current line number.",
-    "example": "<?php\necho __LINE__;"
-  },
-  "__FILE__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the full path and filename of the current file.",
-    "example": "<?php\necho __FILE__;"
-  },
-  "__DIR__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the directory of the current file.",
-    "example": "<?php\necho __DIR__;"
-  },
-  "__FUNCTION__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current function name.",
-    "example": "<?php\nfunction test() { echo __FUNCTION__; }"
-  },
-  "__CLASS__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current class name.",
-    "example": "<?php\nclass User { public function name() { echo __CLASS__; } }"
-  },
-  "__TRAIT__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current trait name.",
-    "example": "<?php\ntrait T { public function name() { echo __TRAIT__; } }"
-  },
-  "__METHOD__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current class method name.",
-    "example": "<?php\nclass User { public function save() { echo __METHOD__; } }"
-  },
-  "__NAMESPACE__": {
-    "type": "magic_constant",
-    "explanation": "Magic constant containing the current namespace name.",
-    "example": "<?php\nnamespace App;\necho __NAMESPACE__;"
-  },
-  "__construct": {
-    "type": "special_method",
-    "explanation": "Constructor method called automatically when a new object is created.",
-    "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
-  },
-  "__destruct": {
-    "type": "special_method",
-    "explanation": "Destructor method called when an object is destroyed.",
-    "example": "<?php\nclass FileHandle {\n    public function __destruct() { /* cleanup */ }\n}"
-  },
-  "__call": {
-    "type": "special_method",
-    "explanation": "Runs when inaccessible or undefined instance methods are called.",
-    "example": "<?php\npublic function __call(string $name, array $args): mixed {\n    return null;\n}"
-  },
-  "__callStatic": {
-    "type": "special_method",
-    "explanation": "Runs when inaccessible or undefined static methods are called.",
-    "example": "<?php\npublic static function __callStatic(string $name, array $args): mixed {\n    return null;\n}"
-  },
-  "__get": {
-    "type": "special_method",
-    "explanation": "Runs when reading an inaccessible or undefined property.",
-    "example": "<?php\npublic function __get(string $name): mixed {\n    return $this->data[$name] ?? null;\n}"
-  },
-  "__set": {
-    "type": "special_method",
-    "explanation": "Runs when writing to an inaccessible or undefined property.",
-    "example": "<?php\npublic function __set(string $name, mixed $value): void {\n    $this->data[$name] = $value;\n}"
-  },
-  "__isset": {
-    "type": "special_method",
-    "explanation": "Runs when isset() or empty() is used on an inaccessible or undefined property.",
-    "example": "<?php\npublic function __isset(string $name): bool {\n    return isset($this->data[$name]);\n}"
-  },
-  "__unset": {
-    "type": "special_method",
-    "explanation": "Runs when unset() is used on an inaccessible or undefined property.",
-    "example": "<?php\npublic function __unset(string $name): void {\n    unset($this->data[$name]);\n}"
-  },
-  "__sleep": {
-    "type": "special_method",
-    "explanation": "Legacy serialization hook called before serialize().",
-    "example": "<?php\npublic function __sleep(): array {\n    return ['name'];\n}"
-  },
-  "__wakeup": {
-    "type": "special_method",
-    "explanation": "Legacy unserialization hook called after unserialize().",
-    "example": "<?php\npublic function __wakeup(): void {\n    $this->connect();\n}"
-  },
-  "__serialize": {
-    "type": "special_method",
-    "explanation": "Modern serialization hook that returns data to serialize.",
-    "example": "<?php\npublic function __serialize(): array {\n    return ['name' => $this->name];\n}"
-  },
-  "__unserialize": {
-    "type": "special_method",
-    "explanation": "Modern unserialization hook that restores object state from data.",
-    "example": "<?php\npublic function __unserialize(array $data): void {\n    $this->name = $data['name'];\n}"
-  },
-  "__toString": {
-    "type": "special_method",
-    "explanation": "Returns a string representation of an object.",
-    "example": "<?php\npublic function __toString(): string {\n    return $this->name;\n}"
-  },
-  "__invoke": {
-    "type": "special_method",
-    "explanation": "Allows an object to be called like a function.",
-    "example": "<?php\nclass Greeter { public function __invoke() { echo 'Hi'; } }\n$g = new Greeter();\n$g();"
-  },
-  "__set_state": {
-    "type": "special_method",
-    "explanation": "Static method used by var_export() to recreate an object.",
-    "example": "<?php\npublic static function __set_state(array $props): object {\n    return new self();\n}"
-  },
-  "__clone": {
-    "type": "special_method",
-    "explanation": "Runs after an object is cloned.",
-    "example": "<?php\npublic function __clone(): void {\n    $this->id = null;\n}"
-  },
-  "__debugInfo": {
-    "type": "special_method",
-    "explanation": "Controls what var_dump() shows for an object.",
-    "example": "<?php\npublic function __debugInfo(): array {\n    return ['id' => $this->id];\n}"
   },
   "$GLOBALS": {
     "type": "superglobal",
     "explanation": "Associative array containing references to all variables in the global scope.",
     "example": "<?php\n$GLOBALS['count'] = 1;"
   },
-  "$_SERVER": {
+  "$_COOKIE": {
     "type": "superglobal",
-    "explanation": "Server and execution environment information such as request method, script name, and headers.",
-    "example": "<?php\necho $_SERVER['REQUEST_METHOD'];"
+    "explanation": "HTTP cookies sent by the client.",
+    "example": "<?php\n$theme = $_COOKIE['theme'] ?? 'light';"
+  },
+  "$_ENV": {
+    "type": "superglobal",
+    "explanation": "Environment variables available to the PHP process.",
+    "example": "<?php\n$env = $_ENV['APP_ENV'] ?? 'local';"
+  },
+  "$_FILES": {
+    "type": "superglobal",
+    "explanation": "Uploaded file information from multipart form requests.",
+    "example": "<?php\n$tmp = $_FILES['avatar']['tmp_name'] ?? null;"
   },
   "$_GET": {
     "type": "superglobal",
@@ -799,30 +49,20 @@
     "explanation": "HTTP POST body parameters from form submissions.",
     "example": "<?php\n$email = $_POST['email'] ?? '';"
   },
-  "$_FILES": {
-    "type": "superglobal",
-    "explanation": "Uploaded file information from multipart form requests.",
-    "example": "<?php\n$tmp = $_FILES['avatar']['tmp_name'] ?? null;"
-  },
-  "$_COOKIE": {
-    "type": "superglobal",
-    "explanation": "HTTP cookies sent by the client.",
-    "example": "<?php\n$theme = $_COOKIE['theme'] ?? 'light';"
-  },
-  "$_SESSION": {
-    "type": "superglobal",
-    "explanation": "Session data stored for the current user after session_start().",
-    "example": "<?php\nsession_start();\n$_SESSION['user_id'] = 123;"
-  },
   "$_REQUEST": {
     "type": "superglobal",
     "explanation": "Combined request data from GET, POST, and COOKIE depending on PHP configuration.",
     "example": "<?php\n$value = $_REQUEST['q'] ?? null;"
   },
-  "$_ENV": {
+  "$_SERVER": {
     "type": "superglobal",
-    "explanation": "Environment variables available to the PHP process.",
-    "example": "<?php\n$env = $_ENV['APP_ENV'] ?? 'local';"
+    "explanation": "Server and execution environment information such as request method, script name, and headers.",
+    "example": "<?php\necho $_SERVER['REQUEST_METHOD'];"
+  },
+  "$_SESSION": {
+    "type": "superglobal",
+    "explanation": "Session data stored for the current user after session_start().",
+    "example": "<?php\nsession_start();\n$_SESSION['user_id'] = 123;"
   },
   "$argc": {
     "type": "predefined_variable",
@@ -834,400 +74,175 @@
     "explanation": "Command-line argument values when PHP runs from the CLI.",
     "example": "<?php\nprint_r($argv);"
   },
-  "isset": {
-    "type": "language_construct",
-    "explanation": "Checks whether a variable is declared and not null.",
-    "example": "<?php\nif (isset($user['name'])) echo $user['name'];"
-  },
-  "empty": {
-    "type": "language_construct",
-    "explanation": "Checks whether a variable is empty, such as '', 0, '0', false, null, or an empty array.",
-    "example": "<?php\nif (empty($items)) echo 'No items';"
-  },
-  "unset": {
-    "type": "language_construct",
-    "explanation": "Destroys a variable or removes an array element/object property.",
-    "example": "<?php\nunset($user['password']);"
-  },
-  "define": {
-    "type": "function",
-    "explanation": "Defines a named constant at runtime.",
-    "example": "<?php\ndefine('APP_NAME', 'Demo');"
-  },
-  "defined": {
-    "type": "function",
-    "explanation": "Checks whether a constant with a given name exists.",
-    "example": "<?php\nif (defined('APP_NAME')) echo APP_NAME;"
-  },
-  "constant": {
-    "type": "function",
-    "explanation": "Returns the value of a constant by name.",
-    "example": "<?php\necho constant('PHP_VERSION');"
-  },
-  "var_dump": {
-    "type": "function",
-    "explanation": "Prints detailed debugging information about one or more values, including type and value.",
-    "example": "<?php\nvar_dump($user);"
-  },
-  "print_r": {
-    "type": "function",
-    "explanation": "Prints a human-readable representation of arrays and objects.",
-    "example": "<?php\nprint_r(['a' => 1]);"
-  },
-  "debug_backtrace": {
-    "type": "function",
-    "explanation": "Returns a stack trace array showing how code reached the current point.",
-    "example": "<?php\nprint_r(debug_backtrace());"
-  },
-  "count": {
-    "type": "function",
-    "explanation": "Counts the elements in an array or Countable object.",
-    "example": "<?php\necho count([1, 2, 3]);"
-  },
-  "sizeof": {
-    "type": "function_alias",
-    "explanation": "Alias of count().",
-    "example": "<?php\necho sizeof([1, 2, 3]);"
-  },
-  "strlen": {
-    "type": "function",
-    "explanation": "Returns the length of a binary string in bytes.",
-    "example": "<?php\necho strlen('hello');"
-  },
-  "mb_strlen": {
-    "type": "function",
-    "explanation": "Returns the length of a multibyte string, useful for Unicode text when the mbstring extension is available.",
-    "example": "<?php\necho mb_strlen('שלום');"
-  },
-  "trim": {
-    "type": "function",
-    "explanation": "Removes whitespace or specified characters from the beginning and end of a string.",
-    "example": "<?php\necho trim(' hello ');"
-  },
-  "strtolower": {
-    "type": "function",
-    "explanation": "Converts a string to lowercase.",
-    "example": "<?php\necho strtolower('Hello');"
-  },
-  "strtoupper": {
-    "type": "function",
-    "explanation": "Converts a string to uppercase.",
-    "example": "<?php\necho strtoupper('Hello');"
-  },
-  "substr": {
-    "type": "function",
-    "explanation": "Returns part of a string.",
-    "example": "<?php\necho substr('abcdef', 1, 3); // bcd"
-  },
-  "str_replace": {
-    "type": "function",
-    "explanation": "Replaces occurrences of a substring with another string.",
-    "example": "<?php\necho str_replace('cat', 'dog', 'cat food');"
-  },
-  "str_contains": {
-    "type": "function",
-    "explanation": "Checks whether a string contains another string.",
-    "example": "<?php\nif (str_contains('hello', 'ell')) echo 'yes';"
-  },
-  "str_starts_with": {
-    "type": "function",
-    "explanation": "Checks whether a string starts with a given prefix.",
-    "example": "<?php\nif (str_starts_with('hello', 'he')) echo 'yes';"
-  },
-  "str_ends_with": {
-    "type": "function",
-    "explanation": "Checks whether a string ends with a given suffix.",
-    "example": "<?php\nif (str_ends_with('file.txt', '.txt')) echo 'text file';"
-  },
-  "explode": {
-    "type": "function",
-    "explanation": "Splits a string into an array using a delimiter.",
-    "example": "<?php\n$parts = explode(',', 'a,b,c');"
-  },
-  "implode": {
-    "type": "function",
-    "explanation": "Joins array values into a string using a delimiter.",
-    "example": "<?php\necho implode(', ', ['a', 'b', 'c']);"
-  },
-  "sprintf": {
-    "type": "function",
-    "explanation": "Returns a formatted string.",
-    "example": "<?php\n$msg = sprintf('Hello %s', 'Nina');"
-  },
-  "preg_match": {
-    "type": "function",
-    "explanation": "Matches a string against a regular expression.",
-    "example": "<?php\nif (preg_match('/^[a-z]+$/', $name)) echo 'valid';"
-  },
-  "array_map": {
-    "type": "function",
-    "explanation": "Applies a callback to each array element and returns the results.",
-    "example": "<?php\n$doubled = array_map(fn($x) => $x * 2, [1, 2, 3]);"
-  },
-  "array_filter": {
-    "type": "function",
-    "explanation": "Filters array elements using a callback or truthiness.",
-    "example": "<?php\n$evens = array_filter([1, 2, 3], fn($x) => $x % 2 === 0);"
-  },
-  "array_reduce": {
-    "type": "function",
-    "explanation": "Reduces an array to a single value using a callback.",
-    "example": "<?php\n$total = array_reduce([1, 2, 3], fn($c, $x) => $c + $x, 0);"
-  },
-  "array_merge": {
-    "type": "function",
-    "explanation": "Merges one or more arrays.",
-    "example": "<?php\n$result = array_merge([1], [2, 3]);"
-  },
-  "array_keys": {
-    "type": "function",
-    "explanation": "Returns all keys from an array.",
-    "example": "<?php\n$keys = array_keys(['a' => 1]);"
-  },
-  "array_values": {
-    "type": "function",
-    "explanation": "Returns all values from an array with numeric keys reset.",
-    "example": "<?php\n$values = array_values(['a' => 1]);"
-  },
-  "array_key_exists": {
-    "type": "function",
-    "explanation": "Checks whether an array contains a key, even if its value is null.",
-    "example": "<?php\nif (array_key_exists('name', $user)) echo 'exists';"
-  },
-  "in_array": {
-    "type": "function",
-    "explanation": "Checks whether a value exists in an array.",
-    "example": "<?php\nif (in_array('admin', $roles, true)) echo 'admin';"
-  },
-  "sort": {
-    "type": "function",
-    "explanation": "Sorts an array in ascending order and reindexes numeric keys.",
-    "example": "<?php\n$nums = [3, 1, 2];\nsort($nums);"
-  },
-  "json_encode": {
-    "type": "function",
-    "explanation": "Converts a PHP value to a JSON string.",
-    "example": "<?php\necho json_encode(['name' => 'Nina']);"
-  },
-  "json_decode": {
-    "type": "function",
-    "explanation": "Converts a JSON string into a PHP value.",
-    "example": "<?php\n$data = json_decode('{\"x\":1}', true);"
-  },
-  "file_get_contents": {
-    "type": "function",
-    "explanation": "Reads an entire file or URL into a string.",
-    "example": "<?php\n$text = file_get_contents('data.txt');"
-  },
-  "file_put_contents": {
-    "type": "function",
-    "explanation": "Writes a string to a file.",
-    "example": "<?php\nfile_put_contents('data.txt', 'hello');"
-  },
-  "fopen": {
-    "type": "function",
-    "explanation": "Opens a file or stream and returns a resource.",
-    "example": "<?php\n$handle = fopen('data.txt', 'r');"
-  },
-  "fclose": {
-    "type": "function",
-    "explanation": "Closes an open file handle.",
-    "example": "<?php\nfclose($handle);"
-  },
-  "fread": {
-    "type": "function",
-    "explanation": "Reads bytes from an open file handle.",
-    "example": "<?php\n$data = fread($handle, 1024);"
-  },
-  "fwrite": {
-    "type": "function",
-    "explanation": "Writes data to an open file handle.",
-    "example": "<?php\nfwrite($handle, 'hello');"
-  },
-  "dirname": {
-    "type": "function",
-    "explanation": "Returns the parent directory path.",
-    "example": "<?php\necho dirname('/app/index.php');"
-  },
-  "basename": {
-    "type": "function",
-    "explanation": "Returns the filename part of a path.",
-    "example": "<?php\necho basename('/app/index.php');"
-  },
-  "pathinfo": {
-    "type": "function",
-    "explanation": "Returns information about a file path.",
-    "example": "<?php\n$info = pathinfo('/app/index.php');"
-  },
-  "is_array": {
-    "type": "function",
-    "explanation": "Checks whether a value is an array.",
-    "example": "<?php\nvar_dump(is_array([]));"
-  },
-  "is_string": {
-    "type": "function",
-    "explanation": "Checks whether a value is a string.",
-    "example": "<?php\nvar_dump(is_string('hi'));"
-  },
-  "is_int": {
-    "type": "function",
-    "explanation": "Checks whether a value is an integer.",
-    "example": "<?php\nvar_dump(is_int(42));"
-  },
-  "is_float": {
-    "type": "function",
-    "explanation": "Checks whether a value is a float.",
-    "example": "<?php\nvar_dump(is_float(3.14));"
-  },
-  "is_bool": {
-    "type": "function",
-    "explanation": "Checks whether a value is a boolean.",
-    "example": "<?php\nvar_dump(is_bool(true));"
-  },
-  "is_null": {
-    "type": "function",
-    "explanation": "Checks whether a value is null.",
-    "example": "<?php\nvar_dump(is_null(null));"
-  },
-  "is_object": {
-    "type": "function",
-    "explanation": "Checks whether a value is an object.",
-    "example": "<?php\nvar_dump(is_object(new stdClass()));"
-  },
-  "is_callable": {
-    "type": "function",
-    "explanation": "Checks whether a value can be called as a function.",
-    "example": "<?php\nvar_dump(is_callable('strlen'));"
-  },
-  "gettype": {
-    "type": "function",
-    "explanation": "Returns the type name of a variable.",
-    "example": "<?php\necho gettype(42);"
-  },
-  "settype": {
-    "type": "function",
-    "explanation": "Changes the type of a variable.",
-    "example": "<?php\n$x = '42';\nsettype($x, 'int');"
-  },
-  "intval": {
-    "type": "function",
-    "explanation": "Converts a value to an integer.",
-    "example": "<?php\n$id = intval($_GET['id'] ?? 0);"
-  },
-  "floatval": {
-    "type": "function",
-    "explanation": "Converts a value to a float.",
-    "example": "<?php\n$price = floatval('12.5');"
-  },
-  "strval": {
-    "type": "function",
-    "explanation": "Converts a value to a string.",
-    "example": "<?php\n$text = strval(123);"
-  },
-  "boolval": {
-    "type": "function",
-    "explanation": "Converts a value to a boolean.",
-    "example": "<?php\n$ok = boolval(1);"
-  },
-  "htmlspecialchars": {
-    "type": "function",
-    "explanation": "Escapes special HTML characters to help prevent XSS when outputting text.",
-    "example": "<?php\necho htmlspecialchars($name, ENT_QUOTES, 'UTF-8');"
-  },
-  "filter_var": {
-    "type": "function",
-    "explanation": "Filters or validates a value using built-in filters.",
-    "example": "<?php\n$email = filter_var($input, FILTER_VALIDATE_EMAIL);"
-  },
-  "password_hash": {
-    "type": "function",
-    "explanation": "Creates a secure password hash.",
-    "example": "<?php\n$hash = password_hash($password, PASSWORD_DEFAULT);"
-  },
-  "password_verify": {
-    "type": "function",
-    "explanation": "Checks whether a password matches a hash.",
-    "example": "<?php\nif (password_verify($password, $hash)) echo 'OK';"
-  },
-  "session_start": {
-    "type": "function",
-    "explanation": "Starts or resumes a PHP session.",
-    "example": "<?php\nsession_start();"
-  },
-  "header": {
-    "type": "function",
-    "explanation": "Sends a raw HTTP header.",
-    "example": "<?php\nheader('Content-Type: application/json');"
-  },
-  "http_response_code": {
-    "type": "function",
-    "explanation": "Gets or sets the HTTP response status code.",
-    "example": "<?php\nhttp_response_code(404);"
-  },
-  "time": {
-    "type": "function",
-    "explanation": "Returns the current Unix timestamp.",
-    "example": "<?php\necho time();"
-  },
-  "date": {
-    "type": "function",
-    "explanation": "Formats a timestamp as a date/time string.",
-    "example": "<?php\necho date('Y-m-d');"
-  },
-  "microtime": {
-    "type": "function",
-    "explanation": "Returns the current Unix timestamp with microseconds.",
-    "example": "<?php\n$start = microtime(true);"
-  },
-  "sleep": {
-    "type": "function",
-    "explanation": "Pauses execution for a number of seconds.",
-    "example": "<?php\nsleep(1);"
-  },
-  "random_int": {
-    "type": "function",
-    "explanation": "Returns a cryptographically secure random integer.",
-    "example": "<?php\n$code = random_int(100000, 999999);"
-  },
-  "uniqid": {
-    "type": "function",
-    "explanation": "Generates a unique string based on the current time. Not suitable for security tokens.",
-    "example": "<?php\necho uniqid('id_', true);"
-  },
-  "mail": {
-    "type": "function",
-    "explanation": "Sends an email using the server's mail configuration.",
-    "example": "<?php\nmail('user@example.com', 'Subject', 'Body');"
-  },
-  "stdClass": {
+  "$this": {
+    "type": "special_variable",
+    "explanation": "Inside an instance method, refers to the current object instance.",
+    "example": "<?php\nclass Counter {\n    private int $count = 0;\n    public function increment(): void { $this->count++; }\n}"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division.",
+    "example": "$rest = 7 % 2;   // 1"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "Logical AND: true only when both sides are true.",
+    "example": "if ($a && $b) { }"
+  },
+  "->": {
+    "type": "operator",
+    "explanation": "Reads a property or calls a method on an object.",
+    "example": "$person->name;\n$person->greet();"
+  },
+  ".": {
+    "type": "operator",
+    "explanation": "Joins two strings together. PHP uses a dot for this, not + - and + on two strings is an error rather than a join.",
+    "example": "$greeting = \"Hello, \" . $name;"
+  },
+  "...$args": {
+    "type": "syntax_pattern",
+    "explanation": "Collects a variable number of arguments into an array when used in a function parameter list.",
+    "example": "<?php\nfunction sum(...$numbers) {\n    return array_sum($numbers);\n}"
+  },
+  ".=": {
+    "type": "operator",
+    "explanation": "Appends to a string variable, in place. $s .= \"x\" is short for $s = $s . \"x\".",
+    "example": "$out = \"\";\n$out .= \"line 1\\n\";"
+  },
+  "::": {
+    "type": "operator",
+    "explanation": "Scope resolution operator used to access class constants, static methods, static properties, and parent/self references.",
+    "example": "<?php\necho User::class;\nConfig::load();"
+  },
+  "::class": {
+    "type": "syntax_pattern",
+    "explanation": "Returns the fully qualified class name as a string.",
+    "example": "<?php\necho DateTime::class;"
+  },
+  "<=>": {
+    "type": "operator",
+    "explanation": "Spaceship comparison operator. Returns -1, 0, or 1 depending on ordering.",
+    "example": "<?php\necho 10 <=> 20; // -1"
+  },
+  "<?php": {
+    "type": "opening_tag",
+    "explanation": "The opening tag that tells the PHP interpreter where PHP code starts. Most PHP files start with this tag.",
+    "example": "<?php\necho 'Hello, World!';"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use === .",
+    "example": "$total = 10;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Loose equality: converts the two sides before comparing, which makes \"0\" == false true. Use === unless you want that.",
+    "example": "\"1\" == 1     // true"
+  },
+  "===": {
+    "type": "operator",
+    "explanation": "Strict equality: equal AND the same type. Prefer this - == converts types first, so \"0\" == false is true.",
+    "example": "0 === \"0\"    // false\n0 == \"0\"     // true"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "Pairs a key with a value in an array, and names the pair in a foreach.",
+    "example": "$ages = [\"ada\" => 36];\nforeach ($ages as $name => $age) { }"
+  },
+  "? :": {
+    "type": "operator",
+    "explanation": "Ternary conditional operator. Chooses between two expressions based on a condition.",
+    "example": "<?php\n$type = $age >= 18 ? 'adult' : 'minor';"
+  },
+  "?->": {
+    "type": "operator",
+    "explanation": "Null-safe object operator. It accesses a property or method only if the left side is not null.",
+    "example": "<?php\n$city = $user?->address?->city;"
+  },
+  "?:": {
+    "type": "operator",
+    "explanation": "Elvis shorthand ternary operator. Returns the left expression if truthy, otherwise the right expression.",
+    "example": "<?php\n$name = $input ?: 'Guest';"
+  },
+  "?>": {
+    "type": "closing_tag",
+    "explanation": "The optional closing tag that ends a PHP code block. In pure PHP files it is commonly omitted to avoid accidental whitespace output.",
+    "example": "<?php\necho 'Hello';\n?>"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "Null coalescing: use the right side when the left is null OR not set at all - so it does not warn about a missing key.",
+    "example": "$name = $_GET[\"name\"] ?? \"guest\";"
+  },
+  "??=": {
+    "type": "operator",
+    "explanation": "Null coalescing assignment. Assigns the right value only if the variable is null or not set.",
+    "example": "<?php\n$options['limit'] ??= 10;"
+  },
+  "@": {
+    "type": "operator",
+    "explanation": "Error control operator that suppresses errors from an expression. Avoid using it in clean code.",
+    "example": "<?php\n$content = @file_get_contents('missing.txt');"
+  },
+  "ArgumentCountError": {
     "type": "class",
-    "explanation": "Generic empty PHP class often used as a simple object container.",
-    "example": "<?php\n$obj = new stdClass();\n$obj->name = 'Nina';"
+    "explanation": "Thrown when too few arguments are passed to a user-defined function or method.",
+    "example": "<?php\nfunction f($x) {}\nf();"
+  },
+  "ArithmeticError": {
+    "type": "class",
+    "explanation": "Base class for arithmetic-related errors.",
+    "example": "<?php\nthrow new ArithmeticError('Bad math');"
+  },
+  "ArrayAccess": {
+    "type": "interface",
+    "explanation": "Interface that lets objects be accessed like arrays.",
+    "example": "<?php\nclass Config implements ArrayAccess { /* offsetExists/get/set/unset */ }"
+  },
+  "ArrayIterator": {
+    "type": "class",
+    "explanation": "Iterator implementation for arrays and objects.",
+    "example": "<?php\n$it = new ArrayIterator([1, 2, 3]);"
+  },
+  "AssertionError": {
+    "type": "class",
+    "explanation": "Thrown when an assertion fails and assertions are configured to throw exceptions.",
+    "example": "<?php\nassert(false);"
+  },
+  "Attribute": {
+    "type": "class",
+    "explanation": "Built-in class used as an attribute on custom attribute classes.",
+    "example": "<?php\n#[Attribute]\nclass Route {}"
+  },
+  "BackedEnum": {
+    "type": "interface",
+    "explanation": "Internal interface automatically implemented by backed enums.",
+    "example": "<?php\nenum Status: string { case Active = 'active'; }"
   },
   "Closure": {
     "type": "class",
     "explanation": "Built-in class used to represent anonymous functions.",
     "example": "<?php\n$fn = function () { return 1; };\nvar_dump($fn instanceof Closure);"
   },
-  "Generator": {
-    "type": "class",
-    "explanation": "Class used internally for generator objects returned by functions that use yield.",
-    "example": "<?php\nfunction nums() { yield 1; }\n$g = nums();"
+  "Countable": {
+    "type": "interface",
+    "explanation": "Interface for objects that can be counted with count().",
+    "example": "<?php\nclass Bag implements Countable {\n    public function count(): int { return 0; }\n}"
   },
-  "Fiber": {
-    "type": "class",
-    "explanation": "Represents a lightweight interruptible execution context introduced in PHP 8.1.",
-    "example": "<?php\n$fiber = new Fiber(fn() => 'done');\necho $fiber->start();"
+  "DIRECTORY_SEPARATOR": {
+    "type": "constant",
+    "explanation": "Platform-specific directory separator.",
+    "example": "<?php\necho 'app' . DIRECTORY_SEPARATOR . 'src';"
   },
-  "WeakReference": {
+  "DateInterval": {
     "type": "class",
-    "explanation": "Holds a reference to an object without preventing it from being garbage collected.",
-    "example": "<?php\n$ref = WeakReference::create($object);"
+    "explanation": "Represents a duration or interval of time.",
+    "example": "<?php\n$interval = new DateInterval('P1D');"
   },
-  "WeakMap": {
+  "DatePeriod": {
     "type": "class",
-    "explanation": "Map with object keys that do not prevent those objects from being garbage collected.",
-    "example": "<?php\n$map = new WeakMap();\n$map[$object] = 'data';"
+    "explanation": "Represents an iterable period of dates.",
+    "example": "<?php\n$period = new DatePeriod(new DateTime('today'), new DateInterval('P1D'), 3);"
   },
   "DateTime": {
     "type": "class",
@@ -1249,95 +264,35 @@
     "explanation": "Represents a time zone for date/time operations.",
     "example": "<?php\n$tz = new DateTimeZone('Asia/Jerusalem');"
   },
-  "DateInterval": {
+  "DivisionByZeroError": {
     "type": "class",
-    "explanation": "Represents a duration or interval of time.",
-    "example": "<?php\n$interval = new DateInterval('P1D');"
-  },
-  "DatePeriod": {
-    "type": "class",
-    "explanation": "Represents an iterable period of dates.",
-    "example": "<?php\n$period = new DatePeriod(new DateTime('today'), new DateInterval('P1D'), 3);"
-  },
-  "Throwable": {
-    "type": "interface",
-    "explanation": "Base interface implemented by Exception and Error, allowing both to be caught.",
-    "example": "<?php\ntry { risky(); } catch (Throwable $e) { echo $e->getMessage(); }"
-  },
-  "Exception": {
-    "type": "class",
-    "explanation": "Base class for most userland exceptions.",
-    "example": "<?php\nthrow new Exception('Something went wrong');"
+    "explanation": "Thrown for integer division by zero.",
+    "example": "<?php\nintdiv(1, 0);"
   },
   "Error": {
     "type": "class",
     "explanation": "Base class for internal PHP errors that can be caught.",
     "example": "<?php\ntry { undefinedFunction(); } catch (Error $e) { echo $e->getMessage(); }"
   },
-  "TypeError": {
+  "Exception": {
     "type": "class",
-    "explanation": "Thrown when a value does not match a required type.",
-    "example": "<?php\nfunction f(int $x) {}\nf('no');"
+    "explanation": "Base class for most userland exceptions.",
+    "example": "<?php\nthrow new Exception('Something went wrong');"
   },
-  "ValueError": {
+  "Fiber": {
     "type": "class",
-    "explanation": "Thrown when a value has the correct type but an invalid value.",
-    "example": "<?php\nthrow new ValueError('Invalid value');"
+    "explanation": "Represents a lightweight interruptible execution context introduced in PHP 8.1.",
+    "example": "<?php\n$fiber = new Fiber(fn() => 'done');\necho $fiber->start();"
   },
-  "ParseError": {
+  "Generator": {
     "type": "class",
-    "explanation": "Thrown when dynamically evaluated PHP code contains a parse error.",
-    "example": "<?php\ntry { eval('invalid code'); } catch (ParseError $e) {}"
-  },
-  "ArithmeticError": {
-    "type": "class",
-    "explanation": "Base class for arithmetic-related errors.",
-    "example": "<?php\nthrow new ArithmeticError('Bad math');"
-  },
-  "DivisionByZeroError": {
-    "type": "class",
-    "explanation": "Thrown for integer division by zero.",
-    "example": "<?php\nintdiv(1, 0);"
-  },
-  "ArgumentCountError": {
-    "type": "class",
-    "explanation": "Thrown when too few arguments are passed to a user-defined function or method.",
-    "example": "<?php\nfunction f($x) {}\nf();"
-  },
-  "AssertionError": {
-    "type": "class",
-    "explanation": "Thrown when an assertion fails and assertions are configured to throw exceptions.",
-    "example": "<?php\nassert(false);"
-  },
-  "RuntimeException": {
-    "type": "class",
-    "explanation": "SPL exception for errors that occur only at runtime.",
-    "example": "<?php\nthrow new RuntimeException('Runtime failure');"
+    "explanation": "Class used internally for generator objects returned by functions that use yield.",
+    "example": "<?php\nfunction nums() { yield 1; }\n$g = nums();"
   },
   "InvalidArgumentException": {
     "type": "class",
     "explanation": "SPL exception for invalid function or method arguments.",
     "example": "<?php\nthrow new InvalidArgumentException('Bad argument');"
-  },
-  "LogicException": {
-    "type": "class",
-    "explanation": "SPL exception for errors that represent programming logic mistakes.",
-    "example": "<?php\nthrow new LogicException('Impossible state');"
-  },
-  "PDO": {
-    "type": "class",
-    "explanation": "Database access class from PHP Data Objects, used for connecting to databases with prepared statements.",
-    "example": "<?php\n$pdo = new PDO($dsn, $user, $pass);"
-  },
-  "PDOStatement": {
-    "type": "class",
-    "explanation": "Represents a prepared PDO SQL statement.",
-    "example": "<?php\n$stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');"
-  },
-  "Traversable": {
-    "type": "interface",
-    "explanation": "Internal base interface for objects that can be used in foreach.",
-    "example": "<?php\nfunction walk(Traversable $items): void { foreach ($items as $item) {} }"
   },
   "Iterator": {
     "type": "interface",
@@ -1349,50 +304,35 @@
     "explanation": "Interface for objects that return an external iterator.",
     "example": "<?php\nclass Items implements IteratorAggregate {\n    public function getIterator(): Traversable { return new ArrayIterator([]); }\n}"
   },
-  "ArrayIterator": {
-    "type": "class",
-    "explanation": "Iterator implementation for arrays and objects.",
-    "example": "<?php\n$it = new ArrayIterator([1, 2, 3]);"
-  },
-  "Countable": {
-    "type": "interface",
-    "explanation": "Interface for objects that can be counted with count().",
-    "example": "<?php\nclass Bag implements Countable {\n    public function count(): int { return 0; }\n}"
-  },
-  "ArrayAccess": {
-    "type": "interface",
-    "explanation": "Interface that lets objects be accessed like arrays.",
-    "example": "<?php\nclass Config implements ArrayAccess { /* offsetExists/get/set/unset */ }"
-  },
-  "Stringable": {
-    "type": "interface",
-    "explanation": "Interface automatically implemented by classes with __toString().",
-    "example": "<?php\nfunction printValue(Stringable $x): void { echo $x; }"
-  },
   "JsonSerializable": {
     "type": "interface",
     "explanation": "Interface for classes that define custom JSON serialization.",
     "example": "<?php\nclass User implements JsonSerializable {\n    public function jsonSerialize(): mixed { return ['name' => 'Nina']; }\n}"
   },
-  "UnitEnum": {
-    "type": "interface",
-    "explanation": "Internal interface automatically implemented by all enums.",
-    "example": "<?php\nfunction show(UnitEnum $case): string { return $case->name; }"
-  },
-  "BackedEnum": {
-    "type": "interface",
-    "explanation": "Internal interface automatically implemented by backed enums.",
-    "example": "<?php\nenum Status: string { case Active = 'active'; }"
-  },
-  "Attribute": {
+  "LogicException": {
     "type": "class",
-    "explanation": "Built-in class used as an attribute on custom attribute classes.",
-    "example": "<?php\n#[Attribute]\nclass Route {}"
+    "explanation": "SPL exception for errors that represent programming logic mistakes.",
+    "example": "<?php\nthrow new LogicException('Impossible state');"
   },
-  "PHP_VERSION": {
+  "PATH_SEPARATOR": {
     "type": "constant",
-    "explanation": "String containing the current PHP version.",
-    "example": "<?php\necho PHP_VERSION;"
+    "explanation": "Platform-specific separator for include paths.",
+    "example": "<?php\necho PATH_SEPARATOR;"
+  },
+  "PDO": {
+    "type": "class",
+    "explanation": "Database access class from PHP Data Objects, used for connecting to databases with prepared statements.",
+    "example": "<?php\n$pdo = new PDO($dsn, $user, $pass);"
+  },
+  "PDOStatement": {
+    "type": "class",
+    "explanation": "Represents a prepared PDO SQL statement.",
+    "example": "<?php\n$stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');"
+  },
+  "PHP_EOL": {
+    "type": "constant",
+    "explanation": "Platform-specific end-of-line string.",
+    "example": "<?php\necho 'Line' . PHP_EOL;"
   },
   "PHP_MAJOR_VERSION": {
     "type": "constant",
@@ -1404,20 +344,30 @@
     "explanation": "Operating system PHP was built for.",
     "example": "<?php\necho PHP_OS;"
   },
-  "PHP_EOL": {
+  "PHP_VERSION": {
     "type": "constant",
-    "explanation": "Platform-specific end-of-line string.",
-    "example": "<?php\necho 'Line' . PHP_EOL;"
+    "explanation": "String containing the current PHP version.",
+    "example": "<?php\necho PHP_VERSION;"
   },
-  "DIRECTORY_SEPARATOR": {
-    "type": "constant",
-    "explanation": "Platform-specific directory separator.",
-    "example": "<?php\necho 'app' . DIRECTORY_SEPARATOR . 'src';"
+  "PSR-4": {
+    "type": "standard",
+    "explanation": "Common PHP autoloading standard that maps namespaces to directory paths.",
+    "example": "{\n  \"autoload\": {\n    \"psr-4\": { \"App\\\\\": \"src/\" }\n  }\n}"
   },
-  "PATH_SEPARATOR": {
+  "ParseError": {
+    "type": "class",
+    "explanation": "Thrown when dynamically evaluated PHP code contains a parse error.",
+    "example": "<?php\ntry { eval('invalid code'); } catch (ParseError $e) {}"
+  },
+  "RuntimeException": {
+    "type": "class",
+    "explanation": "SPL exception for errors that occur only at runtime.",
+    "example": "<?php\nthrow new RuntimeException('Runtime failure');"
+  },
+  "STDERR": {
     "type": "constant",
-    "explanation": "Platform-specific separator for include paths.",
-    "example": "<?php\necho PATH_SEPARATOR;"
+    "explanation": "CLI error output stream resource.",
+    "example": "<?php\nfwrite(STDERR, 'Error');"
   },
   "STDIN": {
     "type": "constant",
@@ -1429,49 +379,1124 @@
     "explanation": "CLI output stream resource.",
     "example": "<?php\nfwrite(STDOUT, 'Hello');"
   },
-  "STDERR": {
-    "type": "constant",
-    "explanation": "CLI error output stream resource.",
-    "example": "<?php\nfwrite(STDERR, 'Error');"
+  "Stringable": {
+    "type": "interface",
+    "explanation": "Interface automatically implemented by classes with __toString().",
+    "example": "<?php\nfunction printValue(Stringable $x): void { echo $x; }"
   },
-  "composer": {
-    "type": "tool",
-    "explanation": "PHP dependency manager used to install packages and generate autoloading.",
-    "example": "composer require monolog/monolog"
+  "Throwable": {
+    "type": "interface",
+    "explanation": "Base interface implemented by Exception and Error, allowing both to be caught.",
+    "example": "<?php\ntry { risky(); } catch (Throwable $e) { echo $e->getMessage(); }"
   },
-  "vendor/autoload.php": {
-    "type": "ecosystem_file",
-    "explanation": "Composer-generated autoloader file commonly required at application startup.",
-    "example": "<?php\nrequire __DIR__ . '/vendor/autoload.php';"
+  "Traversable": {
+    "type": "interface",
+    "explanation": "Internal base interface for objects that can be used in foreach.",
+    "example": "<?php\nfunction walk(Traversable $items): void { foreach ($items as $item) {} }"
+  },
+  "TypeError": {
+    "type": "class",
+    "explanation": "Thrown when a value does not match a required type.",
+    "example": "<?php\nfunction f(int $x) {}\nf('no');"
+  },
+  "UnitEnum": {
+    "type": "interface",
+    "explanation": "Internal interface automatically implemented by all enums.",
+    "example": "<?php\nfunction show(UnitEnum $case): string { return $case->name; }"
+  },
+  "ValueError": {
+    "type": "class",
+    "explanation": "Thrown when a value has the correct type but an invalid value.",
+    "example": "<?php\nthrow new ValueError('Invalid value');"
+  },
+  "WeakMap": {
+    "type": "class",
+    "explanation": "Map with object keys that do not prevent those objects from being garbage collected.",
+    "example": "<?php\n$map = new WeakMap();\n$map[$object] = 'data';"
+  },
+  "WeakReference": {
+    "type": "class",
+    "explanation": "Holds a reference to an object without preventing it from being garbage collected.",
+    "example": "<?php\n$ref = WeakReference::create($object);"
+  },
+  "[]": {
+    "type": "syntax_pattern",
+    "explanation": "Short array syntax or array append syntax.",
+    "example": "<?php\n$list = [1, 2];\n$list[] = 3;"
+  },
+  "\\": {
+    "type": "namespace_separator",
+    "explanation": "The namespace separator used in fully qualified PHP names.",
+    "example": "<?php\n$date = new \\DateTimeImmutable();"
+  },
+  "__CLASS__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current class name.",
+    "example": "<?php\nclass User { public function name() { echo __CLASS__; } }"
+  },
+  "__DIR__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the directory of the current file.",
+    "example": "<?php\necho __DIR__;"
+  },
+  "__FILE__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the full path and filename of the current file.",
+    "example": "<?php\necho __FILE__;"
+  },
+  "__FUNCTION__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current function name.",
+    "example": "<?php\nfunction test() { echo __FUNCTION__; }"
+  },
+  "__LINE__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current line number.",
+    "example": "<?php\necho __LINE__;"
+  },
+  "__METHOD__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current class method name.",
+    "example": "<?php\nclass User { public function save() { echo __METHOD__; } }"
+  },
+  "__NAMESPACE__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current namespace name.",
+    "example": "<?php\nnamespace App;\necho __NAMESPACE__;"
+  },
+  "__TRAIT__": {
+    "type": "magic_constant",
+    "explanation": "Magic constant containing the current trait name.",
+    "example": "<?php\ntrait T { public function name() { echo __TRAIT__; } }"
+  },
+  "__call": {
+    "type": "special_method",
+    "explanation": "Runs when inaccessible or undefined instance methods are called.",
+    "example": "<?php\npublic function __call(string $name, array $args): mixed {\n    return null;\n}"
+  },
+  "__callStatic": {
+    "type": "special_method",
+    "explanation": "Runs when inaccessible or undefined static methods are called.",
+    "example": "<?php\npublic static function __callStatic(string $name, array $args): mixed {\n    return null;\n}"
+  },
+  "__clone": {
+    "type": "special_method",
+    "explanation": "Runs after an object is cloned.",
+    "example": "<?php\npublic function __clone(): void {\n    $this->id = null;\n}"
+  },
+  "__construct": {
+    "type": "special_method",
+    "explanation": "Constructor method called automatically when a new object is created.",
+    "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
+  },
+  "__debugInfo": {
+    "type": "special_method",
+    "explanation": "Controls what var_dump() shows for an object.",
+    "example": "<?php\npublic function __debugInfo(): array {\n    return ['id' => $this->id];\n}"
+  },
+  "__destruct": {
+    "type": "special_method",
+    "explanation": "Destructor method called when an object is destroyed.",
+    "example": "<?php\nclass FileHandle {\n    public function __destruct() { /* cleanup */ }\n}"
+  },
+  "__get": {
+    "type": "special_method",
+    "explanation": "Runs when reading an inaccessible or undefined property.",
+    "example": "<?php\npublic function __get(string $name): mixed {\n    return $this->data[$name] ?? null;\n}"
+  },
+  "__halt_compiler": {
+    "type": "keyword",
+    "explanation": "Stops the PHP compiler from reading the rest of the file. Rarely used, mostly for embedding data after PHP code.",
+    "example": "<?php\n__halt_compiler();\nraw data can appear after this point"
+  },
+  "__invoke": {
+    "type": "special_method",
+    "explanation": "Allows an object to be called like a function.",
+    "example": "<?php\nclass Greeter { public function __invoke() { echo 'Hi'; } }\n$g = new Greeter();\n$g();"
+  },
+  "__isset": {
+    "type": "special_method",
+    "explanation": "Runs when isset() or empty() is used on an inaccessible or undefined property.",
+    "example": "<?php\npublic function __isset(string $name): bool {\n    return isset($this->data[$name]);\n}"
+  },
+  "__serialize": {
+    "type": "special_method",
+    "explanation": "Modern serialization hook that returns data to serialize.",
+    "example": "<?php\npublic function __serialize(): array {\n    return ['name' => $this->name];\n}"
+  },
+  "__set": {
+    "type": "special_method",
+    "explanation": "Runs when writing to an inaccessible or undefined property.",
+    "example": "<?php\npublic function __set(string $name, mixed $value): void {\n    $this->data[$name] = $value;\n}"
+  },
+  "__set_state": {
+    "type": "special_method",
+    "explanation": "Static method used by var_export() to recreate an object.",
+    "example": "<?php\npublic static function __set_state(array $props): object {\n    return new self();\n}"
+  },
+  "__sleep": {
+    "type": "special_method",
+    "explanation": "Legacy serialization hook called before serialize().",
+    "example": "<?php\npublic function __sleep(): array {\n    return ['name'];\n}"
+  },
+  "__toString": {
+    "type": "special_method",
+    "explanation": "Returns a string representation of an object.",
+    "example": "<?php\npublic function __toString(): string {\n    return $this->name;\n}"
+  },
+  "__unserialize": {
+    "type": "special_method",
+    "explanation": "Modern unserialization hook that restores object state from data.",
+    "example": "<?php\npublic function __unserialize(array $data): void {\n    $this->name = $data['name'];\n}"
+  },
+  "__unset": {
+    "type": "special_method",
+    "explanation": "Runs when unset() is used on an inaccessible or undefined property.",
+    "example": "<?php\npublic function __unset(string $name): void {\n    unset($this->data[$name]);\n}"
+  },
+  "__wakeup": {
+    "type": "special_method",
+    "explanation": "Legacy unserialization hook called after unserialize().",
+    "example": "<?php\npublic function __wakeup(): void {\n    $this->connect();\n}"
+  },
+  "abstract": {
+    "type": "keyword",
+    "explanation": "Marks a class as not directly instantiable, or marks a method that subclasses must implement.",
+    "example": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}"
+  },
+  "and": {
+    "type": "operator",
+    "explanation": "Logical AND operator with lower precedence than &&.",
+    "example": "<?php\nif ($ready and $valid) {\n    echo 'OK';\n}"
+  },
+  "anonymous function": {
+    "type": "syntax_pattern",
+    "explanation": "A function without a name, often stored in a variable or passed as a callback.",
+    "example": "<?php\n$double = function ($x) {\n    return $x * 2;\n};"
+  },
+  "array": {
+    "type": "type",
+    "explanation": "PHP's ordered map type used for lists and key-value pairs. It can also be used as a type declaration.",
+    "example": "<?php\n$fruits = ['apple', 'banana'];\nfunction first(array $items): mixed { return $items[0] ?? null; }"
+  },
+  "array()": {
+    "type": "syntax_pattern",
+    "explanation": "Legacy array creation syntax, equivalent to short [] array syntax.",
+    "example": "<?php\n$list = array(1, 2, 3);"
+  },
+  "array_filter": {
+    "type": "function",
+    "explanation": "Filters array elements using a callback or truthiness.",
+    "example": "<?php\n$evens = array_filter([1, 2, 3], fn($x) => $x % 2 === 0);"
+  },
+  "array_key_exists": {
+    "type": "function",
+    "explanation": "Checks whether an array contains a key, even if its value is null.",
+    "example": "<?php\nif (array_key_exists('name', $user)) echo 'exists';"
+  },
+  "array_keys": {
+    "type": "function",
+    "explanation": "Returns all keys from an array.",
+    "example": "<?php\n$keys = array_keys(['a' => 1]);"
+  },
+  "array_map": {
+    "type": "function",
+    "explanation": "Applies a callback to each array element and returns the results.",
+    "example": "<?php\n$doubled = array_map(fn($x) => $x * 2, [1, 2, 3]);"
+  },
+  "array_merge": {
+    "type": "function",
+    "explanation": "Merges one or more arrays.",
+    "example": "<?php\n$result = array_merge([1], [2, 3]);"
+  },
+  "array_pop": {
+    "type": "function",
+    "explanation": "Removes and gives back the LAST item of an array.",
+    "example": "$last = array_pop($items);"
+  },
+  "array_push": {
+    "type": "function",
+    "explanation": "Adds one or more items to the end of an array.",
+    "example": "$items = [];\narray_push($items, \"a\");"
+  },
+  "array_reduce": {
+    "type": "function",
+    "explanation": "Reduces an array to a single value using a callback.",
+    "example": "<?php\n$total = array_reduce([1, 2, 3], fn($c, $x) => $c + $x, 0);"
+  },
+  "array_shift": {
+    "type": "function",
+    "explanation": "Removes and gives back the FIRST item of an array.",
+    "example": "$first = array_shift($items);"
+  },
+  "array_sum": {
+    "type": "function",
+    "explanation": "Adds up every number in an array.",
+    "example": "$total = array_sum($prices);"
+  },
+  "array_values": {
+    "type": "function",
+    "explanation": "Returns all values from an array with numeric keys reset.",
+    "example": "<?php\n$values = array_values(['a' => 1]);"
+  },
+  "arrow function": {
+    "type": "syntax_pattern",
+    "explanation": "A compact function syntax using fn($x) => expression.",
+    "example": "<?php\n$ids = array_map(fn($user) => $user->id, $users);"
+  },
+  "as": {
+    "type": "keyword",
+    "explanation": "Gives an alias in foreach loops, namespace imports, and trait conflict resolution.",
+    "example": "<?php\nuse App\\Models\\User as AppUser;\n\nforeach ($items as $item) {\n    echo $item;\n}"
+  },
+  "attribute": {
+    "type": "syntax_pattern",
+    "explanation": "Metadata added to declarations using #[...], available through reflection.",
+    "example": "<?php\n#[Route('/users')]\nclass UserController {}"
   },
   "autoloading": {
     "type": "concept",
     "explanation": "Automatic loading of class files when a class is first used, usually handled by Composer PSR-4 autoloading.",
     "example": "<?php\n// Composer autoloads App\\Models\\User when it is used.\n$user = new App\\Models\\User();"
   },
-  "PSR-4": {
-    "type": "standard",
-    "explanation": "Common PHP autoloading standard that maps namespaces to directory paths.",
-    "example": "{\n  \"autoload\": {\n    \"psr-4\": { \"App\\\\\": \"src/\" }\n  }\n}"
+  "basename": {
+    "type": "function",
+    "explanation": "Returns the filename part of a path.",
+    "example": "<?php\necho basename('/app/index.php');"
   },
-  ".": {
-    "type": "operator",
-    "explanation": "Joins two strings together. PHP uses a dot for this, not + - and + on two strings is an error rather than a join.",
-    "example": "$greeting = \"Hello, \" . $name;"
+  "bool": {
+    "type": "type",
+    "explanation": "Boolean type declaration for true/false values.",
+    "example": "<?php\nfunction isAdult(int $age): bool {\n    return $age >= 18;\n}"
   },
-  ".=": {
-    "type": "operator",
-    "explanation": "Appends to a string variable, in place. $s .= \"x\" is short for $s = $s . \"x\".",
-    "example": "$out = \"\";\n$out .= \"line 1\\n\";"
+  "boolean": {
+    "type": "type_alias",
+    "explanation": "Long-form name commonly used in documentation/gettype for booleans. In type declarations, use bool.",
+    "example": "<?php\n$ok = true;\necho gettype($ok); // boolean"
   },
-  "%": {
-    "type": "operator",
-    "explanation": "Remainder (modulo): what is left over after division.",
-    "example": "$rest = 7 % 2;   // 1"
+  "boolval": {
+    "type": "function",
+    "explanation": "Converts a value to a boolean.",
+    "example": "<?php\n$ok = boolval(1);"
   },
-  "=": {
+  "break": {
+    "type": "control_structure",
+    "explanation": "Immediately exits the nearest loop or switch statement.",
+    "example": "<?php\nfor ($i = 0; $i < 10; $i++) {\n    if ($i === 3) break;\n    echo $i;\n}"
+  },
+  "callable": {
+    "type": "type",
+    "explanation": "Type declaration for something that can be called like a function, such as a closure, function name, or method pair.",
+    "example": "<?php\nfunction run(callable $fn): mixed {\n    return $fn();\n}"
+  },
+  "case": {
+    "type": "control_structure",
+    "explanation": "Defines one branch inside a switch statement or a match expression.",
+    "example": "<?php\nswitch ($grade) {\n    case 'A':\n        echo 'Great!';\n        break;\n}"
+  },
+  "catch": {
+    "type": "control_structure",
+    "explanation": "Handles a matching exception or error thrown inside the corresponding try block.",
+    "example": "<?php\ntry {\n    intdiv(1, 0);\n} catch (DivisionByZeroError $e) {\n    echo $e->getMessage();\n}"
+  },
+  "class": {
+    "type": "keyword",
+    "explanation": "Defines a blueprint for creating objects with properties, constants, and methods.",
+    "example": "<?php\nclass Point {\n    public int $x;\n    public int $y;\n}"
+  },
+  "clone": {
+    "type": "keyword",
+    "explanation": "Creates a shallow copy of an object, optionally triggering the object's __clone method.",
+    "example": "<?php\n$copy = clone $original;"
+  },
+  "closure use": {
+    "type": "syntax_pattern",
+    "explanation": "Captures variables from the parent scope into an anonymous function.",
+    "example": "<?php\n$factor = 2;\n$double = function ($x) use ($factor) {\n    return $x * $factor;\n};"
+  },
+  "composer": {
+    "type": "tool",
+    "explanation": "PHP dependency manager used to install packages and generate autoloading.",
+    "example": "composer require monolog/monolog"
+  },
+  "const": {
+    "type": "keyword",
+    "explanation": "Defines a constant at class level or namespace/global level.",
+    "example": "<?php\nclass Circle {\n    public const PI = 3.14159;\n}"
+  },
+  "constant": {
+    "type": "function",
+    "explanation": "Returns the value of a constant by name.",
+    "example": "<?php\necho constant('PHP_VERSION');"
+  },
+  "constructor": {
+    "type": "concept",
+    "explanation": "A method named __construct that runs when a new object is created.",
+    "example": "<?php\nclass User {\n    public function __construct(public string $name) {}\n}"
+  },
+  "continue": {
+    "type": "control_structure",
+    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    if ($i % 2 === 0) continue;\n    echo $i;\n}"
+  },
+  "count": {
+    "type": "function",
+    "explanation": "Counts the elements in an array or Countable object.",
+    "example": "<?php\necho count([1, 2, 3]);"
+  },
+  "date": {
+    "type": "function",
+    "explanation": "Formats a timestamp as a date/time string.",
+    "example": "<?php\necho date('Y-m-d');"
+  },
+  "debug_backtrace": {
+    "type": "function",
+    "explanation": "Returns a stack trace array showing how code reached the current point.",
+    "example": "<?php\nprint_r(debug_backtrace());"
+  },
+  "declare": {
+    "type": "keyword",
+    "explanation": "Sets execution directives for a block or file, most commonly strict type checking with strict_types.",
+    "example": "<?php\ndeclare(strict_types=1);\n\nfunction add(int $a, int $b): int {\n    return $a + $b;\n}"
+  },
+  "default": {
+    "type": "control_structure",
+    "explanation": "Defines the fallback branch in a switch statement or match expression.",
+    "example": "<?php\nswitch ($status) {\n    default:\n        echo 'Unknown';\n}"
+  },
+  "define": {
+    "type": "function",
+    "explanation": "Defines a named constant at runtime.",
+    "example": "<?php\ndefine('APP_NAME', 'Demo');"
+  },
+  "defined": {
+    "type": "function",
+    "explanation": "Checks whether a constant with a given name exists.",
+    "example": "<?php\nif (defined('APP_NAME')) echo APP_NAME;"
+  },
+  "destructuring": {
+    "type": "syntax_pattern",
+    "explanation": "Unpacks array values into variables using [] or list().",
+    "example": "<?php\n['name' => $name, 'age' => $age] = $user;"
+  },
+  "die": {
+    "type": "language_construct",
+    "explanation": "Alias of exit; stops script execution immediately.",
+    "example": "<?php\nif (!$db) {\n    die('Database connection failed');\n}"
+  },
+  "dirname": {
+    "type": "function",
+    "explanation": "Returns the parent directory path.",
+    "example": "<?php\necho dirname('/app/index.php');"
+  },
+  "do": {
+    "type": "control_structure",
+    "explanation": "Starts a do-while loop, which runs once before checking the condition.",
+    "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
+  },
+  "do-while": {
+    "type": "syntax_pattern",
+    "explanation": "A loop pattern built from do and while. The body runs at least once before the condition is checked.",
+    "example": "<?php\n$n = 0;\ndo {\n    echo $n;\n    $n++;\n} while ($n < 3);"
+  },
+  "double": {
+    "type": "type_alias",
+    "explanation": "Historical/internal name related to floating-point numbers. In PHP type declarations, use float.",
+    "example": "<?php\n$x = 3.14;\necho gettype($x); // double"
+  },
+  "echo": {
+    "type": "language_construct",
+    "explanation": "Outputs one or more strings. It is a language construct, not a normal function, so parentheses are optional.",
+    "example": "<?php\necho 'Hello, World!';"
+  },
+  "else": {
+    "type": "control_structure",
+    "explanation": "Runs a block of code when the preceding if or elseif condition was false.",
+    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n} else {\n    echo 'Minor';\n}"
+  },
+  "elseif": {
+    "type": "control_structure",
+    "explanation": "Checks another condition when the previous if or elseif condition was false. Can also be written as else if.",
+    "example": "<?php\nif ($score >= 90) {\n    echo 'A';\n} elseif ($score >= 80) {\n    echo 'B';\n} else {\n    echo 'C';\n}"
+  },
+  "empty": {
+    "type": "language_construct",
+    "explanation": "Checks whether a variable is empty, such as '', 0, '0', false, null, or an empty array.",
+    "example": "<?php\nif (empty($items)) echo 'No items';"
+  },
+  "endfor": {
+    "type": "alternative_syntax",
+    "explanation": "Ends a for loop when using PHP's colon-based alternative syntax.",
+    "example": "<?php for ($i = 0; $i < 3; $i++): ?>\n    <?= $i ?>\n<?php endfor; ?>"
+  },
+  "endforeach": {
+    "type": "alternative_syntax",
+    "explanation": "Ends a foreach loop when using PHP's colon-based alternative syntax.",
+    "example": "<?php foreach ($users as $user): ?>\n    <?= $user->name ?>\n<?php endforeach; ?>"
+  },
+  "endif": {
+    "type": "alternative_syntax",
+    "explanation": "Ends an if block when using PHP's colon-based alternative syntax, often used in templates.",
+    "example": "<?php if ($loggedIn): ?>\n    Welcome\n<?php endif; ?>"
+  },
+  "endswitch": {
+    "type": "alternative_syntax",
+    "explanation": "Ends a switch block when using PHP's colon-based alternative syntax.",
+    "example": "<?php switch ($role):\ncase 'admin': echo 'Admin'; break;\ndefault: echo 'User';\nendswitch; ?>"
+  },
+  "endwhile": {
+    "type": "alternative_syntax",
+    "explanation": "Ends a while loop when using PHP's colon-based alternative syntax.",
+    "example": "<?php while ($row = fetchRow()): ?>\n    <?= $row['name'] ?>\n<?php endwhile; ?>"
+  },
+  "enum": {
+    "type": "keyword",
+    "explanation": "Defines a fixed set of named cases. PHP enums can be pure enums or backed by string/int values.",
+    "example": "<?php\nenum Status: string {\n    case Active = 'active';\n    case Inactive = 'inactive';\n}"
+  },
+  "eval": {
+    "type": "language_construct",
+    "explanation": "Executes a string as PHP code. Avoid it in normal application code because it is dangerous and hard to debug.",
+    "example": "<?php\n$code = 'return 2 + 3;';\n$result = eval($code);"
+  },
+  "exit": {
+    "type": "language_construct",
+    "explanation": "Stops script execution immediately. It can optionally output a message or use an exit status code.",
+    "example": "<?php\nif (!$allowed) {\n    exit('Access denied');\n}"
+  },
+  "explode": {
+    "type": "function",
+    "explanation": "Splits a string into an array using a delimiter.",
+    "example": "<?php\n$parts = explode(',', 'a,b,c');"
+  },
+  "extends": {
+    "type": "keyword",
+    "explanation": "Makes one class inherit from another class, or one interface inherit from another interface.",
+    "example": "<?php\nclass Dog extends Animal {\n    public function speak() { echo 'Woof!'; }\n}"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "Boolean literal representing falsehood.",
+    "example": "<?php\n$isDeleted = false;"
+  },
+  "false type": {
+    "type": "type",
+    "explanation": "A literal type that allows only false, commonly used in legacy APIs that return a value or false.",
+    "example": "<?php\nfunction notFound(): false {\n    return false;\n}"
+  },
+  "fclose": {
+    "type": "function",
+    "explanation": "Closes an open file handle.",
+    "example": "<?php\nfclose($handle);"
+  },
+  "file_get_contents": {
+    "type": "function",
+    "explanation": "Reads an entire file or URL into a string.",
+    "example": "<?php\n$text = file_get_contents('data.txt');"
+  },
+  "file_put_contents": {
+    "type": "function",
+    "explanation": "Writes a string to a file.",
+    "example": "<?php\nfile_put_contents('data.txt', 'hello');"
+  },
+  "filter_var": {
+    "type": "function",
+    "explanation": "Filters or validates a value using built-in filters.",
+    "example": "<?php\n$email = filter_var($input, FILTER_VALIDATE_EMAIL);"
+  },
+  "final": {
+    "type": "keyword",
+    "explanation": "Prevents a class from being extended, or prevents a method from being overridden.",
+    "example": "<?php\nfinal class Config {}"
+  },
+  "finally": {
+    "type": "control_structure",
+    "explanation": "Runs after try/catch whether or not an exception occurred, usually for cleanup.",
+    "example": "<?php\ntry {\n    doWork();\n} finally {\n    echo 'Always runs';\n}"
+  },
+  "float": {
+    "type": "type",
+    "explanation": "Floating-point number type declaration for decimal numbers.",
+    "example": "<?php\nfunction half(float $x): float {\n    return $x / 2;\n}"
+  },
+  "floatval": {
+    "type": "function",
+    "explanation": "Converts a value to a float.",
+    "example": "<?php\n$price = floatval('12.5');"
+  },
+  "fn": {
+    "type": "keyword",
+    "explanation": "Defines a short arrow function that automatically captures variables from the parent scope by value.",
+    "example": "<?php\n$double = fn($x) => $x * 2;\necho $double(5);"
+  },
+  "fopen": {
+    "type": "function",
+    "explanation": "Opens a file or stream and returns a resource.",
+    "example": "<?php\n$handle = fopen('data.txt', 'r');"
+  },
+  "for": {
+    "type": "control_structure",
+    "explanation": "Repeats a block of code using initialization, condition, and update expressions.",
+    "example": "<?php\nfor ($i = 0; $i < 5; $i++) {\n    echo $i;\n}"
+  },
+  "foreach": {
+    "type": "control_structure",
+    "explanation": "Loops over each element of an array or Traversable object, optionally exposing both key and value.",
+    "example": "<?php\n$arr = ['a' => 1, 'b' => 2];\nforeach ($arr as $key => $value) {\n    echo $key . ': ' . $value;\n}"
+  },
+  "fread": {
+    "type": "function",
+    "explanation": "Reads bytes from an open file handle.",
+    "example": "<?php\n$data = fread($handle, 1024);"
+  },
+  "function": {
+    "type": "keyword",
+    "explanation": "Defines a reusable function or method that can take parameters and optionally return a value.",
+    "example": "<?php\nfunction add($a, $b) {\n    return $a + $b;\n}\necho add(2, 3);"
+  },
+  "fwrite": {
+    "type": "function",
+    "explanation": "Writes data to an open file handle.",
+    "example": "<?php\nfwrite($handle, 'hello');"
+  },
+  "gettype": {
+    "type": "function",
+    "explanation": "Returns the type name of a variable.",
+    "example": "<?php\necho gettype(42);"
+  },
+  "global": {
+    "type": "keyword",
+    "explanation": "Imports a global variable into the local scope of a function.",
+    "example": "<?php\n$count = 0;\nfunction inc() {\n    global $count;\n    $count++;\n}"
+  },
+  "global namespace": {
+    "type": "namespace",
+    "explanation": "The root namespace where PHP built-in classes/functions and non-namespaced user code live.",
+    "example": "<?php\n$value = \\strlen('hello');"
+  },
+  "goto": {
+    "type": "control_structure",
+    "explanation": "Jumps to a labeled statement in the same file and context. Rarely used because it can make code hard to follow.",
+    "example": "<?php\ngoto end;\necho 'Skipped';\nend:\necho 'Done';"
+  },
+  "header": {
+    "type": "function",
+    "explanation": "Sends a raw HTTP header.",
+    "example": "<?php\nheader('Content-Type: application/json');"
+  },
+  "htmlspecialchars": {
+    "type": "function",
+    "explanation": "Escapes special HTML characters to help prevent XSS when outputting text.",
+    "example": "<?php\necho htmlspecialchars($name, ENT_QUOTES, 'UTF-8');"
+  },
+  "http_response_code": {
+    "type": "function",
+    "explanation": "Gets or sets the HTTP response status code.",
+    "example": "<?php\nhttp_response_code(404);"
+  },
+  "if": {
+    "type": "control_structure",
+    "explanation": "Runs a block of code only when a condition is true.",
+    "example": "<?php\nif ($age >= 18) {\n    echo 'Adult';\n}"
+  },
+  "implements": {
+    "type": "keyword",
+    "explanation": "Declares that a class provides all methods required by one or more interfaces.",
+    "example": "<?php\nclass Circle implements Shape {\n    public function area(): float { return 3.14; }\n}"
+  },
+  "implode": {
+    "type": "function",
+    "explanation": "Joins array values into a string using a delimiter.",
+    "example": "<?php\necho implode(', ', ['a', 'b', 'c']);"
+  },
+  "in_array": {
+    "type": "function",
+    "explanation": "Checks whether a value exists in an array.",
+    "example": "<?php\nif (in_array('admin', $roles, true)) echo 'admin';"
+  },
+  "include": {
+    "type": "language_construct",
+    "explanation": "Includes and runs another PHP file. If the file is missing, PHP raises a warning and continues.",
+    "example": "<?php\ninclude 'header.php';"
+  },
+  "include_once": {
+    "type": "language_construct",
+    "explanation": "Includes another PHP file only once, preventing duplicate definitions if it was already included.",
+    "example": "<?php\ninclude_once 'helpers.php';"
+  },
+  "instanceof": {
     "type": "operator",
-    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use === .",
-    "example": "$total = 10;"
+    "explanation": "Checks whether an object is an instance of a class or implements an interface.",
+    "example": "<?php\nif ($value instanceof DateTimeInterface) {\n    echo $value->format('Y-m-d');\n}"
+  },
+  "insteadof": {
+    "type": "keyword",
+    "explanation": "Resolves method-name conflicts when a class uses multiple traits.",
+    "example": "<?php\nclass MyClass {\n    use A, B {\n        A::run insteadof B;\n    }\n}"
+  },
+  "int": {
+    "type": "type",
+    "explanation": "Integer type declaration for whole numbers.",
+    "example": "<?php\nfunction double(int $x): int {\n    return $x * 2;\n}"
+  },
+  "integer": {
+    "type": "type_alias",
+    "explanation": "Long-form name often returned by gettype for integers, but int is used in type declarations.",
+    "example": "<?php\n$x = 10;\necho gettype($x); // integer"
+  },
+  "interface": {
+    "type": "keyword",
+    "explanation": "Defines a contract of methods that implementing classes must provide.",
+    "example": "<?php\ninterface Shape {\n    public function area(): float;\n}"
+  },
+  "intersection type": {
+    "type": "syntax_pattern",
+    "explanation": "A type declaration using & to require a value to satisfy multiple class/interface types.",
+    "example": "<?php\nfunction handle(Countable&Iterator $items): void {\n    echo count($items);\n}"
+  },
+  "intval": {
+    "type": "function",
+    "explanation": "Converts a value to an integer.",
+    "example": "<?php\n$id = intval($_GET['id'] ?? 0);"
+  },
+  "is_array": {
+    "type": "function",
+    "explanation": "Checks whether a value is an array.",
+    "example": "<?php\nvar_dump(is_array([]));"
+  },
+  "is_bool": {
+    "type": "function",
+    "explanation": "Checks whether a value is a boolean.",
+    "example": "<?php\nvar_dump(is_bool(true));"
+  },
+  "is_callable": {
+    "type": "function",
+    "explanation": "Checks whether a value can be called as a function.",
+    "example": "<?php\nvar_dump(is_callable('strlen'));"
+  },
+  "is_float": {
+    "type": "function",
+    "explanation": "Checks whether a value is a float.",
+    "example": "<?php\nvar_dump(is_float(3.14));"
+  },
+  "is_int": {
+    "type": "function",
+    "explanation": "Checks whether a value is an integer.",
+    "example": "<?php\nvar_dump(is_int(42));"
+  },
+  "is_null": {
+    "type": "function",
+    "explanation": "Checks whether a value is null.",
+    "example": "<?php\nvar_dump(is_null(null));"
+  },
+  "is_object": {
+    "type": "function",
+    "explanation": "Checks whether a value is an object.",
+    "example": "<?php\nvar_dump(is_object(new stdClass()));"
+  },
+  "is_string": {
+    "type": "function",
+    "explanation": "Checks whether a value is a string.",
+    "example": "<?php\nvar_dump(is_string('hi'));"
+  },
+  "isset": {
+    "type": "language_construct",
+    "explanation": "Checks whether a variable is declared and not null.",
+    "example": "<?php\nif (isset($user['name'])) echo $user['name'];"
+  },
+  "iterable": {
+    "type": "type",
+    "explanation": "Type declaration accepting arrays or objects that can be traversed with foreach.",
+    "example": "<?php\nfunction printAll(iterable $items): void {\n    foreach ($items as $item) echo $item;\n}"
+  },
+  "json_decode": {
+    "type": "function",
+    "explanation": "Converts a JSON string into a PHP value.",
+    "example": "<?php\n$data = json_decode('{\"x\":1}', true);"
+  },
+  "json_encode": {
+    "type": "function",
+    "explanation": "Converts a PHP value to a JSON string.",
+    "example": "<?php\necho json_encode(['name' => 'Nina']);"
+  },
+  "list": {
+    "type": "language_construct",
+    "explanation": "Assigns array values to multiple variables at once.",
+    "example": "<?php\n[$a, $b] = [1, 2];\nlist($x, $y) = [3, 4];"
+  },
+  "mail": {
+    "type": "function",
+    "explanation": "Sends an email using the server's mail configuration.",
+    "example": "<?php\nmail('user@example.com', 'Subject', 'Body');"
+  },
+  "match": {
+    "type": "control_structure",
+    "explanation": "A PHP 8+ expression that compares strictly, returns a value directly, and does not require break statements.",
+    "example": "<?php\n$result = match ($status) {\n    1 => 'Active',\n    2 => 'Inactive',\n    default => 'Unknown',\n};"
+  },
+  "mb_strlen": {
+    "type": "function",
+    "explanation": "Returns the length of a multibyte string, useful for Unicode text when the mbstring extension is available.",
+    "example": "<?php\necho mb_strlen('שלום');"
+  },
+  "microtime": {
+    "type": "function",
+    "explanation": "Returns the current Unix timestamp with microseconds.",
+    "example": "<?php\n$start = microtime(true);"
+  },
+  "mixed": {
+    "type": "type",
+    "explanation": "Type declaration meaning any value is allowed.",
+    "example": "<?php\nfunction debug(mixed $value): void {\n    var_dump($value);\n}"
+  },
+  "namespace": {
+    "type": "keyword",
+    "explanation": "Groups related classes, interfaces, traits, enums, functions, and constants to avoid name collisions.",
+    "example": "<?php\nnamespace App\\Models;\n\nclass User {}"
+  },
+  "namespace\\name": {
+    "type": "syntax_pattern",
+    "explanation": "A namespaced identifier that refers to code inside a namespace hierarchy.",
+    "example": "<?php\n$user = new App\\Models\\User();"
+  },
+  "never": {
+    "type": "type",
+    "explanation": "Return type meaning the function never returns normally because it always exits or throws.",
+    "example": "<?php\nfunction fail(string $message): never {\n    throw new RuntimeException($message);\n}"
+  },
+  "new": {
+    "type": "keyword",
+    "explanation": "Creates a new object instance from a class.",
+    "example": "<?php\n$p = new Point();"
+  },
+  "null": {
+    "type": "literal",
+    "explanation": "Represents the absence of a value.",
+    "example": "<?php\n$selected = null;"
+  },
+  "null type": {
+    "type": "type",
+    "explanation": "A literal type that allows only null in type declarations.",
+    "example": "<?php\nfunction nothing(): null {\n    return null;\n}"
+  },
+  "nullable type": {
+    "type": "syntax_pattern",
+    "explanation": "A type declaration prefixed with ? to allow either the type or null.",
+    "example": "<?php\nfunction findName(): ?string {\n    return null;\n}"
+  },
+  "number_format": {
+    "type": "function",
+    "explanation": "Formats a number for display, with a set number of decimal places.",
+    "example": "echo number_format(1234.5678, 2);   // 1,234.57"
+  },
+  "object": {
+    "type": "type",
+    "explanation": "Type declaration requiring any object instance.",
+    "example": "<?php\nfunction inspect(object $obj): void {\n    var_dump($obj);\n}"
+  },
+  "or": {
+    "type": "operator",
+    "explanation": "Logical OR operator with lower precedence than ||.",
+    "example": "<?php\nif ($admin or $owner) {\n    echo 'Allowed';\n}"
+  },
+  "parent": {
+    "type": "reserved_word",
+    "explanation": "Refers to the parent class, commonly used to call a parent constructor or overridden method.",
+    "example": "<?php\nclass Dog extends Animal {\n    public function __construct($name) {\n        parent::__construct($name);\n    }\n}"
+  },
+  "password_hash": {
+    "type": "function",
+    "explanation": "Creates a secure password hash.",
+    "example": "<?php\n$hash = password_hash($password, PASSWORD_DEFAULT);"
+  },
+  "password_verify": {
+    "type": "function",
+    "explanation": "Checks whether a password matches a hash.",
+    "example": "<?php\nif (password_verify($password, $hash)) echo 'OK';"
+  },
+  "pathinfo": {
+    "type": "function",
+    "explanation": "Returns information about a file path.",
+    "example": "<?php\n$info = pathinfo('/app/index.php');"
+  },
+  "preg_match": {
+    "type": "function",
+    "explanation": "Matches a string against a regular expression.",
+    "example": "<?php\nif (preg_match('/^[a-z]+$/', $name)) echo 'valid';"
+  },
+  "print": {
+    "type": "language_construct",
+    "explanation": "Outputs a single string and returns 1, so it can be used inside expressions.",
+    "example": "<?php\n$result = print 'Hello!';"
+  },
+  "print_r": {
+    "type": "function",
+    "explanation": "Prints a human-readable representation of arrays and objects.",
+    "example": "<?php\nprint_r(['a' => 1]);"
+  },
+  "private": {
+    "type": "visibility_modifier",
+    "explanation": "Makes a class member accessible only inside the class where it is declared.",
+    "example": "<?php\nclass Account {\n    private float $balance = 0;\n}"
+  },
+  "property promotion": {
+    "type": "syntax_pattern",
+    "explanation": "A constructor shorthand that declares and assigns properties directly from constructor parameters.",
+    "example": "<?php\nclass User {\n    public function __construct(public string $name, private int $age) {}\n}"
+  },
+  "protected": {
+    "type": "visibility_modifier",
+    "explanation": "Makes a class member accessible inside the declaring class and subclasses.",
+    "example": "<?php\nclass Base {\n    protected int $id = 1;\n}"
+  },
+  "public": {
+    "type": "visibility_modifier",
+    "explanation": "Makes a class member accessible from anywhere.",
+    "example": "<?php\nclass User {\n    public string $name;\n}"
+  },
+  "random_int": {
+    "type": "function",
+    "explanation": "Returns a cryptographically secure random integer.",
+    "example": "<?php\n$code = random_int(100000, 999999);"
+  },
+  "readonly": {
+    "type": "keyword",
+    "explanation": "Marks a property or class as readonly, meaning assigned values cannot be changed after initialization.",
+    "example": "<?php\nreadonly class UserData {\n    public function __construct(public string $name) {}\n}"
+  },
+  "reference &": {
+    "type": "syntax_pattern",
+    "explanation": "Makes a variable, parameter, or return value refer to the same underlying value instead of a copy.",
+    "example": "<?php\nfunction addOne(int &$x): void {\n    $x++;\n}"
+  },
+  "require": {
+    "type": "language_construct",
+    "explanation": "Includes and runs another PHP file. If the file is missing, PHP stops with a fatal error.",
+    "example": "<?php\nrequire 'config.php';"
+  },
+  "require_once": {
+    "type": "language_construct",
+    "explanation": "Requires another PHP file only once, preventing duplicate definitions while still failing fatally if missing.",
+    "example": "<?php\nrequire_once 'bootstrap.php';"
+  },
+  "return": {
+    "type": "keyword",
+    "explanation": "Exits a function or included file and optionally sends back a value.",
+    "example": "<?php\nfunction square($x) {\n    return $x * $x;\n}"
+  },
+  "self": {
+    "type": "reserved_word",
+    "explanation": "Refers to the current class where code is written, commonly used for constants, static methods, and return types.",
+    "example": "<?php\nclass Config {\n    public const NAME = 'app';\n    public static function name(): string { return self::NAME; }\n}"
+  },
+  "session_start": {
+    "type": "function",
+    "explanation": "Starts or resumes a PHP session.",
+    "example": "<?php\nsession_start();"
+  },
+  "settype": {
+    "type": "function",
+    "explanation": "Changes the type of a variable.",
+    "example": "<?php\n$x = '42';\nsettype($x, 'int');"
+  },
+  "sizeof": {
+    "type": "function_alias",
+    "explanation": "Alias of count().",
+    "example": "<?php\necho sizeof([1, 2, 3]);"
+  },
+  "sleep": {
+    "type": "function",
+    "explanation": "Pauses execution for a number of seconds.",
+    "example": "<?php\nsleep(1);"
+  },
+  "sort": {
+    "type": "function",
+    "explanation": "Sorts an array in ascending order and reindexes numeric keys.",
+    "example": "<?php\n$nums = [3, 1, 2];\nsort($nums);"
+  },
+  "spread operator": {
+    "type": "operator",
+    "explanation": "The ... syntax expands arrays into argument lists or array elements.",
+    "example": "<?php\n$nums = [1, 2, 3];\necho sum(...$nums);"
+  },
+  "sprintf": {
+    "type": "function",
+    "explanation": "Returns a formatted string.",
+    "example": "<?php\n$msg = sprintf('Hello %s', 'Nina');"
+  },
+  "static": {
+    "type": "keyword",
+    "explanation": "Defines a class-level property or method, or can be used as a late-static-bound type/reference.",
+    "example": "<?php\nclass MathUtils {\n    public static function square($x) { return $x * $x; }\n}\necho MathUtils::square(4);"
+  },
+  "static variable": {
+    "type": "syntax_pattern",
+    "explanation": "A local variable declared with static inside a function keeps its value between function calls.",
+    "example": "<?php\nfunction counter() {\n    static $count = 0;\n    return ++$count;\n}"
+  },
+  "stdClass": {
+    "type": "class",
+    "explanation": "Generic empty PHP class often used as a simple object container.",
+    "example": "<?php\n$obj = new stdClass();\n$obj->name = 'Nina';"
+  },
+  "str_contains": {
+    "type": "function",
+    "explanation": "Checks whether a string contains another string.",
+    "example": "<?php\nif (str_contains('hello', 'ell')) echo 'yes';"
+  },
+  "str_ends_with": {
+    "type": "function",
+    "explanation": "Checks whether a string ends with a given suffix.",
+    "example": "<?php\nif (str_ends_with('file.txt', '.txt')) echo 'text file';"
+  },
+  "str_replace": {
+    "type": "function",
+    "explanation": "Replaces occurrences of a substring with another string.",
+    "example": "<?php\necho str_replace('cat', 'dog', 'cat food');"
+  },
+  "str_starts_with": {
+    "type": "function",
+    "explanation": "Checks whether a string starts with a given prefix.",
+    "example": "<?php\nif (str_starts_with('hello', 'he')) echo 'yes';"
+  },
+  "string": {
+    "type": "type",
+    "explanation": "Text value type declaration.",
+    "example": "<?php\nfunction greet(string $name): string {\n    return 'Hello ' . $name;\n}"
+  },
+  "strlen": {
+    "type": "function",
+    "explanation": "Returns the length of a binary string in bytes.",
+    "example": "<?php\necho strlen('hello');"
+  },
+  "strtolower": {
+    "type": "function",
+    "explanation": "Converts a string to lowercase.",
+    "example": "<?php\necho strtolower('Hello');"
+  },
+  "strtoupper": {
+    "type": "function",
+    "explanation": "Converts a string to uppercase.",
+    "example": "<?php\necho strtoupper('Hello');"
+  },
+  "strval": {
+    "type": "function",
+    "explanation": "Converts a value to a string.",
+    "example": "<?php\n$text = strval(123);"
+  },
+  "substr": {
+    "type": "function",
+    "explanation": "Returns part of a string.",
+    "example": "<?php\necho substr('abcdef', 1, 3); // bcd"
+  },
+  "switch": {
+    "type": "control_structure",
+    "explanation": "Compares a value against several cases and runs the matching branch.",
+    "example": "<?php\nswitch ($day) {\n    case 'Mon':\n        echo 'Start of week';\n        break;\n    default:\n        echo 'Another day';\n}"
+  },
+  "throw": {
+    "type": "keyword",
+    "explanation": "Raises an exception or error object, stopping normal execution unless it is caught.",
+    "example": "<?php\nfunction check($age) {\n    if ($age < 0) throw new InvalidArgumentException('Age cannot be negative');\n}"
+  },
+  "throws": {
+    "type": "concept",
+    "explanation": "PHP does not have a throws keyword. Exceptions are documented by convention, attributes, static analysis, or PHPDoc.",
+    "example": "<?php\n/** @throws RuntimeException */\nfunction loadConfig(): array {\n    throw new RuntimeException('Missing config');\n}"
+  },
+  "time": {
+    "type": "function",
+    "explanation": "Returns the current Unix timestamp.",
+    "example": "<?php\necho time();"
+  },
+  "trait": {
+    "type": "keyword",
+    "explanation": "Defines reusable methods and properties that can be inserted into multiple classes.",
+    "example": "<?php\ntrait Logs {\n    public function log(string $msg): void {\n        echo $msg;\n    }\n}"
+  },
+  "trim": {
+    "type": "function",
+    "explanation": "Removes whitespace or specified characters from the beginning and end of a string.",
+    "example": "<?php\necho trim(' hello ');"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "Boolean literal representing truth.",
+    "example": "<?php\n$isActive = true;"
+  },
+  "true type": {
+    "type": "type",
+    "explanation": "A literal type that allows only true, available in modern PHP type declarations.",
+    "example": "<?php\nfunction enabled(): true {\n    return true;\n}"
+  },
+  "try": {
+    "type": "control_structure",
+    "explanation": "Marks a block of code to attempt running so errors or exceptions can be caught.",
+    "example": "<?php\ntry {\n    riskyOperation();\n} catch (Exception $e) {\n    echo $e->getMessage();\n}"
+  },
+  "union type": {
+    "type": "syntax_pattern",
+    "explanation": "A type declaration using | to allow more than one possible type.",
+    "example": "<?php\nfunction parse(string|int $value): string {\n    return (string) $value;\n}"
+  },
+  "uniqid": {
+    "type": "function",
+    "explanation": "Generates a unique string based on the current time. Not suitable for security tokens.",
+    "example": "<?php\necho uniqid('id_', true);"
+  },
+  "unset": {
+    "type": "language_construct",
+    "explanation": "Destroys a variable or removes an array element/object property.",
+    "example": "<?php\nunset($user['password']);"
+  },
+  "use": {
+    "type": "keyword",
+    "explanation": "Imports a class, function, constant, or trait into the current namespace/scope.",
+    "example": "<?php\nuse App\\Models\\User;\n\n$u = new User();"
+  },
+  "var": {
+    "type": "keyword",
+    "explanation": "Legacy visibility keyword for class properties. It behaves like public and is mostly replaced by explicit public/private/protected.",
+    "example": "<?php\nclass User {\n    var $name;\n}"
+  },
+  "var_dump": {
+    "type": "function",
+    "explanation": "Prints detailed debugging information about one or more values, including type and value.",
+    "example": "<?php\nvar_dump($user);"
+  },
+  "vendor/autoload.php": {
+    "type": "ecosystem_file",
+    "explanation": "Composer-generated autoloader file commonly required at application startup.",
+    "example": "<?php\nrequire __DIR__ . '/vendor/autoload.php';"
+  },
+  "void": {
+    "type": "type",
+    "explanation": "Return type meaning the function does not return a value.",
+    "example": "<?php\nfunction logMessage(string $msg): void {\n    echo $msg;\n}"
+  },
+  "while": {
+    "type": "control_structure",
+    "explanation": "Repeats a block of code while a condition remains true. The condition is checked before each iteration.",
+    "example": "<?php\n$n = 3;\nwhile ($n > 0) {\n    echo $n;\n    $n--;\n}"
+  },
+  "xor": {
+    "type": "operator",
+    "explanation": "Logical exclusive OR: true only when exactly one side is true.",
+    "example": "<?php\nif ($a xor $b) {\n    echo 'Only one is true';\n}"
+  },
+  "yield": {
+    "type": "keyword",
+    "explanation": "Produces a value from a generator function without returning all values at once.",
+    "example": "<?php\nfunction numbers() {\n    yield 1;\n    yield 2;\n}"
+  },
+  "yield from": {
+    "type": "syntax_pattern",
+    "explanation": "Delegates part of a generator to another iterable or generator.",
+    "example": "<?php\nfunction allNumbers() {\n    yield from [1, 2, 3];\n}"
+  },
+  "||": {
+    "type": "operator",
+    "explanation": "Logical OR: true when either side is true.",
+    "example": "if ($a || $b) { }"
   }
 }
