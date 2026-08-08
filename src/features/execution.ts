@@ -7,7 +7,7 @@ import { collectWorkspaceSnapshot } from './workspace';
 import { withCachedAssets } from './asset-transport.ts';
 import { notifyRunResult } from '../integrations/stepup-bus';
 import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
-import { startRunLoader, stopRunLoader } from '../components/run-loader';
+import { runEnded, runStarted } from '../components/run-controls.ts';
 import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas } from '../components/turtle';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
@@ -244,7 +244,11 @@ export async function runCode(
   stopInteractive();
 
   setStatus("Running…");
-  startRunLoader();
+  // One owner for the Run/Stop pair, and the point at which Stop becomes available.
+  // It is armed HERE rather than when the stream opens, because the compile happens
+  // first - up to 30 s for Java and 45 s for C# - and a student must be able to
+  // abandon a run during it.
+  runStarted(options.debug ? 'debug' : 'run', () => stopInteractive());
 
   try {
     let requestBody: Record<string, unknown> = {
@@ -365,9 +369,10 @@ requestBody = {
     if (options.debug) debugState.starting();
 
     const result = await runProgram(lang.id, requestBody, {
-      // Stop the spinner the moment the stream is live: from then on the console
-      // owns the panel and shows progress by printing.
-      onStreamStart: () => stopRunLoader(),
+      // The console owns the panel from here and shows progress by printing. The
+      // Run/Stop state is deliberately NOT changed: the program is still running,
+      // and Stop must stay available for exactly as long as that is true.
+      onStreamStart: () => {},
 
       debug: options.debug === true,
 
@@ -442,7 +447,6 @@ ${result.stdout || ''}`,
     // feature. Every other caller ignores it, exactly as before.
     return result;
   } catch (e: any) {
-    stopRunLoader();
     setOutputHtml(
       `<span class="error">ERROR: ${esc(e?.message || String(e))}</span>\n` +
       `<span class="error">[exit code: 1]</span>`
@@ -459,7 +463,7 @@ ${result.stdout || ''}`,
       });
     }
   } finally {
-    // Safety net: guarantees the button is never left stuck in a disabled/spinning state
-    stopRunLoader();
+    // Safety net: the buttons are never left stuck mid-run, whatever path we left by.
+    runEnded();
   }
 }

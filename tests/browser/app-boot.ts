@@ -1271,6 +1271,117 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
  * line was executed with no indication. Asserted against a real run, because the
  * failure is in what reaches the sandbox, not in what the editor shows.
  */
+/**
+ * The Run/Stop pair, and the debugger's toolbar being on screen rather than merely
+ * rendered.
+ *
+ * Both were invisible for the same underlying reason and neither had a test.
+ *
+ * `#editor` was `position: absolute; inset: 0`, which fills #editor-container - and a
+ * positioned element paints above its in-flow siblings, so Monaco covered the
+ * breadcrumbs bar and the whole debugger toolbar. The toolbar built its five buttons
+ * and updated their enabled state on every debug event, underneath the editor.
+ *
+ * And there was no way to stop a program at all: `startRunLoader()` disabled Run and
+ * put a spinner in it, so an endless loop could only be ended by the server timeout or
+ * by reloading the page.
+ *
+ * `elementFromPoint` rather than `getBoundingClientRect`, because the bug was never
+ * that the element had no box - it had a perfectly good box that nobody could see or
+ * click. Asking the document what is actually at those coordinates is the only check
+ * that would have failed before the fix.
+ */
+async function checkRunStopAndDebugToolbarAreVisible(frameWindow: Window): Promise<void> {
+  const frameDocument = frameWindow.document;
+
+  /*
+   * Open a source file first.
+   *
+   * The preceding scenario leaves an IMAGE tab active, and the asset viewer is an
+   * overlay across the editor area - so without this the toolbar is genuinely covered,
+   * by the viewer rather than by the editor, and this check would fail for a reason
+   * that has nothing to do with what it is testing.
+   */
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const workspace = runtime?.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  } | undefined;
+  const tabManager = runtime?.tabManager as { switchToTab(id: string): Promise<unknown> } | undefined;
+  if (workspace && tabManager) {
+    const source = await workspace.createDocument({
+      name: 'toolbar-probe.py',
+      content: 'print(1)\n',
+      language: 'python',
+      version: 'python3',
+    });
+    await tabManager.switchToTab(source.id);
+    await new Promise(resolve => frameWindow.requestAnimationFrame(() => resolve(null)));
+  }
+
+  const runButton = frameDocument.getElementById('run') as HTMLButtonElement | null;
+  const stopButton = frameDocument.getElementById('stop') as HTMLButtonElement | null;
+
+  check('there is a Run button', !!runButton);
+  check('there is a Stop button', !!stopButton);
+  if (!runButton || !stopButton) return;
+
+  check('Stop is hidden while nothing is running', stopButton.hidden);
+
+  /** Is this element the thing actually on screen at its own centre? */
+  const isOnTop = (element: HTMLElement): boolean => {
+    const box = element.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) return false;
+    const hit = frameDocument.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    return hit === element || element.contains(hit);
+  };
+
+  const toolbar = frameDocument.getElementById('debug-toolbar') as HTMLElement | null;
+  check('the debugger has a toolbar element', !!toolbar);
+  if (!toolbar) return;
+
+  // Force it visible without a debug session: this is a LAYOUT assertion, and the
+  // question is whether the editor paints over it, which does not depend on state.
+  const wasHidden = toolbar.hidden;
+  toolbar.hidden = false;
+  await new Promise(resolve => frameWindow.requestAnimationFrame(() => resolve(null)));
+
+  const buttons = ['debug-continue', 'debug-step-over', 'debug-step-in', 'debug-step-out', 'debug-stop'];
+  const missing = buttons.filter(id => !frameDocument.getElementById(id));
+  check('all five debugger buttons exist', missing.length === 0, `missing: ${missing.join(', ')}`);
+
+  const detail: string[] = [];
+  const covered = buttons
+    .map(id => frameDocument.getElementById(id) as HTMLElement | null)
+    .filter((element): element is HTMLElement => !!element)
+    .filter(element => {
+      const box = element.getBoundingClientRect();
+      const hit = frameDocument.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      ) as HTMLElement | null;
+      const ok = box.width > 0 && box.height > 0 && (hit === element || element.contains(hit));
+      if (!ok) {
+        detail.push(
+          `${element.id} box=${Math.round(box.width)}x${Math.round(box.height)}@` +
+          `${Math.round(box.left)},${Math.round(box.top)} hit=${hit ? (hit.id || hit.className || hit.tagName) : 'null'}`,
+        );
+      }
+      return !ok;
+    })
+    .map(element => element.id);
+
+  check(
+    'the debugger buttons are actually on screen, not under the editor',
+    covered.length === 0,
+    detail.join(' | '),
+  );
+
+  toolbar.hidden = wasHidden;
+}
+
 async function checkRunSelection(frameWindow: Window): Promise<void> {
   const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
   if (!runtime) {
@@ -1672,6 +1783,7 @@ async function run(): Promise<void> {
   await checkKeyboardAndScreenReader(frameWindow);
   await checkClosingATabKeepsTheFileUsable(frameWindow);
   await checkAnOpenImageIsNotOverwritten(frameWindow);
+  await checkRunStopAndDebugToolbarAreVisible(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

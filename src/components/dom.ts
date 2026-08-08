@@ -4,6 +4,7 @@ export const langSel = document.getElementById("lang") as HTMLSelectElement;
 export const versionSel = document.getElementById("version") as HTMLSelectElement;
 export const themeSel = document.getElementById("theme") as HTMLSelectElement;
 export const runBtn = document.getElementById("run") as HTMLButtonElement;
+export const stopBtn = document.getElementById("stop") as HTMLButtonElement;
 export const debugBtn = document.getElementById("debug") as HTMLButtonElement;
 export const downloadBtn = document.getElementById("download") as HTMLButtonElement;
 export const clearOutputBtn = document.getElementById("clearOutput") as HTMLButtonElement;

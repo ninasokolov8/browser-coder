@@ -15,9 +15,10 @@
 import * as monaco from 'monaco-editor';
 
 import { runtime, requireEditor, requireTabManager } from '../app/runtime';
-import { debugBtn, runBtn } from '../components/dom';
+import { debugBtn, runBtn, stopBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
+import { isRunActive, requestStop } from '../components/run-controls.ts';
 import { runCode } from './execution';
 import { languageCan } from '../languages/loader';
 import { getOrCreateModel } from './editor-core';
@@ -204,12 +205,35 @@ commands.register({
   run: () => downloadSelectedItem(),
 });
 
+/**
+ * Stop the running program.
+ *
+ * A command and not only a button, so it is in the palette, is keybindable, and is
+ * reachable from the keyboard by a student who cannot use a mouse. Deliberately has NO
+ * capability requirement: stopping is not an edit and not a run, and an embed that
+ * forbids running must still let a student end something already going.
+ *
+ * `when` keeps it out of the palette while nothing is running, so it is never offered
+ * as an action that would do nothing.
+ */
+commands.register({
+  id: 'workspace.stopRun',
+  title: 'Stop the running program',
+  when: () => isRunActive(),
+  run: () => requestStop(),
+});
+
 bindButton(commands, runBtn, 'workspace.run');
+bindButton(commands, stopBtn, 'workspace.stopRun');
 // Bound through the registry like every other control, so its enabled state and its
 // refusal both come from the command's own declaration rather than from CSS.
 bindButton(commands, debugBtn, 'workspace.debug');
 
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'workspace.run');
+// Shift+F5 is Stop in VS Code, and it already stops a DEBUG session here - so the
+// same key now ends a plain run too, rather than meaning two different things
+// depending on how the program happened to be started.
+bindKeybinding(commands, editor, monaco.KeyMod.Shift | monaco.KeyCode.F5, 'workspace.stopRun');
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, 'workspace.saveFile');
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, 'workspace.newFile');
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, 'workspace.closeTab');

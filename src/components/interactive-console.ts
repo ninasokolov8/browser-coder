@@ -29,7 +29,7 @@
 //
 // /api/run still exists and is still a frozen contract - Step-Up calls it
 // server-side - it is simply no longer how the IDE runs code.
-import { panelContentEl, runBtn } from './dom';
+import { panelContentEl } from './dom';
 import { setStatus } from './output';
 import { renderTurtle } from './turtle';
 import { t } from '../i18n';
@@ -214,7 +214,10 @@ export function runProgram(
       if (settled) return;
       settled = true;
       inputLine.remove();
-      runBtn.disabled = false;
+      // The Run/Stop pair is owned by run-controls.ts. This module used to set
+      // `runBtn.disabled` here and below, competing with run-loader.ts and
+      // execution.ts for one button - which is how Run ended up disabled for the
+      // whole run with no Stop anywhere.
       resolve(result);
     };
 
@@ -265,7 +268,6 @@ export function runProgram(
       settle({ stdout: aggStdout, stderr: aggStderr, exitCode, durationMs: durationMs || 0 });
     };
 
-    runBtn.disabled = true;
     setStatus('Running…');
 
     let sessionId = '';

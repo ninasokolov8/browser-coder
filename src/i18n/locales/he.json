@@ -2,6 +2,7 @@
   "app.title": "Browser Coder - סביבת פיתוח",
   "app.logo": "Browser Coder",
   "titlebar.run": "הפעל",
+  "titlebar.stop": "עצור",
   "titlebar.running": "מפעיל",
   "titlebar.download": "הורד",
   "titlebar.clear": "נקה",
