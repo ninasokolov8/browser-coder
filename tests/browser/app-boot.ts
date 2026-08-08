@@ -1924,12 +1924,14 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
   const output = () => frame.contentDocument?.getElementById('panel-content')?.textContent ?? '';
   const explained = await waitFor(
     'the explanation to appear',
-    () => /What this means/.test(output()),
+    () => /what this means/i.test(output()),
     30000,
   );
   check('a failed run explains the error', explained, output().slice(-300));
 
   const panel = output();
+  const explanationStart = panel.search(/what this means/i);
+  const explanation = explanationStart >= 0 ? panel.slice(explanationStart) : panel;
   check(
     'the runtime message is still shown, not replaced',
     /ReferenceError/.test(panel),
@@ -1937,12 +1939,12 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
   );
   check(
     'the explanation is the one for THIS error',
-    /never seen|declared/i.test(panel.slice(panel.indexOf('What this means'))),
-    panel.slice(panel.indexOf('What this means'), panel.indexOf('What this means') + 200),
+    /never seen|declared/i.test(explanation),
+    explanation.slice(0, 200),
   );
   check(
     'it says what usually causes it',
-    /spelling mistake|typo/i.test(panel.slice(panel.indexOf('What this means'))),
+    /spelling mistake|typo/i.test(explanation),
   );
 }
 

@@ -268,5 +268,3 @@ export const typescriptAdapter = {
     };
   },
 };
-
-export default typescriptAdapter;

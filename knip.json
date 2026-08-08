@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "scripts/*.mjs",
+    "security/reports/index.js",
+    "languages/*/debug_adapter.mjs",
+    "languages/javascript/debug_worker.mjs",
+    "server/domain/*.d.mts",
+    "tests/browser/*.ts",
+    "tests/contract/*.test.mjs",
+    "tests/unit/*.test.{ts,mjs}",
+    "tests/security/**/*.mjs"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "server/**/*.{mjs,mts}",
+    "languages/**/*.mjs",
+    "security/**/*.{js,mjs}",
+    "scripts/**/*.mjs",
+    "tests/**/*.{ts,mjs}"
+  ],
+  "ignoreExportsUsedInFile": true
+}

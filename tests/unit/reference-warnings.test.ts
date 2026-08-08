@@ -15,6 +15,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  formatRewriteWarning,
   movedBasenames,
   warningsForUnhandledFile,
 } from '../../src/features/explorer/reference-warnings.ts';
@@ -60,10 +61,12 @@ describe('it speaks when a reference is at risk', () => {
       moved,
     );
     assert.equal(warnings.length, 1);
-    assert.match(warnings[0], /notes\.md/);
-    assert.match(warnings[0], /maze\.svg/);
-    assert.match(warnings[0], /markdown/);
-    assert.match(warnings[0], /by hand/);
+    assert.deepEqual(warnings[0], {
+      kind: 'unhandled-reference',
+      filePath: 'notes.md',
+      name: 'maze.svg',
+      language: 'markdown',
+    });
   });
 
   test('an svg href reference is reported', () => {
@@ -96,12 +99,15 @@ describe('it speaks when a reference is at risk', () => {
     assert.equal(warnings.length, 2);
   });
 
-  test('the message names the file, the reference and the language', () => {
-    // A warning the student cannot act on is barely better than silence.
+  test('the warning carries everything the translated message needs', () => {
     const [warning] = warningsForUnhandledFile('a/notes.md', 'see maze.svg', 'markdown', moved);
-    assert.match(warning, /a\/notes\.md/);
-    assert.match(warning, /"maze\.svg"/);
-    assert.match(warning, /markdown/);
+    const formatted = formatRewriteWarning(
+      warning,
+      (key, params) => `${key}: ${JSON.stringify(params)}`,
+    );
+    assert.match(formatted, /a\/notes\.md/);
+    assert.match(formatted, /maze\.svg/);
+    assert.match(formatted, /markdown/);
   });
 });
 
@@ -132,8 +138,9 @@ describe('it stays quiet otherwise', () => {
     assert.deepEqual(warningsForUnhandledFile('notes.md', '', 'markdown', moved), []);
   });
 
-  test('a missing language label still produces a usable sentence', () => {
+  test('a generic language label is preserved for the formatter', () => {
     const [warning] = warningsForUnhandledFile('x.txt', 'maze.svg', 'this file type', moved);
-    assert.match(warning, /this file type/);
+    assert.equal(warning.kind, 'unhandled-reference');
+    if (warning.kind === 'unhandled-reference') assert.equal(warning.language, 'this file type');
   });
 });

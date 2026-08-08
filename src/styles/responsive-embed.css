@@ -1,0 +1,394 @@
+/* ===== RESPONSIVE =====
+   Responsive rules live at the END of this stylesheet (after the FULL
+   EMBED overrides) so they win source-order ties against the
+   `!important` embed rules. */
+
+/* ===== UTILITIES ===== */
+.hidden { display: none !important; }
+
+/* ===== RTL SUPPORT =====
+   Product decision: Hebrew keeps every UI element in the exact same
+   position as English (activity bar, sidebar, editor, controls, tree
+   indentation - nothing moves). Only the translated TEXT itself
+   becomes right-to-left / right-aligned, applied directly on each
+   translated element by i18n's translatePage() (see src/i18n/index.ts)
+   - never on <html> or on structural containers like #app/#sidebar/
+   #activitybar. Setting `direction: rtl` on a structural container
+   makes browsers auto-mirror flex/grid child order, which previously
+   caused the whole layout (and the editor's code) to visually
+   disappear when switching to Hebrew. This block intentionally does
+   NOT re-add that: no grid-template overrides, no border/margin
+   swaps, no flex-direction reversal. */
+.rtl {
+  /* No direction/text-align here on purpose - see comment above. */
+}
+/* Language selector */
+#lang-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+#ui-lang {
+  height: 24px;
+  padding: 0 6px;
+  background: var(--bg-sidebar);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODE SYSTEM - For Step-Up Integration (External Embedding)
+   Modes: snippet, project, full
+   Flags: embedded, readonly, nooutput
+═══════════════════════════════════════════════════════════════════ */
+
+/* Base embedded mode - hide chrome the parent app doesn't want.
+   IMPORTANT: titlebar is NOT hidden by default in embedded mode -
+   it contains the Run button which free_code/free workflows need.
+   Individual non-essential controls inside titlebar are hidden below. */
+body.embedded #activitybar,
+body.embedded #sidebar,
+body.embedded #statusbar {
+  display: none !important;
+}
+body.embedded #app {
+  grid-template-columns: 1fr !important;
+  grid-template-areas:
+    "titlebar"
+    "main" !important;
+}
+/* Hide noisy titlebar controls in embedded mode - keep only run button + language indicator */
+body.embedded #titlebar .logo,
+body.embedded #titlebar #btn-hack-lab,
+body.embedded #titlebar #btn-download-project,
+body.embedded #titlebar #btn-clear-cache,
+body.embedded #titlebar #download,
+body.embedded #titlebar #theme,
+body.embedded #titlebar #lang-selector,
+body.embedded #titlebar .titlebar-separator {
+  display: none !important;
+}
+body.embedded #titlebar {
+  padding: 4px 8px;
+  min-height: 36px;
+}
+
+/* Lock all resize/draggable handles in embedded mode - parent app controls sizing */
+body.embedded #sidebar-resize,
+body.embedded #panel-resize {
+  display: none !important;
+  pointer-events: none !important;
+}
+body.embedded #sidebar {
+  resize: none !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+/* Force LTR layout in embedded mode - code editor is always LTR */
+body.embedded {
+  direction: ltr !important;
+}
+body.embedded #editor-container,
+body.embedded #main {
+  direction: ltr !important;
+}
+
+/* SNIPPET MODE - minimal UI (editor + output only) */
+body.mode-snippet #sidebar,
+body.mode-snippet #activitybar,
+body.mode-snippet #tabs {
+  display: none !important;
+}
+body.mode-snippet #app {
+  grid-template-columns: 1fr !important;
+  grid-template-areas:
+    "titlebar"
+    "main"
+    "statusbar" !important;
+}
+body.mode-snippet.embedded #app {
+  grid-template-rows: auto 1fr !important;
+  grid-template-areas:
+    "titlebar"
+    "main" !important;
+}
+body.mode-snippet #editor-container {
+  border-radius: 4px;
+}
+
+/* PROJECT MODE - show file tree + tabs */
+body.mode-project #sidebar {
+  display: flex !important;
+  width: 200px;
+}
+body.mode-project #tabs {
+  display: flex !important;
+}
+body.mode-project #activitybar {
+  display: none !important;
+}
+body.mode-project #app {
+  grid-template-columns: 200px 1fr !important;
+  grid-template-areas:
+    "sidebar titlebar"
+    "sidebar main"
+    "sidebar statusbar" !important;
+}
+body.mode-project.embedded #app {
+  grid-template-columns: 200px 1fr !important;
+  grid-template-rows: auto 1fr !important;
+  grid-template-areas:
+    "sidebar titlebar"
+    "sidebar main" !important;
+}
+body.embedded.mode-project #sidebar {
+  display: flex !important;
+  width: 200px;
+}
+
+/* FULL MODE - everything visible */
+body.mode-full #sidebar {
+  display: flex !important;
+}
+body.mode-full #activitybar {
+  display: flex !important;
+}
+body.mode-full #tabs {
+  display: flex !important;
+}
+body.mode-full #statusbar {
+  display: flex !important;
+}
+body.mode-full #app {
+  grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
+  grid-template-rows: auto 1fr auto !important;
+  grid-template-areas:
+    "activitybar titlebar titlebar"
+    "activitybar sidebar main"
+    "statusbar statusbar statusbar" !important;
+}
+body.mode-full.embedded #app {
+  grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
+  grid-template-rows: auto 1fr auto !important;
+  grid-template-areas:
+    "activitybar titlebar    titlebar"
+    "activitybar sidebar     main"
+    "statusbar   statusbar   statusbar" !important;
+}
+body.embedded.mode-full #sidebar {
+  display: flex !important;
+}
+body.embedded.mode-full #activitybar {
+  display: flex !important;
+}
+body.embedded.mode-full #statusbar {
+  display: flex !important;
+}
+
+/* Readonly mode - visual indicator + cursor hidden + hide run button
+   (parent app drives execution for fill_blanks etc.) */
+body.readonly #editor-container {
+  background: rgba(100, 100, 100, 0.03);
+}
+body.readonly .monaco-editor .cursors-layer {
+  display: none !important;
+}
+body.readonly .monaco-editor .current-line {
+  background: transparent !important;
+  border: none !important;
+}
+body.run-disabled #titlebar #run {
+  display: none !important;
+}
+
+body.structure-locked #btn-new-file,
+body.structure-locked #btn-new-folder,
+body.structure-locked #empty-state-new-file,
+body.structure-locked .context-menu-item[data-action="import-files"],
+body.structure-locked .context-menu-item[data-action="import-folder"],
+body.structure-locked .context-menu-item[data-action="new-file"],
+body.structure-locked .context-menu-item[data-action="new-folder"],
+body.structure-locked .context-menu-item[data-action="rename"],
+body.structure-locked .context-menu-item[data-action="delete"],
+body.structure-locked #tabs .tab-add,
+body.structure-locked #tabs .tab-close {
+  display: none !important;
+}
+
+body.search-replace-disabled #search-panel .search-inputs .search-row:nth-child(2),
+body.search-replace-disabled #replace-input,
+body.search-replace-disabled #btn-replace-all,
+body.search-replace-disabled #search-summary .search-btn.primary,
+body.search-replace-disabled #btn-replace-all-files,
+body.search-replace-disabled .search-match-btn[data-action="replace"],
+body.search-replace-disabled .search-file-btn[data-action="replace-file"] {
+  display: none !important;
+}
+
+/* Embedded mode: language/version are fixed by the host (Step-Up task config). */
+body.embedded #lang,
+body.embedded #version,
+body.embedded label[for="lang"],
+body.embedded label[for="version"] {
+  display: none !important;
+}
+
+body.hide-explorer-panel .activity-icon[data-panel="explorer"],
+body.hide-explorer-panel #explorer-panel,
+body.hide-search-panel .activity-icon[data-panel="search"],
+body.hide-search-panel #search-panel,
+body.hide-run-panel .activity-icon[data-panel="run"],
+body.hide-run-panel #run-panel {
+  display: none !important;
+}
+
+/* No output mode - hide output panel AND titlebar entirely
+   (used for code_reading: pure read-only view, no controls) */
+body.nooutput #panel {
+  display: none !important;
+}
+body.nooutput #main {
+  grid-template-rows: auto 1fr !important;
+}
+body.embedded.nooutput #titlebar {
+  display: none !important;
+}
+body.embedded.nooutput #app {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  grid-template-areas:
+    "main" !important;
+}
+body.embedded.nooutput.mode-project #app {
+  grid-template-columns: 200px 1fr !important;
+  grid-template-rows: 1fr !important;
+  grid-template-areas:
+    "sidebar main" !important;
+}
+body.embedded.nooutput.mode-full #app {
+  grid-template-columns: 48px var(--sidebar-width, 220px) 1fr !important;
+  grid-template-rows: 1fr !important;
+  grid-template-areas:
+    "activitybar sidebar main" !important;
+}
+body.embedded.nooutput.mode-full #sidebar {
+  display: flex !important;
+}
+body.embedded.nooutput.mode-full #activitybar {
+  display: flex !important;
+}
+body.embedded.nooutput.mode-full #statusbar {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FULL EMBED - behave like the standalone full IDE.
+   Restores the titlebar controls and drag-resize handles that the
+   base `.embedded` rules hide for snippet/project embeds.
+   Hack Lab and Clear Cache stay hidden: they navigate away from the
+   lesson / wipe the parent-managed workspace. */
+body.embedded.mode-full #titlebar .logo {
+  display: flex !important;
+}
+body.embedded.mode-full #titlebar #download,
+body.embedded.mode-full #titlebar #btn-download-project,
+body.embedded.mode-full #titlebar #theme,
+body.embedded.mode-full #titlebar #lang,
+body.embedded.mode-full #titlebar #version {
+  display: inline-block !important;
+}
+body.embedded.mode-full #titlebar #lang-selector {
+  display: flex !important;
+}
+body.embedded.mode-full #titlebar .titlebar-separator {
+  display: block !important;
+}
+body.embedded.mode-full #sidebar-resize,
+body.embedded.mode-full #panel-resize {
+  display: block !important;
+  pointer-events: auto !important;
+}
+
+/* Opt-in Hack Lab access inside embeds (?hacklab=1). Off by default so
+   existing embeds stay unchanged. Shows the button + its separator. */
+body.embedded.hacklab-enabled #titlebar #btn-hack-lab {
+  display: inline-block !important;
+}
+body.embedded.hacklab-enabled #titlebar .titlebar-separator {
+  display: block !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE TOOLBAR & LAYOUT
+   Placed last so these rules win source-order ties against the FULL
+   EMBED overrides above. Strategy as the viewport narrows:
+     1. Toolbar buttons collapse to icon-only (labels hidden).
+     2. Non-essential controls drop out (theme, download, UI language…).
+     3. Chrome (activity bar + sidebar) slims down to protect the editor.
+   The Run + Language controls always survive. Nothing overflows the bar. */
+
+/* Never let toolbar content spill out of the bar (the reported bug) */
+#titlebar { overflow: hidden; min-width: 0; }
+#titlebar .controls { min-width: 0; }
+#titlebar #status {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+#titlebar select { max-width: 150px; }
+/* Tabs bar scrolls horizontally instead of stretching the layout */
+#tabs { overflow-x: auto; }
+
+/* Tablet / small window: icon-only buttons, hide the status + logo text */
+@media (max-width: 1024px) {
+  #titlebar { gap: 6px; padding: 0 8px; }
+  #titlebar .controls { gap: 6px; }
+  #titlebar .btn span[data-i18n],
+  #titlebar .logo span[data-i18n] { display: none; }
+  #titlebar #status { display: none; }
+  #titlebar select { max-width: 118px; font-size: 11px; }
+}
+
+/* Phone / very narrow: keep only language, version, run (+ hacklab).
+   Embed-specific selectors included so these beat the FULL EMBED rules. */
+@media (max-width: 720px) {
+  #titlebar #theme,
+  body.embedded.mode-full #titlebar #theme,
+  #titlebar #download,
+  body.embedded.mode-full #titlebar #download,
+  #titlebar #btn-download-project,
+  body.embedded.mode-full #titlebar #btn-download-project,
+  #titlebar #btn-clear-cache,
+  #titlebar #lang-selector,
+  body.embedded.mode-full #titlebar #lang-selector,
+  #titlebar .titlebar-separator,
+  body.embedded.mode-full #titlebar .titlebar-separator {
+    display: none !important;
+  }
+  #titlebar select { max-width: 104px; }
+  #activitybar { width: 40px; }
+  #sidebar { width: auto !important; min-width: 0 !important; }
+  body.mode-full #app,
+  body.mode-full.embedded #app {
+    grid-template-columns: 40px var(--sidebar-width, 170px) 1fr !important;
+  }
+  body.embedded.nooutput.mode-full #app {
+    grid-template-columns: 40px var(--sidebar-width, 170px) 1fr !important;
+  }
+}
+
+/* Smallest screens: drop the version selector too (keep language + run),
+   and make the file tree comfortably tappable. */
+@media (max-width: 480px) {
+  #titlebar #version,
+  body.embedded.mode-full #titlebar #version { display: none !important; }
+  #titlebar select { max-width: 92px; font-size: 11px; }
+  body.mode-full #app,
+  body.mode-full.embedded #app,
+  body.embedded.nooutput.mode-full #app {
+    grid-template-columns: 36px var(--sidebar-width, 140px) 1fr !important;
+  }
+  .tree-item { padding-top: 6px; padding-bottom: 6px; }
+}

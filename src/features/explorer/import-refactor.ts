@@ -1,14 +1,19 @@
 import { runtime } from '../../app/runtime';
 import type { StoredFile } from '../../storage';
 import { lazyRef } from '../../app/lazy';
-import { movedBasenames, warningsForUnhandledFile } from './reference-warnings.ts';
+import {
+  movedBasenames,
+  rewriteWarningIdentity,
+  warningsForUnhandledFile,
+  type RewriteWarning,
+} from './reference-warnings.ts';
 
 export type WorkspacePathSnapshot = Map<string, string>;
 
 interface RewriteResult {
   content: string;
   replacements: number;
-  warnings: string[];
+  warnings: RewriteWarning[];
   /**
    * True when this file's language has no rewriter here at all.
    *
@@ -40,7 +45,6 @@ const HTML_EXTENSIONS = ['.html', '.htm'];
 const CSS_EXTENSIONS = ['.css'];
 
 const storage = lazyRef(() => runtime.storage, 'storage');
-const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 
 function splitPath(value: string): string[] {
   return String(value || '')
@@ -243,7 +247,7 @@ function rewriteJavaScriptImports(
   newPathById: Map<string, string>,
 ): RewriteResult {
   let replacements = 0;
-  const warnings: string[] = [];
+  const warnings: RewriteWarning[] = [];
 
   const rewriteSpecifier = (specifier: string): string => {
     if (!specifier.startsWith('.')) return specifier;
@@ -436,7 +440,7 @@ function rewritePythonImports(
   uniqueNewPythonStemToId: Map<string, string>,
 ): RewriteResult {
   let replacements = 0;
-  const warnings: string[] = [];
+  const warnings: RewriteWarning[] = [];
 
   const rewriteModule = (moduleName: string): string => {
     const resolvedOldModule =
@@ -470,11 +474,7 @@ function rewritePythonImports(
         return targetStem;
       }
 
-      warnings.push(
-        `Could not safely rewrite Python import for "${targetNewPath}". ` +
-        `The module filename must be a valid identifier and unique across the workspace, ` +
-        `or every folder in its package path must be a valid Python identifier.`,
-      );
+      warnings.push({ kind: 'python-import', path: targetNewPath });
       return moduleName;
     }
 
@@ -514,7 +514,7 @@ function rewritePhpImports(
   newPathById: Map<string, string>,
 ): RewriteResult {
   let replacements = 0;
-  const warnings: string[] = [];
+  const warnings: RewriteWarning[] = [];
 
   const rewriteSpecifier = (specifier: string): string => {
     const normalizedSpecifier = specifier.replace(/\\/g, '/');
@@ -693,7 +693,7 @@ function rewriteJavaImports(
   newPathById: Map<string, string>,
 ): RewriteResult {
   let replacements = 0;
-  const warnings: string[] = [];
+  const warnings: RewriteWarning[] = [];
   const newPackage = javaPackageForPath(importerNewPath);
 
   let updated = content.replace(
@@ -706,9 +706,7 @@ function rewriteJavaImports(
       suffix: string,
     ) => {
       if (newPackage === null) {
-        warnings.push(
-          `Could not update Java package for "${importerNewPath}". Folder names must be valid Java identifiers.`,
-        );
+        warnings.push({ kind: 'java-package', path: importerNewPath });
         return `${lineStart}${prefix}${oldPackage}${suffix}`;
       }
 
@@ -767,9 +765,7 @@ function rewriteJavaImports(
 
       const next = javaQualifiedName(targetNewPath);
       if (!next) {
-        warnings.push(
-          `Could not rewrite Java import for "${targetNewPath}". Folder and class names must be valid Java identifiers.`,
-        );
+        warnings.push({ kind: 'java-import', path: targetNewPath });
         return `${lineStart}${prefix}${importedName}${suffix}`;
       }
 
@@ -794,7 +790,7 @@ function rewriteCSharpImports(
   newPathById: Map<string, string>,
 ): RewriteResult {
   let replacements = 0;
-  const warnings: string[] = [];
+  const warnings: RewriteWarning[] = [];
 
   const oldImporterNamespace = csharpNamespaceForPath(importerOldPath);
   const newImporterNamespace = csharpNamespaceForPath(importerNewPath);
@@ -812,9 +808,7 @@ function rewriteCSharpImports(
         suffix: string,
       ) => {
         if (!newImporterNamespace) {
-          warnings.push(
-            `Could not update C# namespace for "${importerNewPath}". Folder names must be valid C# identifiers.`,
-          );
+          warnings.push({ kind: 'csharp-namespace', path: importerNewPath });
           return `${lineStart}${prefix}${oldNamespace}${suffix}`;
         }
 
@@ -848,9 +842,7 @@ function rewriteCSharpImports(
 
       if (newNamespaces.size !== 1) {
         if (newNamespaces.size > 1) {
-          warnings.push(
-            `Could not safely rewrite C# using "${namespaceName}" because its files moved into multiple namespaces.`,
-          );
+          warnings.push({ kind: 'csharp-using-split', namespace: namespaceName });
         }
         return `${lineStart}${prefix}${namespaceName}${suffix}`;
       }
@@ -1016,7 +1008,7 @@ function rewriteImportsForFile(
  */
 export async function refactorWorkspaceImports(
   beforePaths: WorkspacePathSnapshot,
-): Promise<{ replacements: number; changedFiles: number; warnings: string[] }> {
+): Promise<{ replacements: number; changedFiles: number; warnings: RewriteWarning[] }> {
   const files: StoredFile[] = await storage.getAllFiles();
   const newPathById = new Map(
     files.map(file => [file.id, normalizeWorkspacePath(file.path)]),
@@ -1050,7 +1042,7 @@ export async function refactorWorkspaceImports(
 
   let replacements = 0;
   let changedFiles = 0;
-  const warnings = new Set<string>();
+  const warnings = new Map<string, RewriteWarning>();
 
   // The file names that actually moved, for the unhandled-language warning below.
   const moved = movedBasenames(
@@ -1079,7 +1071,9 @@ export async function refactorWorkspaceImports(
       uniqueNewPythonStemToId,
     );
 
-    for (const warning of result.warnings) warnings.add(warning);
+    for (const warning of result.warnings) {
+      warnings.set(rewriteWarningIdentity(warning), warning);
+    }
 
     // A file whose language has no rewriter here cannot be silently reported as
     // clean. The rule for when to speak lives in reference-warnings.ts, which is
@@ -1092,7 +1086,7 @@ export async function refactorWorkspaceImports(
         file.language || 'this file type',
         moved,
       )) {
-        warnings.add(warning);
+        warnings.set(rewriteWarningIdentity(warning), warning);
       }
     }
 
@@ -1108,6 +1102,6 @@ export async function refactorWorkspaceImports(
   return {
     replacements,
     changedFiles,
-    warnings: [...warnings],
+    warnings: [...warnings.values()],
   };
 }

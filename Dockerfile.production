@@ -1,7 +1,8 @@
-# Production Dockerfile - Auto-scaling ready for 10k+ users
-# SECURITY HARDENED: Sandboxed code execution environment
+# Production image for the web IDE and restricted language toolchains.
+# Capacity depends on measured workload and deployment resources; it is not a
+# property of the image itself.
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -11,7 +12,7 @@ COPY . .
 RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 
 # Production runtime
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Install language runtimes
 # su-exec: lets the entrypoint start as root (to fix bind-mounted volume
@@ -82,7 +83,9 @@ COPY --from=builder /app/server.mjs ./
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/languages ./languages
 COPY --from=builder /app/security ./security
-COPY --from=builder /app/tests ./tests
+# The report runner reuses the canonical attack fixtures; no other test source
+# belongs in the runtime image.
+COPY --from=builder /app/tests/security/attacks ./tests/security/attacks
 
 # Fail the BUILD rather than the container if a required module is missing.
 # A missing import is otherwise only discovered when the process starts, which in
@@ -90,7 +93,7 @@ COPY --from=builder /app/tests ./tests
 RUN node --input-type=module -e "import('/app/server/config.mjs').then(()=>console.log('module tree present'))"
 
 # Ensure reports directories exist and are writable
-RUN mkdir -p /app/security/reports /app/tests/reports /preview-data && \
+RUN mkdir -p /app/security/reports /preview-data && \
     chown app:app /preview-data && chmod 770 /preview-data
 
 # SECURITY: Set proper ownership and permissions
@@ -99,7 +102,6 @@ RUN chown -R app:app /app && \
     chmod 644 /app/server.mjs && \
     find /app/languages -type d -exec chmod 755 {} \; && \
     find /app/languages -type f -exec chmod 444 {} \; && \
-    chmod 777 /app/tests/reports && \
     chmod 777 /app/security/reports
 
 # SECURITY: Remove unnecessary packages and shells after setup
@@ -110,7 +112,7 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 # NOTE: intentionally NOT switching to `USER app` here. The container starts
 # as root so the entrypoint can repair permissions on bind-mounted volumes
-# (security/reports, tests/reports) which may be owned by whatever UID
+# (security/reports) which may be owned by whatever UID
 # checked out the repo on the host - then it drops to the unprivileged
 # "app" user (via su-exec) before running the actual server process.
 

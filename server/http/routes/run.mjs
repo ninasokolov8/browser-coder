@@ -616,5 +616,3 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
     idempotent: true,
   });
 }
-
-export default registerRunRoutes;

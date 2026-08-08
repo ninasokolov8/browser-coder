@@ -1,0 +1,167 @@
+:root {
+  --bg-main: #ffffff;
+  --bg-sidebar: #f3f3f3;
+  --bg-activitybar: #2c2c2c;
+  --bg-editor: #ffffff;
+  --bg-panel: #f3f3f3;
+  --bg-titlebar: #dddddd;
+  --bg-statusbar: #007acc;
+  --bg-tab: #ececec;
+  --bg-tab-active: #ffffff;
+  --bg-tab-hover: #e8e8e8;
+  --border-color: #e0e0e0;
+  --text-primary: #333333;
+  --text-secondary: #6e6e6e;
+  --text-muted: #999999;
+  --accent: #007acc;
+  --icon-color: #858585;
+  --icon-active: #ffffff;
+
+  /* Semantic colours. Everything below used to be a hardcoded VS-Code-dark
+     literal in a component rule, so light mode inherited values chosen for a
+     #1e1e1e background: the Output panel's success line was 1.6:1 on #f3f3f3,
+     the debugger's paused-line arrow 1.5:1, and every white-alpha overlay
+     1.01:1 - invisible. These pairs are chosen to clear 4.5:1 for text and
+     3:1 for glyphs on BOTH themes' backgrounds. */
+  --fg-error: #b5250e;
+  --fg-success: #1a7f37;
+  --fg-info: #0a5aa8;
+  --fg-warning: #8a5300;
+  --fg-symbol: #0b6fa4;
+  --fg-dirty: #9a5b00;
+  --fg-annotation: #24713a;
+  --fg-danger: #b3261e;
+  --fg-exception: #c42b1c;
+  --glyph-current: #b58900;
+  --bg-current-line: rgba(181, 137, 0, 0.26);
+  --bg-hover: rgba(0, 0, 0, 0.06);
+  --bg-hover-strong: rgba(0, 0, 0, 0.09);
+  --bg-selected: rgba(0, 122, 204, 0.16);
+  --bg-danger-soft: rgba(220, 53, 69, 0.14);
+  --border-subtle: rgba(0, 0, 0, 0.14);
+  --border-faint: rgba(0, 0, 0, 0.08);
+  --focus-ring: #0a5aa8;
+  --bg-input: #ffffff;
+  --bg-checker: #f0f0f0;
+  --bg-checker-alt: #dcdcdc;
+  --shadow-strong: rgba(0, 0, 0, 0.18);
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+  /* Native scrollbars and form controls follow the theme rather than the OS. */
+  color-scheme: light;
+}
+
+.dark-theme {
+  --bg-main: #1e1e1e;
+  --bg-sidebar: #252526;
+  --bg-activitybar: #333333;
+  --bg-editor: #1e1e1e;
+  --bg-panel: #1e1e1e;
+  --bg-titlebar: #3c3c3c;
+  --bg-statusbar: #007acc;
+  --bg-tab: #2d2d2d;
+  --bg-tab-active: #1e1e1e;
+  --bg-tab-hover: #383838;
+  --border-color: #3c3c3c;
+  --text-primary: #cccccc;
+  --text-secondary: #969696;
+  --text-muted: #6e6e6e;
+  --accent: #007acc;
+  --icon-color: #858585;
+  --icon-active: #ffffff;
+
+  --fg-error: #f48771;
+  --fg-success: #89d185;
+  --fg-info: #75beff;
+  --fg-warning: #ce9178;
+  --fg-symbol: #9cdcfe;
+  --fg-dirty: #e8ab6a;
+  --fg-annotation: #6a9955;
+  --fg-danger: #ff6b6b;
+  --fg-exception: #f14c4c;
+  --glyph-current: #ffcc00;
+  --bg-current-line: rgba(255, 193, 7, 0.22);
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-hover-strong: rgba(255, 255, 255, 0.10);
+  --bg-selected: rgba(255, 255, 255, 0.12);
+  --bg-danger-soft: rgba(220, 53, 69, 0.20);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-faint: rgba(255, 255, 255, 0.07);
+  --focus-ring: #75beff;
+  --bg-input: #3c3c3c;
+  --bg-checker: #2a2a2a;
+  --bg-checker-alt: #333333;
+  --shadow-strong: rgba(0, 0, 0, 0.45);
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+  color-scheme: dark;
+}
+
+/*
+ * High contrast.
+ *
+ * Layered ON TOP of .dark-theme rather than replacing it - applyTheme adds both
+ * classes - so a variable this block does not restate keeps a dark value instead
+ * of falling through to the light set. That is the whole reason the old
+ * two-branch applyTheme could not have a third theme added to it.
+ *
+ * Every pair here clears 7:1, the WCAG AAA threshold, against the surface it sits
+ * on. Borders become solid and full-strength because the subtle overlays that
+ * work on a grey panel disappear entirely on pure black.
+ */
+.hc-theme {
+  --bg-main: #000000;
+  --bg-sidebar: #000000;
+  --bg-activitybar: #000000;
+  --bg-editor: #000000;
+  --bg-panel: #000000;
+  --bg-titlebar: #000000;
+  --bg-statusbar: #000000;
+  --bg-tab: #000000;
+  --bg-tab-active: #000000;
+  --bg-tab-hover: #1a1a1a;
+  --border-color: #ffffff;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: #d4d4d4;
+  --accent: #1aebff;
+  --icon-color: #ffffff;
+  --icon-active: #1aebff;
+
+  --fg-error: #ff8a80;
+  --fg-success: #7ee787;
+  --fg-info: #79c0ff;
+  --fg-warning: #ffd479;
+  --fg-symbol: #9cdcfe;
+  --fg-dirty: #ffd479;
+  --fg-annotation: #7ee787;
+  --fg-danger: #ff8a80;
+  --fg-exception: #ff8a80;
+  --glyph-current: #ffff00;
+  --bg-current-line: rgba(255, 255, 0, 0.34);
+  --bg-hover: rgba(255, 255, 255, 0.22);
+  --bg-hover-strong: rgba(255, 255, 255, 0.32);
+  --bg-selected: rgba(26, 235, 255, 0.30);
+  --bg-danger-soft: rgba(255, 138, 128, 0.30);
+  --border-subtle: #ffffff;
+  --border-faint: #ffffff;
+  --focus-ring: #ffff00;
+  --bg-input: #000000;
+  --bg-checker: #000000;
+  --bg-checker-alt: #3f3f3f;
+  --shadow-strong: rgba(0, 0, 0, 0.9);
+  color-scheme: dark;
+}
+
+/* A focus ring that cannot be missed, which is the point of the theme. */
+.hc-theme :focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 1px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 13px;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}

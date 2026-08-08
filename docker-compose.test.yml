@@ -1,11 +1,11 @@
-# Docker Compose for Running Test Suite
-# 
+# Docker Compose for running the security corpus against the production image.
+#
 # Usage:
 #   docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 #
 # This will:
-#   1. Start the API service
-#   2. Run all tests against it
+#   1. Build and start the production API image with production-style isolation
+#   2. Run the canonical security corpus against it
 #   3. Generate reports in ./security/reports/
 #   4. Exit with test result code
 
@@ -14,16 +14,36 @@ services:
   # API Service (System Under Test)
   # ============================================
   api:
+    init: true
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.production
     expose:
       - "3001"
     environment:
-      - NODE_ENV=test
+      - NODE_ENV=production
       - PORT=3001
       - RATE_LIMIT_MAX=1000  # Higher limit for testing
       - RUN_TIMEOUT_MS=10000
+      - PREVIEW_STORAGE_DIR=/preview-data
+      - BLOB_CACHE_DIR=/blob-cache
+      - SHARE_STORAGE_DIR=/share-data
+    read_only: true
+    pids_limit: 512
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - KILL
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      - /app/sandbox:noexec,nosuid,size=512M,uid=1001,gid=1001
+      - /preview-data:noexec,nosuid,size=64M,uid=1001,gid=1001
+      - /blob-cache:noexec,nosuid,size=64M,uid=1001,gid=1001
+      - /share-data:noexec,nosuid,size=64M,uid=1001,gid=1001
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/health"]
       interval: 5s
@@ -31,7 +51,7 @@ services:
       retries: 10
       start_period: 10s
     networks:
-      - test-network
+      - internal
 
   # ============================================
   # Security Tests
@@ -50,11 +70,9 @@ services:
       - ./security/reports:/app/security/reports
     command: ["node", "security/run.mjs", "--server=http://api:3001"]
     networks:
-      - test-network
+      - internal
 
-  # ============================================
-  # Language Compiler Tests
-  # ============================================
 networks:
-  test-network:
+  internal:
     driver: bridge
+    internal: true

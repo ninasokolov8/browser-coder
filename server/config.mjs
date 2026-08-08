@@ -4,18 +4,9 @@
  * Moved out of server.mjs so limits stop being scattered constants. Every value
  * an operator can tune is parsed here, once, with its rationale next to it.
  *
- * This commit is a MOVE: every default is byte-identical to the pre-refactor
- * values, so behaviour does not change. Two capabilities are added but not yet
- * used for anything that alters behaviour:
- *   - `detectMemoryBudgetMb()` reads the real cgroup limit (blueprint V-36).
- *     `CONFIG` still derives concurrency from os.totalmem() exactly as before;
- *     Phase B switches it over deliberately, because the correct value is much
- *     smaller in a 512 MiB container and that is a real change in when the
- *     service reports capacity.
- *   - `CONFIG.tools` makes interpreter binaries configurable. Defaults are the
- *     current hardcoded names, so nothing changes in production - but it lets a
- *     developer whose `python3` is the Windows Store alias point at a real one,
- *     and it removes a hardcoded assumption from the execution layer.
+ * Capacity derives from the process's cgroup memory budget rather than host RAM,
+ * and tool paths are configurable so local and container runtimes share the same
+ * execution code. Defaults preserve the production toolchain names.
  */
 
 import fs from 'node:fs';
@@ -349,5 +340,3 @@ export const RUN_BODY_LIMIT_BYTES =
   CONFIG.execution.maxCodeChars * 3 +
   CONFIG.execution.maxProjectFiles * (CONFIG.execution.maxPathChars + 100) +
   4096;
-
-export default CONFIG;

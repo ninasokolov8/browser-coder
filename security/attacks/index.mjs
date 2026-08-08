@@ -22,14 +22,6 @@
  * - csharp_he.mjs
  */
 
-// Default/backwards-compatible exports: English attack vectors
-export { javascriptTests } from '../../tests/security/attacks/javascript.mjs';
-export { typescriptTests } from '../../tests/security/attacks/typescript.mjs';
-export { pythonTests } from '../../tests/security/attacks/python.mjs';
-export { phpTests } from '../../tests/security/attacks/php.mjs';
-export { javaTests } from '../../tests/security/attacks/java.mjs';
-export { csharpTests } from '../../tests/security/attacks/csharp.mjs';
-
 import { javascriptTests as javascriptTestsEn } from '../../tests/security/attacks/javascript.mjs';
 import { typescriptTests as typescriptTestsEn } from '../../tests/security/attacks/typescript.mjs';
 import { pythonTests as pythonTestsEn } from '../../tests/security/attacks/python.mjs';
@@ -37,14 +29,12 @@ import { phpTests as phpTestsEn } from '../../tests/security/attacks/php.mjs';
 import { javaTests as javaTestsEn } from '../../tests/security/attacks/java.mjs';
 import { csharpTests as csharpTestsEn } from '../../tests/security/attacks/csharp.mjs';
 
-import { javascriptTests as javascriptTestsHe } from './javascript_he.mjs';
-import { typescriptTests as typescriptTestsHe } from './typescript_he.mjs';
-import { pythonTests as pythonTestsHe } from './python_he.mjs';
-import { phpTests as phpTestsHe } from './php_he.mjs';
-import { javaTests as javaTestsHe } from './java_he.mjs';
-import { csharpTests as csharpTestsHe } from './csharp_he.mjs';
-
-export const SUPPORTED_ATTACK_LANGS = ['en', 'he'];
+import { javascriptExplanations } from './javascript_he.mjs';
+import { typescriptExplanations } from './typescript_he.mjs';
+import { pythonExplanations } from './python_he.mjs';
+import { phpExplanations } from './php_he.mjs';
+import { javaExplanations } from './java_he.mjs';
+import { csharpExplanations } from './csharp_he.mjs';
 
 const ENGLISH_TESTS = {
   javascript: javascriptTestsEn,
@@ -55,14 +45,24 @@ const ENGLISH_TESTS = {
   csharp: csharpTestsEn,
 };
 
-const HEBREW_TESTS = {
-  javascript: javascriptTestsHe,
-  typescript: typescriptTestsHe,
-  python: pythonTestsHe,
-  php: phpTestsHe,
-  java: javaTestsHe,
-  csharp: csharpTestsHe,
+const HEBREW_EXPLANATIONS = {
+  javascript: javascriptExplanations,
+  typescript: typescriptExplanations,
+  python: pythonExplanations,
+  php: phpExplanations,
+  java: javaExplanations,
+  csharp: csharpExplanations,
 };
+
+const HEBREW_TESTS = Object.fromEntries(
+  Object.entries(ENGLISH_TESTS).map(([language, tests]) => [
+    language,
+    tests.map(test => ({
+      ...test,
+      explanation: HEBREW_EXPLANATIONS[language][test.name] ?? test.explanation,
+    })),
+  ]),
+);
 
 const TESTS_BY_REPORT_LANGUAGE = {
   en: ENGLISH_TESTS,
@@ -91,48 +91,4 @@ export function getAllTests(lang = 'en') {
   return Object.entries(getSecurityTests(lang)).flatMap(([language, tests]) =>
     tests.map(test => ({ ...test, language }))
   );
-}
-
-/**
- * Get tests by language.
- */
-export function getTestsByLanguage(language, lang = 'en') {
-  return getSecurityTests(lang)[language] || [];
-}
-
-/**
- * Get tests by category across all languages.
- */
-export function getTestsByCategory(category, lang = 'en') {
-  return getAllTests(lang).filter(test => test.category === category);
-}
-
-/**
- * Get unique categories across all tests.
- */
-export function getCategories(lang = 'en') {
-  const categories = new Set();
-  getAllTests(lang).forEach(test => categories.add(test.category));
-  return Array.from(categories).sort();
-}
-
-/**
- * Summary statistics.
- */
-export function getTestStats(lang = 'en') {
-  const tests = getSecurityTests(lang);
-
-  const stats = Object.fromEntries(
-    Object.entries(tests).map(([language, languageTests]) => [
-      language,
-      {
-        total: languageTests.length,
-        blocked: languageTests.filter(test => test.expectBlocked).length,
-      },
-    ])
-  );
-
-  stats.total = Object.values(tests).reduce((sum, languageTests) => sum + languageTests.length, 0);
-
-  return stats;
 }

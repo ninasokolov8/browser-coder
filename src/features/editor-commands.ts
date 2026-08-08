@@ -27,6 +27,7 @@ import { downloadSelectedItem, importFromPicker } from './explorer/operations';
 import { explorerState } from './explorer/state';
 import { runStudentTests } from './tests/run.ts';
 import { shareProject } from './share.ts';
+import { t } from '../i18n/index.ts';
 
 // The shared accessors, not a private copy. See the note in app/runtime.ts.
 const editor = requireEditor();
@@ -44,14 +45,14 @@ const commands = runtime.commands!;
 
 commands.register({
   id: 'workspace.run',
-  title: 'Run',
+  title: 'command.run',
   capability: 'run',
   run: async () => { await runCode(editor.getValue()); },
 });
 
 commands.register({
   id: 'workspace.debug',
-  title: 'Start debugging',
+  title: 'command.debug',
   // Same capability as Run, deliberately: debugging IS running, and a task that
   // forbids running must not be debuggable either. A separate capability would be a
   // second switch for one permission, and the host has no way to express it.
@@ -79,7 +80,7 @@ commands.register({
  */
 commands.register({
   id: 'workspace.runTests',
-  title: 'Check my work',
+  title: 'command.checkWork',
   capability: 'run',
   run: () => runStudentTests(),
 });
@@ -93,7 +94,7 @@ commands.register({
  */
 commands.register({
   id: 'workspace.share',
-  title: 'Share a link to this project',
+  title: 'command.shareProject',
   run: async () => {
     const link = await shareProject();
     if (!link) return;
@@ -103,16 +104,16 @@ commands.register({
     // the student can read and retype beats a silent failure.
     try {
       await navigator.clipboard?.writeText(link);
-      setStatus('Share link copied to the clipboard');
+      setStatus(t('share.copied'));
     } catch {
-      setStatus('Share link: ' + link);
+      setStatus(t('share.link', { link }));
     }
   },
 });
 
 commands.register({
   id: 'workspace.saveFile',
-  title: 'Save',
+  title: 'command.save',
   // Saving is not gated on `edit`: autosave persists a dirty document anyway, so
   // refusing an explicit save would only make the shortcut feel broken while
   // changing nothing about what reaches storage.
@@ -121,13 +122,13 @@ commands.register({
     const activeTab = tabManager.getActiveTab();
     if (!activeTab) return;
     await tabManager.saveCurrentTab();
-    setStatus(`Saved ${activeTab.file.name}`);
+    setStatus(t('status.savedFile', { name: activeTab.file.name }));
   },
 });
 
 commands.register({
   id: 'workspace.newFile',
-  title: 'New file',
+  title: 'command.newFile',
   capability: 'structure',
   run: async () => {
     // A command runs long after registration, so the current language is re-read
@@ -136,14 +137,14 @@ commands.register({
     const newTab = await tabManager.createNewFile(runtime.currentLang, runtime.currentVersion);
     if (newTab) {
       editor.setModel(getOrCreateModel(newTab));
-      setStatus(`Created ${newTab.file.name}`);
+      setStatus(t('status.createdFile', { name: newTab.file.name }));
     }
   },
 });
 
 commands.register({
   id: 'workspace.closeTab',
-  title: 'Close tab',
+  title: 'command.closeTab',
   capability: 'structure',
   // Closing the last tab leaves the editor with nothing to show, which the empty
   // state handles - but the previous binding refused it silently, so keep that.
@@ -156,7 +157,7 @@ commands.register({
 
 commands.register({
   id: 'editor.formatDocument',
-  title: 'Format document',
+  title: 'command.formatDocument',
   capability: 'edit',
   // Enabled only when something will actually happen. Monaco's action does
   // nothing at all for a language with no provider - no error, no message - so
@@ -186,21 +187,21 @@ commands.register({
 // or for anyone who did not think to try dragging, getting a file in was impossible.
 commands.register({
   id: 'workspace.importFiles',
-  title: 'Import files from your computer',
+  title: 'command.importFiles',
   capability: 'structure',
   run: () => importFromPicker({ directory: false }, null),
 });
 
 commands.register({
   id: 'workspace.importFolder',
-  title: 'Import a folder from your computer',
+  title: 'command.importFolder',
   capability: 'structure',
   run: () => importFromPicker({ directory: true }, null),
 });
 
 commands.register({
   id: 'workspace.downloadItem',
-  title: 'Download the selected file or folder',
+  title: 'command.downloadItem',
   when: () => explorerState.selectedIds.size === 1,
   run: () => downloadSelectedItem(),
 });
@@ -218,7 +219,7 @@ commands.register({
  */
 commands.register({
   id: 'workspace.stopRun',
-  title: 'Stop the running program',
+  title: 'command.stopRun',
   when: () => isRunActive(),
   run: () => requestStop(),
 });

@@ -1,5 +1,9 @@
 # Browser Coder - Full System Description Report
 
+> Historical snapshot dated 2026-06-19. Capacity estimates and module descriptions
+> below are not operational promises. Use [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+> and [`../DEPLOY.md`](../DEPLOY.md) for the current system.
+
 **Date:** 2026-06-19  
 **Audience:** Management, product owners, operations leaders, and education program stakeholders  
 **System:** Browser Coder web IDE and secure multi-language code execution platform

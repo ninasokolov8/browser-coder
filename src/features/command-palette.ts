@@ -14,7 +14,7 @@
  * The overlay itself lives in `picker.ts`, shared with quick-open.
  */
 
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { createPicker, type PickerItem } from './picker.ts';
 import type { CommandDefinition, CommandRegistry } from '../commands/registry.ts';
 import type { Disposable } from '../workspace/types.ts';
@@ -31,9 +31,9 @@ export function initializeCommandPalette(registry: CommandRegistry): Disposable 
 
   const picker = createPicker({
     overlayId: OVERLAY_ID,
-    placeholder: t('palette.placeholder'),
-    ariaLabel: t('command.palette'),
-    emptyText: t('palette.empty'),
+    placeholder: () => t('palette.placeholder'),
+    ariaLabel: () => t('command.palette'),
+    emptyText: () => t('palette.empty'),
     items: (): PickerItem[] =>
       registry.all().map(command => ({
         id: command.id,

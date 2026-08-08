@@ -158,15 +158,6 @@ export function loadCatalog({ force = false } = {}) {
   return cache;
 }
 
-/** Language IDs that can actually be executed (as opposed to edited/previewed). */
-export function executableLanguageIds() {
-  return ['javascript', 'typescript', 'python', 'java', 'php', 'csharp'];
-}
-
-export function isExecutable(languageId) {
-  return executableLanguageIds().includes(languageId);
-}
-
 /**
  * The extension a language's files use, from config rather than a hardcoded map.
  *
@@ -337,10 +328,4 @@ function runtimeNoteFor(languageId, version) {
     default:
       return 'Executed on the installed toolchain.';
   }
-}
-
-/** Clear the cache. Used by tests. */
-export function resetCatalogCache() {
-  cache = null;
-  cachedAt = 0;
 }

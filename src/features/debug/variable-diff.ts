@@ -20,6 +20,7 @@
  */
 
 import type { DebugFrame, DebugVariable } from './state.ts';
+import { t } from '../../i18n/index.ts';
 
 export type VariableChange = 'new' | 'changed' | 'same';
 
@@ -87,12 +88,19 @@ export function describeChange(diffed: readonly DiffedVariable[]): string | null
 
   if (moved.length === 1 && added.length === 0) {
     const [entry] = moved;
-    return `${entry.variable.name} went from ${entry.previousText} to ${entry.variable.value.text}`;
+    return t('debug.valueChanged', {
+      name: entry.variable.name,
+      previous: entry.previousText ?? '',
+      current: entry.variable.value.text,
+    });
   }
 
   if (added.length === 1 && moved.length === 0) {
     const [entry] = added;
-    return `${entry.variable.name} was created, and is ${entry.variable.value.text}`;
+    return t('debug.valueCreated', {
+      name: entry.variable.name,
+      value: entry.variable.value.text,
+    });
   }
 
   return null;

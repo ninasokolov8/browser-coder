@@ -11,6 +11,8 @@
  * "it failed on line 2 with a ReferenceError".
  */
 
+import { t, tn } from '../i18n/index.ts';
+
 /** Built once. Absent in a test page that does not include the app shell. */
 function region(): HTMLElement | null {
   return document.getElementById('a11y-announcer');
@@ -47,23 +49,19 @@ export function describeRunOutcome(options: {
   const parts: string[] = [];
 
   if (options.exitCode === 0) {
-    parts.push('Run finished successfully.');
+    parts.push(t('a11y.runSucceeded'));
   } else if (options.exitCode < 0) {
     // Negative is the pipeline's own signal for a kill: a timeout, an output cap, or
     // Stop. "Exit code -1" would mean nothing to a student.
-    parts.push('Run stopped before it finished.');
+    parts.push(t('a11y.runStopped'));
   } else {
-    parts.push(`Run failed with exit code ${options.exitCode}.`);
+    parts.push(t('a11y.runFailedExit', { code: options.exitCode }));
   }
 
   if (options.errorSummary) parts.push(options.errorSummary);
 
   if (options.problemCount && options.problemCount > 0) {
-    parts.push(
-      options.problemCount === 1
-        ? '1 problem in the Problems panel.'
-        : `${options.problemCount} problems in the Problems panel.`,
-    );
+    parts.push(tn('a11y.problemCount', options.problemCount));
   }
 
   return parts.join(' ');

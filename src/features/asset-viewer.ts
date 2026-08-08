@@ -29,6 +29,8 @@ import {
   formatBytes,
   type AssetType,
 } from '../workspace/assets.ts';
+import { t } from '../i18n/index.ts';
+import { runtime } from '../app/runtime';
 
 const VIEWER_ID = 'asset-viewer';
 
@@ -113,8 +115,7 @@ export function showAssetViewer(file: { name: string; content: string; path?: st
       image.remove();
       const failed = document.createElement('div');
       failed.className = 'asset-unavailable';
-      failed.textContent =
-        `${file.name} could not be displayed. The file may be incomplete or damaged.`;
+      failed.textContent = t('asset.displayFailed', { name: file.name });
       panel.prepend(failed);
     });
 
@@ -125,8 +126,8 @@ export function showAssetViewer(file: { name: string; content: string; path?: st
     // Honest about WHY, since "cannot preview" alone reads like a missing feature.
     notice.textContent =
       details.type.mediaType === 'application/pdf'
-        ? `${file.name} is stored in your project. Browser Coder does not display PDFs inline.`
-        : `${file.name} is stored in your project. This file type has no preview.`;
+        ? t('asset.pdfNoPreview', { name: file.name })
+        : t('asset.noPreview', { name: file.name });
     panel.appendChild(notice);
   }
 
@@ -134,11 +135,11 @@ export function showAssetViewer(file: { name: string; content: string; path?: st
   meta.className = 'asset-meta';
 
   const rows: Array<[string, string]> = [
-    ['Name', file.name],
-    ['Type', details.type.mediaType],
-    ['Size', formatBytes(details.byteLength)],
+    [t('asset.name'), file.name],
+    [t('asset.type'), details.type.mediaType],
+    [t('asset.size'), formatBytes(details.byteLength)],
   ];
-  if (file.path && file.path !== file.name) rows.push(['Path', file.path]);
+  if (file.path && file.path !== file.name) rows.push([t('asset.path'), file.path]);
 
   for (const [label, value] of rows) {
     const row = document.createElement('div');
@@ -162,13 +163,24 @@ export function showAssetViewer(file: { name: string; content: string; path?: st
   const hint = document.createElement('div');
   hint.className = 'asset-hint';
   hint.textContent = details.type.kind === 'image'
-    ? 'Use it from your code by name, for example turtle.bgpic("' + file.name + '").'
-    : 'Reference it from your code by name.';
+    ? t('asset.imageHint', { name: file.name })
+    : t('asset.fileHint');
   panel.appendChild(hint);
 
   viewer.appendChild(panel);
   return true;
 }
+
+window.addEventListener('languageChanged', () => {
+  const active = runtime.tabManager?.getActiveTab();
+  if (active && isAssetFile(active.file)) {
+    showAssetViewer({
+      name: active.file.name,
+      content: active.file.content,
+      path: active.file.path,
+    });
+  }
+});
 
 /*
  * There was an `initializeAssetViewer()` here: a MutationObserver on the tab strip that

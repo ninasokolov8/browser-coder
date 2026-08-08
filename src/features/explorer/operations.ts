@@ -6,7 +6,7 @@ import {
   btnClearCache,
 } from '../../components/dom';
 import { setStatus, setOutput } from '../../components/output';
-import { getOrCreateModel, disposeModel, updateEmptyState } from '../editor-core';
+import { getOrCreateModel, updateEmptyState } from '../editor-core';
 import { explorerState } from './state';
 import { downloadBlob, downloadFile, fileBytesFor } from '../../components/download.ts';
 import {
@@ -16,21 +16,87 @@ import {
   bytesToBase64,
   validateAsset,
 } from '../../workspace/assets.ts';
-import { renderFileTree, showContextMenu } from './tree';
 import { captureWorkspacePaths, refactorWorkspaceImports } from './import-refactor';
 import { isWorkspaceEntryHidden } from '../workspace-visibility';
 import { importSafeName, uniqueFileName } from './naming.ts';
-import { archiveFolderName, planImport } from './import-plan.ts';
+import { archiveFolderName, planImport, type ImportSkip } from './import-plan.ts';
+import { formatRewriteWarning, type RewriteWarning } from './reference-warnings.ts';
 import { descendantFolderIds, topLevelItems } from './selection-scope.ts';
 import { placeRelativeTo } from './ordering.ts';
 import { lazyRef } from '../../app/lazy';
+import { t, tn } from '../../i18n/index.ts';
+import type { TabManager } from '../../tabs';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 const editor = lazyRef(() => runtime.editor, 'editor');
 const storage = lazyRef(() => runtime.storage, 'storage');
-const fileModels = runtime.fileModels;
-
 const INTERNAL_DRAG_MIME = 'application/x-browser-coder-items';
+
+type ExplorerRenderer = (tabManager?: TabManager) => Promise<void>;
+let renderFileTree: ExplorerRenderer = async () => {};
+
+/**
+ * Inject the tree renderer from the explorer composition module.
+ *
+ * Operations used to import the view while the view imported the operations, which
+ * made initialization order part of behavior. Keeping this seam here makes the
+ * dependency one-way: the composition module wires both collaborators explicitly.
+ */
+export function setExplorerRenderer(renderer: ExplorerRenderer): void {
+  renderFileTree = renderer;
+}
+
+const formatRewriteWarnings = (warnings: readonly RewriteWarning[]): string =>
+  warnings.map(warning => formatRewriteWarning(warning, t)).join('\n');
+
+const PATH_ERROR_KEYS: Readonly<Record<string, string>> = {
+  path_empty: 'path.empty',
+  path_not_a_string: 'path.notString',
+  path_absolute: 'path.absolute',
+  path_drive_letter: 'path.driveLetter',
+  path_traversal: 'path.traversal',
+  path_dot_segment: 'path.dotSegment',
+  path_empty_segment: 'path.emptySegment',
+  path_nul_byte: 'path.nulByte',
+  path_control_character: 'path.controlCharacter',
+  path_too_long: 'path.tooLong',
+  path_segment_too_long: 'path.segmentTooLong',
+  path_too_deep: 'path.tooDeep',
+  path_reserved_device_name: 'path.reservedDevice',
+  path_reserved_name: 'path.reservedName',
+  path_reserved_directory: 'path.reservedDirectory',
+  path_trailing_dot_or_space: 'path.trailingDotOrSpace',
+};
+
+function formatImportSkip(skip: ImportSkip): string {
+  if (skip.reason === 'duplicate') return t('explorer.importDuplicate', { path: skip.path });
+  if (skip.reason === 'too-large') {
+    return t('explorer.importTooLarge', { path: skip.path, size: skip.maxMegabytes });
+  }
+  if (skip.reason === 'file-limit') {
+    return t('explorer.importFileLimit', { path: skip.path, limit: skip.maxFiles });
+  }
+  const key = PATH_ERROR_KEYS[skip.code] ?? 'path.invalid';
+  return t('explorer.importInvalidPath', { path: skip.path, reason: t(key) });
+}
+
+function assetRejectionReason(
+  name: string,
+  verdict: Exclude<ReturnType<typeof validateAsset>, { ok: true }>,
+): string {
+  if (verdict.reason === 'not-an-asset') return t('explorer.unsupportedFileType', { name });
+  if (verdict.reason === 'empty') return t('explorer.emptyFile', { name });
+  if (verdict.reason === 'too-large') {
+    return t('explorer.assetTooLarge', { name, size: verdict.maxMegabytes });
+  }
+  return verdict.actual
+    ? t('explorer.assetTypeMismatch', {
+        name,
+        expected: verdict.expected,
+        actual: verdict.actual,
+      })
+    : t('explorer.assetContentsMismatch', { name, expected: verdict.expected });
+}
 
 /** Read internal dragged IDs from DataTransfer, with state as a fallback. */
 export function getInternalDraggedIds(e?: DragEvent): string[] {
@@ -89,8 +155,8 @@ function formatSelectionNoun(items: ExplorerSelectionItem[]): string {
   const count = items.length;
   const allFiles = items.every(item => item.type === 'file');
   const allFolders = items.every(item => item.type === 'folder');
-  const noun = allFiles ? 'file' : allFolders ? 'folder' : 'item';
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+  const key = allFiles ? 'explorer.fileCount' : allFolders ? 'explorer.folderCount' : 'explorer.itemCount';
+  return tn(key, count);
 }
 
 async function getExplorerSelectionItems(): Promise<ExplorerSelectionItem[]> {
@@ -177,24 +243,6 @@ function uniqueFolderName(baseName: string, existingNames: string[]): string {
   return candidate;
 }
 
-/**
- * Deliberately a no-op, retained so the call sites still read correctly.
- *
- * This existed because a move or a folder rename changed stored paths, and every
- * open tab held its own copy of that metadata - so each structural change had to
- * be followed by a refresh, and the refresh had to carefully preserve unsaved
- * content while replacing everything else. Paths are now derived from the folder
- * tree and content lives in one buffer, so a tab cannot hold stale metadata and
- * there is nothing to synchronize.
- *
- * Kept rather than deleted at every call site because "after moving files, resync
- * the open tabs" is a reasonable thing for a reader to look for; finding it here,
- * and finding it empty, answers the question.
- */
-export async function syncOpenTabsFromStorage(): Promise<void> {
-  // Intentionally empty. See above.
-}
-
 export async function createFolderFromSelection() {
   if (policyState.lockStructure) return;
 
@@ -227,7 +275,6 @@ export async function createFolderFromSelection() {
     }
   }
 
-  await syncOpenTabsFromStorage();
   const refactorResult = await refactorWorkspaceImports(beforePaths);
 
   if (newFolderParentId) explorerState.expandedFolders.add(newFolderParentId);
@@ -239,12 +286,15 @@ export async function createFolderFromSelection() {
 
   renderFileTree(tabManager);
   runtime.notifyWorkspaceChanged();
-  const refactorSuffix = refactorResult.replacements > 0
-    ? `; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`
-    : '';
-  setStatus(`Moved ${formatSelectionNoun(selectedItems)} into ${folder.name}${refactorSuffix}`);
+  setStatus(refactorResult.replacements > 0
+    ? t('explorer.movedIntoWithImports', {
+        items: formatSelectionNoun(selectedItems),
+        folder: folder.name,
+        imports: tn('explorer.importCount', refactorResult.replacements),
+      })
+    : t('explorer.movedInto', { items: formatSelectionNoun(selectedItems), folder: folder.name }));
   if (refactorResult.warnings.length > 0) {
-    setOutput(refactorResult.warnings.join('\n'));
+    setOutput(formatRewriteWarnings(refactorResult.warnings));
   }
 }
 
@@ -256,8 +306,8 @@ export async function deleteSelectedItems() {
 
   const selectedDescription = formatSelectionNoun(selectedItems);
   const confirmed = selectedItems.length === 1
-    ? confirm(`Are you sure you want to delete this ${selectedItems[0].type}?`)
-    : confirm(`Are you sure you want to delete all ${selectedDescription}?`);
+    ? confirm(t(selectedItems[0].type === 'file' ? 'explorer.confirmDeleteFile' : 'explorer.confirmDeleteFolder'))
+    : confirm(t('explorer.confirmDeleteMany', { items: selectedDescription }));
   if (!confirmed) return;
 
   const topLevelItems = await getTopLevelSelectionItems(selectedItems);
@@ -294,7 +344,7 @@ export async function deleteSelectedItems() {
 
   renderFileTree(tabManager);
   runtime.notifyWorkspaceChanged();
-  setStatus(`Deleted ${selectedDescription}`);
+  setStatus(t('explorer.deleted', { items: selectedDescription }));
 }
 
 // ===== Sidebar Toolbar Buttons =====
@@ -311,12 +361,12 @@ btnRefresh.addEventListener('click', () => renderFileTree(tabManager));
 // Clear Cache - permanently removes every workspace file/folder and resets UI state.
 btnClearCache.addEventListener('click', async () => {
   const confirmed = confirm(
-    'Are you sure you want to clear ALL cached data? This will delete every file and folder and cannot be undone.'
+    t('explorer.confirmClearWorkspace')
   );
   if (!confirmed) return;
 
   btnClearCache.disabled = true;
-  setStatus('Clearing workspace...');
+  setStatus(t('explorer.clearingWorkspace'));
 
   try {
     // Detach Monaco first so model disposal cannot trigger editor callbacks
@@ -348,9 +398,10 @@ btnClearCache.addEventListener('click', async () => {
     }
 
     if (remainingFiles.length > 0 || remainingFolders.length > 0) {
-      throw new Error(
-        `Workspace clear was incomplete (${remainingFiles.length} files, ${remainingFolders.length} folders remain)`
-      );
+      throw new Error(t('explorer.clearIncomplete', {
+        files: remainingFiles.length,
+        folders: remainingFolders.length,
+      }));
     }
 
     localStorage.removeItem('browser-coder-settings');
@@ -366,13 +417,13 @@ btnClearCache.addEventListener('click', async () => {
     await renderFileTree(tabManager);
     updateEmptyState(true);
 
-    setOutput('All files, folders, open tabs, editor models, and cached workspace data were deleted.');
-    setStatus('Workspace cleared ✅');
+    setOutput(t('explorer.workspaceClearedExplanation'));
+    setStatus(t('explorer.workspaceCleared'));
     runtime.notifyWorkspaceChanged();
   } catch (error) {
     console.error('Failed to clear workspace', error);
-    setOutput(`Error clearing workspace: ${error instanceof Error ? error.message : String(error)}`);
-    setStatus('Clear failed ❌');
+    setOutput(t('explorer.clearError', { error: error instanceof Error ? error.message : String(error) }));
+    setStatus(t('explorer.clearFailed'));
   } finally {
     btnClearCache.disabled = false;
   }
@@ -394,7 +445,7 @@ export async function downloadSelectedItem(): Promise<void> {
     // `fileBytesFor` decides text-or-bytes from the name, so an image exports as an
     // image here too.
     downloadFile(file.name, file.content);
-    setStatus(`Downloaded ${file.name}`);
+    setStatus(t('status.downloadedFile', { name: file.name }));
     return;
   }
 
@@ -407,7 +458,7 @@ export async function downloadSelectedItem(): Promise<void> {
     .filter(candidate => candidate.path.startsWith(prefix));
 
   if (contents.length === 0) {
-    setStatus(`${folder.name} is empty`);
+    setStatus(t('explorer.folderEmpty', { name: folder.name }));
     return;
   }
 
@@ -425,15 +476,15 @@ export async function downloadSelectedItem(): Promise<void> {
     compressionOptions: { level: 6 },
   });
   downloadBlob(`${folder.name}.zip`, blob);
-  setStatus(`Downloaded ${folder.name}.zip`);
+  setStatus(t('status.downloadedFile', { name: `${folder.name}.zip` }));
 }
 
 // Download Project - downloads all files as a proper ZIP
 btnDownloadProject.addEventListener('click', async () => {
   try {
-    setStatus('Preparing ZIP...');
-    setOutput('Creating ZIP file...');
-    
+    setStatus(t('explorer.preparingZip'));
+    setOutput(t('explorer.creatingZip'));
+
     // Hidden entries are excluded, exactly as they are from the tree and the tab
     // strip. X_HIDDEN_ is how a teacher ships a solution file or a marking harness
     // alongside a task; storage and execution still see them, but the Download
@@ -443,8 +494,8 @@ btnDownloadProject.addEventListener('click', async () => {
     const folders = (await storage.getAllFolders()).filter(folder => !isWorkspaceEntryHidden(folder));
 
     if (files.length === 0) {
-      setOutput('No files to download');
-      setStatus('No files');
+      setOutput(t('explorer.noFilesToDownload'));
+      setStatus(t('explorer.noFiles'));
       return;
     }
 
@@ -471,7 +522,7 @@ btnDownloadProject.addEventListener('click', async () => {
     }
 
     // Generate ZIP blob
-    const zipBlob = await zip.generateAsync({ 
+    const zipBlob = await zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
       compressionOptions: { level: 6 }
@@ -481,11 +532,14 @@ btnDownloadProject.addEventListener('click', async () => {
     // cannot drift again - and so the Safari revoke timing fix applies to both.
     downloadBlob(`project-${new Date().toISOString().slice(0, 10)}.zip`, zipBlob);
 
-    setOutput(`Downloaded ${files.length} files in ${folders.length} folders as ZIP`);
-    setStatus('Downloaded ✅');
+    setOutput(t('explorer.downloadedProject', {
+      files: tn('explorer.fileCount', files.length),
+      folders: tn('explorer.folderCount', folders.length),
+    }));
+    setStatus(t('explorer.downloaded'));
   } catch (e) {
-    setOutput(`Error downloading project: ${e}`);
-    setStatus('Error ❌');
+    setOutput(t('explorer.downloadError', { error: String(e) }));
+    setStatus(t('status.error'));
   }
 });
 
@@ -616,7 +670,7 @@ async function storeIncoming(
   const detected = asset ? null : tabManager.detectLanguageByExtension(name);
 
   if (!asset && !detected) {
-    return { ok: false, reason: `${name} - unsupported file type` };
+    return { ok: false, reason: t('explorer.unsupportedFileType', { name }) };
   }
 
   let content: string;
@@ -632,12 +686,12 @@ async function storeIncoming(
     try {
       bytes = await incoming.bytes();
     } catch {
-      return { ok: false, reason: `${name} - could not be read` };
+      return { ok: false, reason: t('explorer.fileCouldNotBeRead', { name }) };
     }
 
     const verdict = validateAsset(name, bytes, DEFAULT_ASSET_LIMITS);
     if (!verdict.ok) {
-      return { ok: false, reason: `${name} - ${verdict.message.replace(`${name} `, '')}` };
+      return { ok: false, reason: assetRejectionReason(name, verdict) };
     }
 
     content = bytesToBase64(bytes);
@@ -647,7 +701,7 @@ async function storeIncoming(
     try {
       content = await incoming.text();
     } catch {
-      return { ok: false, reason: `${name} - could not be read` };
+      return { ok: false, reason: t('explorer.fileCouldNotBeRead', { name }) };
     }
     language = detected!.id;
     const version = detected!.versions.find(v => v.default) || detected!.versions[0];
@@ -698,7 +752,7 @@ async function importIncomingFiles(
   const folderIds = await ensureImportFolders(plan.directories, targetParentId);
 
   const imported: string[] = [];
-  const skipped: string[] = [...plan.skipped];
+  const skipped: string[] = plan.skipped.map(formatImportSkip);
 
   for (const planned of plan.files) {
     const source = byPath.get(planned.path);
@@ -717,15 +771,15 @@ async function importIncomingFiles(
     for (const id of folderIds.values()) if (id) explorerState.expandedFolders.add(id);
     await renderFileTree(tabManager);
     runtime.notifyWorkspaceChanged();
-    setStatus(`Imported ${imported.length} file${imported.length === 1 ? '' : 's'}`);
+    setStatus(tn('explorer.importedFiles', imported.length));
   }
 
   if (skipped.length > 0) {
-    const lines = ['Some files were not imported:', ...skipped.map(reason => '  • ' + reason)];
-    if (imported.length > 0) lines.unshift(`Imported ${imported.length} file(s).`, '');
+    const lines = [t('explorer.someNotImported'), ...skipped.map(reason => '  • ' + reason)];
+    if (imported.length > 0) lines.unshift(tn('explorer.importedFiles', imported.length), '');
     setOutput(lines.join('\n'));
   } else if (imported.length === 0) {
-    setStatus('Nothing to import');
+    setStatus(t('explorer.nothingToImport'));
   }
 }
 
@@ -742,14 +796,14 @@ async function importIncomingFiles(
 export async function importArchive(file: File, targetParentId: string | null): Promise<void> {
   if (policyState.lockStructure) return;
 
-  setStatus(`Reading ${file.name}…`);
+  setStatus(t('explorer.readingArchive', { name: file.name }));
 
   let archive: JSZip;
   try {
     archive = await JSZip.loadAsync(await file.arrayBuffer());
   } catch (error) {
-    setStatus('Could not read the archive');
-    setOutput(`${file.name} could not be opened as a ZIP: ${error}`);
+    setStatus(t('explorer.archiveReadFailed'));
+    setOutput(t('explorer.archiveOpenError', { name: file.name, error: String(error) }));
     return;
   }
 
@@ -767,7 +821,7 @@ export async function importArchive(file: File, targetParentId: string | null): 
   });
 
   if (incoming.length === 0) {
-    setStatus('The archive is empty');
+    setStatus(t('explorer.archiveEmpty'));
     return;
   }
 
@@ -889,7 +943,7 @@ export async function importDroppedItems(
       }
     }
   } catch (error) {
-    setOutput(`Could not read the dropped folder: ${error}`);
+    setOutput(t('explorer.droppedFolderReadError', { error: String(error) }));
   }
 
   await importIncomingFiles(incoming, targetParentId);
@@ -1016,20 +1070,18 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
   explorerState.draggingIds = [];
 
   if (!movedAny) {
-    if (refusedCycle) setStatus('A folder cannot be moved inside itself');
-    else if (alreadyThere > 0) setStatus('Already in that folder');
+    if (refusedCycle) setStatus(t('explorer.cannotMoveIntoItself'));
+    else if (alreadyThere > 0) setStatus(t('explorer.alreadyInFolder'));
     return;
   }
 
   // A moved folder changes the path of every descendant file. Refresh every
   // open tab from storage so tab metadata and future entry-point selection
   // cannot retain stale paths. Unsaved model contents are preserved.
-  await syncOpenTabsFromStorage();
-
   // The writes have already committed, so the tree MUST be redrawn even if the import
   // rewrite fails - otherwise the file has really moved and the explorer still shows
   // it in the old place, with no error and nothing to click.
-  let refactorResult: { replacements: number; warnings: string[] } = { replacements: 0, warnings: [] };
+  let refactorResult: { replacements: number; warnings: RewriteWarning[] } = { replacements: 0, warnings: [] };
   let refactorError: unknown = null;
   try {
     refactorResult = await refactorWorkspaceImports(beforePaths);
@@ -1058,18 +1110,20 @@ export async function moveItemsInto(targetFolderId: string | null, draggedIds?: 
  */
 function reportMove(
   moved: number,
-  refactorResult: { replacements: number; warnings: string[] },
+  refactorResult: { replacements: number; warnings: RewriteWarning[] },
   refactorError?: unknown,
 ): void {
-  const suffix = refactorResult.replacements > 0
-    ? `; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`
-    : '';
-  setStatus(`Moved ${moved} item${moved === 1 ? '' : 's'}${suffix}`);
+  setStatus(refactorResult.replacements > 0
+    ? t('explorer.movedWithImports', {
+        items: tn('explorer.itemCount', moved),
+        imports: tn('explorer.importCount', refactorResult.replacements),
+      })
+    : t('explorer.moved', { items: tn('explorer.itemCount', moved) }));
 
   if (refactorError) {
-    setOutput(`Files moved, but imports could not be updated: ${refactorError}`);
+    setOutput(t('explorer.moveImportError', { error: String(refactorError) }));
   } else if (refactorResult.warnings.length > 0) {
-    setOutput(refactorResult.warnings.join('\n'));
+    setOutput(formatRewriteWarnings(refactorResult.warnings));
   }
 }
 
@@ -1127,7 +1181,7 @@ export async function placeItemsBeside(
     if (item.type === 'folder') {
       const moved = await storage.moveFolder(item.id, parentId);
       if (!moved) {
-        setStatus('A folder cannot be moved inside itself');
+        setStatus(t('explorer.cannotMoveIntoItself'));
         return;
       }
     } else {
@@ -1149,7 +1203,7 @@ export async function placeItemsBeside(
   // Kept rather than swallowed: a failure here means the student's imports are now
   // broken, and reporting the move as clean leaves them to find that out from the next
   // run. `reportMove` is the same reporting the into-a-folder drop uses.
-  let refactorResult = { replacements: 0, warnings: [] as string[] };
+  let refactorResult = { replacements: 0, warnings: [] as RewriteWarning[] };
   let refactorError: unknown;
   try {
     refactorResult = await refactorWorkspaceImports(beforePaths);
@@ -1181,8 +1235,4 @@ async function currentSiblingOrder(
   const ordered = displayed.filter(id => known.has(id));
   for (const id of children) if (!ordered.includes(id)) ordered.push(id);
   return ordered;
-}
-
-export function setExpandedFolders(value: Set<string>): void {
-  explorerState.expandedFolders = value;
 }

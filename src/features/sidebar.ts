@@ -48,7 +48,7 @@ export function applyPolicyFromMessage(data: { readonly?: boolean; lockStructure
   if (typeof data.allowSearchReplace === 'boolean') policyState.allowSearchReplace = data.allowSearchReplace;
   if (Array.isArray(data.panels)) policyState.visiblePanels = normalizePanels(data.panels, policyState.visiblePanels);
 
-  editor.updateOptions({ 
+  editor.updateOptions({
     readOnly: policyState.readonly,
     domReadOnly: policyState.readonly,
     renderLineHighlight: policyState.readonly ? 'none' : 'line',

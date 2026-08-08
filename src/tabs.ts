@@ -20,6 +20,7 @@ import { isWorkspaceEntryHidden } from './features/workspace-visibility';
 import { noteFileOpened } from './features/quick-open';
 import type { StoredFile } from './storage';
 import type { WorkspaceDocument, WorkspaceService } from './workspace';
+import { t } from './i18n/index.ts';
 
 export interface Tab {
   /** A live view of the document. Not a copy - `content` reads the buffer. */
@@ -556,7 +557,7 @@ export class TabManager {
     const addButton = document.createElement('button');
     addButton.className = 'tab-add';
     addButton.textContent = '+';
-    addButton.title = 'New file (Ctrl+N)';
+    addButton.title = t('editor.newFileHint');
     addButton.onclick = () => {
       if (document.body.classList.contains('structure-locked')) return;
       this.#events.onTabCreate?.(null);
@@ -589,14 +590,14 @@ export class TabManager {
       const dirtyEl = document.createElement('span');
       dirtyEl.className = 'tab-dirty';
       dirtyEl.textContent = '●';
-      dirtyEl.title = 'Unsaved changes';
+      dirtyEl.title = t('editor.unsavedChanges');
       tabEl.appendChild(dirtyEl);
     }
 
     const closeEl = document.createElement('button');
     closeEl.className = 'tab-close';
     closeEl.textContent = '×';
-    closeEl.title = 'Close';
+    closeEl.title = t('common.close');
     closeEl.onclick = event => {
       event.stopPropagation();
       if (document.body.classList.contains('structure-locked')) return;

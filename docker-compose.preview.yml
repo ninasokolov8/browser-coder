@@ -1,9 +1,0 @@
-services:
-  api:
-    environment:
-      PREVIEW_STORAGE_DIR: /preview-data
-    volumes:
-      - browser_coder_previews:/preview-data
-
-volumes:
-  browser_coder_previews:

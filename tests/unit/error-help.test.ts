@@ -284,7 +284,7 @@ describe('refusing to produce a key it cannot stand behind', () => {
 
   test('an unparseable message never throws', () => {
     for (const language of ['python', 'java', 'csharp', 'php', 'javascript', 'typescript']) {
-      assert.doesNotThrow(() => errorKeyFrom(language, '  nonsense ][{}'));
+      assert.doesNotThrow(() => errorKeyFrom(language, '\u0000\u0001 nonsense ][{}'));
     }
   });
 });

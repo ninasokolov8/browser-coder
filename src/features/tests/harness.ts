@@ -69,4 +69,3 @@ export function findHarness(
   if (matches.length > 1) return { kind: 'ambiguous', paths: matches };
   return { kind: 'found', path: matches[0] };
 }
-

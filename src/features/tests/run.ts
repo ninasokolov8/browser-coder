@@ -20,6 +20,7 @@ import { collectWorkspaceSnapshot } from '../workspace';
 import { runCode } from '../execution';
 import { findHarness } from './harness.ts';
 import { parseTestReport, summariseReport, type TestReport } from './protocol.ts';
+import { t, tn } from '../../i18n/index.ts';
 
 /** The status glyph for each outcome. Shape as well as colour, for the same reason the
  * conditional breakpoint is a different shape: colour alone is not a signal everyone
@@ -72,12 +73,12 @@ function renderReport(report: TestReport): void {
    * they had done - past the very list they needed the summary to make sense of.
    */
   const headline = total > 0
-    ? `${progressBar(report.passed, total)}  ${report.passed} of ${total} checks passing`
-    : 'The checks produced no results.';
+    ? `${progressBar(report.passed, total)}  ${tn('tests.checksPassing', total, { passed: report.passed, total })}`
+    : t('tests.noResults');
 
   const lines: string[] = [
     '',
-    '<span class="info">── Check my work ───────────────────────────────────────────</span>',
+    `<span class="info">── ${escapeHtml(t('titlebar.checkWork'))} ───────────────────────────────────────────</span>`,
     `<span class="${report.failed > 0 ? 'warning' : 'success'}">${escapeHtml(headline)}</span>`,
   ];
 
@@ -91,7 +92,7 @@ function renderReport(report: TestReport): void {
   if (firstFailure) {
     const detail = firstFailure.detail ? ` — ${firstFailure.detail}` : '';
     lines.push(
-      `<span class="info">Start here: </span>` +
+      `<span class="info">${escapeHtml(t('tests.startHere'))} </span>` +
       `<span class="error">${escapeHtml(firstFailure.name + detail)}</span>`,
     );
   }
@@ -106,7 +107,7 @@ function renderReport(report: TestReport): void {
   }
 
   if (report.truncated) {
-    lines.push('<span class="info">… more checks ran than are listed here.</span>');
+    lines.push(`<span class="info">${escapeHtml(t('tests.moreRan'))}</span>`);
   }
 
   lines.push('', `<span class="info">${escapeHtml(summariseReport(report))}</span>`);
@@ -132,11 +133,10 @@ export async function runStudentTests(): Promise<void> {
      * button. It is also exactly why the toolbar button was removed: the feature was
      * working and telling nobody.
      */
-    setStatus('This task has no checks to run.');
+    setStatus(t('tests.noneToRun'));
     appendOutputHtml(
-      '\n<span class="info">── Check my work ───────────────────────────────────────────</span>\n' +
-      '<span class="info">This task has no checks. A teacher adds them by including a ' +
-      'marking file (one whose name starts with X_HIDDEN_) in the project.</span>\n',
+      `\n<span class="info">── ${escapeHtml(t('titlebar.checkWork'))} ───────────────────────────────────────────</span>\n` +
+      `<span class="info">${escapeHtml(t('tests.noneExplanation'))}</span>\n`,
     );
     return;
   }
@@ -147,11 +147,11 @@ export async function runStudentTests(): Promise<void> {
      * TASK, and marking a student against an arbitrary one of them - differently
      * depending on file order - is worse than saying so.
      */
-    setStatus('This task has more than one marking harness, so none was run.');
+    setStatus(t('tests.multipleHarnesses'));
     appendOutputHtml(
-      `\n<span class="error">More than one marking harness was found:</span>\n`
+      `\n<span class="error">${escapeHtml(t('tests.multipleFound'))}</span>\n`
       + found.paths.map(path => `<span class="error">  ${escapeHtml(path)}</span>`).join('\n')
-      + `\n<span class="info">A task must have exactly one.</span>\n`,
+      + `\n<span class="info">${escapeHtml(t('tests.exactlyOne'))}</span>\n`,
     );
     return;
   }
@@ -168,8 +168,8 @@ export async function runStudentTests(): Promise<void> {
      * own error output and explanation are already on screen above this, and adding
      * "0 of 0 passed" would be both wrong and confusing.
      */
-    setStatus('The checks did not run.');
-    announce('The marking harness produced no results.');
+    setStatus(t('tests.didNotRun'));
+    announce(t('tests.markingNoResults'));
     return;
   }
 
@@ -178,8 +178,11 @@ export async function runStudentTests(): Promise<void> {
   const summary = summariseReport(report);
   setStatus(
     report.failed === 0 && report.done
-      ? `All ${report.passed} checks passed ✅`
-      : `${report.passed} of ${report.cases.length} checks passed`,
+      ? tn('tests.allPassed', report.passed)
+      : tn('tests.checksPassed', report.cases.length, {
+          passed: report.passed,
+          total: report.cases.length,
+        }),
   );
   // Said once. The panel is not a live region, for the same reason it is not one for
   // ordinary output: a hundred lines would be read aloud.

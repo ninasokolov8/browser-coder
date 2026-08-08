@@ -1,13 +1,13 @@
-# Browser Coder - Production Ready Docker Compose
-# 
+# Browser Coder - local production-like Docker Compose
+#
 # ONE COMMAND DEPLOYMENT:
 #   docker compose up -d
 #
 # This automatically:
 # - Builds and runs the application
-# - Starts nginx load balancer  
-# - Enables auto-scaling (1-8 API instances based on load)
-# - Handles 10,000+ concurrent users
+# - Starts nginx load balancer
+# - Runs multiple API replicas behind nginx
+# - Includes a local autoscaler for load testing and operational development
 # - SECURITY: Sandboxed code execution
 #
 # Access: http://localhost
@@ -38,7 +38,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
- 
+
   # ============================================
   # SHARED STORAGE INIT - Fix named-volume permissions
   # ============================================
@@ -119,15 +119,18 @@ services:
     pids_limit: 512
     security_opt:
       - no-new-privileges:true
-    read_only: false  # Needed for temp files during code execution
+    read_only: true
     tmpfs:
-      - /tmp:size=128M,mode=1777
-      - /app/sandbox:size=128M,mode=0700,uid=1001,gid=1001
+      - /tmp:noexec,nosuid,size=128M,mode=1777
+      - /app/sandbox:noexec,nosuid,size=128M,mode=0700,uid=1001,gid=1001
     cap_drop:
       - ALL
     cap_add:
       - SETUID
       - SETGID
+      # `init: true` runs as root while Node runs as uid 1001. CAP_KILL lets the
+      # init forward shutdown signals across that uid boundary.
+      - KILL
     # No egress: the `internal` network sets `internal: true` (V-07).
     networks:
       - internal
@@ -152,7 +155,7 @@ services:
         reservations:
           memory: 256M
           cpus: '0.25'
-      
+
   # ============================================
   # AUTOSCALER - Monitors load & scales API
   # ============================================
@@ -185,11 +188,12 @@ services:
   # SECURITY TESTS - Runs once on startup
   # ============================================
   security-tests:
-    image: node:20-alpine
+    image: node:22-alpine
     working_dir: /app
     user: "0:0"  # Run as root to ensure write permissions to mounted volume
     volumes:
       - ./security:/app/security:rw
+      - ./tests/security/attacks:/app/tests/security/attacks:ro
       - ./package.json:/app/package.json:ro
     environment:
       - NODE_ENV=production

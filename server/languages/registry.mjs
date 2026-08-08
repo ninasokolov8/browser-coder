@@ -32,14 +32,3 @@ const ADAPTERS = new Map([
 export function getAdapter(languageId) {
   return ADAPTERS.get(languageId) || null;
 }
-
-export function hasAdapter(languageId) {
-  return ADAPTERS.has(languageId);
-}
-
-/** Every language that can be executed. Derived, never hand-maintained. */
-export function adapterIds() {
-  return [...ADAPTERS.keys()];
-}
-
-export default ADAPTERS;

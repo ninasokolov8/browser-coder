@@ -1,5 +1,8 @@
 # Feature Ideas from MeadowPy - What Browser Coder Could Add
 
+> Historical product research, retained for decision context. Some ideas have since
+> been implemented or rejected; this is not a current roadmap.
+
 **Source analyzed:** `MeadowPy-main/` (a local, Windows-only, single-language PyQt6 desktop IDE for
 beginner Python learners, with a local Ollama AI assistant, step-through debugger, and linting).
 

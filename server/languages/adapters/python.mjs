@@ -39,7 +39,7 @@ const DEBUG_ADAPTER_PATH = path.join(LANGUAGES_ROOT, 'python', 'debug_adapter.py
 export const WORKSPACE_ENV = 'BROWSER_CODER_WORKSPACE';
 
 /** Where the debug adapter finds the turtle shim. Set only when one was written. */
-export const TURTLE_SHIM_ENV = 'BROWSER_CODER_TURTLE_SHIM';
+const TURTLE_SHIM_ENV = 'BROWSER_CODER_TURTLE_SHIM';
 
 /**
  * The filesystem guard, loaded once.
@@ -351,5 +351,3 @@ export const pythonAdapter = {
     };
   },
 };
-
-export default pythonAdapter;

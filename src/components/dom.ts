@@ -13,7 +13,6 @@ export const panelEl = document.getElementById("panel")!;
 export const panelContentEl = document.getElementById("panel-content")!;
 export const panelResizeEl = document.getElementById("panel-resize")!;
 // Turtle graphics elements
-export const turtleOutputEl = document.getElementById("turtle-output") as HTMLElement | null;
 export const turtleCanvasEl = document.getElementById("turtle-canvas") as HTMLCanvasElement | null;
 export const tabsEl = document.getElementById("tabs")!;
 export const fileTreeEl = document.getElementById("file-tree")!;
@@ -50,4 +49,3 @@ export const sidebarResizeEl = document.getElementById("sidebar-resize")!;
 
 // Activity bar icons
 export const activityIcons = document.querySelectorAll('.activity-icon[data-panel]');
-

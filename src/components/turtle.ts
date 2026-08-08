@@ -4,6 +4,7 @@ import {
 import * as monaco from 'monaco-editor';
 import { runtime } from '../app/runtime.ts';
 import { getPopupWindow, hidePopupWindow, showPopupWindow } from "./popup-window";
+import { t } from '../i18n/index.ts';
 
 // Id of the shared popup window the turtle drawing is rendered into.
 const TURTLE_WINDOW_ID = 'turtle-window';
@@ -146,7 +147,7 @@ function mergeLook(base: TurtleLook, src: Record<string, unknown>): TurtleLook {
 function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement; body: HTMLElement } | null {
   const popup = getPopupWindow(
     TURTLE_WINDOW_ID,
-    '\uD83D\uDC22 Turtle Graphics',
+    `\uD83D\uDC22 ${t('turtle.graphics')}`,
     () => clearTurtleCanvas(),   // closing also stops any running animation
   );
   if (!popup) return null;
@@ -206,28 +207,32 @@ function createTurtleReplayControls(
 
   const back = document.createElement('button');
   back.type = 'button';
+  back.dataset.replayAction = 'back';
   back.textContent = '◀';
-  back.title = 'Previous drawing step';
+  back.title = t('turtle.previousStep');
 
   const play = document.createElement('button');
   play.type = 'button';
-  play.textContent = '▶ Replay';
-  play.title = 'Play or pause the drawing';
+  play.dataset.replayAction = 'play';
+  play.textContent = `▶ ${t('turtle.replay')}`;
+  play.title = t('turtle.playPause');
 
   const forward = document.createElement('button');
   forward.type = 'button';
+  forward.dataset.replayAction = 'forward';
   forward.textContent = '▶';
-  forward.title = 'Next drawing step';
+  forward.title = t('turtle.nextStep');
 
   const range = document.createElement('input');
   range.type = 'range';
   range.min = '0';
   range.max = String(shapes.length);
   range.value = String(shapes.length);
-  range.setAttribute('aria-label', 'Turtle replay position');
+  range.setAttribute('aria-label', t('turtle.position'));
 
   const speed = document.createElement('select');
-  speed.title = 'Replay speed';
+  speed.title = t('turtle.speed');
+  speed.dataset.replayAction = 'speed';
   for (const value of [0.5, 1, 2]) {
     const option = document.createElement('option');
     option.value = String(value);
@@ -242,7 +247,7 @@ function createTurtleReplayControls(
   const setProgress = (raw: number, reveal = false) => {
     const value = Math.min(shapes.length, Math.max(0, Math.round(raw)));
     range.value = String(value);
-    label.textContent = `step ${value} of ${shapes.length}`;
+    label.textContent = t('turtle.stepOf', { step: value, total: shapes.length });
     const shape = value > 0 ? shapes[value - 1] : null;
     highlightTurtleLine(shape?.ln, reveal);
   };
@@ -253,7 +258,7 @@ function createTurtleReplayControls(
       turtleAnimRafId = null;
     }
     stopTurtleReplay();
-    play.textContent = '▶ Replay';
+    play.textContent = `▶ ${t('turtle.replay')}`;
     setProgress(value, reveal);
     renderAt(Number(range.value));
   };
@@ -264,11 +269,11 @@ function createTurtleReplayControls(
   play.addEventListener('click', () => {
     if (turtleReplayTimer !== null) {
       stopTurtleReplay();
-      play.textContent = '▶ Replay';
+      play.textContent = `▶ ${t('turtle.replay')}`;
       return;
     }
     if (Number(range.value) >= shapes.length) seek(0, true);
-    play.textContent = '⏸ Pause';
+    play.textContent = `⏸ ${t('turtle.pause')}`;
     const delay = Math.max(35, 240 / Number(speed.value));
     turtleReplayTimer = window.setInterval(() => {
       const next = Number(range.value) + 1;
@@ -276,7 +281,7 @@ function createTurtleReplayControls(
       renderAt(next);
       if (next >= shapes.length) {
         stopTurtleReplay();
-        play.textContent = '▶ Replay';
+        play.textContent = `▶ ${t('turtle.replay')}`;
       }
     }, delay);
   });
@@ -876,3 +881,31 @@ export function clearTurtleCanvas(): void {
   const ctx = canvas.getContext('2d');
   ctx?.clearRect(0, 0, canvas.width, canvas.height);
 }
+
+function updateTurtleTranslations(): void {
+  const title = document.getElementById(`${TURTLE_WINDOW_ID}-title`);
+  if (title) title.textContent = `\uD83D\uDC22 ${t('turtle.graphics')}`;
+
+  const controls = document.getElementById('turtle-replay-controls');
+  if (!controls) return;
+  const back = controls.querySelector<HTMLElement>('[data-replay-action="back"]');
+  const play = controls.querySelector<HTMLElement>('[data-replay-action="play"]');
+  const forward = controls.querySelector<HTMLElement>('[data-replay-action="forward"]');
+  const range = controls.querySelector<HTMLInputElement>('input[type="range"]');
+  const speed = controls.querySelector<HTMLElement>('[data-replay-action="speed"]');
+  const label = controls.querySelector<HTMLElement>('.turtle-replay-label');
+
+  if (back) back.title = t('turtle.previousStep');
+  if (play) {
+    play.title = t('turtle.playPause');
+    play.textContent = `${turtleReplayTimer === null ? '▶' : '⏸'} ${t(turtleReplayTimer === null ? 'turtle.replay' : 'turtle.pause')}`;
+  }
+  if (forward) forward.title = t('turtle.nextStep');
+  if (range) range.setAttribute('aria-label', t('turtle.position'));
+  if (speed) speed.title = t('turtle.speed');
+  if (label && range) {
+    label.textContent = t('turtle.stepOf', { step: range.value, total: range.max });
+  }
+}
+
+window.addEventListener('languageChanged', updateTurtleTranslations);

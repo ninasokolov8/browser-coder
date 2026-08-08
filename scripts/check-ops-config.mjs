@@ -24,7 +24,9 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 
 const files = process.argv.slice(2);
-if (files.length === 0) files.push('docker-compose.yml', 'docker-compose.prod.yml');
+if (files.length === 0) {
+  files.push('docker-compose.yml', 'docker-compose.prod.yml', 'docker-compose.test.yml');
+}
 
 /** Services that execute untrusted code and therefore must be contained. */
 const SANDBOXED_SERVICES = ['api'];
@@ -117,6 +119,39 @@ for (const file of files) {
       pass(`${name} sets no-new-privileges`);
     } else {
       fail(`${name} does not set no-new-privileges`);
+    }
+
+    if (service.read_only === true) {
+      pass(`${name} has a read-only root filesystem`);
+    } else {
+      fail(`${name} root filesystem is writable`);
+    }
+
+    const droppedCapabilities = new Set(service.cap_drop ?? []);
+    if (droppedCapabilities.has('ALL')) {
+      pass(`${name} drops all ambient Linux capabilities`);
+    } else {
+      fail(`${name} does not drop all ambient Linux capabilities`);
+    }
+
+    if (service.init === true) {
+      pass(`${name} has an init process for signal forwarding and child reaping`);
+    } else {
+      fail(`${name} does not enable an init process`);
+    }
+
+    // The image's entrypoint uses su-exec to leave root before Node starts.
+    // SETUID/SETGID perform that transition; KILL lets the root-owned init signal
+    // the uid-1001 Node process during a graceful container stop.
+    const addedCapabilities = new Set(service.cap_add ?? []);
+    for (const required of ['SETUID', 'SETGID', 'KILL']) {
+      if (addedCapabilities.has(required)) pass(`${name} retains the required ${required} capability`);
+      else fail(`${name} is missing the required ${required} capability`);
+    }
+    const unexpectedCapabilities = [...addedCapabilities]
+      .filter(capability => !['SETUID', 'SETGID', 'KILL'].includes(capability));
+    if (unexpectedCapabilities.length > 0) {
+      fail(`${name} adds unexpected capabilities: ${unexpectedCapabilities.join(', ')}`);
     }
 
     checkSharedStores(name, service, resolved, file);

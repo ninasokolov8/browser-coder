@@ -33,11 +33,11 @@
  * a bound so a client that never sends one still gets its program run.
  */
 
-import net from 'node:net';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { DapConnection } from './dap.mjs';
+import { createIdeDebugChannel } from '../shared/debug-channel.mjs';
 import { resolveInWorkspace, workspaceRelative } from '../shared/workspace-paths.mjs';
 
 const PORT = Number(process.env.BROWSER_CODER_DEBUG_PORT || 0);
@@ -62,23 +62,12 @@ const workspaceRoot = path.resolve(WORKSPACE);
 
 // ── The IDE channel ─────────────────────────────────────────────────────────
 
-const channel = net.connect(PORT, '127.0.0.1');
-channel.setNoDelay(true);
-
-let channelBuffer = '';
-let channelClosed = false;
-
-function send(frame) {
-  if (channelClosed || channel.destroyed) return;
-  try {
-    channel.write(`${JSON.stringify(frame)}\n`);
-  } catch {
-    // Losing the debugger must not lose the run.
-  }
-}
-
-channel.on('error', () => { channelClosed = true; });
-channel.on('close', () => { channelClosed = true; });
+const {
+  socket: channel,
+  send,
+  close: closeChannel,
+  handleCommands: handleChannelCommands,
+} = createIdeDebugChannel(PORT);
 channel.on('connect', () => send({ type: 'hello', token: TOKEN, language: 'csharp' }));
 
 // ── The debugger process ────────────────────────────────────────────────────
@@ -148,10 +137,7 @@ let finished = false;
 function finish() {
   if (finished) return;
   finished = true;
-  if (!channelClosed) {
-    channelClosed = true;
-    try { channel.end(); } catch { /* already gone */ }
-  }
+  closeChannel();
 
   const leave = () => process.exit(exitCode);
 
@@ -620,29 +606,12 @@ async function handleCommand(command) {
  */
 let markReady = () => {};
 const ready = new Promise(resolve => { markReady = resolve; });
-let handling = ready;
-
-channel.on('data', chunk => {
-  channelBuffer += chunk.toString('utf8');
-  let index;
-  while ((index = channelBuffer.indexOf('\n')) !== -1) {
-    const line = channelBuffer.slice(0, index);
-    channelBuffer = channelBuffer.slice(index + 1);
-    if (!line.trim()) continue;
-
-    let command;
-    try {
-      command = JSON.parse(line);
-    } catch {
-      continue;
-    }
-
-    handling = handling
-      .then(() => handleCommand(command), () => handleCommand(command))
-      .catch(error => {
-        process.stderr.write(`csharp debug adapter: ${error?.stack || error}\n`);
-      });
-  }
+handleChannelCommands({
+  ready,
+  handleCommand,
+  reportError(error) {
+    process.stderr.write(`csharp debug adapter: ${error?.stack || error}\n`);
+  },
 });
 
 // ── Startup ─────────────────────────────────────────────────────────────────

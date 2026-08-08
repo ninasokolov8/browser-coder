@@ -155,5 +155,3 @@ export const javascriptAdapter = {
     };
   },
 };
-
-export default javascriptAdapter;

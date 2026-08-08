@@ -103,7 +103,6 @@ export function normalizeWorkspacePath(raw, limits = DEFAULT_PATH_LIMITS) {
   // C0 controls plus DEL. These are legal in a POSIX filename but cannot
   // round-trip through a URL, a ZIP entry or a terminal, so a path containing
   // one would pass validation and then break export, preview or import.
-  // eslint-disable-next-line no-control-regex
   if (/[\u0001-\u001f\u007f]/.test(candidate)) {
     return failure(
       PathError.CONTROL_CHARACTER,

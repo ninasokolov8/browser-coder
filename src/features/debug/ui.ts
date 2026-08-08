@@ -12,7 +12,6 @@
 import * as monaco from 'monaco-editor';
 
 import { runtime } from '../../app/runtime';
-import { escapeHtml } from '../../components/html-escape.ts';
 import { activeSessionId } from '../../components/interactive-console.ts';
 import { setStatus } from '../../components/output';
 import {
@@ -34,6 +33,7 @@ import {
   type ToolbarAction,
 } from './toolbar.ts';
 import type { Disposable } from '../../workspace/types.ts';
+import { t } from '../../i18n/index.ts';
 
 /**
  * The previous pause's locals, so each stop can be shown as a change rather than a
@@ -78,7 +78,7 @@ async function sendCommand(command: string, body: Record<string, unknown> = {}):
       // a debug control during an ordinary run. Reported quietly rather than thrown:
       // it is a mis-click, not a fault.
       const detail = await response.json().catch(() => null);
-      setStatus(detail?.error || `Debug command failed (${response.status})`);
+      setStatus(detail?.error || t('debug.commandFailed', { status: response.status }));
     }
   } catch {
     // The stream is the source of truth for session liveness; a failed control
@@ -141,15 +141,7 @@ export function syncBreakpoints(): void {
 export function configureLogpointAtLine(line: number): void {
   const existing = debugState.logpointExpression(line);
   const answer = window.prompt(
-    [
-      `Print a value whenever line ${line} runs`,
-      '',
-      'Enter a variable or expression, for example:',
-      'total    or    score * 2',
-      '',
-      'Its value will appear in Output each time this line runs. The program will not pause.',
-      ...(existing ? ['Leave the box empty to remove this log point.'] : []),
-    ].join('\n'),
+    t(existing ? 'debug.logpointPromptExisting' : 'debug.logpointPrompt', { line }),
     existing ?? '',
   );
   if (answer === null) return;
@@ -157,8 +149,8 @@ export function configureLogpointAtLine(line: number): void {
   debugState.setLogpoint(line, answer);
   syncBreakpoints();
   setStatus(answer.trim()
-    ? `Line ${line} will print ${answer.trim()} in Output without pausing`
-    : `Removed the log point on line ${line}`);
+    ? t('debug.logpointAdded', { line, expression: answer.trim() })
+    : t('debug.logpointRemoved', { line }));
 }
 
 // ── Editor decorations ──────────────────────────────────────────────────────
@@ -199,8 +191,8 @@ function renderDecorations(snapshot: DebugSnapshot): void {
         glyphMarginClassName: condition ? CONDITIONAL_GLYPH : BREAKPOINT_GLYPH,
         glyphMarginHoverMessage: {
           value: condition
-            ? `Stops when \`${condition}\` — click to remove`
-            : 'Breakpoint — click to remove',
+            ? t('debug.conditionalBreakpointHint', { condition })
+            : t('debug.breakpointHint'),
         },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
@@ -217,8 +209,8 @@ function renderDecorations(snapshot: DebugSnapshot): void {
         glyphMarginClassName: LOGPOINT_GLYPH,
         glyphMarginHoverMessage: {
           value: expression
-            ? `Log point — prints \`${expression}\` and continues. Right-click the code to edit it.`
-            : 'Log point — prints and continues',
+            ? t('debug.logpointHint', { expression })
+            : t('debug.logpointGenericHint'),
         },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
@@ -295,7 +287,7 @@ function variableRow(
     const was = document.createElement('span');
     was.className = 'debug-var-was';
     was.textContent = previousText;
-    was.title = `Previous value: ${previousText}`;
+    was.title = t('debug.previousValue', { value: previousText });
     row.appendChild(was);
   }
   // textContent throughout: a value is `repr()` of something the student created,
@@ -318,8 +310,8 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges
     const empty = document.createElement('div');
     empty.className = 'debug-empty';
     empty.textContent = snapshot.status === 'running'
-      ? 'Running. Variables appear when the program stops.'
-      : 'Set a breakpoint and start debugging.';
+      ? t('debug.variablesWhenPaused')
+      : t('debug.setBreakpointHint');
     host.appendChild(empty);
     return;
   }
@@ -346,12 +338,12 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges
       }));
   const changeOf = new Map(diffed.map(entry => [entry.variable.name, entry]));
 
-  const sections: Array<[string, readonly DebugVariable[]]> = [
-    ['Locals', snapshot.stop.locals],
-    ['Globals', snapshot.stop.globals],
+  const sections: Array<{ title: string; variables: readonly DebugVariable[]; showDiff: boolean }> = [
+    { title: t('debug.locals'), variables: snapshot.stop.locals, showDiff: true },
+    { title: t('debug.globals'), variables: snapshot.stop.globals, showDiff: false },
   ];
 
-  for (const [title, variables] of sections) {
+  for (const { title, variables, showDiff } of sections) {
     // An empty Globals section is omitted rather than shown empty: at module level
     // `f_globals is f_locals`, so the adapter deliberately leaves it blank and a
     // visible empty heading would look like a bug.
@@ -363,7 +355,7 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges
     host.appendChild(heading);
 
     for (const variable of variables) {
-      const entry = title === 'Locals' ? changeOf.get(variable.name) : undefined;
+      const entry = showDiff ? changeOf.get(variable.name) : undefined;
       host.appendChild(variableRow(variable, 0, entry?.change ?? 'same', entry?.previousText));
       for (const child of variable.value.children ?? []) {
         host.appendChild(variableRow(child, 1));
@@ -382,7 +374,7 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges
   if (sentence) {
     const heading = document.createElement('div');
     heading.className = 'debug-section';
-    heading.textContent = 'This step';
+    heading.textContent = t('debug.thisStep');
     host.appendChild(heading);
 
     const line = document.createElement('div');
@@ -415,12 +407,12 @@ function renderHistoryTape(
   section.className = 'debug-history';
   const heading = document.createElement('div');
   heading.className = 'debug-section';
-  heading.textContent = `Value history · step ${view.index + 1} of ${view.total}`;
+  heading.textContent = t('debug.valueHistoryStep', { step: view.index + 1, total: view.total });
   section.appendChild(heading);
 
   const guide = document.createElement('p');
   guide.className = 'debug-history-guide';
-  guide.textContent = 'Each cell is one pause. ↳ means unchanged. Select a cell to review that moment.';
+  guide.textContent = t('debug.historyGuide');
   section.appendChild(guide);
 
   for (const name of history.trackedNames()) {
@@ -446,10 +438,10 @@ function renderHistoryTape(
         ? '·'
         : unchanged ? '↳' : historyValueLabel(cell.text, cell.type);
       const valueDescription = cell.text === null
-        ? `${name} is not in scope yet`
-        : `${name} = ${cell.text}${unchanged ? ' (unchanged)' : ''}`;
-      button.title = `Step ${cell.index + 1}: ${valueDescription}`;
-      button.setAttribute('aria-label', `Review step ${cell.index + 1}. ${valueDescription}`);
+        ? t('debug.notInScope', { name })
+        : t(unchanged ? 'debug.valueUnchanged' : 'debug.valueAtStep', { name, value: cell.text });
+      button.title = t('debug.stepDescription', { step: cell.index + 1, description: valueDescription });
+      button.setAttribute('aria-label', t('debug.reviewStep', { step: cell.index + 1, description: valueDescription }));
       button.addEventListener('click', () => onSelect(cell.index));
       cells.appendChild(button);
       previous = cell.text;
@@ -480,8 +472,8 @@ function buildWatchPanel(host: HTMLElement): void {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'debug-watch-input';
-  input.placeholder = 'Watch an expression…';
-  input.setAttribute('aria-label', 'Watch an expression');
+  input.placeholder = t('debug.watchPlaceholder');
+  input.setAttribute('aria-label', t('debug.watchExpression'));
   // The channel refuses anything longer, so the browser stops it here instead of the
   // student typing into a box whose contents will be silently dropped.
   input.maxLength = 2000;
@@ -523,7 +515,7 @@ function renderWatches(host: HTMLElement, snapshot: DebugSnapshot): void {
       value.className = 'debug-var-value debug-watch-pending';
       value.textContent = snapshot.status === 'paused' || snapshot.status === 'postMortem'
         ? '…'
-        : 'not running';
+        : t('debug.notRunning');
     } else {
       value.className = result.error ? 'debug-var-value debug-watch-error' : 'debug-var-value';
       // textContent throughout: the value is a repr of something the student created,
@@ -535,8 +527,8 @@ function renderWatches(host: HTMLElement, snapshot: DebugSnapshot): void {
     remove.type = 'button';
     remove.className = 'debug-watch-remove';
     remove.textContent = '×';
-    remove.title = `Stop watching ${expression}`;
-    remove.setAttribute('aria-label', `Stop watching ${expression}`);
+    remove.title = t('debug.stopWatching', { expression });
+    remove.setAttribute('aria-label', t('debug.stopWatching', { expression }));
     remove.addEventListener('click', () => debugState.removeWatch(expression));
 
     row.appendChild(name);
@@ -553,7 +545,7 @@ function renderCallStack(host: HTMLElement, snapshot: DebugSnapshot): void {
 
   const heading = document.createElement('div');
   heading.className = 'debug-section';
-  heading.textContent = 'Call stack';
+  heading.textContent = t('debug.callStack');
   host.appendChild(heading);
 
   stack.forEach((frame, index) => {
@@ -614,7 +606,7 @@ export function initializeDebugUi(): Disposable {
     panelsHost.classList.toggle('collapsed', panelCollapsed);
     if (panelMinimize) {
       panelMinimize.textContent = panelCollapsed ? '+' : '−';
-      panelMinimize.title = panelCollapsed ? 'Show debugger details' : 'Minimize debugger details';
+      panelMinimize.title = panelCollapsed ? t('debug.showDetails') : t('debug.minimizeDetails');
       panelMinimize.setAttribute('aria-label', panelMinimize.title);
       panelMinimize.setAttribute('aria-expanded', String(!panelCollapsed));
     }
@@ -629,7 +621,7 @@ export function initializeDebugUi(): Disposable {
 
   const historyActions: ToolbarAction[] = [
     {
-      id: 'debug-step-back', label: 'Back', shortcut: 'Alt+Left',
+      id: 'debug-step-back', label: 'Back', labelKey: 'debug.back', shortcut: 'Alt+Left',
       icon: '<path d="M9.8 3.2 5 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
       enabled: () => history.view().canGoBack,
       run: () => {
@@ -639,14 +631,14 @@ export function initializeDebugUi(): Disposable {
       },
     },
     {
-      id: 'debug-history-forward', label: 'Forward', shortcut: 'Alt+Right',
+      id: 'debug-history-forward', label: 'Forward', labelKey: 'debug.forward', shortcut: 'Alt+Right',
       icon: '<path d="M6.2 3.2 11 8l-4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
       enabled: () => history.view().canGoForward,
       run: () => { if (history.forward()) renderLatest(); },
     },
   ];
   const detailsAction: ToolbarAction = {
-    id: 'debug-show-details', label: 'Show values', shortcut: '',
+    id: 'debug-show-details', label: 'Show values', labelKey: 'debug.showValues', shortcut: '',
     icon: '<path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     enabled: snapshot => snapshot.status !== 'idle'
       && (snapshot.status !== 'ended' || history.view().total > 0),
@@ -750,10 +742,14 @@ export function initializeDebugUi(): Disposable {
     renderToolbar(toolbarHost, actions, display);
     const status = document.getElementById('debug-status');
     if (status && view.stop) {
-      const prefix = view.viewingPast
-        ? 'Reviewing'
-        : latestSnapshot.status === 'ended' ? 'Recorded' : 'Paused on';
-      status.textContent = `${prefix} line ${view.stop.line} · step ${view.index + 1} of ${view.total}`;
+      const key = view.viewingPast
+        ? 'debug.reviewingLineStep'
+        : latestSnapshot.status === 'ended' ? 'debug.recordedLineStep' : 'debug.pausedLineStep';
+      status.textContent = t(key, {
+        line: view.stop.line,
+        step: view.index + 1,
+        total: view.total,
+      });
     }
     renderVariables(variablesHost, display, !view.viewingPast);
     renderHistoryTape(variablesHost, history, index => {
@@ -762,6 +758,18 @@ export function initializeDebugUi(): Disposable {
     renderCallStack(stackHost, display);
     if (watchHost) renderWatches(watchHost, display);
   };
+
+  const onLanguageChanged = (): void => {
+    buildToolbar(toolbarHost, actions, () => latestSnapshot);
+    const watchInput = watchHost?.querySelector<HTMLInputElement>('.debug-watch-input');
+    if (watchInput) {
+      watchInput.placeholder = t('debug.watchPlaceholder');
+      watchInput.setAttribute('aria-label', t('debug.watchExpression'));
+    }
+    renderPanelVisibility();
+    renderLatest();
+  };
+  window.addEventListener('languageChanged', onLanguageChanged);
 
   const unsubscribe = debugState.subscribe(snapshot => {
     latestSnapshot = snapshot;
@@ -848,7 +856,7 @@ export function initializeDebugUi(): Disposable {
 
     const existing = debugState.breakpointCondition(line);
     const answer = window.prompt(
-      `Stop at line ${line} only when this is true (leave empty for always):`,
+      t('debug.conditionPrompt', { line }),
       existing ?? '',
     );
     // Cancel is null and means "change nothing"; an empty string is a decision to
@@ -859,8 +867,8 @@ export function initializeDebugUi(): Disposable {
     syncBreakpoints();
     setStatus(
       answer.trim()
-        ? `Line ${line} now stops only when ${answer.trim()}`
-        : `Line ${line} now stops every time`,
+        ? t('debug.conditionAdded', { line, condition: answer.trim() })
+        : t('debug.conditionRemoved', { line }),
     );
   });
 
@@ -869,10 +877,8 @@ export function initializeDebugUi(): Disposable {
       marginSubscription.dispose();
       modelSubscription.dispose();
       unsubscribe();
+      window.removeEventListener('languageChanged', onLanguageChanged);
       decorations?.clear();
     },
   };
 }
-
-/** Escaped for the one place markup is built rather than assembled from nodes. */
-export const escapeForDebug = escapeHtml;

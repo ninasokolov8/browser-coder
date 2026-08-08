@@ -1,0 +1,327 @@
+/* ── Asset viewer ─────────────────────────────────────────────────── */
+/* Takes the editor's place for a binary file. The editor is hidden rather
+   than destroyed, so switching back to code does not rebuild Monaco. */
+#asset-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+  background: var(--bg-editor, #1e1e1e);
+  z-index: 5;
+}
+#asset-viewer[hidden] { display: none; }
+.asset-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+}
+.asset-image {
+  max-width: min(100%, 900px);
+  max-height: 55vh;
+  object-fit: contain;
+  border-radius: 6px;
+  /* A chequerboard, so a transparent PNG reads as transparent rather than as
+     whatever the panel background happens to be. */
+  background-color: var(--bg-checker);
+  background-image:
+    linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%),
+    linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%, transparent 75%, var(--bg-checker-alt) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  box-shadow: 0 6px 24px var(--shadow-strong);
+}
+.asset-unavailable {
+  max-width: 460px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary, #999);
+}
+.asset-meta {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 14px;
+  font-size: 12px;
+}
+.asset-meta-key { color: var(--text-secondary, #888); }
+.asset-meta-value {
+  color: var(--text-primary, #ddd);
+  /* A file name is a name, not prose: LTR even in the Hebrew UI. */
+  direction: ltr;
+  word-break: break-all;
+}
+.asset-hint {
+  font-size: 11px;
+  color: var(--text-secondary, #777);
+  text-align: center;
+  direction: ltr;
+}
+
+/* ── Breadcrumbs ──────────────────────────────────────────────────── */
+#breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: nowrap;
+  background: var(--bg-panel, #252526);
+  border-bottom: 1px solid var(--border-faint);
+  /* A file path is a path, not prose: it stays LTR even in the Hebrew UI. */
+  direction: ltr;
+  scrollbar-width: none;
+}
+#breadcrumbs::-webkit-scrollbar { height: 0; }
+#breadcrumbs[hidden] { display: none; }
+.breadcrumb-segment {
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font: inherit;
+  color: var(--text-secondary, #999);
+}
+button.breadcrumb-segment { cursor: pointer; }
+button.breadcrumb-segment:hover { background: var(--bg-hover); color: var(--text-primary); }
+button.breadcrumb-segment:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+.breadcrumb-file { color: var(--text-primary, #ddd); }
+.breadcrumb-symbol { color: var(--fg-symbol); }
+.breadcrumb-separator { color: var(--text-muted); }
+#problems-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+  font-size: 12px;
+}
+#problems-content.visible { display: block; }
+.problems-empty {
+  padding: 10px 14px;
+  color: var(--text-secondary);
+}
+.problem-file {
+  padding: 4px 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel, #1e1e1e);
+}
+.problem-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 14px 3px 28px;
+  cursor: pointer;
+}
+.problem-row:hover { background: var(--bg-hover); }
+.problem-row:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+.problem-icon { flex: 0 0 auto; }
+.problem-row.severity-error .problem-icon { color: var(--fg-error); }
+.problem-row.severity-warning .problem-icon { color: var(--fg-warning); }
+.problem-row.severity-info .problem-icon { color: var(--fg-info); }
+.problem-message { flex: 1 1 auto; }
+.problem-location {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.problem-source { flex: 0 0 auto; color: var(--text-secondary); opacity: 0.75; }
+#panel-content .error { color: var(--fg-error); }
+#panel-content .success { color: var(--fg-success); }
+#panel-content .info { color: var(--fg-info); }
+#panel-content .warning { color: var(--fg-warning); }
+
+/* Interactive stdin console (programs that call input()/Scanner/etc.) */
+#panel-content .term-input-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+#panel-content .term-caret {
+  color: var(--fg-success);
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+#panel-content .term-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  caret-color: var(--fg-success);
+}
+.term-eof {
+  margin-inline-start: 8px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.term-eof:hover { color: var(--text-primary); border-color: var(--focus-ring); }
+
+/* ===== GRAPHICS POPUP WINDOWS ===== */
+/* Graphics output, including Turtle drawings and SVG images, lives in its
+   own floating window so it does not cover the Output panel. */
+#turtle-window,
+.popup-window {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-panel, #1e1e1e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+  min-width: 160px;
+  min-height: 120px;
+  max-width: 92vw;
+  max-height: 88vh;
+}
+.popup-window.hidden { display: none; }
+.popup-window-header {
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  background: var(--bg-tab, #252526);
+  border-bottom: 1px solid var(--border-color, #333);
+  cursor: move;
+  user-select: none;
+}
+.popup-window-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+.popup-window-close {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 15px;
+  line-height: 1;
+}
+.popup-window-close:hover { background: #c0392b; color: #fff; }
+.popup-window-body {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-editor, #1e1e1e);
+}
+.popup-window-body.turtle-popup-body {
+  flex-direction: column;
+  gap: 9px;
+}
+#turtle-canvas {
+  display: block;
+  background: #fff;
+  border-radius: 2px;
+}
+.turtle-replay-controls {
+  width: min(100%, 680px);
+  display: grid;
+  grid-template-columns: auto auto auto minmax(120px, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary, #ddd);
+  font-size: 12px;
+}
+.turtle-replay-controls button,
+.turtle-replay-controls select {
+  min-height: 28px;
+  border: 1px solid var(--border, #555);
+  border-radius: 4px;
+  background: var(--bg-panel, #252526);
+  color: inherit;
+  cursor: pointer;
+}
+.turtle-replay-controls input[type="range"] { width: 100%; }
+.turtle-replay-label { min-width: 92px; text-align: end; }
+.turtle-replay-code-line {
+  background: rgba(255, 196, 0, .18);
+  border-inline-start: 3px solid #ffc400;
+}
+/* An SVG has no fixed pixel size, so cap it to a comfortable window. */
+#image-window-picture {
+  display: block;
+  background: #fff;
+  border-radius: 2px;
+  max-width: min(600px, 60vw);
+  max-height: 70vh;
+}
+
+/* Panel resize handle */
+#panel-resize {
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+#panel-resize:hover { background: var(--accent); }
+
+/* ===== STATUS BAR ===== */
+#statusbar {
+  grid-area: statusbar;
+  height: 22px;
+  background: var(--bg-statusbar);
+  color: white;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 0 8px;
+}
+.status-item {
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  height: 100%;
+}
+.status-item:hover { background: rgba(255,255,255,0.12); }
+.status-spacer { flex: 1; }
+.status-right { display: flex; }

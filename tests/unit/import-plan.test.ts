@@ -49,19 +49,24 @@ describe('paths that must never be created', () => {
     const plan = planImport(paths(['../escape.py', 'a/../../escape.py']), LIMITS);
     assert.deepEqual(plan.files, []);
     assert.equal(plan.skipped.length, 2);
-    for (const reason of plan.skipped) assert.match(reason, /\.\./);
+    assert.deepEqual(plan.skipped.map(skip => skip.path), ['../escape.py', 'a/../../escape.py']);
+    assert.ok(plan.skipped.every(skip => skip.reason === 'invalid-path' && skip.code === 'path_traversal'));
   });
 
   test('an absolute path is refused', () => {
     const plan = planImport(paths(['/etc/passwd.py']), LIMITS);
     assert.deepEqual(plan.files, []);
-    assert.match(plan.skipped[0], /absolute/i);
+    assert.deepEqual(plan.skipped[0], {
+      path: '/etc/passwd.py', reason: 'invalid-path', code: 'path_absolute',
+    });
   });
 
   test('a Windows drive letter is refused', () => {
     const plan = planImport(paths(['C:/Users/student/secret.py']), LIMITS);
     assert.deepEqual(plan.files, []);
-    assert.match(plan.skipped[0], /drive letter/i);
+    assert.deepEqual(plan.skipped[0], {
+      path: 'C:/Users/student/secret.py', reason: 'invalid-path', code: 'path_drive_letter',
+    });
   });
 
   test('a backslash is a separator, not part of a name', () => {
@@ -75,7 +80,9 @@ describe('paths that must never be created', () => {
   test('a reserved device name is refused', () => {
     const plan = planImport(paths(['con.txt']), LIMITS);
     assert.deepEqual(plan.files, []);
-    assert.match(plan.skipped[0], /reserved device/i);
+    assert.deepEqual(plan.skipped[0], {
+      path: 'con.txt', reason: 'invalid-path', code: 'path_reserved_device_name',
+    });
   });
 
   test('a generated-output directory is refused', () => {
@@ -112,7 +119,9 @@ describe('the limits', () => {
       existingFileCount: 298,
     });
     assert.deepEqual(plan.files.map(file => file.name), ['a.py', 'b.py']);
-    assert.match(plan.skipped[0], /file limit \(300\)/);
+    assert.deepEqual(plan.skipped[0], {
+      path: 'c.py', reason: 'file-limit', maxFiles: 300,
+    });
   });
 
   test('an over-large file is refused with its size named', () => {
@@ -121,7 +130,9 @@ describe('the limits', () => {
       LIMITS,
     );
     assert.deepEqual(plan.files.map(file => file.name), ['small.py']);
-    assert.match(plan.skipped[0], /larger than 8 MB/);
+    assert.deepEqual(plan.skipped[0], {
+      path: 'huge.py', reason: 'too-large', maxMegabytes: 8,
+    });
   });
 
   test('a file of unknown size is not refused for its size', () => {
@@ -133,7 +144,7 @@ describe('the limits', () => {
   test('the same path twice is imported once and reported', () => {
     const plan = planImport(paths(['a.py', 'a.py']), LIMITS);
     assert.equal(plan.files.length, 1);
-    assert.match(plan.skipped[0], /twice/);
+    assert.deepEqual(plan.skipped[0], { path: 'a.py', reason: 'duplicate' });
   });
 });
 

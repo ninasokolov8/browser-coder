@@ -34,7 +34,7 @@ function validateCodeSecurity(language, code) {
       };
     }
   }
-  
+
   return { safe: true };
 }
 

@@ -1,0 +1,317 @@
+/* ── Debugger ─────────────────────────────────────────────────────── */
+/*
+ * The debugger's controls.
+ *
+ * These were five 26x22 transparent squares holding bare glyphs. Against a dark
+ * panel they read as faint marks rather than buttons, and three of the glyphs
+ * (arc-over, arrow-in, arrow-out) mean nothing to a student who has not been
+ * taught them - which is everyone this IDE is for. Each control now carries its
+ * name, the row states what the program is doing, and Stop is visibly a different
+ * kind of action from the rest.
+ */
+#debug-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  background: var(--bg-panel, #252526);
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
+}
+#debug-toolbar[hidden] { display: none; }
+
+/* The sentence. First, because it is the thing that changes on its own. */
+.debug-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #ddd);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.debug-status::before {
+  content: "";
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--text-secondary, #888);
+}
+/* Paused is the state a student acts from, so it is the one with a colour. */
+.debug-status[data-state="paused"]::before { background: #e3b341; }
+.debug-status[data-state="running"]::before {
+  background: #4ec98a;
+  animation: debug-pulse 1.4s ease-in-out infinite;
+}
+.debug-status[data-state="postMortem"]::before { background: #e5534b; }
+.debug-status[data-state="postMortem"] { color: #f0999a; }
+@keyframes debug-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) {
+  .debug-status[data-state="running"]::before { animation: none; }
+}
+
+.debug-actions { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; }
+
+.debug-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  background: var(--bg-tab, #2d2d2d);
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 5px;
+  color: var(--text-primary, #ddd);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.debug-btn svg { flex: 0 0 auto; fill: currentColor; }
+.debug-btn:hover:not(:disabled) {
+  background: var(--bg-hover-strong, #3a3a3a);
+  border-color: var(--border-hover, #555);
+}
+.debug-btn:disabled { opacity: 0.4; cursor: default; }
+.debug-btn:focus-visible { outline: 2px solid var(--accent, #0a84ff); outline-offset: 1px; }
+
+/* Stop ends the session. Coloured so it is never the button pressed by mistake. */
+.debug-btn-stop { color: #f0999a; border-color: #6b3436; }
+.debug-btn-stop:hover:not(:disabled) { background: #c62828; border-color: #c62828; color: #fff; }
+
+/*
+ * Below ~900px the labels go and the icons carry it. The title attribute keeps
+ * the name reachable, and the row never wraps into two.
+ */
+@media (max-width: 900px) {
+  .debug-btn-label { display: none; }
+  .debug-btn { padding: 0 8px; }
+}
+
+#debug-panels {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  max-height: 34vh;
+  overflow: hidden;
+  font-size: 12px;
+  background: var(--bg-panel, #252526);
+  border-top: 1px solid var(--border-color, #3c3c3c);
+}
+#debug-panels[hidden] { display: none; }
+.debug-panel-header {
+  display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 4px 8px 4px 10px;
+  border-bottom: 1px solid var(--border-color); background: var(--bg-tab);
+}
+.debug-panel-title { font-weight: 600; color: var(--text-primary); }
+.debug-panel-hint { color: var(--text-secondary); font-size: 10px; }
+.debug-panel-actions { display: flex; gap: 3px; margin-inline-start: auto; }
+.debug-panel-control {
+  min-width: 26px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+}
+.debug-panel-control:hover { background: var(--bg-hover-strong); color: var(--text-primary); }
+.debug-panel-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#debug-panel-content { min-height: 0; overflow: auto; padding: 4px 0; }
+#debug-panels.collapsed { max-height: none; }
+#debug-panels.collapsed #debug-panel-content { display: none; }
+.debug-section {
+  padding: 3px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary, #888);
+}
+.debug-empty { padding: 10px; color: var(--text-secondary, #888); }
+.debug-var-row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 10px;
+  /* A variable name and a repr are both code: LTR even in the Hebrew UI. */
+  direction: ltr;
+}
+.debug-var-row:hover { background: var(--bg-hover); }
+/* A variable that moved on this step. The one thing worth looking at. */
+.debug-var-row.debug-var-changed {
+  background: rgba(46, 160, 105, 0.14);
+  border-radius: 3px;
+}
+.debug-var-row.debug-var-changed .debug-var-value { color: #4ec98a; }
+.debug-var-row.debug-var-new { background: rgba(70, 140, 220, 0.13); border-radius: 3px; }
+.debug-var-was {
+  color: var(--text-secondary, #7a8797);
+  text-decoration: line-through;
+  flex: 0 1 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-step-note {
+  padding: 3px 10px 6px;
+  color: #4ec98a;
+}
+.output-trace-line {
+  display: block; width: max-content; max-width: 100%; border: 0;
+  background: transparent; color: inherit; padding: 0 3px; margin: 0;
+  font: inherit; text-align: left; white-space: pre-wrap; cursor: pointer;
+  border-radius: 3px;
+}
+.output-trace-line:hover, .output-trace-line:focus-visible { background: rgba(0,122,204,.2); outline: none; }
+.output-trace-badge { color: #6cb6ff; }
+.output-trace-code-line { background: rgba(58, 150, 221, .18); }
+.error-first-aid {
+  border: 1px solid #3b8ed0; border-radius: 4px; background: #0e639c;
+  color: #fff; padding: 5px 10px; font: inherit; cursor: pointer;
+}
+.error-first-aid:hover:not(:disabled) { background: #1177bb; }
+.error-first-aid:disabled { opacity: .7; cursor: default; }
+.debug-history { padding: 4px 8px 8px; border-top: 1px solid var(--border-color); min-width: 0; }
+.debug-history-guide { margin: 0 2px 6px; color: var(--text-secondary); font-size: 10px; }
+.debug-history-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; align-items: center; margin: 4px 0; min-width: 0; }
+.debug-history-row > .debug-var-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.debug-history-cells { display: flex; min-width: 0; gap: 3px; overflow-x: auto; padding: 2px; }
+.debug-history-cell {
+  border: 1px solid var(--border-color); border-radius: 3px;
+  background: var(--bg-input); color: var(--text-primary); min-width: 27px;
+  max-width: 140px; height: 24px; padding: 0 7px; font: 11px var(--font-mono);
+  flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.debug-history-cell.active { border-color: var(--accent); background: rgba(0,122,204,.28); }
+.debug-history-cell.future { opacity: .42; }
+.debug-history-cell.unchanged { color: var(--text-secondary); min-width: 27px; padding: 0 5px; }
+.debug-var-name { color: var(--fg-symbol); flex: 0 1 auto; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.debug-var-value {
+  color: var(--text-primary, #ddd);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-var-type { color: var(--text-secondary, #777); flex: 0 0 auto; font-size: 10px; }
+.debug-exception {
+  margin: 4px 10px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--fg-exception);
+  background: rgba(241, 76, 76, 0.10);
+  color: var(--fg-error);
+  direction: ltr;
+}
+/* Watch expressions: the question box the evaluate command never had. */
+.debug-watch-form { padding: 6px 8px; }
+.debug-watch-input {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.debug-watch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.debug-watch-row:hover { background: var(--bg-hover); }
+.debug-watch-row .debug-var-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.debug-watch-pending { color: var(--text-muted); font-style: italic; }
+.debug-watch-error { color: var(--fg-error); }
+.debug-watch-remove {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.debug-watch-remove:hover { color: var(--fg-danger); }
+
+.debug-eval-result {
+  margin: 4px 10px;
+  padding: 4px 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  direction: ltr;
+}
+.debug-eval-result.error { color: var(--fg-error); }
+.debug-frame-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 2px 10px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--text-secondary, #999);
+  cursor: pointer;
+  direction: ltr;
+}
+.debug-frame-row:hover { background: var(--bg-hover); color: var(--text-primary); }
+.debug-frame-row.innermost { color: var(--text-primary, #ddd); }
+
+/* These need glyphMargin: true on the editor, or they are never drawn and the
+   click that toggles a breakpoint is never delivered. */
+.debug-breakpoint-glyph::before {
+  content: '';
+  display: block;
+  width: 11px; height: 11px;
+  margin: 3px 0 0 4px;
+  border-radius: 50%;
+  background: #e51400;
+}
+/* A conditional breakpoint: hollow, so it reads as "sometimes" rather than
+   "always". A student whose program runs past a solid dot has no way to tell a
+   false condition from a broken debugger; a different shape is the whole point,
+   and it must survive high contrast, where subtle fills disappear. */
+.debug-breakpoint-conditional::before {
+  background: transparent;
+  border: 2px solid #e51400;
+  width: 7px; height: 7px;
+}
+.debug-logpoint-glyph::before {
+  content: '';
+  position: absolute; width: 10px; height: 10px; top: 5px; left: 5px;
+  background: #4da3ff; transform: rotate(45deg); border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--text-primary);
+}
+.debug-current-glyph::before {
+  content: '\25B6';
+  color: var(--glyph-current);
+  font-size: 11px;
+  margin-left: 3px;
+}
+.debug-exception-glyph::before {
+  content: '\26A0';
+  color: var(--fg-exception);
+  font-size: 11px;
+  margin-left: 3px;
+}
+/*
+ * The line the program is stopped on.
+ *
+ * A fill alone was not enough. At 14% amber over a near-black editor this was a
+ * four-percent luminance shift - the decoration was applied, the status line said
+ * "Paused on line 5", and the student could not see which line that was. The whole
+ * point of a debugger is answering "where am I now" without reading a number.
+ *
+ * So: a fill you can actually see, plus a solid bar down the left edge. The bar is
+ * what the eye catches first and it survives any theme, because a 3px block of the
+ * glyph colour cannot be washed out the way a translucent wash can. Drawn with an
+ * inset shadow rather than a border so nothing about the line's layout moves - a
+ * border would shift the text sideways as the program steps.
+ */
+.debug-current-line {
+  background: var(--bg-current-line);
+  /* No literal fallback: --glyph-current is defined in all three themes, and a
+     dark-palette hex here would be the exact thing theme-css.test.mjs forbids. */
+  box-shadow: inset 3px 0 0 var(--glyph-current);
+}

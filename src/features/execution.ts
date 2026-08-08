@@ -23,6 +23,7 @@ import { getUILang } from './wrapped-i18n';
 import { announce, describeRunOutcome } from '../components/announce.ts';
 import { OutputTraceMapper } from './output-trace.ts';
 import { firstAidButtonHtml, safeFixFor } from './error-first-aid.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * The three the run path needs, resolved together.
@@ -56,7 +57,11 @@ function firstErrorSentence(languageId: string, output: string): string | null {
 
   const message = diagnostic.message.split('\n')[0].trim();
   if (!message) return null;
-  return `${message} on line ${diagnostic.line} of ${diagnostic.file}.`;
+  return t('error.onLineOfFile', {
+    message,
+    line: diagnostic.line,
+    file: diagnostic.file,
+  });
 }
 
 /**
@@ -91,16 +96,16 @@ function explainRunFailure(languageId: string, output: string, source: string, f
 
   const lines = [
     '',
-    `<span class="info">── What this means ─────────────────────────────────────────</span>`,
+    `<span class="info">── ${esc(t('error.whatThisMeans'))} ─────────────────────────────────────────</span>`,
     `<span class="info">${esc(block.heading)}</span>`,
     `<span${dir}>${esc(block.explanation)}</span>`,
   ];
   if (block.cause) {
-    lines.push('', '<span class="info">Common cause</span>');
+    lines.push('', `<span class="info">${esc(t('error.commonCause'))}</span>`);
     lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
   }
   if (block.example) {
-    lines.push('', '<span class="info">Example</span>');
+    lines.push('', `<span class="info">${esc(t('editor.example'))}</span>`);
     lines.push(`<span class="success">${esc(block.example)}</span>`);
   }
   const fix = safeFixFor(languageId, source, diagnostic.line, diagnostic.message);
@@ -121,13 +126,13 @@ function showSvgPreview(filePath: string, source: string): void {
   showImageWindow(fileName, source);
 
   setOutputHtml(
-    `<span class="info">── SVG Image — ${esc(fileName)} ───────────────────────────────</span>\n` +
-    `Opened in its own window. Import this image into another file:\n\n` +
+    `<span class="info">── ${esc(t('preview.svgImage'))} — ${esc(fileName)} ───────────────────────────────</span>\n` +
+    `${esc(t('preview.svgOpenedInstructions'))}\n\n` +
     `  HTML     ${esc(`<img src="./${fileName}" alt="">`)}\n` +
     `  CSS      ${esc(`background-image: url("./${fileName}");`)}\n` +
     `  Python   ${esc(`turtle.bgpic("${fileName}")`)}\n`
   );
-  setStatus('SVG image shown ✅');
+  setStatus(t('preview.svgShown'));
 }
 
 export async function runCode(
@@ -172,10 +177,10 @@ export async function runCode(
   // a language the student never chose. There is nothing to validate, so it only
   // explains how the file is meant to be used.
   if (lang.id === 'text') {
-    setStatus('Data file');
+    setStatus(t('data.file'));
     setOutputHtml(
-      `<span class="info">${esc(activeTab.file.name)} is a data file, so there is nothing to run.</span>\n` +
-      `<span class="info">Read it from a program - in Python, ` +
+      `<span class="info">${esc(t('data.nothingToRun', { name: activeTab.file.name }))}</span>\n` +
+      `<span class="info">${esc(t('data.readFromProgram'))} ` +
       `open("${esc(activeTab.file.name)}").read().</span>`,
     );
     return;
@@ -187,16 +192,16 @@ export async function runCode(
   if (lang.id === 'json') {
     try {
       JSON.parse(code);
-      setStatus('Valid JSON ✅');
+      setStatus(t('data.validJson'));
       setOutputHtml(
-        `<span class="info">${esc(activeTab.file.name)} is valid JSON.</span>\n` +
-        `<span class="info">JSON is data, so there is nothing to run. ` +
-        `Load it from a program - in Python, json.load(open("${esc(activeTab.file.name)}")).</span>`,
+        `<span class="info">${esc(t('data.isValidJson', { name: activeTab.file.name }))}</span>\n` +
+        `<span class="info">${esc(t('data.jsonInstructions'))} ` +
+        `json.load(open("${esc(activeTab.file.name)}")).</span>`,
       );
     } catch (error) {
-      setStatus('Invalid JSON ❌');
+      setStatus(t('data.invalidJson'));
       setOutputHtml(
-        `<span class="error">${esc(activeTab.file.name)} is not valid JSON.</span>\n` +
+        `<span class="error">${esc(t('data.isNotValidJson', { name: activeTab.file.name }))}</span>\n` +
         `<span class="error">${esc(error instanceof Error ? error.message : String(error))}</span>`,
       );
     }
@@ -236,11 +241,11 @@ export async function runCode(
           })
           .join('\n');
         setOutputHtml(
-          `<span class="info">── TypeScript Error ──────────────────────────────────────────</span>\n` +
+          `<span class="info">── ${esc(t('error.typescript'))} ──────────────────────────────────────────</span>\n` +
           `<span class="error">${esc(errLines)}</span>\n` +
           `<span class="error">[exit code: 1]</span>`
         );
-        setStatus('Compile error ❌');
+        setStatus(t('status.compileError'));
         if (appConfig.isEmbedded) {
           notifyRunResult({ stdout: '', stderr: errLines, exitCode: 1, durationMs: 0 });
         }
@@ -253,7 +258,7 @@ export async function runCode(
   // starting a new one (buffered or interactive).
   stopInteractive();
 
-  setStatus("Running…");
+  setStatus(t('status.running'));
   // One owner for the Run/Stop pair, and the point at which Stop becomes available.
   // It is armed HERE rather than when the stream opens, because the compile happens
   // first - up to 30 s for Java and 45 s for C# - and a student must be able to
@@ -472,8 +477,8 @@ ${result.stdout || ''}`,
       `<span class="error">ERROR: ${esc(e?.message || String(e))}</span>\n` +
       `<span class="error">[exit code: 1]</span>`
     );
-    setStatus("Run failed");
-    
+    setStatus(t('status.runFailed'));
+
     // Notify parent of error
     if (appConfig.isEmbedded) {
       notifyRunResult({

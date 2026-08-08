@@ -17,7 +17,7 @@
  */
 
 import { runtime } from '../app/runtime';
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { createPicker, type PickerItem } from './picker.ts';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 import type { Disposable } from '../workspace/types.ts';
@@ -44,9 +44,9 @@ export function noteFileOpened(documentId: string): void {
 export function initializeQuickOpen(): Disposable {
   const picker = createPicker({
     overlayId: OVERLAY_ID,
-    placeholder: t('quickOpen.placeholder'),
-    ariaLabel: t('quickOpen.label'),
-    emptyText: t('quickOpen.empty'),
+    placeholder: () => t('quickOpen.placeholder'),
+    ariaLabel: () => t('quickOpen.label'),
+    emptyText: () => t('quickOpen.empty'),
 
     items: (): PickerItem[] => {
       const workspace = runtime.workspace;

@@ -4,6 +4,7 @@ import type * as Monaco from 'monaco-editor';
 import { runtime } from '../app/runtime.ts';
 import { escapeHtml } from '../components/html-escape.ts';
 import type { Disposable } from '../workspace/types.ts';
+import { t } from '../i18n/index.ts';
 
 export interface SafeFix {
   readonly id: string;
@@ -22,7 +23,7 @@ function missingPythonColon(source: string, line: number, message: string): Safe
   const code = text.replace(/\s*(#.*)?$/, '').trimEnd();
   if (!PYTHON_HEADER.test(code) || code.endsWith(':')) return null;
   const column = code.length + 1;
-  return { id: 'python-add-colon', title: 'Add the missing :', line, startColumn: column, endColumn: column, text: ':' };
+  return { id: 'python-add-colon', title: t('firstAid.addMissing', { token: ':' }), line, startColumn: column, endColumn: column, text: ':' };
 }
 
 function pythonPrintTypo(source: string, line: number, message: string): SafeFix | null {
@@ -31,7 +32,7 @@ function pythonPrintTypo(source: string, line: number, message: string): SafeFix
   const match = /\bprnt\b/.exec(text);
   if (!match) return null;
   return {
-    id: 'python-print-typo', title: 'Change prnt to print', line,
+    id: 'python-print-typo', title: t('firstAid.fixPrintTypo'), line,
     startColumn: match.index + 1, endColumn: match.index + 5, text: 'print',
   };
 }
@@ -77,7 +78,7 @@ function unmatchedDelimiter(source: string, diagnosticLine: number, message: str
   const semicolon = lineText.match(/;\s*$/)?.index;
   const at = semicolon === undefined ? lineText.trimEnd().length : semicolon;
   return {
-    id: `close-${opening.char}`, title: `Add the missing ${pairs[opening.char]}`,
+    id: `close-${opening.char}`, title: t('firstAid.addMissing', { token: pairs[opening.char] }),
     line: opening.line, startColumn: at + 1, endColumn: at + 1, text: pairs[opening.char],
   };
 }
@@ -96,7 +97,7 @@ export function safeFixFor(language: string, source: string, line: number, messa
 export function firstAidButtonHtml(fix: SafeFix, message: string, file = ''): string {
   return `<button type="button" class="error-first-aid" data-fix-id="${escapeHtml(fix.id)}" `
     + `data-fix-message="${escapeHtml(message)}" data-fix-file="${escapeHtml(file)}" `
-    + `data-fix-line="${fix.line}">${escapeHtml(fix.title)} for me</button>`;
+    + `data-fix-line="${fix.line}">${escapeHtml(t('firstAid.apply', { fix: fix.title }))}</button>`;
 }
 
 export function initializeErrorFirstAid(monaco: typeof Monaco): Disposable {
@@ -152,7 +153,7 @@ export function initializeErrorFirstAid(monaco: typeof Monaco): Disposable {
     const fix = safeFixFor(model.getLanguageId(), model.getValue(), line, button.dataset.fixMessage ?? '');
     if (!fix || fix.id !== button.dataset.fixId) return;
     apply(model, fix);
-    button.textContent = 'Fixed ✓';
+    button.textContent = t('firstAid.fixed');
     (button as HTMLButtonElement).disabled = true;
   };
   panel?.addEventListener('click', onClick);

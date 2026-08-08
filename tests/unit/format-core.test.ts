@@ -154,7 +154,7 @@ describe('it declines rather than guessing', () => {
     const source = 'class A {\n  int x = 1;\n';
     const result = formatSource('java', source);
     assert.equal(result.reindented, false);
-    assert.match(result.declinedReason!, /unbalanced/);
+    assert.equal(result.declinedReason, 'unsafeToReindent');
     // The whitespace pass still ran, so the call was not wasted.
     assert.equal(result.text, 'class A {\n  int x = 1;\n');
   });
@@ -169,7 +169,7 @@ describe('it declines rather than guessing', () => {
     const source = ['function f() {', '$s = <<<EOT', '  } { }', 'EOT;', '}'].join('\n');
     const result = formatSource('php', source);
     assert.equal(result.reindented, false);
-    assert.match(result.declinedReason!, /heredoc|cannot be scanned/);
+    assert.equal(result.declinedReason, 'unsafeToReindent');
   });
 
   test('a C# verbatim string leaves indentation alone', () => {
@@ -231,7 +231,7 @@ describe('python indentation is never rewritten', () => {
   });
 
   test('the reason for declining is stated, not silent', () => {
-    assert.match(formatSource('python', 'x = 1\n').declinedReason!, /indentation is part of the syntax/);
+    assert.equal(formatSource('python', 'x = 1\n').declinedReason, 'pythonIndentation');
   });
 });
 
@@ -252,7 +252,7 @@ describe('languages Monaco owns are refused', () => {
     const source = 'const   x=1\n\n\n\n\n';
     const result = formatSource('typescript', source);
     assert.equal(result.text, source);
-    assert.match(result.declinedReason!, /unsupported/);
+    assert.equal(result.declinedReason, 'unsupportedLanguage');
   });
 });
 

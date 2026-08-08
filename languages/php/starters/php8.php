@@ -18,7 +18,7 @@ class User {
         public string $name,
         public int $age
     ) {}
-    
+
     public function greet(): string {
         return "Hello, {$this->name}!";
     }

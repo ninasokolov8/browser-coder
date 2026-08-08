@@ -4,13 +4,9 @@
  * Moved out of server.mjs unchanged in shape: human-readable coloured lines in
  * development, one JSON object per line in production.
  *
- * The redaction helper is new. The blueprint requires that source, stdin, stdout
- * and tokens are not logged by default (section 17.8), and the pre-refactor code
- * came close to breaking that in two places - `security_block` logged the
- * matched source fragment, and the C# warm-up logged 500 characters of build
- * stderr. Those are useful for diagnosis but must be explicitly opted into
- * rather than accidentally included, so `redact()` exists to make the intent
- * visible at the call site.
+ * Source, stdin, stdout and tokens are deliberately absent from log metadata.
+ * Keep that allowlist discipline at every call site rather than retaining a
+ * redaction helper that callers could forget to use.
  */
 
 import { CONFIG } from './config.mjs';
@@ -43,22 +39,3 @@ export function log(level, message, meta = {}) {
     console.log(JSON.stringify(entry));
   }
 }
-
-/**
- * Bound and mark a value that came from user code or user input.
- *
- * Returns a short, length-capped excerpt plus the original length, so a log line
- * stays diagnosable without becoming a copy of the student's program - or a place
- * where a secret pasted into an editor ends up persisted.
- *
- * @param {unknown} value
- * @param {number} [maxChars]
- */
-export function redact(value, maxChars = 120) {
-  if (value === null || value === undefined) return null;
-  const text = String(value);
-  if (text.length <= maxChars) return { excerpt: text, length: text.length };
-  return { excerpt: `${text.slice(0, maxChars)}…`, length: text.length, truncated: true };
-}
-
-export default log;

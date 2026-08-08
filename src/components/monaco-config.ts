@@ -239,7 +239,7 @@ export function populateVersionDropdown(lang: LoadedLanguage, selectedVersionId?
     const opt = document.createElement("option");
     opt.value = v.id;
     opt.textContent = v.name;
-    
+
     if (selectedVersionId && v.id === selectedVersionId) {
       opt.selected = true;
       defaultVersion = v;
@@ -279,4 +279,3 @@ export function applyTheme(theme: string) {
 
   monaco.editor.setTheme(theme === "hc-black" || theme === "vs" ? theme : "vs-dark");
 }
-

@@ -34,15 +34,6 @@
  * Pure: no DOM, no Monaco. Tested directly in node.
  */
 
-export type FormatLanguage =
-  | 'python'
-  | 'java'
-  | 'csharp'
-  | 'php'
-  | 'markdown'
-  | 'svg'
-  | 'xml';
-
 export interface FormatOptions {
   /** Spaces per indent level. */
   indentSize?: number;
@@ -325,7 +316,7 @@ export interface FormatResult {
   /** True when indentation was rewritten, not just whitespace tidied. */
   reindented: boolean;
   /** Set when re-indentation was declined, naming why. */
-  declinedReason?: string;
+  declinedReason?: 'unsupportedLanguage' | 'pythonIndentation' | 'unsafeToReindent';
 }
 
 /**
@@ -343,7 +334,7 @@ export function formatSource(
   const resolved = resolve(options, languageId);
 
   if (!SUPPORTED.has(languageId)) {
-    return { text: source, reindented: false, declinedReason: 'unsupported language' };
+    return { text: source, reindented: false, declinedReason: 'unsupportedLanguage' };
   }
 
   if (languageId === 'python') {
@@ -351,7 +342,7 @@ export function formatSource(
     return {
       text: tidyWhitespace(normalised, resolved),
       reindented: false,
-      declinedReason: 'Python indentation is part of the syntax and is never rewritten',
+      declinedReason: 'pythonIndentation',
     };
   }
 
@@ -361,10 +352,7 @@ export function formatSource(
       return {
         text: tidyWhitespace(source, resolved),
         reindented: false,
-        declinedReason:
-          'indentation was left alone: the file has unbalanced brackets, or uses a ' +
-          'construct that cannot be scanned exactly (a heredoc, a verbatim string, ' +
-          'or an unterminated string or comment)',
+        declinedReason: 'unsafeToReindent',
       };
     }
     return { text: tidyWhitespace(reindented, resolved), reindented: true };

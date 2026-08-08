@@ -1,4 +1,4 @@
-import { t } from "../i18n";
+import { t } from "../i18n/index.ts";
 
 // ===== Keyword help popup ("Explain this keyword") =====
 let keywordPopupEl: HTMLDivElement | null = null;
@@ -54,7 +54,7 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
   }
   const closeBtn = document.createElement("button");
   closeBtn.className = "kw-help-close";
-  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.setAttribute("aria-label", t("common.close"));
   closeBtn.textContent = "✕";
   closeBtn.addEventListener("click", closeKeywordHelpPopup);
   header.appendChild(titleGroup);
@@ -74,7 +74,7 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
 
   const exampleLabel = document.createElement("div");
   exampleLabel.className = "kw-help-example-label";
-  exampleLabel.textContent = t("editor.example") || "Example:";
+  exampleLabel.textContent = t("editor.example");
   popup.appendChild(exampleLabel);
 
   const code = document.createElement("pre");
@@ -100,4 +100,3 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
     document.addEventListener("keydown", onKeywordPopupEscape, true);
   }, 0);
 }
-

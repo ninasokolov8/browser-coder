@@ -12,7 +12,7 @@
  * does not send one.
  */
 
-import { classifyOrigin, STEPUP_BASE_DOMAINS, STEPUP_ORIGINS } from '../../domain/stepup-origins.mjs';
+import { classifyOrigin, STEPUP_ORIGINS } from '../../domain/stepup-origins.mjs';
 
 /*
  * The list moved to server/domain/stepup-origins.mjs, where the client reads it too.
@@ -20,10 +20,9 @@ import { classifyOrigin, STEPUP_BASE_DOMAINS, STEPUP_ORIGINS } from '../../domai
  * It was written twice - here and in src/integrations/stepup-bus.ts - and the two had
  * drifted: only this side trusted `arc.co`, and only the client trusted `stepup.zone`,
  * `localhost:8080` (which is the APP_URL in Step-Up's own .env.example) and
- * `167.71.63.99`. Re-exported so existing importers and tests are unaffected.
+ * `167.71.63.99`. The exact-origin list remains exported for the contract tests.
  */
 export const ALLOWED_ORIGINS = STEPUP_ORIGINS;
-export const ALLOWED_BASE_DOMAINS = STEPUP_BASE_DOMAINS;
 
 /**
  * Is this origin allowed to make credentialed cross-origin requests?

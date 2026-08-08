@@ -8,6 +8,7 @@ import { configureMonacoForVersion, populateVersionDropdown } from '../component
 import { setOutput, setStatus } from '../components/output';
 import { loadSettings } from '../components/settings';
 import { hideAssetViewer, isAssetFile, showAssetViewer } from './asset-viewer.ts';
+import { t } from '../i18n/index.ts';
 
 export function updateEmptyState(show: boolean): void {
   editorEmptyState.classList.toggle('visible', show);
@@ -81,7 +82,7 @@ export function createEditor(): monaco.editor.IStandaloneCodeEditor {
      * A school platform has students who need this, and it is two lines.
      */
     accessibilitySupport: 'auto',
-    ariaLabel: 'Code editor. Press Alt+F1 for accessibility options.',
+    ariaLabel: t('editor.ariaLabel'),
     fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace",
     fontLigatures: true, tabSize: 2, insertSpaces: true, wordWrap: 'on', lineNumbers: 'on',
     renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, autoClosingBrackets: 'always',
@@ -142,7 +143,7 @@ export function createTabManager(hooks: {
         const newTab = await manager.createNewFile(runtime.currentLang, runtime.currentVersion);
         if (newTab) {
           editor.setModel(getOrCreateModel(newTab));
-          setStatus(`Created ${newTab.file.name}`);
+          setStatus(t('status.createdFile', { name: newTab.file.name }));
         }
       }
       hooks.renderFileTree();
@@ -183,7 +184,7 @@ export function createTabManager(hooks: {
 
     const selectedLang = getLanguage(langSel.value) || runtime.currentLang;
     if (!selectedLang) {
-      setStatus('No language selected');
+      setStatus(t('status.noLanguageSelected'));
       return;
     }
 
@@ -194,7 +195,7 @@ export function createTabManager(hooks: {
       selectedLang.versions[0];
 
     if (!selectedVersion) {
-      setStatus(`No version available for ${selectedLang.name}`);
+      setStatus(t('status.noVersionAvailable', { language: selectedLang.name }));
       return;
     }
 
@@ -215,13 +216,13 @@ export function createTabManager(hooks: {
 
       editor.setModel(getOrCreateModel(newTab));
       updateEmptyState(false);
-      setStatus(`Created ${newTab.file.name}`);
+      setStatus(t('status.createdFile', { name: newTab.file.name }));
       hooks.renderFileTree();
       runtime.notifyWorkspaceChanged();
       editor.focus();
     } catch (error) {
       console.error('[IDE] Failed to create file from empty state:', error);
-      setStatus('Failed to create file');
+      setStatus(t('status.createFileFailed'));
     } finally {
       if (!policyState.lockStructure) {
         emptyStateNewFileBtn.removeAttribute('disabled');

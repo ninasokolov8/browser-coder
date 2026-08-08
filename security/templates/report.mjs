@@ -47,7 +47,7 @@ export function generateReport(data, lang = 'en') {
   const bidi = (value) => value == null ? '' : `${directionMark}${value}`;
   const inline = (value) => formatLocalizedInline(bidi(value), t.dir);
   const plainInline = (value) => formatPlainInlineText(value, t.dir);
-  
+
   // Group tests by language and category
   const byLanguage = {};
   const byCategory = {};
@@ -55,12 +55,12 @@ export function generateReport(data, lang = 'en') {
     if (!byLanguage[test.language]) byLanguage[test.language] = {};
     if (!byLanguage[test.language][test.category]) byLanguage[test.language][test.category] = [];
     byLanguage[test.language][test.category].push(test);
-    
+
     if (!byCategory[test.category]) byCategory[test.category] = {};
     if (!byCategory[test.category][test.language]) byCategory[test.category][test.language] = [];
     byCategory[test.category][test.language].push(test);
   }
-  
+
   const languages = Object.keys(byLanguage);
   const categories = Object.keys(byCategory);
 
@@ -70,7 +70,7 @@ export function generateReport(data, lang = 'en') {
       const statusClass = test.passed ? 'pass' : 'fail';
       const statusIcon = test.passed ? '✓' : '✗';
       const explanation = test.explanation ? formatLocalizedInline(formatExplanation(test.explanation), t.dir) : '';
-      
+
       return `
         <div class="test-card ${statusClass}">
           <div class="test-header">
@@ -104,7 +104,7 @@ export function generateReport(data, lang = 'en') {
   function generateLanguageTips(language) {
     const langTips = t.languageTips[language];
     if (!langTips) return '';
-    
+
     let html = `
       <div class="tips-box" dir="${t.dir}">
         <h3 dir="${t.dir}">💡 ${inline(langTips.title)}</h3>
@@ -116,7 +116,7 @@ export function generateReport(data, lang = 'en') {
         `).join('')}
       </div>
     `;
-    
+
     if (langTips.facts) {
       html += `
         <div class="mindblown-box" dir="${t.dir}">
@@ -130,7 +130,7 @@ export function generateReport(data, lang = 'en') {
         </div>
       `;
     }
-    
+
     return html;
   }
 
@@ -142,7 +142,7 @@ export function generateReport(data, lang = 'en') {
     const langPassRate = ((langStats.passed / langStats.total) * 100).toFixed(0);
     const langActiveClass = isFirstLang ? ' active' : '';
     isFirstLang = false;
-    
+
     byLanguageHTML += `
     <div class="lang-section${langActiveClass}" data-language="${language}">
       <div class="lang-header">
@@ -155,9 +155,9 @@ export function generateReport(data, lang = 'en') {
           <div class="lang-bar-fill" style="width: ${langPassRate}%; background: ${langPassRate == 100 ? '#22c55e' : '#ef4444'}"></div>
         </div>
       </div>
-      
+
       ${generateLanguageTips(language)}
-      
+
       <div class="categories-accordion">
         ${Object.entries(cats).map(([category, tests]) => {
           const catPassed = tests.filter(t => t.passed).length;
@@ -173,7 +173,7 @@ export function generateReport(data, lang = 'en') {
       </div>
     </div>`;
   }
-  
+
   // Generate By Category content
   let byCategoryHTML = '';
   let isFirstCategory = true;
@@ -182,7 +182,7 @@ export function generateReport(data, lang = 'en') {
     const catPassRate = ((catStats.passed / catStats.total) * 100).toFixed(0);
     const catActiveClass = isFirstCategory ? ' active' : '';
     isFirstCategory = false;
-    
+
     byCategoryHTML += `
     <div class="cat-section${catActiveClass}" data-category="${category}">
       <div class="cat-header">
@@ -192,7 +192,7 @@ export function generateReport(data, lang = 'en') {
           <span class="cat-stats-badge" dir="ltr">${catStats.passed}/${catStats.total} (${catPassRate}%)</span>
         </div>
       </div>
-      
+
       <div class="lang-groups">
         ${Object.entries(langs).map(([lng, tests]) => `
           <details class="lang-group" dir="${t.dir}">
@@ -206,13 +206,13 @@ export function generateReport(data, lang = 'en') {
 
   // Generate "Use For Good" educational content
   const educationalTitle = lang === 'he' ? 'השתמש בכוחות לטובה' : 'Use These Powers For Good';
-  const educationalIntro = lang === 'he' 
-    ? 'למדת על טכניקות אבטחה מסוכנות - עכשיו הנה איך להשתמש באותו ידע לבניית דברים מדהימים!' 
+  const educationalIntro = lang === 'he'
+    ? 'למדת על טכניקות אבטחה מסוכנות - עכשיו הנה איך להשתמש באותו ידע לבניית דברים מדהימים!'
     : 'You\'ve learned about dangerous security techniques - now here\'s how to use that same knowledge to build amazing things!';
   const factsTitle = lang === 'he' ? 'עובדות מדהימות' : 'Mind-Blowing Facts';
   const cheatSheetTitle = lang === 'he' ? 'גליון עזר אבטחה' : 'Security Cheat Sheet';
   const proTipsTitle = lang === 'he' ? 'טיפים מקצועיים' : 'Pro Security Tips';
-  
+
   let useForGoodHTML = `
     <div class="educational-intro">
       <div class="educational-hero" dir="${t.dir}">
@@ -223,19 +223,19 @@ export function generateReport(data, lang = 'en') {
         </div>
       </div>
     </div>
-    
+
     <div class="edu-sections">
   `;
-  
+
   // Add tips for each language with full cheat sheets
   for (const language of languages) {
     const langTips = t.languageTips[language];
     if (!langTips) continue;
-    
+
     useForGoodHTML += `
       <div class="edu-lang-section">
         <h3 class="edu-lang-title" dir="${t.dir}">${getLanguageIcon(language)} <span class="language-label" dir="ltr">${language.toUpperCase()}</span><span class="title-separator"> - </span><span>${inline(langTips.title)}</span></h3>
-        
+
         <div class="tips-box" dir="${t.dir}">
           <h4 dir="${t.dir}">💡 ${lang === 'he' ? 'השתמש בכוחות לטובה' : 'Use These Powers For Good'}</h4>
           ${langTips.tips.map(tip => `
@@ -245,7 +245,7 @@ export function generateReport(data, lang = 'en') {
             </div>
           `).join('')}
         </div>
-        
+
         ${langTips.facts && langTips.facts.length > 0 ? `
           <div class="mindblown-box" dir="${t.dir}">
             <h4 dir="${t.dir}">🤯 ${factsTitle}</h4>
@@ -257,7 +257,7 @@ export function generateReport(data, lang = 'en') {
             `).join('')}
           </div>
         ` : ''}
-        
+
         ${langTips.cheatSheet && langTips.cheatSheet.length > 0 ? `
           <div class="cheatsheet-box" dir="${t.dir}">
             <h4 dir="${t.dir}">🛡️ <span class="language-label" dir="ltr">${language.toUpperCase()}</span> ${cheatSheetTitle}</h4>
@@ -283,7 +283,7 @@ export function generateReport(data, lang = 'en') {
       </div>
     `;
   }
-  
+
   // Add category tips section
   const categoryTipsTitle = lang === 'he' ? 'הבן את סוגי ההתקפות' : 'Understand Attack Types';
   if (t.categoryTips) {
@@ -291,11 +291,11 @@ export function generateReport(data, lang = 'en') {
       <div class="category-tips-section">
         <h3 dir="${t.dir}">📚 ${categoryTipsTitle}</h3>
     `;
-    
+
     for (const category of categories) {
       const catTips = t.categoryTips[category];
       if (!catTips) continue;
-      
+
       useForGoodHTML += `
         <div class="category-tip-card" dir="${t.dir}">
           <div class="explain-box" dir="${t.dir}">
@@ -307,7 +307,7 @@ export function generateReport(data, lang = 'en') {
               </div>
             </div>
           </div>
-          
+
           ${catTips.tips && catTips.tips.length > 0 ? `
             <div class="tips-box" dir="${t.dir}">
               <h5 dir="${t.dir}">💡 ${getCategoryIcon(category)} ${formatCategory(category, lang)} - ${lang === 'he' ? 'שימושים לטובה' : 'Use For Good'}</h5>
@@ -319,7 +319,7 @@ export function generateReport(data, lang = 'en') {
               `).join('')}
             </div>
           ` : ''}
-          
+
           ${catTips.facts && catTips.facts.length > 0 ? `
             <div class="mindblown-box" dir="${t.dir}">
               <h5 dir="${t.dir}">🤯 ${factsTitle}</h5>
@@ -334,10 +334,10 @@ export function generateReport(data, lang = 'en') {
         </div>
       `;
     }
-    
+
     useForGoodHTML += `</div>`;
   }
-  
+
   // Add general security cheat sheet
   useForGoodHTML += `
     <div class="cheatsheet-section" dir="${t.dir}">
@@ -395,7 +395,7 @@ export function generateReport(data, lang = 'en') {
       <p class="tagline">${inline(t.heroTagline)}</p>
       <p class="timestamp">${t.timestamp}: ${data.timestamp}</p>
     </header>
-    
+
     <!-- Intro -->
     <section class="intro-section">
       <div class="intro-card">
@@ -407,7 +407,7 @@ export function generateReport(data, lang = 'en') {
           <p class="intro-highlight">${inline(t.introHighlight)}</p>
         </div>
       </div>
-      
+
       <div class="intro-grid">
         <div class="intro-mini-card">
           <span class="intro-mini-icon">🎯</span>
@@ -431,12 +431,12 @@ export function generateReport(data, lang = 'en') {
           </div>
         </div>
       </div>
-      
+
       <div class="intro-cta">
         <p>${inline(t.ctaText)}</p>
       </div>
     </section>
-    
+
     <!-- Stats Dashboard -->
     <div class="dashboard">
       <div class="stat-card pass">
@@ -460,7 +460,7 @@ export function generateReport(data, lang = 'en') {
         <div class="stat-label">${t.statDuration}</div>
       </div>
     </div>
-    
+
     <!-- Main Tabs Container -->
     <div class="tabs-container">
       <div class="main-tabs">
@@ -468,7 +468,7 @@ export function generateReport(data, lang = 'en') {
         <button class="main-tab" onclick="showMainTab(event, 'byCategory')">🏷️ ${t.tabByCategory}</button>
         <button class="main-tab" onclick="showMainTab(event, 'useForGood')">🧠 ${lang === 'he' ? 'השתמש לטובה' : 'Use For Good'}</button>
       </div>
-      
+
       <!-- By Language View -->
       <div id="byLanguage-view" class="tab-content">
         <div class="lang-tabs">
@@ -480,7 +480,7 @@ export function generateReport(data, lang = 'en') {
         </div>
         ${byLanguageHTML}
       </div>
-      
+
       <!-- By Category View -->
       <div id="byCategory-view" class="tab-content" style="display: none;">
         <div class="cat-tabs">
@@ -492,20 +492,20 @@ export function generateReport(data, lang = 'en') {
         </div>
         ${byCategoryHTML}
       </div>
-      
+
       <!-- Use For Good View -->
       <div id="useForGood-view" class="tab-content" style="display: none;">
         ${useForGoodHTML}
       </div>
     </div>
-    
+
     <!-- Footer -->
     <footer class="footer">
       <p>${t.footerText}</p>
       <p><a href="/reports/">${t.footerBack}</a></p>
     </footer>
   </div>
-  
+
   <script>
     function showMainTab(event, tab) {
       document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -513,14 +513,14 @@ export function generateReport(data, lang = 'en') {
       event.currentTarget.classList.add('active');
       document.getElementById(tab + '-view').style.display = 'block';
     }
-    
+
     function showLangSection(event, lang) {
       document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.lang-section').forEach(s => s.classList.remove('active'));
       event.currentTarget.classList.add('active');
       document.querySelector('.lang-section[data-language="' + lang + '"]').classList.add('active');
     }
-    
+
     function showCatSection(event, cat) {
       document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.cat-section').forEach(s => s.classList.remove('active'));

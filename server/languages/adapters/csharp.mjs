@@ -100,9 +100,9 @@ const PROJECT_FILE_NAME = 'UserProgram.csproj';
 export const CSHARP_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/csharp/', import.meta.url));
 
 /** Environment the debug adapter reads to know what to attach to. */
-export const DOTNET_ASSEMBLY_ENV = 'BROWSER_CODER_DOTNET_ASSEMBLY';
-export const DEBUG_ENTRY_ENV = 'BROWSER_CODER_DEBUG_ENTRY';
-export const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
+const DOTNET_ASSEMBLY_ENV = 'BROWSER_CODER_DOTNET_ASSEMBLY';
+const DEBUG_ENTRY_ENV = 'BROWSER_CODER_DEBUG_ENTRY';
+const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
 
 /**
  * Build the project and hand the assembly to the debug adapter.
@@ -129,31 +129,36 @@ export const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
  * of a `dotnet build` invocation would eventually differ in a flag and give the two
  * paths different opinions about the same project.
  *
- * `--no-restore` is safe and deliberate: the warm template is already restored, and it
- * is also what keeps the build from attempting network access.
+ * `--no-restore` is used only after a complete warm template was copied. If warming
+ * fails, the per-run project performs its own restore so a cache optimization can
+ * never turn into a functional outage.
  */
 /**
  * Put the job directory into a buildable state: the warm template, then the trusted
  * project file.
  *
  * Shared by `prepare` and `check` so a live check compiles exactly the project a run
- * would. Returns a diagnostics result when there is nothing to build, or null when the
- * directory is ready.
+ * would. Returns the optional diagnostic plus whether a complete restored template
+ * was copied into the job.
  */
 async function setUpProject(ctx, startedAt) {
   const { job, files, profile } = ctx;
 
   const sourceFiles = files.filter(file => file.name.toLowerCase().endsWith('.cs'));
   if (sourceFiles.length === 0) {
-    return diagnostics('No .cs source files were provided.', Date.now() - startedAt);
+    return {
+      diagnostic: diagnostics('No .cs source files were provided.', Date.now() - startedAt),
+      restored: false,
+    };
   }
 
   // Copy the warm template in, then write the trusted project file. Order matters: the
   // template's own project file must not survive, because it may have been generated
   // for a different language level.
+  let restored = false;
   try {
     const templateDir = await ensureTemplate(ctx, profile);
-    if (fs.existsSync(templateDir)) {
+    if (templateDir && fs.existsSync(templateDir)) {
       // NEVER copy the template's source. The pipeline writes the student's files into
       // job.dir BEFORE prepare() runs, and `force: true` overwrote them - so the
       // template's placeholder `Console.WriteLine("template")` replaced Program.cs and
@@ -167,6 +172,7 @@ async function setUpProject(ctx, startedAt) {
         force: true,
         filter: source => !source.toLowerCase().endsWith('.cs'),
       });
+      restored = true;
     }
   } catch (error) {
     log('warn', 'csharp_template_copy_failed', { error: error.message });
@@ -177,13 +183,17 @@ async function setUpProject(ctx, startedAt) {
     mode: 0o600,
   });
 
-  return null;
+  return { diagnostic: null, restored };
 }
 
-function buildProject(ctx) {
+function buildProject(ctx, restored) {
   return runToCompletion({
     command: ctx.config.tools.dotnet,
-    args: ['build', '-c', 'Debug', '--no-restore', '--nologo', '-v', 'q', ctx.job.dir],
+    args: [
+      'build', '-c', 'Debug',
+      ...(restored ? ['--no-restore'] : []),
+      '--nologo', '-v', 'q', ctx.job.dir,
+    ],
     cwd: ctx.job.dir,
     env: ctx.sandboxEnv,
     // The C# budget, not the generic one: a cold `dotnet build` is the slowest thing
@@ -193,10 +203,10 @@ function buildProject(ctx) {
   });
 }
 
-async function prepareDebugLaunch(ctx, startedAt) {
+async function prepareDebugLaunch(ctx, startedAt, restored) {
   const { job, entryPoint } = ctx;
 
-  const build = await buildProject(ctx);
+  const build = await buildProject(ctx, restored);
 
   if (!build.termination.succeeded) {
     // The compiler writes its errors to stdout here, as it does for a normal run.
@@ -270,12 +280,15 @@ async function ensureTemplate(ctx, profile) {
     });
 
     if (!build.termination.succeeded) {
-      // Not fatal: the per-run build can still restore, just slower. Logged
-      // without the build output, which can contain absolute host paths.
+      // Keep enough sanitized detail to diagnose a broken SDK/image without
+      // exposing the host or per-run paths in operational logs.
       log('warn', 'csharp_template_build_failed', {
         langVersion: key,
         reason: build.termination.reason,
+        exitCode: build.termination.exitCode,
+        detail: cleanBuildOutput(build.stdout || build.stderr, dir).slice(0, 2000),
       });
+      return null;
     } else {
       log('info', 'csharp_template_ready', { langVersion: key });
     }
@@ -351,10 +364,10 @@ export const csharpAdapter = {
   async check(ctx) {
     const startedAt = Date.now();
 
-    const refusal = await setUpProject(ctx, startedAt);
-    if (refusal) return refusal;
+    const setup = await setUpProject(ctx, startedAt);
+    if (setup.diagnostic) return setup.diagnostic;
 
-    const build = await buildProject(ctx);
+    const build = await buildProject(ctx, setup.restored);
     if (build.termination.succeeded) return null;
 
     const message = cleanBuildOutput(build.stdout || build.stderr, ctx.job.dir).trim();
@@ -368,10 +381,10 @@ export const csharpAdapter = {
     const startedAt = Date.now();
     const debugging = ctx.debug?.enabled === true;
 
-    const refusal = await setUpProject(ctx, startedAt);
-    if (refusal) return refusal;
+    const setup = await setUpProject(ctx, startedAt);
+    if (setup.diagnostic) return setup.diagnostic;
 
-    if (debugging) return prepareDebugLaunch(ctx, startedAt);
+    if (debugging) return prepareDebugLaunch(ctx, startedAt, setup.restored);
 
     return {
       kind: 'launch',
@@ -379,9 +392,9 @@ export const csharpAdapter = {
       args: [
         'run',
         '-c', 'Release',
-        // --no-restore is safe because the template is already restored, and it
-        // is also what keeps a build from attempting network access.
-        '--no-restore',
+        // Skip restore only when a complete warm template was copied. If warming
+        // failed, omitting this flag lets the isolated per-run project recover.
+        ...(setup.restored ? ['--no-restore'] : []),
         '--nologo',
         '-v', 'q',
         '--project', ctx.job.dir,
@@ -420,5 +433,3 @@ function cleanBuildOutput(text, jobDir) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
-
-export default csharpAdapter;

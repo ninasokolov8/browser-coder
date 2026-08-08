@@ -3,6 +3,7 @@ import { parseFunctions, extractDefinitionsOnly } from '../components/code-analy
 import { setOutput, setStatus, setOutputHtml } from '../components/output';
 import { runBtn } from '../components/dom';
 import { escapeHtml } from '../components/html-escape.ts';
+import { t } from '../i18n/index.ts';
 
 // ===== FUNCTION PARSER & RUN PANEL =====
 const functionListEl = document.getElementById('function-list')!;
@@ -25,7 +26,7 @@ export function renderFunctionList() {
   const tabManager = getTabManager();
   const activeTab = tabManager.getActiveTab();
   if (!activeTab) {
-    functionListEl.innerHTML = '<div class="tree-empty">No file open</div>';
+    showEmptyFunctionList('editor.noFile');
     return;
   }
 
@@ -34,7 +35,7 @@ export function renderFunctionList() {
   const functions = parseFunctions(code, language);
 
   if (functions.length === 0) {
-    functionListEl.innerHTML = '<div class="tree-empty">No functions detected</div>';
+    showEmptyFunctionList('run.noFunctions');
     return;
   }
 
@@ -50,21 +51,21 @@ export function renderFunctionList() {
   functionListEl.innerHTML = functions.map(fn => {
     const hasParams = fn.params && fn.params.trim().length > 0;
     const isClass = fn.type === 'class';
-    const placeholder = isClass 
-      ? 'constructor args (e.g., "value", 42)' 
-      : `args: ${fn.params || 'none'}`;
-    
+    const placeholder = isClass
+      ? t('run.constructorArgs')
+      : t('run.argsPlaceholder', { args: fn.params || t('run.none') });
+
     return `
       <div class="run-item-container">
         <div class="run-item" data-function="${escapeHtml(fn.name)}" data-line="${fn.line}" data-type="${fn.type}" data-params="${escapeHtml(fn.params)}">
           <span class="run-item-icon">${icons[fn.type] || '𝑓'}</span>
           <span class="run-item-name">${escapeHtml(fn.name)}(${hasParams || isClass ? '...' : ''})</span>
           <span class="run-item-type">${fn.type}</span>
-          <button class="run-btn" title="Run ${escapeHtml(fn.name)}">▶</button>
+          <button class="run-btn" title="${escapeHtml(t('run.runNamed', { name: fn.name }))}">▶</button>
         </div>
         ${hasParams || isClass ? `
           <div class="run-item-args">
-            <span class="run-item-args-label">Args:</span>
+            <span class="run-item-args-label">${escapeHtml(t('run.argsLabel'))}</span>
             <input type="text" class="run-item-args-input" placeholder="${escapeHtml(placeholder)}" data-fn="${escapeHtml(fn.name)}" />
           </div>
         ` : ''}
@@ -76,7 +77,7 @@ export function renderFunctionList() {
   functionListEl.querySelectorAll('.run-item-container').forEach(container => {
     const itemEl = container.querySelector('.run-item') as HTMLElement;
     const argsInput = container.querySelector('.run-item-args-input') as HTMLInputElement | null;
-    
+
     const fnName = itemEl.dataset.function!;
     const fnLine = parseInt(itemEl.dataset.line!);
     const fnType = itemEl.dataset.type!;
@@ -106,6 +107,14 @@ export function renderFunctionList() {
   });
 }
 
+function showEmptyFunctionList(key: string): void {
+  functionListEl.textContent = '';
+  const empty = document.createElement('div');
+  empty.className = 'tree-empty';
+  empty.textContent = t(key);
+  functionListEl.appendChild(empty);
+}
+
 async function runFunction(fnName: string, fnType: string, args: string = '') {
   const editor = getEditor();
   const tabManager = getTabManager();
@@ -118,7 +127,7 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
 
   // Format args for display
   const argsDisplay = args ? `(${args})` : '()';
-  
+
   // Extract only function/class definitions for JS/TS to prevent top-level execution
   let runCode = '';
 
@@ -175,7 +184,7 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     case 'php': {
       // Extract only function/class definitions, not top-level execution code
       const defsOnly = extractDefinitionsOnly(code, 'php');
-      
+
       if (fnType === 'class') {
         runCode = `${defsOnly}\n\n// Run specific class\necho "--- Running new ${fnName}${argsDisplay} ---\\n";\n$__instance = new ${fnName}(${args});\nvar_dump($__instance);`;
       } else {
@@ -189,8 +198,8 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
   }
 
   // Show running state
-  setOutput(`Running ${fnName}${argsDisplay}...`);
-  setStatus(`Running ${fnName}...`);
+  setOutput(t('run.runningNamed', { name: `${fnName}${argsDisplay}` }));
+  setStatus(t('run.runningNamed', { name: fnName }));
 
   try {
     const res = await fetch("/api/run", {
@@ -202,8 +211,8 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     const data = await res.json();
 
     if (!res.ok) {
-      setOutputHtml(`<span class="error">Error: ${escapeHtml(data.error || 'Unknown error')}</span>\n<span class="error">[exit code: 1]</span>`);
-      setStatus("Error ❌");
+      setOutputHtml(`<span class="error">${escapeHtml(t('status.errorLabel'))}: ${escapeHtml(data.error || t('error.unknown'))}</span>\n<span class="error">[exit code: 1]</span>`);
+      setStatus(t('status.error'));
       return;
     }
 
@@ -215,7 +224,7 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
       parts.push(`<span class="error">${escapeHtml(data.stderr)}</span>`);
     }
     if (parts.length === 0 && data.exitCode === 0) {
-      parts.push(`<span class="success">${escapeHtml(fnName)}${escapeHtml(argsDisplay)} completed (no output)</span>`);
+      parts.push(`<span class="success">${escapeHtml(t('run.completedNoOutput', { name: `${fnName}${argsDisplay}` }))}</span>`);
     }
     if (parts.length > 0) {
       const last = parts[parts.length - 1];
@@ -229,21 +238,19 @@ async function runFunction(fnName: string, fnType: string, args: string = '') {
     setOutputHtml(parts.join(''));
     setStatus(data.exitCode === 0 ? `${fnName}${argsDisplay} ✅` : `${fnName}${argsDisplay} ❌`);
   } catch (e) {
-    setOutputHtml(`<span class="error">Network error: ${escapeHtml(String(e))}</span>\n<span class="error">[exit code: 1]</span>`);
-    setStatus("Error ❌");
+    setOutputHtml(`<span class="error">${escapeHtml(t('error.network'))}: ${escapeHtml(String(e))}</span>\n<span class="error">[exit code: 1]</span>`);
+    setStatus(t('status.error'));
   }
 }
 
 let initialized = false;
 let functionListDebounce: ReturnType<typeof setTimeout> | null = null;
-let editorContentSubscription: { dispose(): void } | null = null;
 
 /** Register run-panel listeners only after the editor and TabManager exist. */
 export function initializeRunPanel(): void {
   if (initialized) return;
 
   const editor = getEditor();
-  const tabManager = getTabManager();
   initialized = true;
 
   runAllCodeEl.addEventListener('click', () => {
@@ -252,7 +259,7 @@ export function initializeRunPanel(): void {
 
   btnRefreshFunctions.addEventListener('click', renderFunctionList);
 
-  editorContentSubscription = editor.onDidChangeModelContent(() => {
+  editor.onDidChangeModelContent(() => {
     if (functionListDebounce) clearTimeout(functionListDebounce);
     functionListDebounce = setTimeout(renderFunctionList, 500);
   });
@@ -263,6 +270,7 @@ export function initializeRunPanel(): void {
   // whenever a different tab's model is selected, which covers both content
   // edits and tab switches.
   editor.onDidChangeModel(() => setTimeout(renderFunctionList, 0));
+  window.addEventListener('languageChanged', renderFunctionList);
 
   renderFunctionList();
 }
