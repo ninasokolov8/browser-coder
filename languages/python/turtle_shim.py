@@ -36,7 +36,48 @@ def _setup_turtle():
     import base64 as _b64
 
     # ── Shared drawing list (all turtles write here) ─────────────────────────
-    _shapes = []
+    # Every emitted command remembers the student line that caused it. Keeping
+    # this at the list boundary covers the whole turtle API, including commands
+    # added later. Shim frames are skipped so the UI highlights student code.
+    _shim_filename = _sys._getframe().f_code.co_filename
+
+    def _student_line():
+        try:
+            frame = _sys._getframe(2)
+            while frame is not None:
+                filename = frame.f_code.co_filename
+                if filename and filename != _shim_filename and not filename.startswith('<'):
+                    return int(frame.f_lineno)
+                frame = frame.f_back
+        except Exception:
+            pass
+        return None
+
+    class _RecordedShapes(list):
+        def _with_line(self, value):
+            if not isinstance(value, dict) or 'ln' in value:
+                return value
+            line = _student_line()
+            if line is None:
+                return value
+            copy = dict(value)
+            copy['ln'] = line
+            return copy
+
+        def append(self, value):
+            super().append(self._with_line(value))
+
+        def insert(self, index, value):
+            super().insert(index, self._with_line(value))
+
+        def __setitem__(self, index, value):
+            if isinstance(index, slice):
+                value = [self._with_line(item) for item in value]
+            else:
+                value = self._with_line(value)
+            super().__setitem__(index, value)
+
+    _shapes = _RecordedShapes()
 
     # ── Global canvas/screen config (single-element list so closures can mutate)
     _cfg = [{'bg': 'white', 'w': 600, 'h': 600, 'pic': ''}]
@@ -548,6 +589,18 @@ def _setup_turtle():
         rad = _m.radians(s['h'])
         _seg(s, s['x'] + d * _m.cos(rad), s['y'] + d * _m.sin(rad))
 
+    def _record_heading(s):
+        """Keep explicit turns in the replay, even though they draw no pixels."""
+        _shapes.append({'k': 'H', 'h': round(s['h'] % 360.0, 2)})
+
+    def _turn_heading(s, delta):
+        s['h'] += delta
+        _record_heading(s)
+
+    def _set_heading(s, value):
+        s['h'] = value
+        _record_heading(s)
+
     # ── Draw circle / arc ─────────────────────────────────────────────────────
     def _circ(s, radius, extent=360, steps=None):
         if extent == 0:
@@ -574,6 +627,7 @@ def _setup_turtle():
             _arc_mode[0] = False
         # Update heading to match real turtle
         s['h'] += extent if radius >= 0 else -extent
+        _record_heading(s)
 
     # =========================================================================
     # MODULE-LEVEL TURTLE FUNCTIONS  (operate on _gs)
@@ -586,9 +640,9 @@ def _setup_turtle():
     # student's unit is whatever degrees()/radians() last set. Converting at the edge
     # rather than storing the unit means every _seg/_fwd calculation below stays in
     # one unit and cannot be half-converted.
-    def right(angle):        _gs['h'] -= _to_degrees(angle)
-    def left(angle):         _gs['h'] += _to_degrees(angle)
-    def setheading(angle):   _gs['h'] = _to_degrees(angle)
+    def right(angle):        _turn_heading(_gs, -_to_degrees(angle))
+    def left(angle):         _turn_heading(_gs, _to_degrees(angle))
+    def setheading(angle):   _set_heading(_gs, _to_degrees(angle))
     def heading():           return _from_degrees(_gs['h'])
     fd = forward;  bk = back = backward;  rt = right;  lt = left;  seth = setheading
 
@@ -608,7 +662,7 @@ def _setup_turtle():
 
     def home():
         _seg(_gs, 0.0, 0.0)
-        _gs['h'] = 0.0
+        _set_heading(_gs, 0.0)
 
     def distance(x, y=None):
         if isinstance(x, (list, tuple)): x, y = x[0], x[1]
@@ -979,13 +1033,13 @@ def _setup_turtle():
         def backward(self, d):   _fwd(self._s, -d)
         def bk(self, d):         _fwd(self._s, -d)
         def back(self, d):       _fwd(self._s, -d)
-        def right(self, a):      self._s['h'] -= a
-        def rt(self, a):         self._s['h'] -= a
-        def left(self, a):       self._s['h'] += a
-        def lt(self, a):         self._s['h'] += a
-        def setheading(self, a): self._s['h'] = float(a)
-        def seth(self, a):       self._s['h'] = float(a)
-        def heading(self):       return self._s['h']
+        def right(self, a):      _turn_heading(self._s, -_to_degrees(a))
+        def rt(self, a):         _turn_heading(self._s, -_to_degrees(a))
+        def left(self, a):       _turn_heading(self._s, _to_degrees(a))
+        def lt(self, a):         _turn_heading(self._s, _to_degrees(a))
+        def setheading(self, a): _set_heading(self._s, _to_degrees(a))
+        def seth(self, a):       _set_heading(self._s, _to_degrees(a))
+        def heading(self):       return _from_degrees(self._s['h'])
 
         def goto(self, x, y=None):
             if isinstance(x, (list, tuple)): x, y = x[0], x[1]
@@ -1000,7 +1054,7 @@ def _setup_turtle():
         def ycor(self):      return self._s['y']
         def home(self):
             _seg(self._s, 0.0, 0.0)
-            self._s['h'] = 0.0
+            _set_heading(self._s, 0.0)
         def distance(self, x, y=None):
             if isinstance(x, (list, tuple)): x, y = x[0], x[1]
             return _m.hypot(self._s['x'] - float(x or 0), self._s['y'] - float(y or 0))

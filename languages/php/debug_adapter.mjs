@@ -179,6 +179,8 @@ let wanted = new Map();
 let breakpointIds = [];
 /** The conditions for those breakpoints: absolute path -> line -> expression. */
 let wantedConditions = new Map();
+/** Absolute path -> line -> expression for points that report and immediately run on. */
+let wantedLogpoints = new Map();
 /** True between a `run`/`step_*` going out and its stop coming back. */
 let running = false;
 /** True once the program has stopped and is waiting for the student. */
@@ -312,6 +314,25 @@ async function proceed(command, reason) {
 
   const status = reply.attrs.status;
   if (status === 'break') {
+    const stackReply = await session.command('stack_get');
+    const top = stackReply?.all('stack')?.[0];
+    const absolute = top ? pathFromUri(top.attrs.filename) : null;
+    const line = Number(top?.attrs.lineno ?? 0);
+    const expression = absolute ? (wantedLogpoints.get(absolute) ?? {})[line] : null;
+    if (expression && reason === 'breakpoint') {
+      paused = true;
+      const result = await evaluateExpression(expression);
+      send({
+        type: 'log',
+        file: workspaceRelative(absolute) ?? path.basename(absolute),
+        line,
+        expression,
+        ...result,
+      });
+      paused = false;
+      await proceed('run', 'breakpoint');
+      return;
+    }
     await reportStop(reason);
     return;
   }
@@ -338,6 +359,7 @@ async function applyBreakpoints() {
   breakpointIds = [];
 
   const acceptedByFile = {};
+  const acceptedLogpoints = {};
 
   for (const [absolute, lines] of wanted) {
     const relative = workspaceRelative(absolute) ?? path.basename(absolute);
@@ -369,7 +391,9 @@ async function applyBreakpoints() {
       if (!reply || reply.child('error')) continue;
       const id = reply.attrs.id;
       if (id) breakpointIds.push(id);
-      accepted.push(line);
+      const logExpression = (wantedLogpoints.get(absolute) ?? {})[line];
+      if (logExpression) (acceptedLogpoints[relative] ??= {})[line] = logExpression;
+      else accepted.push(line);
     }
 
     if (accepted.length > 0) acceptedByFile[relative] = accepted.sort((a, b) => a - b);
@@ -379,6 +403,7 @@ async function applyBreakpoints() {
     type: 'breakpoints',
     lines: acceptedByFile[entryRelative] ?? [],
     files: acceptedByFile,
+    logpoints: acceptedLogpoints,
   });
 }
 
@@ -419,6 +444,7 @@ async function handleCommand(command) {
     case 'setBreakpoints': {
       wanted = new Map();
       wantedConditions = new Map();
+      wantedLogpoints = new Map();
 
       const add = (absolute, lines, forFile) => {
         if (!absolute || !Array.isArray(lines)) return;
@@ -442,6 +468,20 @@ async function handleCommand(command) {
       add(programAbsolute, command.lines, conditions['']);
       for (const [file, lines] of Object.entries(command.files ?? {})) {
         add(resolveInWorkspace(file), lines, conditions[file]);
+      }
+
+      for (const [file, entries] of Object.entries(command.logpoints ?? {})) {
+        const absolute = file === '' ? programAbsolute : resolveInWorkspace(file);
+        if (!absolute || !entries || typeof entries !== 'object') continue;
+        const held = wantedLogpoints.get(absolute) ?? {};
+        for (const [line, expression] of Object.entries(entries)) {
+          const at = Number(line);
+          if (!Number.isInteger(at) || at < 1) continue;
+          held[at] = expression;
+          const existing = wanted.get(absolute) ?? [];
+          wanted.set(absolute, [...existing, at]);
+        }
+        wantedLogpoints.set(absolute, held);
       }
 
       await applyBreakpoints();

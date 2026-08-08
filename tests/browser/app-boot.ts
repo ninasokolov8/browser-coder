@@ -951,15 +951,144 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   const ended = await waitFor('the debug session to end', () => state().status === 'ended', 20000);
   check('the session ends when the program finishes', ended, `status ${state().status}`);
 
-  const toolbarGone = await waitFor(
-    'the debug panels to hide once the session ends',
-    () => frameDocument.getElementById('debug-panels')?.hidden === true,
+  // Finished no longer means forgotten. Both pauses are recorded, so the student
+  // can inspect how `total` changed even after Continue reached the end.
+  const historyShown = await waitFor(
+    'the recorded pause history to remain after the session ends',
+    () => frameDocument.querySelectorAll('.debug-history-cell').length >= 2,
     8000,
   );
-  check('the panels hide when the session ends', toolbarGone);
+  check('recorded pauses remain available after the run', historyShown);
+
+  const stepBack = frameDocument.getElementById('debug-step-back') as HTMLButtonElement | null;
+  check('Step back is enabled when an earlier pause exists', stepBack !== null && !stepBack.disabled);
+  stepBack?.click();
+  check(
+    'Step back reviews the earlier recorded line without rerunning',
+    /Reviewing line 4/.test(frameDocument.getElementById('debug-status')?.textContent ?? ''),
+    frameDocument.getElementById('debug-status')?.textContent ?? '',
+  );
+  check(
+    'future variable values fade while reviewing the past',
+    frameDocument.querySelector('.debug-history-cell.future') !== null,
+  );
+
+  const historyForward = frameDocument.getElementById('debug-history-forward') as HTMLButtonElement | null;
+  check('history Forward is enabled while reviewing the past', historyForward !== null && !historyForward.disabled);
+  historyForward?.click();
 
   // Let the run settle so it cannot leak into a later assertion.
   await Promise.race([runPromise, new Promise(resolve => setTimeout(resolve, 5000))]);
+}
+
+/** The new beginner tools, through the composed app and real execution route. */
+async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
+  const frameDocument = frame.contentDocument!;
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  if (!runtime) {
+    check('runtime is reachable for the recorded learning tools', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const commands = runtime.commands as {
+    execute(id: string, context: { source: string }): Promise<{ status: string }>;
+  };
+  const models = runtime.models as {
+    peek(id: string): { getAllDecorations(): Array<{ range: { startLineNumber: number }; options: { className?: string; glyphMarginClassName?: string } }> } | null;
+  };
+
+  // Output -> code: repeated output from one print in a loop keeps the same owner.
+  const outputDocument = await workspace.createDocument({
+    name: 'output-trace-probe.js', language: 'javascript', version: 'es2022',
+    content: [
+      'console.log("Start");',
+      'for (const n of [1, 2]) console.log(n * 10);',
+      'console.log("Done");',
+    ].join('\n'),
+  });
+  await tabManager.switchToTab(outputDocument.id);
+  await commands.execute('workspace.run', { source: 'api' });
+
+  const traced = [...frameDocument.querySelectorAll<HTMLElement>('.output-trace-line')];
+  check('each stdout line is clickable', traced.length === 4, `found ${traced.length}`);
+  check(
+    'loop output maps twice to its one print statement',
+    traced.map(node => node.dataset.outputLine).join(',') === '1,2,2,3',
+    traced.map(node => node.dataset.outputLine).join(','),
+  );
+  traced[1]?.click();
+  const outputHighlighted = await waitFor(
+    'the clicked output line to highlight its source',
+    () => models.peek(outputDocument.id)?.getAllDecorations().some(entry =>
+      entry.range.startLineNumber === 2 && entry.options.className === 'output-trace-code-line') === true,
+    5000,
+  );
+  check(
+    'clicking output highlights its source line',
+    outputHighlighted,
+  );
+
+  // Log point: evaluate three times, report three values, never require Continue.
+  const logDocument = await workspace.createDocument({
+    name: 'logpoint-probe.py', language: 'python', version: 'python3',
+    content: ['for i in range(3):', '    value = i', 'print("done")'].join('\n'),
+  });
+  await tabManager.switchToTab(logDocument.id);
+  const debug = runtime.debug as {
+    setLogpoint(line: number, expression: string): boolean;
+  };
+  check('a log point can be placed without a breakpoint', debug.setLogpoint(2, 'i'));
+  check(
+    'a log point has a diamond gutter mark',
+    models.peek(logDocument.id)?.getAllDecorations().some(entry =>
+      entry.range.startLineNumber === 2 && entry.options.glyphMarginClassName === 'debug-logpoint-glyph') === true,
+  );
+  await commands.execute('workspace.debug', { source: 'api' });
+  const logLines = [...frameDocument.querySelectorAll<HTMLElement>('.output-trace-line')]
+    .filter(node => /i = [012]/.test(node.textContent ?? ''));
+  check('the log point prints once per loop pass and continues', logLines.length === 3, logLines.map(node => node.textContent).join(' | '));
+
+  // Turtle replay: the finished canvas is scrub-able and a scrub highlights Python.
+  const turtleDocument = await workspace.createDocument({
+    name: 'turtle-replay-probe.py', language: 'python', version: 'python3',
+    content: [
+      'import turtle',
+      'pen = turtle.Turtle()',
+      'for _ in range(2):',
+      '    pen.forward(20)',
+      '    pen.left(90)',
+    ].join('\n'),
+  });
+  await tabManager.switchToTab(turtleDocument.id);
+  await commands.execute('workspace.run', { source: 'api' });
+  const replayReady = await waitFor(
+    'the turtle replay controls to appear',
+    () => frameDocument.getElementById('turtle-replay-controls') !== null,
+    15000,
+  );
+  check('a finished turtle drawing has replay controls', replayReady);
+  const slider = frameDocument.querySelector<HTMLInputElement>('#turtle-replay-controls input[type="range"]');
+  check('the turtle replay has recorded drawing steps', Number(slider?.max ?? 0) > 0);
+  if (slider) {
+    slider.value = '1';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    check(
+      'scrubbing turtle replay highlights the Python line that drew that step',
+      models.peek(turtleDocument.id)?.getAllDecorations().some(entry =>
+        entry.range.startLineNumber === 4 && entry.options.className === 'turtle-replay-code-line') === true,
+    );
+    slider.value = '2';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    check(
+      'the replay also records non-drawing turns in sequence',
+      models.peek(turtleDocument.id)?.getAllDecorations().some(entry =>
+        entry.range.startLineNumber === 5 && entry.options.className === 'turtle-replay-code-line') === true,
+    );
+  }
 }
 
 /**
@@ -2087,6 +2216,7 @@ async function run(): Promise<void> {
   await checkFormattingWorks(frameWindow);
   await checkQuickOpenAndBreadcrumbs(frameWindow);
   await checkDebuggerWorks(frameWindow);
+  await checkRecordedLearningTools(frameWindow);
   await checkHoverTeaches(frameWindow);
   await checkRunSelection(frameWindow);
   await checkErrorsAreExplained(frameWindow);

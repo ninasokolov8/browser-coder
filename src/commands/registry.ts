@@ -96,6 +96,11 @@ export class CommandRegistry {
     this.#onDidChangeEnablement.fire();
   }
 
+  /** Re-evaluate dynamic `when` clauses after the active model/language changes. */
+  notifyEnablementChanged(): void {
+    this.#onDidChangeEnablement.fire();
+  }
+
   register<A extends unknown[]>(command: CommandDefinition<A>): Disposable {
     if (this.#commands.has(command.id)) {
       // A duplicate id means two actions silently share one keybinding and one

@@ -455,3 +455,26 @@ describe('breakpoint conditions on the wire', () => {
     }
   });
 });
+
+describe('log points on the wire', () => {
+  test('an expression is kept without requiring a stopping breakpoint', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      lines: [],
+      logpoints: { '': { 7: 'total' }, 'lib/helper.py': { 3: 'item' } },
+    });
+    assert.deepEqual(command.logpoints, {
+      '': { 7: 'total' },
+      'lib/helper.py': { 3: 'item' },
+    });
+  });
+
+  test('paths, line numbers, expression length and whitespace are bounded', () => {
+    const command = buildDebugCommand('setBreakpoints', {
+      logpoints: {
+        '../escape.py': { 1: 'secret' },
+        'main.py': { 0: 'bad', 2: '  value  ', 3: '', 4: 'x'.repeat(2001) },
+      },
+    });
+    assert.deepEqual(command.logpoints, { 'main.py': { 2: 'value' } });
+  });
+});

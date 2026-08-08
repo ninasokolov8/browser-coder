@@ -21,6 +21,8 @@ import { parseCompilerOutput } from '../diagnostics/compiler-output.ts';
 import { buildErrorHelpBlock, selectErrorKey } from './error-help.ts';
 import { getUILang } from './wrapped-i18n';
 import { announce, describeRunOutcome } from '../components/announce.ts';
+import { OutputTraceMapper } from './output-trace.ts';
+import { firstAidButtonHtml, safeFixFor } from './error-first-aid.ts';
 
 /**
  * The three the run path needs, resolved together.
@@ -68,7 +70,7 @@ function firstErrorSentence(languageId: string, output: string): string | null {
  * Silent when there is no entry. A confidently wrong explanation in a teaching tool is
  * worse than none: it teaches the student the wrong model of what their program did.
  */
-function explainRunFailure(languageId: string, output: string): void {
+function explainRunFailure(languageId: string, output: string, source: string, file: string): void {
   const language = getLanguage(languageId);
   const entries = language?.errors;
   if (!entries) return;
@@ -95,6 +97,8 @@ function explainRunFailure(languageId: string, output: string): void {
   ];
   if (block.cause) lines.push(`<span class="warning"${dir}>${esc(block.cause)}</span>`);
   if (block.example) lines.push('', `<span class="success">${esc(block.example)}</span>`);
+  const fix = safeFixFor(languageId, source, diagnostic.line, diagnostic.message);
+  if (fix) lines.push('', firstAidButtonHtml(fix, diagnostic.message, file));
 
   appendOutputHtml(`\n${lines.join('\n')}`);
 }
@@ -368,6 +372,12 @@ requestBody = {
     // immediately rather than only once the adapter attaches.
     if (options.debug) debugState.starting();
 
+    const outputTrace = new OutputTraceMapper(
+      code,
+      lang.id,
+      normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+      (options.markerRange?.startLine ?? 1) - 1,
+    );
     const result = await runProgram(lang.id, requestBody, {
       // The console owns the panel from here and shows progress by printing. The
       // Run/Stop state is deliberately NOT changed: the program is still running,
@@ -375,6 +385,7 @@ requestBody = {
       onStreamStart: () => {},
 
       debug: options.debug === true,
+      traceOutput: line => outputTrace.locationFor(line),
 
       onDebugEvent: event => {
         debugState.apply(event);
@@ -418,7 +429,12 @@ ${result.stdout || ''}`,
     // worked is noise.
     const combinedOutput = `${result.stderr || ''}\n${result.stdout || ''}`;
     if (result.exitCode !== 0) {
-      explainRunFailure(lang.id, combinedOutput);
+      explainRunFailure(
+        lang.id,
+        combinedOutput,
+        code,
+        normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+      );
     }
 
     // Said once, to a screen reader. The panel itself is not a live region because a

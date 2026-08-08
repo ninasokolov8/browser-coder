@@ -183,6 +183,7 @@ debugger_.on('exit', () => {
 let wanted = new Map();
 /** The conditions for those breakpoints: absolute path -> line -> expression. */
 let wantedConditions = new Map();
+let wantedLogpoints = new Map();
 /** The thread the program is stopped on, and the frame a watch resolves against. */
 let pausedThread = null;
 let pausedFrame = null;
@@ -340,6 +341,22 @@ async function reportStop(body) {
   const shown = own.length > 0 ? own : described;
   pausedFrame = shown[0].id;
 
+  const logExpression = (wantedLogpoints.get(shown[0].absolute ?? '') ?? {})[shown[0].line]
+    ?? [...wantedLogpoints.entries()].find(([absolute]) =>
+      workspaceRelative(workspaceRoot, absolute) === shown[0].file)?.[1]?.[shown[0].line];
+  if (logExpression && body.reason === 'breakpoint') {
+    const result = await evaluateExpression(logExpression);
+    send({
+      type: 'log', file: shown[0].file, line: shown[0].line,
+      expression: logExpression, ...result,
+    });
+    const resumeThread = pausedThread;
+    pausedThread = null;
+    pausedFrame = null;
+    await connection.request('continue', { threadId: resumeThread });
+    return;
+  }
+
   const reason = STOP_REASONS.has(body.reason) ? body.reason : 'breakpoint';
 
   send({
@@ -391,13 +408,15 @@ const breakpointsById = new Map();
 /** Send the current picture of what is armed, after the debugger changed its mind. */
 function republishBreakpoints() {
   const byFile = {};
+  const logpoints = {};
   for (const record of breakpointsById.values()) {
     if (record.rejected) continue;
-    (byFile[record.file] ??= []).push(record.line);
+    if (record.logExpression) (logpoints[record.file] ??= {})[record.line] = record.logExpression;
+    else (byFile[record.file] ??= []).push(record.line);
   }
   for (const lines of Object.values(byFile)) lines.sort((a, b) => a - b);
 
-  send({ type: 'breakpoints', lines: byFile[ENTRY] ?? [], files: byFile });
+  send({ type: 'breakpoints', lines: byFile[ENTRY] ?? [], files: byFile, logpoints });
 }
 
 async function applyBreakpoints() {
@@ -416,6 +435,7 @@ async function applyBreakpoints() {
      * and a resume per iteration.
      */
     const forFile = wantedConditions.get(absolute) ?? {};
+    const logForFile = wantedLogpoints.get(absolute) ?? {};
 
     const reply = await connection.request('setBreakpoints', {
       source: { path: absolute, name: path.basename(absolute) },
@@ -434,6 +454,7 @@ async function applyBreakpoints() {
         file: relative,
         line,
         rejected: false,
+        logExpression: logForFile[line] ?? null,
       });
       nowArmed.add(absolute);
     });
@@ -495,6 +516,7 @@ async function handleCommand(command) {
     case 'setBreakpoints': {
       wanted = new Map();
       wantedConditions = new Map();
+      wantedLogpoints = new Map();
 
       const add = (absolute, lines, forFile) => {
         if (!absolute || !Array.isArray(lines)) return;
@@ -519,6 +541,21 @@ async function handleCommand(command) {
       add(resolveInWorkspace(workspaceRoot, ENTRY), command.lines, conditions['']);
       for (const [file, lines] of Object.entries(command.files ?? {})) {
         add(resolveInWorkspace(workspaceRoot, file), lines, conditions[file]);
+      }
+
+      for (const [file, entries] of Object.entries(command.logpoints ?? {})) {
+        const absolute = file === ''
+          ? resolveInWorkspace(workspaceRoot, ENTRY)
+          : resolveInWorkspace(workspaceRoot, file);
+        if (!absolute || !entries || typeof entries !== 'object') continue;
+        const held = wantedLogpoints.get(absolute) ?? {};
+        for (const [line, expression] of Object.entries(entries)) {
+          const at = Number(line);
+          if (!Number.isInteger(at) || at < 1) continue;
+          held[at] = expression;
+          wanted.set(absolute, [...(wanted.get(absolute) ?? []), at]);
+        }
+        wantedLogpoints.set(absolute, held);
       }
 
       await applyBreakpoints();

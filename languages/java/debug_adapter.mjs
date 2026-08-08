@@ -181,6 +181,7 @@ const classes = new Map();
 let breakpointRequests = [];
 /** Conditions the IDE asked for: source file name -> line -> expression. */
 let wantedConditions = new Map();
+let wantedLogpoints = new Map();
 /**
  * The condition attached to each ARMED location, keyed `sourceName:line`.
  *
@@ -189,6 +190,7 @@ let wantedConditions = new Map();
  * an unsupported one cannot silently suppress a stop.
  */
 const armedConditions = new Map();
+const armedLogpoints = new Map();
 /** The thread the program is stopped on, or null. */
 let pausedThread = null;
 /** The top frame of that thread. Frame ids die the moment the thread resumes. */
@@ -327,8 +329,10 @@ async function applyBreakpoints() {
   }
   breakpointRequests = [];
   armedConditions.clear();
+  armedLogpoints.clear();
 
   const acceptedByFile = {};
+  const acceptedLogpointFiles = {};
   /** Conditions asked for that this adapter cannot evaluate, reported rather than dropped. */
   const rejectedConditions = {};
 
@@ -370,7 +374,13 @@ async function applyBreakpoints() {
       if (reply.errorCode !== 0) continue;
 
       breakpointRequests.push(reply.data.readInt32BE(0));
-      accepted.push(line);
+      const logExpression = (wantedLogpoints.get(sourceName) ?? {})[line];
+      if (logExpression) {
+        armedLogpoints.set(`${sourceName}:${line}`, logExpression);
+        (acceptedLogpointFiles[sourceName] ??= {})[line] = logExpression;
+      } else {
+        accepted.push(line);
+      }
 
       /*
        * A condition is only armed if it can be evaluated. An unsupported one is
@@ -406,6 +416,7 @@ async function applyBreakpoints() {
     type: 'breakpoints',
     lines: acceptedByFile[entrySource] ?? [],
     files: acceptedByFile,
+    logpoints: acceptedLogpointFiles,
   });
 }
 
@@ -628,6 +639,15 @@ async function conditionAt(event) {
   const described = await describeFrame({ location: event.location, frameId: 0n });
   if (!described.file) return null;
   return armedConditions.get(`${described.file}:${described.line}`) ?? null;
+}
+
+/** The armed log expression and its source location, if this event is one. */
+async function logpointAt(event) {
+  if (armedLogpoints.size === 0) return null;
+  const described = await describeFrame({ location: event.location, frameId: 0n });
+  if (!described.file) return null;
+  const expression = armedLogpoints.get(`${described.file}:${described.line}`);
+  return expression ? { expression, file: described.file, line: described.line } : null;
 }
 
 /**
@@ -1050,6 +1070,7 @@ async function handleCommand(command) {
       wanted = new Map();
       const entrySource = `${MAIN_CLASS.split('.').pop()}.java`;
       wantedConditions = new Map();
+      wantedLogpoints = new Map();
 
       /*
        * Conditions are keyed by SOURCE FILE NAME, like the breakpoints themselves,
@@ -1077,6 +1098,18 @@ async function handleCommand(command) {
         const sourceName = path.basename(file);
         wanted.set(sourceName, [...(wanted.get(sourceName) ?? []), ...(lines ?? [])]);
         takeConditions(sourceName, conditions[file]);
+      }
+
+      for (const [file, entries] of Object.entries(command.logpoints ?? {})) {
+        const sourceName = file === '' ? entrySource : path.basename(file);
+        const held = wantedLogpoints.get(sourceName) ?? {};
+        for (const [line, expression] of Object.entries(entries ?? {})) {
+          const at = Number(line);
+          if (!Number.isInteger(at) || at < 1) continue;
+          held[at] = expression;
+          wanted.set(sourceName, [...(wanted.get(sourceName) ?? []), at]);
+        }
+        wantedLogpoints.set(sourceName, held);
       }
 
       // Watch every class a breakpoint names, so one in a file that has not loaded yet
@@ -1211,6 +1244,15 @@ async function onComposite(composite) {
     }
 
     if (event.kind === EVENT_KIND.BREAKPOINT) {
+      const logpoint = await logpointAt(event);
+      if (logpoint) {
+        const result = await withPausedFrame(
+          event.thread,
+          () => evaluateExpression(logpoint.expression),
+        );
+        send({ type: 'log', ...logpoint, ...result });
+        continue;
+      }
       /*
        * The condition is evaluated HERE, because JDWP will not do it (see
        * `conditionHolds`). The frame has to be set up first - the evaluator resolves

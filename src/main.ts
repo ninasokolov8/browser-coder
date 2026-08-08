@@ -35,6 +35,8 @@ import { initializeWebPreview } from './features/live-preview';
 import { initializeFormatting } from './features/formatting';
 import { initializeHoverHelp } from './features/hover-help';
 import { initializeTryExample, tryExample } from './features/try-example';
+import { initializeOutputTracing } from './features/output-trace.ts';
+import { initializeErrorFirstAid } from './features/error-first-aid.ts';
 import { renderHover } from './features/hover-content';
 import { getKeywordExplanation as getKeywordExplanationForSeam } from './languages';
 
@@ -225,6 +227,7 @@ async function bootstrap(): Promise<void> {
   connectSaveStatus(workspace.service, { status: setStatus, announce });
 
   initializeProblemsPanel(diagnostics);
+  initializeErrorFirstAid(monaco);
 
   runtime.commands!.register({
     id: 'workspace.showProblems',
@@ -242,6 +245,7 @@ async function bootstrap(): Promise<void> {
   // The debugger's surface. After the editor exists, because it owns decorations and
   // margin clicks on it.
   initializeDebugUi();
+  initializeOutputTracing();
 
   initializeLayout();
   initializeMoreMenu();

@@ -618,3 +618,55 @@ describe('breakpoint conditions', () => {
     assert.deepEqual(snapshot.conditionedBreakpoints, [5]);
   });
 });
+
+describe('log points', () => {
+  test('store an expression per line without adding a stopping breakpoint', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+
+    assert.equal(state.setLogpoint(7, 'total'), true);
+    assert.equal(state.logpointExpression(7), 'total');
+    assert.deepEqual(state.snapshot().logpointLines, [7]);
+    assert.deepEqual(state.breakpointLines(), []);
+  });
+
+  test('a line has one meaning: log point and breakpoint replace each other', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setBreakpointCondition(7, 'i == 2');
+
+    state.setLogpoint(7, 'i');
+    assert.equal(state.hasBreakpoint(7), false);
+    assert.equal(state.breakpointCondition(7), null);
+
+    state.toggleBreakpoint(7);
+    assert.equal(state.logpointExpression(7), null);
+    assert.equal(state.hasBreakpoint(7), true);
+  });
+
+  test('they stay with their documents and can all be sent to the adapter', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setLogpoint(2, 'left');
+    state.setDocument('doc-2');
+    state.setLogpoint(9, 'right');
+
+    assert.deepEqual([...state.allLogpoints()], [
+      ['doc-1', { 2: 'left' }],
+      ['doc-2', { 9: 'right' }],
+    ]);
+    assert.deepEqual(state.logpointLines(), [9]);
+  });
+
+  test('empty text removes one, and clearing breakpoints removes all', () => {
+    const state = new DebugSessionState();
+    state.setDocument('doc-1');
+    state.setLogpoint(2, 'value');
+    assert.equal(state.setLogpoint(2, '   '), true);
+    assert.deepEqual(state.logpointLines(), []);
+
+    state.setLogpoint(3, 'value');
+    state.clearBreakpoints();
+    assert.deepEqual([...state.allLogpoints()], []);
+  });
+});

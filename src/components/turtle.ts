@@ -1,6 +1,8 @@
 import {
   turtleCanvasEl,
 } from "./dom";
+import * as monaco from 'monaco-editor';
+import { runtime } from '../app/runtime.ts';
 import { getPopupWindow, hidePopupWindow, showPopupWindow } from "./popup-window";
 
 // Id of the shared popup window the turtle drawing is rendered into.
@@ -23,6 +25,7 @@ const TURTLE_WINDOW_ID = 'turtle-window';
 
 export interface TurtleShape {
   k: string;
+  ln?: number;
   [key: string]: unknown;
 }
 
@@ -68,6 +71,8 @@ export interface TurtleData {
 
 // Animation RAF id (requestAnimationFrame) — null when idle
 let turtleAnimRafId: number | null = null;
+let turtleReplayTimer: number | null = null;
+let turtleReplayDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
 
 // Background picture (bgpic) of the drawing currently on screen. Module-level
 // because it is needed both while painting the background and later, whenever
@@ -138,7 +143,7 @@ function mergeLook(base: TurtleLook, src: Record<string, unknown>): TurtleLook {
  * separate window. The window shell itself is the shared one every graphics
  * output uses; see popup-window.ts.
  */
-function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement } | null {
+function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement; body: HTMLElement } | null {
   const popup = getPopupWindow(
     TURTLE_WINDOW_ID,
     '\uD83D\uDC22 Turtle Graphics',
@@ -155,7 +160,131 @@ function getTurtleElements(): { output: HTMLElement; canvas: HTMLCanvasElement }
     popup.bodyEl.appendChild(canvas);
   }
 
-  return { output: popup.windowEl, canvas };
+  popup.bodyEl.classList.add('turtle-popup-body');
+
+  return { output: popup.windowEl, canvas, body: popup.bodyEl };
+}
+
+function stopTurtleReplay(): void {
+  if (turtleReplayTimer !== null) {
+    window.clearInterval(turtleReplayTimer);
+    turtleReplayTimer = null;
+  }
+}
+
+function highlightTurtleLine(line: unknown, reveal = false): void {
+  const editor = runtime.editor;
+  const model = editor?.getModel();
+  if (!editor || !model || !Number.isInteger(line) || Number(line) < 1 || Number(line) > model.getLineCount()) {
+    turtleReplayDecorations?.clear();
+    return;
+  }
+  const lineNumber = Number(line);
+  turtleReplayDecorations ??= editor.createDecorationsCollection([]);
+  turtleReplayDecorations.set([{
+    range: new monaco.Range(lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber)),
+    options: { isWholeLine: true, className: 'turtle-replay-code-line' },
+  }]);
+  if (reveal) editor.revealLineInCenter(lineNumber);
+}
+
+interface TurtleReplayControls {
+  setProgress(value: number, reveal?: boolean): void;
+}
+
+function createTurtleReplayControls(
+  body: HTMLElement,
+  shapes: TurtleShape[],
+  renderAt: (count: number) => void,
+): TurtleReplayControls {
+  stopTurtleReplay();
+  body.querySelector('#turtle-replay-controls')?.remove();
+
+  const controls = document.createElement('div');
+  controls.id = 'turtle-replay-controls';
+  controls.className = 'turtle-replay-controls';
+
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.textContent = '◀';
+  back.title = 'Previous drawing step';
+
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.textContent = '▶ Replay';
+  play.title = 'Play or pause the drawing';
+
+  const forward = document.createElement('button');
+  forward.type = 'button';
+  forward.textContent = '▶';
+  forward.title = 'Next drawing step';
+
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = '0';
+  range.max = String(shapes.length);
+  range.value = String(shapes.length);
+  range.setAttribute('aria-label', 'Turtle replay position');
+
+  const speed = document.createElement('select');
+  speed.title = 'Replay speed';
+  for (const value of [0.5, 1, 2]) {
+    const option = document.createElement('option');
+    option.value = String(value);
+    option.textContent = `${value}×`;
+    if (value === 1) option.selected = true;
+    speed.appendChild(option);
+  }
+
+  const label = document.createElement('span');
+  label.className = 'turtle-replay-label';
+
+  const setProgress = (raw: number, reveal = false) => {
+    const value = Math.min(shapes.length, Math.max(0, Math.round(raw)));
+    range.value = String(value);
+    label.textContent = `step ${value} of ${shapes.length}`;
+    const shape = value > 0 ? shapes[value - 1] : null;
+    highlightTurtleLine(shape?.ln, reveal);
+  };
+
+  const seek = (value: number, reveal = true) => {
+    if (turtleAnimRafId !== null) {
+      cancelAnimationFrame(turtleAnimRafId);
+      turtleAnimRafId = null;
+    }
+    stopTurtleReplay();
+    play.textContent = '▶ Replay';
+    setProgress(value, reveal);
+    renderAt(Number(range.value));
+  };
+
+  range.addEventListener('input', () => seek(Number(range.value)));
+  back.addEventListener('click', () => seek(Number(range.value) - 1));
+  forward.addEventListener('click', () => seek(Number(range.value) + 1));
+  play.addEventListener('click', () => {
+    if (turtleReplayTimer !== null) {
+      stopTurtleReplay();
+      play.textContent = '▶ Replay';
+      return;
+    }
+    if (Number(range.value) >= shapes.length) seek(0, true);
+    play.textContent = '⏸ Pause';
+    const delay = Math.max(35, 240 / Number(speed.value));
+    turtleReplayTimer = window.setInterval(() => {
+      const next = Number(range.value) + 1;
+      setProgress(next, false);
+      renderAt(next);
+      if (next >= shapes.length) {
+        stopTurtleReplay();
+        play.textContent = '▶ Replay';
+      }
+    }, delay);
+  });
+
+  controls.append(back, play, forward, range, speed, label);
+  body.appendChild(controls);
+  setProgress(shapes.length, false);
+  return { setProgress };
 }
 
 /**
@@ -387,6 +516,58 @@ function drawTurtleShape(
   sctx.restore();
 }
 
+/** Repaint exactly the first `count` recorded commands for slider scrubbing. */
+function drawTurtlePrefix(
+  ctx: CanvasRenderingContext2D,
+  shapes: TurtleShape[],
+  count: number,
+  cw: number, ch: number,
+  bg: string,
+  cursors?: TurtleCursor[],
+  polys?: Record<string, number[][]>,
+): void {
+  paintTurtleBackground(ctx, cw, ch, bg);
+
+  let x = 0, y = 0, heading = 0, visible = true;
+  let look: TurtleLook = DEFAULT_LOOK;
+  const end = Math.min(shapes.length, Math.max(0, count));
+
+  for (let index = 0; index < end; index++) {
+    const shape = shapes[index];
+    drawTurtleShape(ctx, shape, cw, ch, bg, polys);
+    switch (shape.k) {
+      case 'l': {
+        const dx = Number(shape.x2) - Number(shape.x1);
+        const dy = Number(shape.y2) - Number(shape.y1);
+        x = Number(shape.x2); y = Number(shape.y2);
+        if (dx || dy) heading = Math.atan2(dy, dx) * 180 / Math.PI;
+        break;
+      }
+      case 'M': x = Number(shape.x); y = Number(shape.y); break;
+      case 'F': {
+        const points = shape.pts as number[][] | undefined;
+        if (points?.length) [x, y] = points[points.length - 1];
+        break;
+      }
+      case 'D': case 'T': x = Number(shape.x); y = Number(shape.y); break;
+      case 'S':
+        x = Number(shape.x); y = Number(shape.y);
+        heading = Number(shape.h ?? heading);
+        break;
+      case 'HT': visible = false; break;
+      case 'ST': visible = true; break;
+      case 'H': heading = Number(shape.h ?? heading); break;
+      case 'SH': look = mergeLook(look, shape); break;
+    }
+  }
+
+  if (end >= shapes.length) {
+    drawFinalCursors(ctx, cursors, cw, ch, polys);
+  } else if (visible) {
+    drawTurtleCursor(ctx, cw / 2 + x, ch / 2 - y, heading, look, polys);
+  }
+}
+
 // ── Pixel-per-second speeds for each turtle speed level (1–10) ───────────────
 // Calibrated to match real Python IDLE turtle feel.
 // speed(3) is the default (real turtle default) — feels educational and visible.
@@ -410,6 +591,7 @@ export function renderTurtle(data: TurtleData): void {
     cancelAnimationFrame(turtleAnimRafId);
     turtleAnimRafId = null;
   }
+  stopTurtleReplay();
 
   const seq = ++turtleRenderSeq;
   turtleBgImage = null;
@@ -472,7 +654,7 @@ function drawTurtleData(data: TurtleData): void {
   // ── Setup visible canvas ───────────────────────────────────────────────────
   const turtleElements = getTurtleElements();
   if (!turtleElements) return;
-  const { output: turtleWindow, canvas: turtleCanvas } = turtleElements;
+  const { output: turtleWindow, canvas: turtleCanvas, body: turtleBody } = turtleElements;
 
   turtleCanvas.width  = cw;
   turtleCanvas.height = ch;
@@ -496,10 +678,15 @@ function drawTurtleData(data: TurtleData): void {
   // ── Show the popup window ───────────────────────────────────────────────────
   showPopupWindow(turtleWindow);
 
+  const replay = createTurtleReplayControls(turtleBody, shapes, count => {
+    drawTurtlePrefix(ctx, shapes, count, cw, ch, bg, cursors, polys);
+  });
+
   // Nothing was drawn, but the turtles themselves are still worth showing —
   // that is what a real turtle window looks like after a program that only
   // moves the cursor around.
   if (shapes.length === 0) {
+    turtleBody.querySelector('#turtle-replay-controls')?.remove();
     drawFinalCursors(ctx, cursors, cw, ch, polys);
     return;
   }
@@ -521,7 +708,7 @@ function drawTurtleData(data: TurtleData): void {
 
   // Bookkeeping events (cursor moves, appearance changes, show/hide) put
   // nothing on the canvas, so they must not push a drawing into instant mode.
-  const BOOKKEEPING = new Set(['M', 'SH', 'HT', 'ST']);
+  const BOOKKEEPING = new Set(['M', 'SH', 'H', 'HT', 'ST']);
   let drawCount = 0;
   for (const s of shapes) if (!BOOKKEEPING.has(s.k)) drawCount++;
 
@@ -529,6 +716,7 @@ function drawTurtleData(data: TurtleData): void {
     for (const s of shapes) drawTurtleShape(octx, s, cw, ch, bg, polys);
     ctx.drawImage(offscreen, 0, 0);
     drawFinalCursors(ctx, cursors, cw, ch, polys);
+    replay.setProgress(shapes.length);
     return;
   }
 
@@ -566,6 +754,7 @@ function drawTurtleData(data: TurtleData): void {
           curX = s.x2 as number; curY = s.y2 as number;
           curH = Math.atan2(dy, dx) * 180 / Math.PI;
           shapeIdx++; lineProgress = 0;
+          replay.setProgress(shapeIdx);
           budget -= 1;
           continue;
         }
@@ -582,6 +771,7 @@ function drawTurtleData(data: TurtleData): void {
           curX = s.x2 as number; curY = s.y2 as number;
           curH = Math.atan2(dy, dx) * 180 / Math.PI;
           shapeIdx++;
+          replay.setProgress(shapeIdx);
         } else {
           // Partial: update progress and consume the whole budget
           budget = -1; // stop the while loop
@@ -609,9 +799,11 @@ function drawTurtleData(data: TurtleData): void {
             break;
           case 'HT': curVisible = false; break;
           case 'ST': curVisible = true;  break;
+          case 'H':  curH = Number(s.h ?? curH); break;
           case 'SH': curLook = mergeLook(curLook, s); break;
         }
         shapeIdx++; lineProgress = 0;
+        replay.setProgress(shapeIdx);
         // Flat cost keeps non-line shapes visible briefly; a pure appearance
         // change draws nothing, so it must not eat into the frame budget.
         if (s.k !== 'SH') budget -= 5;
@@ -663,6 +855,8 @@ export function clearTurtleCanvas(): void {
     cancelAnimationFrame(turtleAnimRafId);
     turtleAnimRafId = null;
   }
+  stopTurtleReplay();
+  turtleReplayDecorations?.clear();
 
   // Also invalidate a background picture that is still loading, so a slow
   // decode from the previous run cannot draw into the cleared canvas.
@@ -674,6 +868,7 @@ export function clearTurtleCanvas(): void {
   // Normal code execution calls this even when the page has no turtle UI.
   // Missing optional elements must therefore be a no-op, never a run failure.
   const canvas = turtleCanvasEl ?? document.getElementById('turtle-canvas') as HTMLCanvasElement | null;
+  document.getElementById('turtle-replay-controls')?.remove();
 
   hidePopupWindow(TURTLE_WINDOW_ID);
   if (!canvas) return;

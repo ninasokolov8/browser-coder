@@ -166,6 +166,37 @@ async function run(): Promise<void> {
   // Exactly one visible tab, not one per file.
   equal('exactly one tab is opened', seam()!.tabManager.getAllTabs().length, 1);
 
+  // Debug was bound while the embedded workspace was still empty. Its `when`
+  // clause must be re-evaluated after Step-Up supplies the Python model.
+  const debugEnabled = await waitFor(
+    'Debug to become enabled for the Step-Up Python project',
+    () => seam()!.commands.isEnabled('workspace.debug') === true,
+    10000,
+  );
+  check('Step-Up enables the Browser Coder debugger for Python', debugEnabled);
+  const debugButton = frame.contentDocument?.getElementById('debug');
+  check(
+    'the embedded Debug button is clickable',
+    debugButton?.getAttribute('aria-disabled') !== 'true' && !(debugButton as HTMLButtonElement | null)?.disabled,
+    `aria-disabled=${debugButton?.getAttribute('aria-disabled')}, disabled=${(debugButton as HTMLButtonElement | null)?.disabled}`,
+  );
+
+  // The menu used to be absolutely positioned inside the clipped title bar, which
+  // left only its first (Download) row visible and offered no explicit way back.
+  const moreToggle = frame.contentDocument?.getElementById('more-toggle') as HTMLButtonElement | null;
+  const moreMenu = frame.contentDocument?.getElementById('more-menu') as HTMLElement | null;
+  moreToggle?.click();
+  check('the three-dot menu opens', moreMenu?.hidden === false);
+  const projectDownload = frame.contentDocument?.getElementById('btn-download-project');
+  check(
+    'the three-dot menu shows tools below Download',
+    Boolean(projectDownload && projectDownload.getBoundingClientRect().height > 0),
+  );
+  const moreClose = frame.contentDocument?.getElementById('more-close') as HTMLButtonElement | null;
+  check('the three-dot menu has an explicit close button', Boolean(moreClose));
+  moreClose?.click();
+  check('the close button returns to the toolbar', moreMenu?.hidden === true);
+
   // ===== re-sending the project preserves identity =====
 
   const before = seam()!.workspace.allDocuments().map(document => document.id).sort();

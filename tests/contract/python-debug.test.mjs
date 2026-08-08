@@ -321,6 +321,57 @@ describe('breakpoints, stepping and variables', { skip }, () => {
   });
 });
 
+describe('log points', { skip }, () => {
+  test('evaluate on every hit and continue without a stopped event', async () => {
+    const debug = session([
+      'for i in range(3):',
+      '    value = i',
+      'print("done")',
+    ].join('\n'));
+    try {
+      await debug.start();
+      await debug.waitFor('hello');
+      debug.send({ command: 'setBreakpoints', lines: [], logpoints: { '': { 2: 'i' } } });
+      const accepted = await debug.waitFor('breakpoints');
+      assert.deepEqual(accepted.lines, []);
+      assert.equal(accepted.logpoints['main.py'][2], 'i');
+      await debug.waitFor('started');
+
+      const logs = [
+        await debug.waitFor('log'),
+        await debug.waitFor('log'),
+        await debug.waitFor('log'),
+      ];
+      assert.deepEqual(logs.map(event => event.value.text), ['0', '1', '2']);
+      await debug.waitFor('terminated');
+      await debug.waitForExit();
+      assert.match(debug.stdout, /done/);
+    } finally {
+      debug.dispose();
+    }
+  });
+
+  test('stepping onto a log-point line still pauses there', async () => {
+    const debug = session(['x = 0', 'x += 1', 'x += 2', 'print(x)'].join('\n'));
+    try {
+      await debug.start();
+      await debug.waitFor('hello');
+      debug.send({
+        command: 'setBreakpoints',
+        lines: [2],
+        logpoints: { '': { 3: 'x' } },
+      });
+      await debug.waitFor('breakpoints');
+      await debug.waitFor('started');
+      assert.equal((await debug.waitFor('stopped')).line, 2);
+      debug.send({ command: 'next' });
+      assert.equal((await debug.waitFor('stopped')).line, 3);
+    } finally {
+      debug.dispose();
+    }
+  });
+});
+
 describe('stopping where the program broke', { skip }, () => {
   let debug;
 
