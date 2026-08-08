@@ -15,7 +15,7 @@
 import * as monaco from 'monaco-editor';
 
 import { runtime, requireEditor, requireTabManager } from '../app/runtime';
-import { checkWorkBtn, debugBtn, runBtn, stopBtn } from '../components/dom';
+import { debugBtn, runBtn, stopBtn } from '../components/dom';
 import { setStatus } from '../components/output';
 import { bindButton, bindKeybinding } from '../commands';
 import { isRunActive, requestStop } from '../components/run-controls.ts';
@@ -225,10 +225,19 @@ commands.register({
 
 bindButton(commands, runBtn, 'workspace.run');
 bindButton(commands, stopBtn, 'workspace.stopRun');
-// `workspace.runTests` had no control. It was reachable only through the command
-// palette, which a high-school student will never open - so the marking harness,
-// the BCTEST protocol and the checklist were invisible to the person they exist for.
-bindButton(commands, checkWorkBtn, 'workspace.runTests');
+
+/*
+ * `workspace.runTests` has no button, deliberately.
+ *
+ * It briefly had one. A marking harness is a file a TEACHER ships - `X_HIDDEN_tests.py`
+ * and the like - and no Step-Up task ships one, so for every student the button did
+ * nothing they could see. A control that is inert for everybody is worse than no
+ * control: it teaches that buttons in this IDE may or may not work.
+ *
+ * The command, the BCTEST protocol and the checklist all remain. A task that does ship
+ * a harness can reach it from the palette, and if harnesses ever become part of the
+ * curriculum this is one line to put back.
+ */
 // Bound through the registry like every other control, so its enabled state and its
 // refusal both come from the command's own declaration rather than from CSS.
 bindButton(commands, debugBtn, 'workspace.debug');

@@ -40,7 +40,7 @@
         --fg-danger: #b3261e;
         --fg-exception: #c42b1c;
         --glyph-current: #b58900;
-        --bg-current-line: rgba(181, 137, 0, 0.20);
+        --bg-current-line: rgba(181, 137, 0, 0.26);
         --bg-hover: rgba(0, 0, 0, 0.06);
         --bg-hover-strong: rgba(0, 0, 0, 0.09);
         --bg-selected: rgba(0, 122, 204, 0.16);
@@ -86,7 +86,7 @@
         --fg-danger: #ff6b6b;
         --fg-exception: #f14c4c;
         --glyph-current: #ffcc00;
-        --bg-current-line: rgba(255, 204, 0, 0.14);
+        --bg-current-line: rgba(255, 193, 7, 0.22);
         --bg-hover: rgba(255, 255, 255, 0.06);
         --bg-hover-strong: rgba(255, 255, 255, 0.10);
         --bg-selected: rgba(255, 255, 255, 0.12);
@@ -143,7 +143,7 @@
         --fg-danger: #ff8a80;
         --fg-exception: #ff8a80;
         --glyph-current: #ffff00;
-        --bg-current-line: rgba(255, 255, 0, 0.25);
+        --bg-current-line: rgba(255, 255, 0, 0.34);
         --bg-hover: rgba(255, 255, 255, 0.22);
         --bg-hover-strong: rgba(255, 255, 255, 0.32);
         --bg-selected: rgba(26, 235, 255, 0.30);
@@ -1371,7 +1371,26 @@
         font-size: 11px;
         margin-left: 3px;
       }
-      .debug-current-line { background: var(--bg-current-line); }
+      /*
+       * The line the program is stopped on.
+       *
+       * A fill alone was not enough. At 14% amber over a near-black editor this was a
+       * four-percent luminance shift - the decoration was applied, the status line said
+       * "Paused on line 5", and the student could not see which line that was. The whole
+       * point of a debugger is answering "where am I now" without reading a number.
+       *
+       * So: a fill you can actually see, plus a solid bar down the left edge. The bar is
+       * what the eye catches first and it survives any theme, because a 3px block of the
+       * glyph colour cannot be washed out the way a translucent wash can. Drawn with an
+       * inset shadow rather than a border so nothing about the line's layout moves - a
+       * border would shift the text sideways as the program steps.
+       */
+      .debug-current-line {
+        background: var(--bg-current-line);
+        /* No literal fallback: --glyph-current is defined in all three themes, and a
+           dark-palette hex here would be the exact thing theme-css.test.mjs forbids. */
+        box-shadow: inset 3px 0 0 var(--glyph-current);
+      }
 
       /* ── Asset viewer ─────────────────────────────────────────────────── */
       /* Takes the editor's place for a binary file. The editor is hidden rather
@@ -2170,11 +2189,6 @@
             <!-- Greyed for a language with no adapter rather than hidden, so the feature
                  is discoverable and its absence is explained by the tooltip. -->
             <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
-            <!-- Check my work had NO button at all. It was registered as a command and
-                 reachable only through the palette, which a student will never open, so
-                 the marking harness, the BCTEST protocol and the checklist were
-                 invisible to the person they were built for. -->
-            <button id="check-work" class="btn btn-secondary" title="Check my work" data-i18n-title="titlebar.checkWork">✓ <span data-i18n="titlebar.checkWork">Check my work</span></button>
           </div>
 
           <div class="set-group" role="group" aria-label="Language">
