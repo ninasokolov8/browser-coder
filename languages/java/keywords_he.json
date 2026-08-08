@@ -1,974 +1,4 @@
 {
-  "public": {
-    "type": "access_modifier",
-    "explanation": "מאפשר למחלקה, מתודה, בנאי או שדה להיות נגישים מכל מקום שיכול לראות את החבילה או המודול שבהם הם הוגדרו.",
-    "example": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello\");\n    }\n}"
-  },
-  "private": {
-    "type": "access_modifier",
-    "explanation": "מאפשר לחבר מחלקה להיות נגיש רק מתוך אותה מחלקה.",
-    "example": "class Account {\n    private double balance;\n}"
-  },
-  "protected": {
-    "type": "access_modifier",
-    "explanation": "מאפשר לחבר מחלקה להיות נגיש בתוך אותה חבילה וגם מתוך מחלקות יורשות.",
-    "example": "class Base {\n    protected int id;\n}"
-  },
-  "abstract": {
-    "type": "modifier_keyword",
-    "explanation": "מסמן מחלקה שלא ניתן ליצור ממנה אובייקט ישירות, או מתודה ללא גוף שחייבים לממש במחלקה יורשת.",
-    "example": "abstract class Shape {\n    abstract double area();\n}"
-  },
-  "final": {
-    "type": "modifier_keyword",
-    "explanation": "מונע השמה מחדש למשתנים, דריסה של מתודות או ירושה ממחלקות.",
-    "example": "final double PI = 3.14159;"
-  },
-  "static": {
-    "type": "modifier_keyword",
-    "explanation": "מסמן שחבר שייך למחלקה עצמה ולא למופע ספציפי של אובייקט.",
-    "example": "class MathUtils {\n    static int square(int x) {\n        return x * x;\n    }\n}"
-  },
-  "strictfp": {
-    "type": "modifier_keyword",
-    "explanation": "מילת מפתח מיושנת שבעבר דרשה התנהגות מחמירה בחישובי נקודה צפה; ב-Java מודרנית ביטויי נקודה צפה כבר מחושבים באופן מחמיר.",
-    "example": "strictfp class OldNumericCode {\n    double calc(double x) { return x / 3.0; }\n}"
-  },
-  "synchronized": {
-    "type": "modifier_keyword",
-    "explanation": "מאפשר רק לת׳רד אחד בכל פעם להריץ מתודה או בלוק באמצעות אותו monitor lock.",
-    "example": "synchronized void increment() {\n    count++;\n}"
-  },
-  "transient": {
-    "type": "modifier_keyword",
-    "explanation": "מסמן שדה כך ש-Java תדלג עליו בזמן סריאליזציה של אובייקט.",
-    "example": "class User implements java.io.Serializable {\n    transient String temporaryToken;\n}"
-  },
-  "volatile": {
-    "type": "modifier_keyword",
-    "explanation": "מסמן שדה כך שקריאות וכתיבות אליו יתבצעו ישירות מול הזיכרון הראשי, כדי לשפר נראות בין ת׳רדים.",
-    "example": "volatile boolean running = true;"
-  },
-  "native": {
-    "type": "modifier_keyword",
-    "explanation": "מצהיר שמתודה ממומשת בקוד native תלוי-פלטפורמה, ולא בקוד Java.",
-    "example": "public native int systemCall();"
-  },
-  "class": {
-    "type": "declaration_keyword",
-    "explanation": "מגדיר תבנית ליצירת אובייקטים עם שדות, מתודות, בנאים וטיפוסים מקוננים.",
-    "example": "public class Point {\n    int x;\n    int y;\n}"
-  },
-  "interface": {
-    "type": "declaration_keyword",
-    "explanation": "מגדיר חוזה של מתודות וקבועים שמחלקות יכולות לממש; בממשקים מודרניים אפשר לכלול גם מתודות default ו-static.",
-    "example": "interface Shape {\n    double area();\n}"
-  },
-  "enum": {
-    "type": "declaration_keyword",
-    "explanation": "מגדיר אוסף קבוע של ערכים בעלי שמות כטיפוס מחלקה מיוחד.",
-    "example": "enum Color {\n    RED, GREEN, BLUE\n}"
-  },
-  "package": {
-    "type": "declaration_keyword",
-    "explanation": "משייך את המחלקות בקובץ מקור לחבילה בשם מסוים, לצורך ארגון והבחנה בין שמות.",
-    "example": "package com.example.app;"
-  },
-  "import": {
-    "type": "declaration_keyword",
-    "explanation": "מכניס טיפוס או חבר static לטווח הזמינות, כדי להשתמש בו בלי לכתוב את שמו המלא.",
-    "example": "import java.util.ArrayList;\n\nArrayList<String> names = new ArrayList<>();"
-  },
-  "extends": {
-    "type": "inheritance_keyword",
-    "explanation": "מצהיר שמחלקה יורשת ממחלקה אחרת, או שממשק מרחיב ממשק אחר.",
-    "example": "class Dog extends Animal {\n    void speak() { System.out.println(\"Woof\"); }\n}"
-  },
-  "implements": {
-    "type": "inheritance_keyword",
-    "explanation": "מצהיר שמחלקה מספקת את המתודות הנדרשות על ידי ממשק אחד או יותר.",
-    "example": "class Circle implements Shape {\n    public double area() { return Math.PI * r * r; }\n}"
-  },
-  "this": {
-    "type": "object_keyword",
-    "explanation": "מתייחס למופע האובייקט הנוכחי, ולעיתים קרובות משמש להבחנה בין שדות לבין פרמטרים.",
-    "example": "class Point {\n    int x;\n    Point(int x) {\n        this.x = x;\n    }\n}"
-  },
-  "super": {
-    "type": "object_keyword",
-    "explanation": "מתייחס למחלקת האב, בדרך כלל כדי לקרוא לבנאי של האב או למתודה שנדרסה.",
-    "example": "class Dog extends Animal {\n    Dog(String name) {\n        super(name);\n    }\n}"
-  },
-  "new": {
-    "type": "object_keyword",
-    "explanation": "יוצר מופע חדש של אובייקט או מערך.",
-    "example": "Point p = new Point();\nint[] nums = new int[3];"
-  },
-  "instanceof": {
-    "type": "type_check_keyword",
-    "explanation": "בודק אם אובייקט תואם לטיפוס מסוים; ב-Java מודרנית תומך גם במשתני pattern.",
-    "example": "if (obj instanceof String s) {\n    System.out.println(s.length());\n}"
-  },
-  "if": {
-    "type": "control_flow_keyword",
-    "explanation": "מריץ בלוק קוד רק כאשר תנאי מסוים מתקיים.",
-    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n}"
-  },
-  "else": {
-    "type": "control_flow_keyword",
-    "explanation": "מריץ בלוק חלופי כאשר תנאי ה-if הקודם הוא false.",
-    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n} else {\n    System.out.println(\"Minor\");\n}"
-  },
-  "switch": {
-    "type": "control_flow_keyword",
-    "explanation": "בוחר ענף להרצה לפי ערך או pattern מתאים; יכול לשמש כמשפט או כביטוי.",
-    "example": "switch (day) {\n    case \"MON\" -> System.out.println(\"Monday\");\n    default -> System.out.println(\"Other\");\n}"
-  },
-  "case": {
-    "type": "control_flow_keyword",
-    "explanation": "מגדיר ענף בתוך switch statement או switch expression.",
-    "example": "switch (grade) {\n    case 'A' -> System.out.println(\"Great\");\n    default -> System.out.println(\"Keep going\");\n}"
-  },
-  "default": {
-    "type": "control_flow_keyword",
-    "explanation": "מגדיר את ענף ברירת המחדל ב-switch, או מימוש default של מתודה בממשק.",
-    "example": "switch (grade) {\n    default -> System.out.println(\"Unknown grade\");\n}"
-  },
-  "for": {
-    "type": "loop_keyword",
-    "explanation": "חוזר על קוד באמצעות לולאה רגילה עם מונה או באמצעות לולאת enhanced for על מערכים ואוספים.",
-    "example": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
-  },
-  "while": {
-    "type": "loop_keyword",
-    "explanation": "חוזר על קוד כל עוד התנאי נשאר true, כאשר התנאי נבדק לפני כל איטרציה.",
-    "example": "while (n > 0) {\n    n--;\n}"
-  },
-  "do": {
-    "type": "loop_keyword",
-    "explanation": "מתחיל לולאת do-while, שבה גוף הלולאה רץ פעם אחת לפני בדיקת התנאי.",
-    "example": "do {\n    n++;\n} while (n < 3);"
-  },
-  "break": {
-    "type": "control_flow_keyword",
-    "explanation": "יוצא מיד מהלולאה או מה-switch הקרובים ביותר.",
-    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n}"
-  },
-  "continue": {
-    "type": "control_flow_keyword",
-    "explanation": "מדלג על שאר האיטרציה הנוכחית של הלולאה ועובר לאיטרציה הבאה.",
-    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    System.out.println(i);\n}"
-  },
-  "return": {
-    "type": "control_flow_keyword",
-    "explanation": "יוצא ממתודה, ובאופן אופציונלי מחזיר ערך לקוד שקרא לה.",
-    "example": "int square(int x) {\n    return x * x;\n}"
-  },
-  "try": {
-    "type": "exception_keyword",
-    "explanation": "מתחיל בלוק קוד שבו ניתן לתפוס חריגות או לסגור משאבים אוטומטית.",
-    "example": "try {\n    int x = 1 / 0;\n} catch (ArithmeticException e) {\n    System.out.println(e.getMessage());\n}"
-  },
-  "catch": {
-    "type": "exception_keyword",
-    "explanation": "מטפל בחריגה שנזרקה בתוך בלוק try מתאים.",
-    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
-  },
-  "finally": {
-    "type": "exception_keyword",
-    "explanation": "מריץ קוד ניקוי אחרי try/catch, בין אם התרחשה חריגה ובין אם לא.",
-    "example": "try {\n    doWork();\n} finally {\n    System.out.println(\"Always runs\");\n}"
-  },
-  "throw": {
-    "type": "exception_keyword",
-    "explanation": "זורק אובייקט חריגה באופן ידני.",
-    "example": "if (age < 0) {\n    throw new IllegalArgumentException(\"Age cannot be negative\");\n}"
-  },
-  "throws": {
-    "type": "exception_keyword",
-    "explanation": "מצהיר שמתודה עשויה לזרוק חריגה checked אחת או יותר.",
-    "example": "void readFile(String path) throws IOException {\n    // read file\n}"
-  },
-  "assert": {
-    "type": "debug_keyword",
-    "explanation": "בודק הנחה בזמן דיבוג וזורק AssertionError אם התנאי false כאשר assertions מופעלים.",
-    "example": "assert balance >= 0 : \"Balance cannot be negative\";"
-  },
-  "boolean": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי ששומר את הערך true או false.",
-    "example": "boolean isActive = true;"
-  },
-  "byte": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 8 ביט.",
-    "example": "byte small = 42;"
-  },
-  "short": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 16 ביט.",
-    "example": "short count = 1000;"
-  },
-  "int": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 32 ביט, נפוץ לשימוש במספרים שלמים.",
-    "example": "int age = 37;"
-  },
-  "long": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 64 ביט עבור מספרים שלמים גדולים.",
-    "example": "long population = 9_000_000_000L;"
-  },
-  "float": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של נקודה צפה בגודל 32 ביט; ליטרלים בדרך כלל משתמשים בסיומת f.",
-    "example": "float price = 19.99f;"
-  },
-  "double": {
-    "type": "primitive_type",
-    "explanation": "טיפוס פרימיטיבי של נקודה צפה בגודל 64 ביט, נפוץ לחישובים עשרוניים.",
-    "example": "double average = 93.5;"
-  },
-  "char": {
-    "type": "primitive_type",
-    "explanation": "יחידת קוד UTF-16 בגודל 16 ביט המשמשת לשמירת תו יחיד.",
-    "example": "char grade = 'A';"
-  },
-  "void": {
-    "type": "return_type_keyword",
-    "explanation": "משמש כטיפוס החזרה של מתודה כדי לציין שהמתודה אינה מחזירה ערך.",
-    "example": "public void printHello() {\n    System.out.println(\"Hello\");\n}"
-  },
-  "const": {
-    "type": "reserved_unused_keyword",
-    "explanation": "שמורה לשימוש עתידי אפשרי; Java אינה משתמשת בה לקבועים. השתמשו ב-final במקום.",
-    "example": "final int MAX_USERS = 100; // not const"
-  },
-  "goto": {
-    "type": "reserved_unused_keyword",
-    "explanation": "שמורה אך לא נתמכת ב-Java; קיימת כדי שהקומפיילר יוכל להציג שגיאות ברורות יותר.",
-    "example": "// goto is reserved but not supported in Java"
-  },
-  "_": {
-    "type": "reserved_keyword",
-    "explanation": "הקו התחתון היחיד שמור ולא ניתן להשתמש בו כמזהה רגיל; בהקשרים מסוימים הוא יכול לסמן משתנה או pattern ללא שם.",
-    "example": "try (var _ = lock.acquire()) {\n    // unnamed resource variable style\n}"
-  },
-  "true": {
-    "type": "literal",
-    "explanation": "ליטרל בוליאני שמייצג תנאי אמת.",
-    "example": "boolean isActive = true;"
-  },
-  "false": {
-    "type": "literal",
-    "explanation": "ליטרל בוליאני שמייצג תנאי שקר.",
-    "example": "boolean isDeleted = false;"
-  },
-  "null": {
-    "type": "literal",
-    "explanation": "ליטרל reference שמייצג היעדר אובייקט.",
-    "example": "String name = null;"
-  },
-  "module": {
-    "type": "contextual_keyword",
-    "explanation": "מצהיר על מודול Java בקובץ module-info.java.",
-    "example": "module com.example.app {\n    requires java.base;\n}"
-  },
-  "open": {
-    "type": "contextual_keyword",
-    "explanation": "מסמן מודול כ-open, ומאפשר גישה רפלקטיבית לכל החבילות שלו.",
-    "example": "open module com.example.app {\n    requires java.sql;\n}"
-  },
-  "opens": {
-    "type": "contextual_keyword",
-    "explanation": "בהצהרת מודול, פותח חבילה ל-deep reflection, באופן אופציונלי למודולים מסוימים בלבד.",
-    "example": "module com.example.app {\n    opens com.example.model to com.fasterxml.jackson.databind;\n}"
-  },
-  "exports": {
-    "type": "contextual_keyword",
-    "explanation": "בהצהרת מודול, מייצא חבילה כך שמודולים אחרים יוכלו לגשת לטיפוסים הציבוריים שלה.",
-    "example": "module com.example.app {\n    exports com.example.api;\n}"
-  },
-  "requires": {
-    "type": "contextual_keyword",
-    "explanation": "בהצהרת מודול, מצהיר על תלות במודול אחר.",
-    "example": "module com.example.app {\n    requires java.sql;\n}"
-  },
-  "transitive": {
-    "type": "contextual_keyword",
-    "explanation": "משמש עם requires כדי לייצא מחדש מודול נדרש למודולים שתלויים במודול הנוכחי.",
-    "example": "module com.example.app {\n    requires transitive java.sql;\n}"
-  },
-  "uses": {
-    "type": "contextual_keyword",
-    "explanation": "בהצהרת מודול, מצהיר שהמודול צורך שירות.",
-    "example": "module com.example.app {\n    uses com.example.Plugin;\n}"
-  },
-  "provides": {
-    "type": "contextual_keyword",
-    "explanation": "בהצהרת מודול, מצהיר על מימוש שירות שהמודול מספק.",
-    "example": "module com.example.app {\n    provides com.example.Plugin with com.example.DefaultPlugin;\n}"
-  },
-  "to": {
-    "type": "contextual_keyword",
-    "explanation": "משמש בהנחיות מודול כמו exports ... to או opens ... to כדי לכוון למודולים מסוימים.",
-    "example": "exports com.example.internal to com.example.tests;"
-  },
-  "with": {
-    "type": "contextual_keyword",
-    "explanation": "משמש בהנחיית provides כדי לציין את מחלקת המימוש של שירות.",
-    "example": "provides PaymentService with StripePaymentService;"
-  },
-  "var": {
-    "type": "contextual_keyword",
-    "explanation": "מאפשר לקומפיילר להסיק את הטיפוס של משתנה מקומי או פרמטר lambda מתוך האתחול שלו.",
-    "example": "var count = 0;\nvar names = new ArrayList<String>();"
-  },
-  "yield": {
-    "type": "contextual_keyword",
-    "explanation": "מחזיר ערך מתוך בלוק של switch expression.",
-    "example": "int result = switch (grade) {\n    case \"A\" -> 100;\n    default -> {\n        yield 0;\n    }\n};"
-  },
-  "record": {
-    "type": "contextual_keyword",
-    "explanation": "מצהיר על מחלקת נשיאת נתונים קומפקטית עם בנאי, accessors, equals, hashCode ו-toString שנוצרים אוטומטית.",
-    "example": "record Point(int x, int y) {}\nPoint p = new Point(3, 4);"
-  },
-  "sealed": {
-    "type": "contextual_keyword",
-    "explanation": "מגביל אילו מחלקות או ממשקים רשאים להרחיב או לממש טיפוס מסוים.",
-    "example": "sealed class Shape permits Circle, Square {}"
-  },
-  "non-sealed": {
-    "type": "contextual_keyword",
-    "explanation": "פותח מחדש ירושה עבור תת-מחלקה של מחלקה או ממשק sealed.",
-    "example": "non-sealed class Circle extends Shape {}"
-  },
-  "permits": {
-    "type": "contextual_keyword",
-    "explanation": "מפרט את המחלקות או הממשקים הספציפיים שמורשים להרחיב או לממש טיפוס sealed.",
-    "example": "sealed interface Shape permits Circle, Square {}"
-  },
-  "when": {
-    "type": "contextual_keyword",
-    "explanation": "מוסיף תנאי guard ל-pattern case בתוך switch pattern matching.",
-    "example": "switch (obj) {\n    case String s when s.length() > 3 -> System.out.println(s);\n    default -> {}\n}"
-  },
-  "main": {
-    "type": "entry_point_convention",
-    "explanation": "שם מתודת כניסה מקובל שה-JVM משתמש בו כדי להתחיל תוכניות Java רבות.",
-    "example": "public static void main(String[] args) {\n    System.out.println(\"Hello\");\n}"
-  },
-  "String[] args": {
-    "type": "entry_point_convention",
-    "explanation": "פרמטר נפוץ עבור ארגומנטים משורת הפקודה שמועברים למתודת main.",
-    "example": "public static void main(String[] args) {\n    System.out.println(args.length);\n}"
-  },
-  "for-each": {
-    "type": "syntax_pattern",
-    "explanation": "שם לא פורמלי ללולאת enhanced for של Java, שעוברת על מערכים או אוספי Iterable.",
-    "example": "for (String name : names) {\n    System.out.println(name);\n}"
-  },
-  "enhanced for": {
-    "type": "syntax_pattern",
-    "explanation": "מונח בסגנון רשמי לצורת לולאת for שעוברת ישירות על מערכים או ערכי Iterable.",
-    "example": "for (int n : numbers) {\n    total += n;\n}"
-  },
-  "do-while": {
-    "type": "syntax_pattern",
-    "explanation": "תבנית לולאה שמשתמשת ב-do וב-while, שבה גוף הלולאה רץ לפחות פעם אחת.",
-    "example": "do {\n    n++;\n} while (n < 3);"
-  },
-  "try-with-resources": {
-    "type": "syntax_pattern",
-    "explanation": "צורת try שסוגרת אוטומטית משאבים שמממשים AutoCloseable.",
-    "example": "try (BufferedReader br = Files.newBufferedReader(path)) {\n    return br.readLine();\n}"
-  },
-  "lambda expression": {
-    "type": "syntax_pattern",
-    "explanation": "יוצר מימוש אנונימי דמוי-פונקציה של functional interface.",
-    "example": "List<Integer> evens = nums.stream()\n    .filter(n -> n % 2 == 0)\n    .toList();"
-  },
-  "method reference": {
-    "type": "syntax_pattern",
-    "explanation": "תחביר קצר להעברת מתודה קיימת כמימוש של functional interface.",
-    "example": "names.forEach(System.out::println);"
-  },
-  "generics": {
-    "type": "syntax_pattern",
-    "explanation": "תחביר <T> מאפשר למחלקות, ממשקים ומתודות לעבוד עם טיפוסים ספציפיים תוך שמירה על בטיחות טיפוסים בזמן קומפילציה.",
-    "example": "class Box<T> {\n    T value;\n}\nBox<String> box = new Box<>();"
-  },
-  "diamond operator": {
-    "type": "syntax_pattern",
-    "explanation": "תחביר <> מאפשר ל-Java להסיק ארגומנטים גנריים בזמן יצירת אובייקט.",
-    "example": "List<String> names = new ArrayList<>();"
-  },
-  "annotation": {
-    "type": "syntax_pattern",
-    "explanation": "מטא-דאטה שמוצמד לרכיבי קוד באמצעות תחביר @.",
-    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
-  },
-  "array": {
-    "type": "syntax_pattern",
-    "explanation": "מיכל בגודל קבוע עם אינדקסים, שכל האיברים בו הם מאותו טיפוס.",
-    "example": "int[] nums = {1, 2, 3};\nSystem.out.println(nums[0]);"
-  },
-  "java.base": {
-    "type": "module",
-    "explanation": "מודול Java הבסיסי שמכיל חבילות ליבה כמו java.lang, java.util, java.io, java.nio ו-java.time.",
-    "example": "module com.example.app {\n    requires java.base; // usually implicit\n}"
-  },
-  "java.lang": {
-    "type": "package",
-    "explanation": "חבילת יסוד שמיובאת אוטומטית לכל קובץ Java; כוללת Object, String, System, Math, מחלקות wrapper וחריגות.",
-    "example": "String text = \"Hello\";\nSystem.out.println(text);"
-  },
-  "java.util": {
-    "type": "package",
-    "explanation": "חבילת עזר שמכילה את collections framework, Optional, Scanner, Random, properties ומחלקות עזר נפוצות נוספות.",
-    "example": "import java.util.List;\nimport java.util.ArrayList;"
-  },
-  "java.io": {
-    "type": "package",
-    "explanation": "חבילת קלט/פלט קלאסית עבור streams, readers, writers, קבצים ו-IOException.",
-    "example": "import java.io.File;\nimport java.io.IOException;"
-  },
-  "java.nio": {
-    "type": "package",
-    "explanation": "חבילת New I/O עבור buffers, channels, charsets ופעולות I/O סקיילביליות.",
-    "example": "import java.nio.ByteBuffer;"
-  },
-  "java.nio.file": {
-    "type": "package",
-    "explanation": "חבילת מערכת קבצים מודרנית עם Path, Files וכלים להליכה, העתקה וטיפול בקבצים.",
-    "example": "import java.nio.file.Files;\nimport java.nio.file.Path;"
-  },
-  "java.time": {
-    "type": "package",
-    "explanation": "חבילת API מודרנית לתאריכים וזמנים, כולל LocalDate, LocalDateTime, Instant ו-Duration.",
-    "example": "import java.time.LocalDate;\nLocalDate today = LocalDate.now();"
-  },
-  "java.math": {
-    "type": "package",
-    "explanation": "חבילה למחלקות מספריות בדיוק שרירותי כמו BigInteger ו-BigDecimal.",
-    "example": "import java.math.BigDecimal;\nBigDecimal price = new BigDecimal(\"19.99\");"
-  },
-  "java.net": {
-    "type": "package",
-    "explanation": "חבילת רשת עבור URL, URI, sockets ומחלקות הקשורות לרשת.",
-    "example": "import java.net.URI;\nURI uri = URI.create(\"https://example.com\");"
-  },
-  "java.util.concurrent": {
-    "type": "package",
-    "explanation": "כלי concurrency כמו ExecutorService, Future, locks ואוספים בטוחים לת׳רדים.",
-    "example": "import java.util.concurrent.ExecutorService;"
-  },
-  "java.util.function": {
-    "type": "package",
-    "explanation": "ממשקים פונקציונליים שמשמשים lambdas ו-method references, כמו Function, Predicate, Consumer ו-Supplier.",
-    "example": "import java.util.function.Predicate;"
-  },
-  "java.util.stream": {
-    "type": "package",
-    "explanation": "חבילת Stream API לעיבוד רצפים של נתונים באמצעות פעולות בסגנון map/filter/reduce.",
-    "example": "import java.util.stream.Stream;\nStream.of(1, 2, 3).forEach(System.out::println);"
-  },
-  "java.util.regex": {
-    "type": "package",
-    "explanation": "חבילת ביטויים רגולריים עם Pattern ו-Matcher.",
-    "example": "import java.util.regex.Pattern;\nboolean ok = Pattern.matches(\"\\\\d+\", \"123\");"
-  },
-  "java.sql": {
-    "type": "package",
-    "explanation": "חבילת JDBC לעבודה עם מסדי נתונים, כולל Connection, Statement, ResultSet וחריגות SQL.",
-    "example": "import java.sql.Connection;"
-  },
-  "javax.swing": {
-    "type": "package",
-    "explanation": "חבילת GUI שולחנית קלאסית עבור חלונות, כפתורים, תוויות ורכיבי UI נוספים.",
-    "example": "import javax.swing.JFrame;"
-  },
-  "Object": {
-    "type": "core_class",
-    "explanation": "מחלקת העל הבסיסית של כל מחלקות Java.",
-    "example": "Object obj = \"hello\";"
-  },
-  "Class": {
-    "type": "core_class",
-    "explanation": "ייצוג בזמן ריצה של מחלקה או ממשק.",
-    "example": "Class<?> type = String.class;"
-  },
-  "String": {
-    "type": "core_class",
-    "explanation": "רצף תווים בלתי ניתן לשינוי המשמש לטקסט.",
-    "example": "String name = \"Nina\";"
-  },
-  "StringBuilder": {
-    "type": "core_class",
-    "explanation": "רצף תווים ניתן לשינוי, שימושי לבניית מחרוזות ביעילות.",
-    "example": "StringBuilder sb = new StringBuilder();\nsb.append(\"Hello\");"
-  },
-  "StringBuffer": {
-    "type": "core_class",
-    "explanation": "רצף תווים ניתן לשינוי ובטוח לת׳רדים.",
-    "example": "StringBuffer sb = new StringBuffer(\"Hello\");"
-  },
-  "System": {
-    "type": "core_class",
-    "explanation": "מספק streams סטנדרטיים לקלט/פלט/שגיאות, זמן נוכחי, גישה לסביבה, העתקת מערכים וכלי מערכת.",
-    "example": "System.out.println(\"Hello\");"
-  },
-  "Math": {
-    "type": "utility_class",
-    "explanation": "מספק פונקציות וקבועים מתמטיים נפוצים.",
-    "example": "double root = Math.sqrt(16);"
-  },
-  "StrictMath": {
-    "type": "utility_class",
-    "explanation": "מספק פונקציות מתמטיות עם תוצאות מחמירות ושחזוריות בין פלטפורמות.",
-    "example": "double root = StrictMath.sqrt(16);"
-  },
-  "Enum": {
-    "type": "core_class",
-    "explanation": "מחלקת בסיס משותפת לכל טיפוסי enum.",
-    "example": "enum Direction { NORTH, SOUTH }"
-  },
-  "Throwable": {
-    "type": "exception_class",
-    "explanation": "מחלקת העל של כל האובייקטים שניתן לזרוק ולתפוס.",
-    "example": "try {\n    throw new Throwable(\"Problem\");\n} catch (Throwable t) {\n    System.out.println(t.getMessage());\n}"
-  },
-  "Exception": {
-    "type": "exception_class",
-    "explanation": "מחלקת בסיס לחריגות checked שאפליקציות יכולות לתפוס או להצהיר עליהן.",
-    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
-  },
-  "RuntimeException": {
-    "type": "exception_class",
-    "explanation": "מחלקת בסיס לחריגות unchecked שבדרך כלל מצביעות על שגיאות תכנות או ריצה.",
-    "example": "throw new RuntimeException(\"Something went wrong\");"
-  },
-  "Error": {
-    "type": "exception_class",
-    "explanation": "מחלקת בסיס לבעיות חמורות ברמת JVM או מערכת, שאפליקציות בדרך כלל לא אמורות לתפוס.",
-    "example": "// OutOfMemoryError and StackOverflowError extend Error"
-  },
-  "Thread": {
-    "type": "concurrency_class",
-    "explanation": "מייצג ת׳רד ביצוע.",
-    "example": "Thread t = new Thread(() -> System.out.println(\"Running\"));\nt.start();"
-  },
-  "Runnable": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמייצג קוד שניתן להריץ ללא החזרת ערך.",
-    "example": "Runnable job = () -> System.out.println(\"Run\");"
-  },
-  "Comparable": {
-    "type": "core_interface",
-    "explanation": "ממשק עבור אובייקטים שמגדירים את הסדר הטבעי שלהם.",
-    "example": "class User implements Comparable<User> {\n    public int compareTo(User other) { return 0; }\n}"
-  },
-  "Iterable": {
-    "type": "core_interface",
-    "explanation": "ממשק עבור אובייקטים שניתן להשתמש בהם בלולאת enhanced for.",
-    "example": "for (String item : iterable) {\n    System.out.println(item);\n}"
-  },
-  "AutoCloseable": {
-    "type": "core_interface",
-    "explanation": "ממשק עבור משאבים שניתן לסגור אוטומטית באמצעות try-with-resources.",
-    "example": "try (AutoCloseable r = openResource()) {\n    // use resource\n}"
-  },
-  "Cloneable": {
-    "type": "marker_interface",
-    "explanation": "Marker interface שמציין כי Object.clone עשוי ליצור עותק שדה-אחר-שדה.",
-    "example": "class User implements Cloneable {}"
-  },
-  "Number": {
-    "type": "core_class",
-    "explanation": "מחלקת על אבסטרקטית למחלקות wrapper מספריות כמו Integer, Long, Float ו-Double.",
-    "example": "Number n = Integer.valueOf(5);"
-  },
-  "Boolean": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי boolean.",
-    "example": "Boolean flag = Boolean.TRUE;"
-  },
-  "Byte": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי byte.",
-    "example": "Byte b = Byte.valueOf((byte) 1);"
-  },
-  "Short": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי short.",
-    "example": "Short s = Short.valueOf((short) 10);"
-  },
-  "Integer": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי int.",
-    "example": "Integer count = Integer.valueOf(42);"
-  },
-  "Long": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי long.",
-    "example": "Long big = Long.valueOf(123456789L);"
-  },
-  "Float": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי float.",
-    "example": "Float price = Float.valueOf(19.99f);"
-  },
-  "Double": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי double.",
-    "example": "Double average = Double.valueOf(93.5);"
-  },
-  "Character": {
-    "type": "wrapper_class",
-    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי char.",
-    "example": "Character grade = Character.valueOf('A');"
-  },
-  "Void": {
-    "type": "wrapper_class",
-    "explanation": "מחלקה שלא ניתן ליצור ממנה מופעים, ומייצגת את הטיפוס void ברפלקציה.",
-    "example": "Class<Void> type = Void.TYPE;"
-  },
-  "Collection": {
-    "type": "collection_interface",
-    "explanation": "ממשק בסיסי עבור סוגי מיכלים רבים כמו List, Set ו-Queue.",
-    "example": "Collection<String> items = new ArrayList<>();"
-  },
-  "List": {
-    "type": "collection_interface",
-    "explanation": "אוסף מסודר שמאפשר גישה לפי אינדקס ובדרך כלל מאפשר כפילויות.",
-    "example": "List<String> names = new ArrayList<>();"
-  },
-  "ArrayList": {
-    "type": "collection_class",
-    "explanation": "מימוש של List המבוסס על מערך שניתן להגדלה.",
-    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Nina\");"
-  },
-  "LinkedList": {
-    "type": "collection_class",
-    "explanation": "מימוש רשימה דו-כיוונית של List ושל Deque.",
-    "example": "LinkedList<String> queue = new LinkedList<>();"
-  },
-  "Set": {
-    "type": "collection_interface",
-    "explanation": "אוסף שאינו מכיל איברים כפולים.",
-    "example": "Set<String> uniqueNames = new HashSet<>();"
-  },
-  "HashSet": {
-    "type": "collection_class",
-    "explanation": "מימוש של Set המבוסס על טבלת hash, עם חיפוש מהיר וללא סדר מובטח.",
-    "example": "HashSet<Integer> ids = new HashSet<>();"
-  },
-  "TreeSet": {
-    "type": "collection_class",
-    "explanation": "מימוש Set ממוין המבוסס על עץ.",
-    "example": "TreeSet<String> sorted = new TreeSet<>();"
-  },
-  "Map": {
-    "type": "collection_interface",
-    "explanation": "משייך מפתחות לערכים; כל מפתח ממופה לכל היותר לערך אחד.",
-    "example": "Map<String, Integer> ages = new HashMap<>();"
-  },
-  "HashMap": {
-    "type": "collection_class",
-    "explanation": "מימוש של Map המבוסס על טבלת hash, עם חיפוש מהיר לפי מפתח וללא סדר מובטח.",
-    "example": "HashMap<String, Integer> ages = new HashMap<>();\nages.put(\"Nina\", 37);"
-  },
-  "TreeMap": {
-    "type": "collection_class",
-    "explanation": "מימוש Map ממוין לפי הסדר הטבעי של המפתחות או Comparator.",
-    "example": "TreeMap<String, Integer> sortedAges = new TreeMap<>();"
-  },
-  "Queue": {
-    "type": "collection_interface",
-    "explanation": "אוסף שנועד להחזיק איברים לפני עיבוד, לעיתים קרובות בשיטת FIFO.",
-    "example": "Queue<String> q = new LinkedList<>();"
-  },
-  "Deque": {
-    "type": "collection_interface",
-    "explanation": "תור דו-קצוות שתומך בהוספה והסרה משני הצדדים.",
-    "example": "Deque<String> deque = new ArrayDeque<>();"
-  },
-  "ArrayDeque": {
-    "type": "collection_class",
-    "explanation": "מימוש Deque באמצעות מערך שניתן להגדלה, נפוץ לשימוש כ-stack או queue.",
-    "example": "ArrayDeque<Integer> stack = new ArrayDeque<>();\nstack.push(1);"
-  },
-  "Collections": {
-    "type": "utility_class",
-    "explanation": "מחלקת עזר עם מתודות static למיון, חיפוש, סנכרון ויצירת views של אוספים.",
-    "example": "Collections.sort(names);"
-  },
-  "Arrays": {
-    "type": "utility_class",
-    "explanation": "מחלקת עזר עם מתודות static למערכים, כמו sort, binarySearch, fill ו-asList.",
-    "example": "int[] nums = {3, 1, 2};\nArrays.sort(nums);"
-  },
-  "Optional": {
-    "type": "utility_class",
-    "explanation": "אובייקט מיכל שעשוי להכיל ערך שאינו null או לא להכיל ערך כלל.",
-    "example": "Optional<String> name = Optional.of(\"Nina\");"
-  },
-  "Scanner": {
-    "type": "utility_class",
-    "explanation": "מפרק ומנתח קלט טקסט מתוך מחרוזות, קבצים או streams.",
-    "example": "Scanner scanner = new Scanner(System.in);\nString line = scanner.nextLine();"
-  },
-  "Random": {
-    "type": "utility_class",
-    "explanation": "מייצר ערכים פסאודו-אקראיים.",
-    "example": "Random random = new Random();\nint n = random.nextInt(10);"
-  },
-  "Properties": {
-    "type": "utility_class",
-    "explanation": "מחלקה מבוססת Hashtable שנפוצה לשמירת זוגות מפתח/ערך של הגדרות.",
-    "example": "Properties props = new Properties();\nprops.setProperty(\"mode\", \"dev\");"
-  },
-  "Comparator": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמשווה בין שני אובייקטים כדי להגדיר סדר מותאם אישית.",
-    "example": "names.sort(Comparator.naturalOrder());"
-  },
-  "Stream": {
-    "type": "stream_class",
-    "explanation": "מייצג רצף איברים שניתן לעבד באמצעות פעולות כמו map, filter ו-reduce.",
-    "example": "List<String> shortNames = names.stream()\n    .filter(s -> s.length() < 5)\n    .toList();"
-  },
-  "Predicate": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמייצג בדיקה בוליאנית של ערך אחד.",
-    "example": "Predicate<String> longName = s -> s.length() > 5;"
-  },
-  "Function": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמייצג המרה מערך אחד לערך אחר.",
-    "example": "Function<String, Integer> length = String::length;"
-  },
-  "Consumer": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמייצג פעולה שמקבלת ערך ואינה מחזירה דבר.",
-    "example": "Consumer<String> printer = System.out::println;"
-  },
-  "Supplier": {
-    "type": "functional_interface",
-    "explanation": "Functional interface שמייצג ספק של ערכים.",
-    "example": "Supplier<Double> randomValue = Math::random;"
-  },
-  "LocalDate": {
-    "type": "date_time_class",
-    "explanation": "תאריך ללא שעה ביום וללא אזור זמן.",
-    "example": "LocalDate today = LocalDate.now();"
-  },
-  "LocalDateTime": {
-    "type": "date_time_class",
-    "explanation": "תאריך ושעה ללא אזור זמן.",
-    "example": "LocalDateTime now = LocalDateTime.now();"
-  },
-  "Instant": {
-    "type": "date_time_class",
-    "explanation": "נקודה על ציר הזמן של UTC.",
-    "example": "Instant now = Instant.now();"
-  },
-  "Duration": {
-    "type": "date_time_class",
-    "explanation": "כמות זמן מבוססת-שעה, למשל 5 דקות או 2 שעות.",
-    "example": "Duration timeout = Duration.ofSeconds(30);"
-  },
-  "Period": {
-    "type": "date_time_class",
-    "explanation": "כמות זמן מבוססת-תאריך, למשל 3 ימים או 2 חודשים.",
-    "example": "Period twoWeeks = Period.ofWeeks(2);"
-  },
-  "BigInteger": {
-    "type": "math_class",
-    "explanation": "מחלקה למספרים שלמים בדיוק שרירותי, עבור מספרים גדולים יותר ממה ש-long יכול להכיל.",
-    "example": "BigInteger big = new BigInteger(\"12345678901234567890\");"
-  },
-  "BigDecimal": {
-    "type": "math_class",
-    "explanation": "מחלקה למספרים עשרוניים בדיוק שרירותי, נפוצה לכסף ולחישוב עשרוני מדויק.",
-    "example": "BigDecimal price = new BigDecimal(\"19.99\");"
-  },
-  "File": {
-    "type": "io_class",
-    "explanation": "מחלקת נתיב legacy לקבצים ותיקיות מתוך java.io.",
-    "example": "File file = new File(\"data.txt\");"
-  },
-  "Path": {
-    "type": "io_class",
-    "explanation": "ייצוג מודרני של נתיב במערכת קבצים.",
-    "example": "Path path = Path.of(\"data.txt\");"
-  },
-  "Files": {
-    "type": "io_utility_class",
-    "explanation": "מחלקת עזר לקריאה, כתיבה, העתקה, העברה וסריקה של קבצים באמצעות Path.",
-    "example": "String text = Files.readString(Path.of(\"data.txt\"));"
-  },
-  "InputStream": {
-    "type": "io_class",
-    "explanation": "מחלקת בסיס לקריאת בתים ממקור נתונים.",
-    "example": "InputStream in = System.in;"
-  },
-  "OutputStream": {
-    "type": "io_class",
-    "explanation": "מחלקת בסיס לכתיבת בתים ליעד.",
-    "example": "OutputStream out = System.out;"
-  },
-  "Reader": {
-    "type": "io_class",
-    "explanation": "מחלקת בסיס לקריאת streams של תווים.",
-    "example": "Reader reader = Files.newBufferedReader(Path.of(\"data.txt\"));"
-  },
-  "Writer": {
-    "type": "io_class",
-    "explanation": "מחלקת בסיס לכתיבת streams של תווים.",
-    "example": "Writer writer = Files.newBufferedWriter(Path.of(\"out.txt\"));"
-  },
-  "BufferedReader": {
-    "type": "io_class",
-    "explanation": "קורא טקסט ביעילות על ידי buffering של תווים מתוך Reader אחר.",
-    "example": "BufferedReader br = Files.newBufferedReader(Path.of(\"data.txt\"));"
-  },
-  "URI": {
-    "type": "network_class",
-    "explanation": "מייצג Uniform Resource Identifier.",
-    "example": "URI uri = URI.create(\"https://example.com/path\");"
-  },
-  "URL": {
-    "type": "network_class",
-    "explanation": "מייצג Uniform Resource Locator.",
-    "example": "URL url = URI.create(\"https://example.com\").toURL();"
-  },
-  "IOException": {
-    "type": "exception_class",
-    "explanation": "חריגה checked עבור כשלי קלט/פלט.",
-    "example": "void load() throws IOException {\n    Files.readString(Path.of(\"data.txt\"));\n}"
-  },
-  "IllegalArgumentException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked שנזרקת כאשר מתודה מקבלת ארגומנט לא תקין.",
-    "example": "if (age < 0) throw new IllegalArgumentException(\"age\");"
-  },
-  "NullPointerException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked שנזרקת כאשר קוד מנסה להשתמש ב-null כאילו היה אובייקט.",
-    "example": "String s = null;\n// s.length(); // would throw NullPointerException"
-  },
-  "IndexOutOfBoundsException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked עבור גישה לאינדקס לא תקין.",
-    "example": "throw new IndexOutOfBoundsException(\"Bad index\");"
-  },
-  "ArrayIndexOutOfBoundsException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked עבור גישה לאינדקס מערך לא תקין.",
-    "example": "int[] nums = {1};\n// nums[2]; // would throw this"
-  },
-  "NumberFormatException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked שנזרקת כאשר מנסים לפרסר מספר מטקסט לא תקין.",
-    "example": "int n = Integer.parseInt(\"123\");"
-  },
-  "ClassCastException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked שנזרקת כאשר אובייקט מומר לטיפוס שאינו תואם.",
-    "example": "Object x = \"hello\";\n// Integer n = (Integer) x;"
-  },
-  "InterruptedException": {
-    "type": "exception_class",
-    "explanation": "חריגה checked שנזרקת כאשר ת׳רד ממתין או ישן מופרע.",
-    "example": "Thread.sleep(1000); // must handle or declare InterruptedException"
-  },
-  "ArithmeticException": {
-    "type": "exception_class",
-    "explanation": "חריגה unchecked עבור שגיאות אריתמטיות כמו חלוקה של מספר שלם באפס.",
-    "example": "int x = 1 / 0; // throws ArithmeticException"
-  },
-  "AssertionError": {
-    "type": "exception_class",
-    "explanation": "Error שנזרק כאשר משפט assert נכשל בזמן ש-assertions מופעלים.",
-    "example": "assert size >= 0 : \"size\";"
-  },
-  "@Override": {
-    "type": "annotation",
-    "explanation": "מודיע לקומפיילר שמתודה מיועדת לדרוס מתודה ממחלקת אב או מממשק.",
-    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
-  },
-  "@Deprecated": {
-    "type": "annotation",
-    "explanation": "מסמן שרכיב API אינו מומלץ לשימוש, לעיתים כי הוא יוסר או יוחלף.",
-    "example": "@Deprecated\nvoid oldMethod() {}"
-  },
-  "@SuppressWarnings": {
-    "type": "annotation",
-    "explanation": "מדכא אזהרות קומפיילר נבחרות עבור האלמנט המסומן.",
-    "example": "@SuppressWarnings(\"unchecked\")\nvoid legacyCode() {}"
-  },
-  "@FunctionalInterface": {
-    "type": "annotation",
-    "explanation": "מסמן שממשק מיועד להכיל בדיוק מתודה אבסטרקטית אחת.",
-    "example": "@FunctionalInterface\ninterface Action {\n    void run();\n}"
-  },
-  "@SafeVarargs": {
-    "type": "annotation",
-    "explanation": "מדכא אזהרות heap pollution עבור מתודות או בנאים בטוחים עם generic varargs.",
-    "example": "@SafeVarargs\nstatic <T> void printAll(T... items) {}"
-  },
-  "Connection": {
-    "type": "sql_interface",
-    "explanation": "ממשק JDBC שמייצג חיבור למסד נתונים.",
-    "example": "Connection conn = DriverManager.getConnection(url, user, password);"
-  },
-  "DriverManager": {
-    "type": "sql_class",
-    "explanation": "מחלקת עזר של JDBC לקבלת חיבורים למסדי נתונים.",
-    "example": "Connection conn = DriverManager.getConnection(url);"
-  },
-  "PreparedStatement": {
-    "type": "sql_interface",
-    "explanation": "משפט SQL מקומפל מראש שמקבל פרמטרים בצורה בטוחה.",
-    "example": "PreparedStatement ps = conn.prepareStatement(\"select * from users where id = ?\");"
-  },
-  "ResultSet": {
-    "type": "sql_interface",
-    "explanation": "מייצג שורות שחוזרות משאילתת מסד נתונים.",
-    "example": "ResultSet rs = ps.executeQuery();"
-  },
-  "SQLException": {
-    "type": "exception_class",
-    "explanation": "חריגה checked עבור שגיאות גישה למסד נתונים או JDBC.",
-    "example": "catch (SQLException e) {\n    e.printStackTrace();\n}"
-  },
-  "ExecutorService": {
-    "type": "concurrency_interface",
-    "explanation": "מנהל ומריץ משימות אסינכרוניות באמצעות מאגר של worker threads.",
-    "example": "ExecutorService pool = Executors.newFixedThreadPool(4);"
-  },
-  "Executors": {
-    "type": "concurrency_utility_class",
-    "explanation": "מחלקת factory ליצירת מופעי ExecutorService.",
-    "example": "ExecutorService pool = Executors.newSingleThreadExecutor();"
-  },
-  "Future": {
-    "type": "concurrency_interface",
-    "explanation": "מייצג תוצאה של חישוב אסינכרוני שעשוי להסתיים בעתיד.",
-    "example": "Future<Integer> future = pool.submit(() -> 42);"
-  },
-  "CompletableFuture": {
-    "type": "concurrency_class",
-    "explanation": "מימוש Future שתומך בשרשור פעולות אסינכרוניות.",
-    "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
-  },
-  "==": {
-    "type": "operator",
-    "explanation": "משווה שני ערכים. עבור אובייקטים - כולל מחרוזות - זה שואל אם מדובר באותו אובייקט בזיכרון, לא אם הם נראים אותו הדבר. להשוואת טקסט השתמשו ב-.equals() .",
-    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
-  },
   "!=": {
     "type": "operator",
     "explanation": "\"לא שווה ל\". עבור אובייקטים משווה זהות, כמו == .",
@@ -979,10 +9,10 @@
     "explanation": "שארית (מודולו): מה שנשאר אחרי חילוק. n % 2 == 0 אומר ש-n זוגי.",
     "example": "int rest = 7 % 2;   // 1"
   },
-  "/": {
+  "&&": {
     "type": "operator",
-    "explanation": "חילוק. בין שני מספרים שלמים השארית נזרקת: 7 / 2 שווה 3 ולא 3.5. הפכו צד אחד ל-double כדי לקבל מספר עשרוני.",
-    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת, ולכן הצד הימני כלל לא מחושב.",
+    "example": "if (list != null && list.size() > 0) { }"
   },
   "++": {
     "type": "operator",
@@ -994,34 +24,1179 @@
     "explanation": "מוסיף למשתנה ושומר את התוצאה בחזרה בתוכו.",
     "example": "total += n;"
   },
-  "&&": {
+  "->": {
     "type": "operator",
-    "explanation": "וגם לוגי: אמת רק כששני הצדדים אמת. עוצר בצד הראשון שאינו אמת, ולכן הצד הימני כלל לא מחושב.",
-    "example": "if (list != null && list.size() > 0) { }"
+    "explanation": "למבדה: פונקציה קצרה ללא שם.",
+    "example": "list.forEach(item -> System.out.println(item));"
   },
-  "||": {
+  "/": {
     "type": "operator",
-    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת.",
-    "example": "if (isAdmin || isOwner) { }"
+    "explanation": "חילוק. בין שני מספרים שלמים השארית נזרקת: 7 / 2 שווה 3 ולא 3.5. הפכו צד אחד ל-double כדי לקבל מספר עשרוני.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
   },
   "<=": {
     "type": "operator",
     "explanation": "\"קטן או שווה ל\".",
     "example": "if (score <= 100) { }"
   },
+  "=": {
+    "type": "operator",
+    "explanation": "השמה: מכניס את הערך שמימין למשתנה שמשמאל. להשוואה השתמשו ב-== .",
+    "example": "int total = 10;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "משווה שני ערכים. עבור אובייקטים - כולל מחרוזות - זה שואל אם מדובר באותו אובייקט בזיכרון, לא אם הם נראים אותו הדבר. להשוואת טקסט השתמשו ב-.equals() .",
+    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
+  },
   ">=": {
     "type": "operator",
     "explanation": "\"גדול או שווה ל\".",
     "example": "if (age >= 18) { }"
   },
-  "->": {
-    "type": "operator",
-    "explanation": "למבדה: פונקציה קצרה ללא שם.",
-    "example": "list.forEach(item -> System.out.println(item));"
+  "@Deprecated": {
+    "type": "annotation",
+    "explanation": "מסמן שרכיב API אינו מומלץ לשימוש, לעיתים כי הוא יוסר או יוחלף.",
+    "example": "@Deprecated\nvoid oldMethod() {}"
   },
-  "=": {
+  "@FunctionalInterface": {
+    "type": "annotation",
+    "explanation": "מסמן שממשק מיועד להכיל בדיוק מתודה אבסטרקטית אחת.",
+    "example": "@FunctionalInterface\ninterface Action {\n    void run();\n}"
+  },
+  "@Override": {
+    "type": "annotation",
+    "explanation": "מודיע לקומפיילר שמתודה מיועדת לדרוס מתודה ממחלקת אב או מממשק.",
+    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
+  },
+  "@SafeVarargs": {
+    "type": "annotation",
+    "explanation": "מדכא אזהרות heap pollution עבור מתודות או בנאים בטוחים עם generic varargs.",
+    "example": "@SafeVarargs\nstatic <T> void printAll(T... items) {}"
+  },
+  "@SuppressWarnings": {
+    "type": "annotation",
+    "explanation": "מדכא אזהרות קומפיילר נבחרות עבור האלמנט המסומן.",
+    "example": "@SuppressWarnings(\"unchecked\")\nvoid legacyCode() {}"
+  },
+  "ArithmeticException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked עבור שגיאות אריתמטיות כמו חלוקה של מספר שלם באפס.",
+    "example": "int x = 1 / 0; // throws ArithmeticException"
+  },
+  "ArrayDeque": {
+    "type": "collection_class",
+    "explanation": "מימוש Deque באמצעות מערך שניתן להגדלה, נפוץ לשימוש כ-stack או queue.",
+    "example": "ArrayDeque<Integer> stack = new ArrayDeque<>();\nstack.push(1);"
+  },
+  "ArrayIndexOutOfBoundsException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked עבור גישה לאינדקס מערך לא תקין.",
+    "example": "int[] nums = {1};\n// nums[2]; // would throw this"
+  },
+  "ArrayList": {
+    "type": "collection_class",
+    "explanation": "מימוש של List המבוסס על מערך שניתן להגדלה.",
+    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Nina\");"
+  },
+  "Arrays": {
+    "type": "utility_class",
+    "explanation": "מחלקת עזר עם מתודות static למערכים, כמו sort, binarySearch, fill ו-asList.",
+    "example": "int[] nums = {3, 1, 2};\nArrays.sort(nums);"
+  },
+  "AssertionError": {
+    "type": "exception_class",
+    "explanation": "Error שנזרק כאשר משפט assert נכשל בזמן ש-assertions מופעלים.",
+    "example": "assert size >= 0 : \"size\";"
+  },
+  "AutoCloseable": {
+    "type": "core_interface",
+    "explanation": "ממשק עבור משאבים שניתן לסגור אוטומטית באמצעות try-with-resources.",
+    "example": "try (AutoCloseable r = openResource()) {\n    // use resource\n}"
+  },
+  "BigDecimal": {
+    "type": "math_class",
+    "explanation": "מחלקה למספרים עשרוניים בדיוק שרירותי, נפוצה לכסף ולחישוב עשרוני מדויק.",
+    "example": "BigDecimal price = new BigDecimal(\"19.99\");"
+  },
+  "BigInteger": {
+    "type": "math_class",
+    "explanation": "מחלקה למספרים שלמים בדיוק שרירותי, עבור מספרים גדולים יותר ממה ש-long יכול להכיל.",
+    "example": "BigInteger big = new BigInteger(\"12345678901234567890\");"
+  },
+  "Boolean": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי boolean.",
+    "example": "Boolean flag = Boolean.TRUE;"
+  },
+  "BufferedReader": {
+    "type": "io_class",
+    "explanation": "קורא טקסט ביעילות על ידי buffering של תווים מתוך Reader אחר.",
+    "example": "BufferedReader br = Files.newBufferedReader(Path.of(\"data.txt\"));"
+  },
+  "Byte": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי byte.",
+    "example": "Byte b = Byte.valueOf((byte) 1);"
+  },
+  "Character": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי char.",
+    "example": "Character grade = Character.valueOf('A');"
+  },
+  "Class": {
+    "type": "core_class",
+    "explanation": "ייצוג בזמן ריצה של מחלקה או ממשק.",
+    "example": "Class<?> type = String.class;"
+  },
+  "ClassCastException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked שנזרקת כאשר אובייקט מומר לטיפוס שאינו תואם.",
+    "example": "Object x = \"hello\";\n// Integer n = (Integer) x;"
+  },
+  "Cloneable": {
+    "type": "marker_interface",
+    "explanation": "Marker interface שמציין כי Object.clone עשוי ליצור עותק שדה-אחר-שדה.",
+    "example": "class User implements Cloneable {}"
+  },
+  "Collection": {
+    "type": "collection_interface",
+    "explanation": "ממשק בסיסי עבור סוגי מיכלים רבים כמו List, Set ו-Queue.",
+    "example": "Collection<String> items = new ArrayList<>();"
+  },
+  "Collections": {
+    "type": "utility_class",
+    "explanation": "מחלקת עזר עם מתודות static למיון, חיפוש, סנכרון ויצירת views של אוספים.",
+    "example": "Collections.sort(names);"
+  },
+  "Comparable": {
+    "type": "core_interface",
+    "explanation": "ממשק עבור אובייקטים שמגדירים את הסדר הטבעי שלהם.",
+    "example": "class User implements Comparable<User> {\n    public int compareTo(User other) { return 0; }\n}"
+  },
+  "Comparator": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמשווה בין שני אובייקטים כדי להגדיר סדר מותאם אישית.",
+    "example": "names.sort(Comparator.naturalOrder());"
+  },
+  "CompletableFuture": {
+    "type": "concurrency_class",
+    "explanation": "מימוש Future שתומך בשרשור פעולות אסינכרוניות.",
+    "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
+  },
+  "Connection": {
+    "type": "sql_interface",
+    "explanation": "ממשק JDBC שמייצג חיבור למסד נתונים.",
+    "example": "Connection conn = DriverManager.getConnection(url, user, password);"
+  },
+  "Consumer": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמייצג פעולה שמקבלת ערך ואינה מחזירה דבר.",
+    "example": "Consumer<String> printer = System.out::println;"
+  },
+  "Deque": {
+    "type": "collection_interface",
+    "explanation": "תור דו-קצוות שתומך בהוספה והסרה משני הצדדים.",
+    "example": "Deque<String> deque = new ArrayDeque<>();"
+  },
+  "Double": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי double.",
+    "example": "Double average = Double.valueOf(93.5);"
+  },
+  "DriverManager": {
+    "type": "sql_class",
+    "explanation": "מחלקת עזר של JDBC לקבלת חיבורים למסדי נתונים.",
+    "example": "Connection conn = DriverManager.getConnection(url);"
+  },
+  "Duration": {
+    "type": "date_time_class",
+    "explanation": "כמות זמן מבוססת-שעה, למשל 5 דקות או 2 שעות.",
+    "example": "Duration timeout = Duration.ofSeconds(30);"
+  },
+  "Enum": {
+    "type": "core_class",
+    "explanation": "מחלקת בסיס משותפת לכל טיפוסי enum.",
+    "example": "enum Direction { NORTH, SOUTH }"
+  },
+  "Error": {
+    "type": "exception_class",
+    "explanation": "מחלקת בסיס לבעיות חמורות ברמת JVM או מערכת, שאפליקציות בדרך כלל לא אמורות לתפוס.",
+    "example": "// OutOfMemoryError and StackOverflowError extend Error"
+  },
+  "Exception": {
+    "type": "exception_class",
+    "explanation": "מחלקת בסיס לחריגות checked שאפליקציות יכולות לתפוס או להצהיר עליהן.",
+    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
+  },
+  "ExecutorService": {
+    "type": "concurrency_interface",
+    "explanation": "מנהל ומריץ משימות אסינכרוניות באמצעות מאגר של worker threads.",
+    "example": "ExecutorService pool = Executors.newFixedThreadPool(4);"
+  },
+  "Executors": {
+    "type": "concurrency_utility_class",
+    "explanation": "מחלקת factory ליצירת מופעי ExecutorService.",
+    "example": "ExecutorService pool = Executors.newSingleThreadExecutor();"
+  },
+  "File": {
+    "type": "io_class",
+    "explanation": "מחלקת נתיב legacy לקבצים ותיקיות מתוך java.io.",
+    "example": "File file = new File(\"data.txt\");"
+  },
+  "Files": {
+    "type": "io_utility_class",
+    "explanation": "מחלקת עזר לקריאה, כתיבה, העתקה, העברה וסריקה של קבצים באמצעות Path.",
+    "example": "String text = Files.readString(Path.of(\"data.txt\"));"
+  },
+  "Float": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי float.",
+    "example": "Float price = Float.valueOf(19.99f);"
+  },
+  "Function": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמייצג המרה מערך אחד לערך אחר.",
+    "example": "Function<String, Integer> length = String::length;"
+  },
+  "Future": {
+    "type": "concurrency_interface",
+    "explanation": "מייצג תוצאה של חישוב אסינכרוני שעשוי להסתיים בעתיד.",
+    "example": "Future<Integer> future = pool.submit(() -> 42);"
+  },
+  "HashMap": {
+    "type": "collection_class",
+    "explanation": "מימוש של Map המבוסס על טבלת hash, עם חיפוש מהיר לפי מפתח וללא סדר מובטח.",
+    "example": "HashMap<String, Integer> ages = new HashMap<>();\nages.put(\"Nina\", 37);"
+  },
+  "HashSet": {
+    "type": "collection_class",
+    "explanation": "מימוש של Set המבוסס על טבלת hash, עם חיפוש מהיר וללא סדר מובטח.",
+    "example": "HashSet<Integer> ids = new HashSet<>();"
+  },
+  "IOException": {
+    "type": "exception_class",
+    "explanation": "חריגה checked עבור כשלי קלט/פלט.",
+    "example": "void load() throws IOException {\n    Files.readString(Path.of(\"data.txt\"));\n}"
+  },
+  "IllegalArgumentException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked שנזרקת כאשר מתודה מקבלת ארגומנט לא תקין.",
+    "example": "if (age < 0) throw new IllegalArgumentException(\"age\");"
+  },
+  "IndexOutOfBoundsException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked עבור גישה לאינדקס לא תקין.",
+    "example": "throw new IndexOutOfBoundsException(\"Bad index\");"
+  },
+  "InputStream": {
+    "type": "io_class",
+    "explanation": "מחלקת בסיס לקריאת בתים ממקור נתונים.",
+    "example": "InputStream in = System.in;"
+  },
+  "Instant": {
+    "type": "date_time_class",
+    "explanation": "נקודה על ציר הזמן של UTC.",
+    "example": "Instant now = Instant.now();"
+  },
+  "Integer": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי int.",
+    "example": "Integer count = Integer.valueOf(42);"
+  },
+  "InterruptedException": {
+    "type": "exception_class",
+    "explanation": "חריגה checked שנזרקת כאשר ת׳רד ממתין או ישן מופרע.",
+    "example": "Thread.sleep(1000); // must handle or declare InterruptedException"
+  },
+  "Iterable": {
+    "type": "core_interface",
+    "explanation": "ממשק עבור אובייקטים שניתן להשתמש בהם בלולאת enhanced for.",
+    "example": "for (String item : iterable) {\n    System.out.println(item);\n}"
+  },
+  "LinkedList": {
+    "type": "collection_class",
+    "explanation": "מימוש רשימה דו-כיוונית של List ושל Deque.",
+    "example": "LinkedList<String> queue = new LinkedList<>();"
+  },
+  "List": {
+    "type": "collection_interface",
+    "explanation": "אוסף מסודר שמאפשר גישה לפי אינדקס ובדרך כלל מאפשר כפילויות.",
+    "example": "List<String> names = new ArrayList<>();"
+  },
+  "LocalDate": {
+    "type": "date_time_class",
+    "explanation": "תאריך ללא שעה ביום וללא אזור זמן.",
+    "example": "LocalDate today = LocalDate.now();"
+  },
+  "LocalDateTime": {
+    "type": "date_time_class",
+    "explanation": "תאריך ושעה ללא אזור זמן.",
+    "example": "LocalDateTime now = LocalDateTime.now();"
+  },
+  "Long": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי long.",
+    "example": "Long big = Long.valueOf(123456789L);"
+  },
+  "Map": {
+    "type": "collection_interface",
+    "explanation": "משייך מפתחות לערכים; כל מפתח ממופה לכל היותר לערך אחד.",
+    "example": "Map<String, Integer> ages = new HashMap<>();"
+  },
+  "Math": {
+    "type": "utility_class",
+    "explanation": "מספק פונקציות וקבועים מתמטיים נפוצים.",
+    "example": "double root = Math.sqrt(16);"
+  },
+  "NullPointerException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked שנזרקת כאשר קוד מנסה להשתמש ב-null כאילו היה אובייקט.",
+    "example": "String s = null;\n// s.length(); // would throw NullPointerException"
+  },
+  "Number": {
+    "type": "core_class",
+    "explanation": "מחלקת על אבסטרקטית למחלקות wrapper מספריות כמו Integer, Long, Float ו-Double.",
+    "example": "Number n = Integer.valueOf(5);"
+  },
+  "NumberFormatException": {
+    "type": "exception_class",
+    "explanation": "חריגה unchecked שנזרקת כאשר מנסים לפרסר מספר מטקסט לא תקין.",
+    "example": "int n = Integer.parseInt(\"123\");"
+  },
+  "Object": {
+    "type": "core_class",
+    "explanation": "מחלקת העל הבסיסית של כל מחלקות Java.",
+    "example": "Object obj = \"hello\";"
+  },
+  "Optional": {
+    "type": "utility_class",
+    "explanation": "אובייקט מיכל שעשוי להכיל ערך שאינו null או לא להכיל ערך כלל.",
+    "example": "Optional<String> name = Optional.of(\"Nina\");"
+  },
+  "OutputStream": {
+    "type": "io_class",
+    "explanation": "מחלקת בסיס לכתיבת בתים ליעד.",
+    "example": "OutputStream out = System.out;"
+  },
+  "Path": {
+    "type": "io_class",
+    "explanation": "ייצוג מודרני של נתיב במערכת קבצים.",
+    "example": "Path path = Path.of(\"data.txt\");"
+  },
+  "Period": {
+    "type": "date_time_class",
+    "explanation": "כמות זמן מבוססת-תאריך, למשל 3 ימים או 2 חודשים.",
+    "example": "Period twoWeeks = Period.ofWeeks(2);"
+  },
+  "Predicate": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמייצג בדיקה בוליאנית של ערך אחד.",
+    "example": "Predicate<String> longName = s -> s.length() > 5;"
+  },
+  "PreparedStatement": {
+    "type": "sql_interface",
+    "explanation": "משפט SQL מקומפל מראש שמקבל פרמטרים בצורה בטוחה.",
+    "example": "PreparedStatement ps = conn.prepareStatement(\"select * from users where id = ?\");"
+  },
+  "Properties": {
+    "type": "utility_class",
+    "explanation": "מחלקה מבוססת Hashtable שנפוצה לשמירת זוגות מפתח/ערך של הגדרות.",
+    "example": "Properties props = new Properties();\nprops.setProperty(\"mode\", \"dev\");"
+  },
+  "Queue": {
+    "type": "collection_interface",
+    "explanation": "אוסף שנועד להחזיק איברים לפני עיבוד, לעיתים קרובות בשיטת FIFO.",
+    "example": "Queue<String> q = new LinkedList<>();"
+  },
+  "Random": {
+    "type": "utility_class",
+    "explanation": "מייצר ערכים פסאודו-אקראיים.",
+    "example": "Random random = new Random();\nint n = random.nextInt(10);"
+  },
+  "Reader": {
+    "type": "io_class",
+    "explanation": "מחלקת בסיס לקריאת streams של תווים.",
+    "example": "Reader reader = Files.newBufferedReader(Path.of(\"data.txt\"));"
+  },
+  "ResultSet": {
+    "type": "sql_interface",
+    "explanation": "מייצג שורות שחוזרות משאילתת מסד נתונים.",
+    "example": "ResultSet rs = ps.executeQuery();"
+  },
+  "Runnable": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמייצג קוד שניתן להריץ ללא החזרת ערך.",
+    "example": "Runnable job = () -> System.out.println(\"Run\");"
+  },
+  "RuntimeException": {
+    "type": "exception_class",
+    "explanation": "מחלקת בסיס לחריגות unchecked שבדרך כלל מצביעות על שגיאות תכנות או ריצה.",
+    "example": "throw new RuntimeException(\"Something went wrong\");"
+  },
+  "SQLException": {
+    "type": "exception_class",
+    "explanation": "חריגה checked עבור שגיאות גישה למסד נתונים או JDBC.",
+    "example": "catch (SQLException e) {\n    e.printStackTrace();\n}"
+  },
+  "Scanner": {
+    "type": "utility_class",
+    "explanation": "מפרק ומנתח קלט טקסט מתוך מחרוזות, קבצים או streams.",
+    "example": "Scanner scanner = new Scanner(System.in);\nString line = scanner.nextLine();"
+  },
+  "Set": {
+    "type": "collection_interface",
+    "explanation": "אוסף שאינו מכיל איברים כפולים.",
+    "example": "Set<String> uniqueNames = new HashSet<>();"
+  },
+  "Short": {
+    "type": "wrapper_class",
+    "explanation": "מחלקת wrapper עבור הטיפוס הפרימיטיבי short.",
+    "example": "Short s = Short.valueOf((short) 10);"
+  },
+  "Stream": {
+    "type": "stream_class",
+    "explanation": "מייצג רצף איברים שניתן לעבד באמצעות פעולות כמו map, filter ו-reduce.",
+    "example": "List<String> shortNames = names.stream()\n    .filter(s -> s.length() < 5)\n    .toList();"
+  },
+  "StrictMath": {
+    "type": "utility_class",
+    "explanation": "מספק פונקציות מתמטיות עם תוצאות מחמירות ושחזוריות בין פלטפורמות.",
+    "example": "double root = StrictMath.sqrt(16);"
+  },
+  "String": {
+    "type": "core_class",
+    "explanation": "רצף תווים בלתי ניתן לשינוי המשמש לטקסט.",
+    "example": "String name = \"Nina\";"
+  },
+  "StringBuffer": {
+    "type": "core_class",
+    "explanation": "רצף תווים ניתן לשינוי ובטוח לת׳רדים.",
+    "example": "StringBuffer sb = new StringBuffer(\"Hello\");"
+  },
+  "StringBuilder": {
+    "type": "core_class",
+    "explanation": "רצף תווים ניתן לשינוי, שימושי לבניית מחרוזות ביעילות.",
+    "example": "StringBuilder sb = new StringBuilder();\nsb.append(\"Hello\");"
+  },
+  "String[] args": {
+    "type": "entry_point_convention",
+    "explanation": "פרמטר נפוץ עבור ארגומנטים משורת הפקודה שמועברים למתודת main.",
+    "example": "public static void main(String[] args) {\n    System.out.println(args.length);\n}"
+  },
+  "Supplier": {
+    "type": "functional_interface",
+    "explanation": "Functional interface שמייצג ספק של ערכים.",
+    "example": "Supplier<Double> randomValue = Math::random;"
+  },
+  "System": {
+    "type": "core_class",
+    "explanation": "מספק streams סטנדרטיים לקלט/פלט/שגיאות, זמן נוכחי, גישה לסביבה, העתקת מערכים וכלי מערכת.",
+    "example": "System.out.println(\"Hello\");"
+  },
+  "Thread": {
+    "type": "concurrency_class",
+    "explanation": "מייצג ת׳רד ביצוע.",
+    "example": "Thread t = new Thread(() -> System.out.println(\"Running\"));\nt.start();"
+  },
+  "Throwable": {
+    "type": "exception_class",
+    "explanation": "מחלקת העל של כל האובייקטים שניתן לזרוק ולתפוס.",
+    "example": "try {\n    throw new Throwable(\"Problem\");\n} catch (Throwable t) {\n    System.out.println(t.getMessage());\n}"
+  },
+  "TreeMap": {
+    "type": "collection_class",
+    "explanation": "מימוש Map ממוין לפי הסדר הטבעי של המפתחות או Comparator.",
+    "example": "TreeMap<String, Integer> sortedAges = new TreeMap<>();"
+  },
+  "TreeSet": {
+    "type": "collection_class",
+    "explanation": "מימוש Set ממוין המבוסס על עץ.",
+    "example": "TreeSet<String> sorted = new TreeSet<>();"
+  },
+  "URI": {
+    "type": "network_class",
+    "explanation": "מייצג Uniform Resource Identifier.",
+    "example": "URI uri = URI.create(\"https://example.com/path\");"
+  },
+  "URL": {
+    "type": "network_class",
+    "explanation": "מייצג Uniform Resource Locator.",
+    "example": "URL url = URI.create(\"https://example.com\").toURL();"
+  },
+  "Void": {
+    "type": "wrapper_class",
+    "explanation": "מחלקה שלא ניתן ליצור ממנה מופעים, ומייצגת את הטיפוס void ברפלקציה.",
+    "example": "Class<Void> type = Void.TYPE;"
+  },
+  "Writer": {
+    "type": "io_class",
+    "explanation": "מחלקת בסיס לכתיבת streams של תווים.",
+    "example": "Writer writer = Files.newBufferedWriter(Path.of(\"out.txt\"));"
+  },
+  "_": {
+    "type": "reserved_keyword",
+    "explanation": "הקו התחתון היחיד שמור ולא ניתן להשתמש בו כמזהה רגיל; בהקשרים מסוימים הוא יכול לסמן משתנה או pattern ללא שם.",
+    "example": "try (var _ = lock.acquire()) {\n    // unnamed resource variable style\n}"
+  },
+  "abs": {
+    "type": "method",
+    "explanation": "הגודל של מספר, בלי הסימן שלו.",
+    "example": "int distance = Math.abs(-5);   // 5"
+  },
+  "abstract": {
+    "type": "modifier_keyword",
+    "explanation": "מסמן מחלקה שלא ניתן ליצור ממנה אובייקט ישירות, או מתודה ללא גוף שחייבים לממש במחלקה יורשת.",
+    "example": "abstract class Shape {\n    abstract double area();\n}"
+  },
+  "add": {
+    "type": "method",
+    "explanation": "מוסיף איבר לרשימה.",
+    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Ada\");"
+  },
+  "annotation": {
+    "type": "syntax_pattern",
+    "explanation": "מטא-דאטה שמוצמד לרכיבי קוד באמצעות תחביר @.",
+    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
+  },
+  "array": {
+    "type": "syntax_pattern",
+    "explanation": "מיכל בגודל קבוע עם אינדקסים, שכל האיברים בו הם מאותו טיפוס.",
+    "example": "int[] nums = {1, 2, 3};\nSystem.out.println(nums[0]);"
+  },
+  "assert": {
+    "type": "debug_keyword",
+    "explanation": "בודק הנחה בזמן דיבוג וזורק AssertionError אם התנאי false כאשר assertions מופעלים.",
+    "example": "assert balance >= 0 : \"Balance cannot be negative\";"
+  },
+  "boolean": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי ששומר את הערך true או false.",
+    "example": "boolean isActive = true;"
+  },
+  "break": {
+    "type": "control_flow_keyword",
+    "explanation": "יוצא מיד מהלולאה או מה-switch הקרובים ביותר.",
+    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n}"
+  },
+  "byte": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 8 ביט.",
+    "example": "byte small = 42;"
+  },
+  "case": {
+    "type": "control_flow_keyword",
+    "explanation": "מגדיר ענף בתוך switch statement או switch expression.",
+    "example": "switch (grade) {\n    case 'A' -> System.out.println(\"Great\");\n    default -> System.out.println(\"Keep going\");\n}"
+  },
+  "catch": {
+    "type": "exception_keyword",
+    "explanation": "מטפל בחריגה שנזרקה בתוך בלוק try מתאים.",
+    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
+  },
+  "char": {
+    "type": "primitive_type",
+    "explanation": "יחידת קוד UTF-16 בגודל 16 ביט המשמשת לשמירת תו יחיד.",
+    "example": "char grade = 'A';"
+  },
+  "charAt": {
+    "type": "method",
+    "explanation": "התו שנמצא במקום הזה. הספירה מתחילה מ-0.",
+    "example": "char first = word.charAt(0);"
+  },
+  "class": {
+    "type": "declaration_keyword",
+    "explanation": "מגדיר תבנית ליצירת אובייקטים עם שדות, מתודות, בנאים וטיפוסים מקוננים.",
+    "example": "public class Point {\n    int x;\n    int y;\n}"
+  },
+  "const": {
+    "type": "reserved_unused_keyword",
+    "explanation": "שמורה לשימוש עתידי אפשרי; Java אינה משתמשת בה לקבועים. השתמשו ב-final במקום.",
+    "example": "final int MAX_USERS = 100; // not const"
+  },
+  "contains": {
+    "type": "method",
+    "explanation": "האם הטקסט (או הרשימה) מכיל את זה בתוכו.",
+    "example": "if (sentence.contains(\"cat\")) { ... }"
+  },
+  "continue": {
+    "type": "control_flow_keyword",
+    "explanation": "מדלג על שאר האיטרציה הנוכחית של הלולאה ועובר לאיטרציה הבאה.",
+    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    System.out.println(i);\n}"
+  },
+  "default": {
+    "type": "control_flow_keyword",
+    "explanation": "מגדיר את ענף ברירת המחדל ב-switch, או מימוש default של מתודה בממשק.",
+    "example": "switch (grade) {\n    default -> System.out.println(\"Unknown grade\");\n}"
+  },
+  "diamond operator": {
+    "type": "syntax_pattern",
+    "explanation": "תחביר <> מאפשר ל-Java להסיק ארגומנטים גנריים בזמן יצירת אובייקט.",
+    "example": "List<String> names = new ArrayList<>();"
+  },
+  "do": {
+    "type": "loop_keyword",
+    "explanation": "מתחיל לולאת do-while, שבה גוף הלולאה רץ פעם אחת לפני בדיקת התנאי.",
+    "example": "do {\n    n++;\n} while (n < 3);"
+  },
+  "do-while": {
+    "type": "syntax_pattern",
+    "explanation": "תבנית לולאה שמשתמשת ב-do וב-while, שבה גוף הלולאה רץ לפחות פעם אחת.",
+    "example": "do {\n    n++;\n} while (n < 3);"
+  },
+  "double": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של נקודה צפה בגודל 64 ביט, נפוץ לחישובים עשרוניים.",
+    "example": "double average = 93.5;"
+  },
+  "else": {
+    "type": "control_flow_keyword",
+    "explanation": "מריץ בלוק חלופי כאשר תנאי ה-if הקודם הוא false.",
+    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n} else {\n    System.out.println(\"Minor\");\n}"
+  },
+  "enhanced for": {
+    "type": "syntax_pattern",
+    "explanation": "מונח בסגנון רשמי לצורת לולאת for שעוברת ישירות על מערכים או ערכי Iterable.",
+    "example": "for (int n : numbers) {\n    total += n;\n}"
+  },
+  "enum": {
+    "type": "declaration_keyword",
+    "explanation": "מגדיר אוסף קבוע של ערכים בעלי שמות כטיפוס מחלקה מיוחד.",
+    "example": "enum Color {\n    RED, GREEN, BLUE\n}"
+  },
+  "equals": {
+    "type": "method",
+    "explanation": "האם שני ערכים זהים. במחרוזות תמיד השתמשו בזה, אף פעם לא ב-==.",
+    "example": "if (answer.equals(\"yes\")) { ... }"
+  },
+  "equalsIgnoreCase": {
+    "type": "method",
+    "explanation": "כמו equals(), אבל אותיות גדולות וקטנות נחשבות זהות.",
+    "example": "if (answer.equalsIgnoreCase(\"YES\")) { ... }"
+  },
+  "exports": {
+    "type": "contextual_keyword",
+    "explanation": "בהצהרת מודול, מייצא חבילה כך שמודולים אחרים יוכלו לגשת לטיפוסים הציבוריים שלה.",
+    "example": "module com.example.app {\n    exports com.example.api;\n}"
+  },
+  "extends": {
+    "type": "inheritance_keyword",
+    "explanation": "מצהיר שמחלקה יורשת ממחלקה אחרת, או שממשק מרחיב ממשק אחר.",
+    "example": "class Dog extends Animal {\n    void speak() { System.out.println(\"Woof\"); }\n}"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "ליטרל בוליאני שמייצג תנאי שקר.",
+    "example": "boolean isDeleted = false;"
+  },
+  "final": {
+    "type": "modifier_keyword",
+    "explanation": "מונע השמה מחדש למשתנים, דריסה של מתודות או ירושה ממחלקות.",
+    "example": "final double PI = 3.14159;"
+  },
+  "finally": {
+    "type": "exception_keyword",
+    "explanation": "מריץ קוד ניקוי אחרי try/catch, בין אם התרחשה חריגה ובין אם לא.",
+    "example": "try {\n    doWork();\n} finally {\n    System.out.println(\"Always runs\");\n}"
+  },
+  "float": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של נקודה צפה בגודל 32 ביט; ליטרלים בדרך כלל משתמשים בסיומת f.",
+    "example": "float price = 19.99f;"
+  },
+  "for": {
+    "type": "loop_keyword",
+    "explanation": "חוזר על קוד באמצעות לולאה רגילה עם מונה או באמצעות לולאת enhanced for על מערכים ואוספים.",
+    "example": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
+  },
+  "for-each": {
+    "type": "syntax_pattern",
+    "explanation": "שם לא פורמלי ללולאת enhanced for של Java, שעוברת על מערכים או אוספי Iterable.",
+    "example": "for (String name : names) {\n    System.out.println(name);\n}"
+  },
+  "generics": {
+    "type": "syntax_pattern",
+    "explanation": "תחביר <T> מאפשר למחלקות, ממשקים ומתודות לעבוד עם טיפוסים ספציפיים תוך שמירה על בטיחות טיפוסים בזמן קומפילציה.",
+    "example": "class Box<T> {\n    T value;\n}\nBox<String> box = new Box<>();"
+  },
+  "get": {
+    "type": "method",
+    "explanation": "האיבר שנמצא במקום הזה ברשימה. הספירה מתחילה מ-0.",
+    "example": "String first = names.get(0);"
+  },
+  "goto": {
+    "type": "reserved_unused_keyword",
+    "explanation": "שמורה אך לא נתמכת ב-Java; קיימת כדי שהקומפיילר יוכל להציג שגיאות ברורות יותר.",
+    "example": "// goto is reserved but not supported in Java"
+  },
+  "hasNextInt": {
+    "type": "method",
+    "explanation": "נכון כשהדבר הבא שממתין לקריאה הוא מספר שלם. בדקו איתו לפני שקוראים.",
+    "example": "if (in.hasNextInt()) { int n = in.nextInt(); }"
+  },
+  "hasNextLine": {
+    "type": "method",
+    "explanation": "נכון כל עוד יש עוד שורה לקרוא.",
+    "example": "while (in.hasNextLine()) { System.out.println(in.nextLine()); }"
+  },
+  "if": {
+    "type": "control_flow_keyword",
+    "explanation": "מריץ בלוק קוד רק כאשר תנאי מסוים מתקיים.",
+    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n}"
+  },
+  "implements": {
+    "type": "inheritance_keyword",
+    "explanation": "מצהיר שמחלקה מספקת את המתודות הנדרשות על ידי ממשק אחד או יותר.",
+    "example": "class Circle implements Shape {\n    public double area() { return Math.PI * r * r; }\n}"
+  },
+  "import": {
+    "type": "declaration_keyword",
+    "explanation": "מכניס טיפוס או חבר static לטווח הזמינות, כדי להשתמש בו בלי לכתוב את שמו המלא.",
+    "example": "import java.util.ArrayList;\n\nArrayList<String> names = new ArrayList<>();"
+  },
+  "indexOf": {
+    "type": "method",
+    "explanation": "איפה משהו מופיע בפעם הראשונה, או ‎-1 אם הוא לא שם. הספירה מתחילה מ-0.",
+    "example": "int at = word.indexOf(\"a\");"
+  },
+  "instanceof": {
+    "type": "type_check_keyword",
+    "explanation": "בודק אם אובייקט תואם לטיפוס מסוים; ב-Java מודרנית תומך גם במשתני pattern.",
+    "example": "if (obj instanceof String s) {\n    System.out.println(s.length());\n}"
+  },
+  "int": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 32 ביט, נפוץ לשימוש במספרים שלמים.",
+    "example": "int age = 37;"
+  },
+  "interface": {
+    "type": "declaration_keyword",
+    "explanation": "מגדיר חוזה של מתודות וקבועים שמחלקות יכולות לממש; בממשקים מודרניים אפשר לכלול גם מתודות default ו-static.",
+    "example": "interface Shape {\n    double area();\n}"
+  },
+  "isEmpty": {
+    "type": "method",
+    "explanation": "נכון כשאין בפנים כלום.",
+    "example": "if (names.isEmpty()) { ... }"
+  },
+  "java.base": {
+    "type": "module",
+    "explanation": "מודול Java הבסיסי שמכיל חבילות ליבה כמו java.lang, java.util, java.io, java.nio ו-java.time.",
+    "example": "module com.example.app {\n    requires java.base; // usually implicit\n}"
+  },
+  "java.io": {
+    "type": "package",
+    "explanation": "חבילת קלט/פלט קלאסית עבור streams, readers, writers, קבצים ו-IOException.",
+    "example": "import java.io.File;\nimport java.io.IOException;"
+  },
+  "java.lang": {
+    "type": "package",
+    "explanation": "חבילת יסוד שמיובאת אוטומטית לכל קובץ Java; כוללת Object, String, System, Math, מחלקות wrapper וחריגות.",
+    "example": "String text = \"Hello\";\nSystem.out.println(text);"
+  },
+  "java.math": {
+    "type": "package",
+    "explanation": "חבילה למחלקות מספריות בדיוק שרירותי כמו BigInteger ו-BigDecimal.",
+    "example": "import java.math.BigDecimal;\nBigDecimal price = new BigDecimal(\"19.99\");"
+  },
+  "java.net": {
+    "type": "package",
+    "explanation": "חבילת רשת עבור URL, URI, sockets ומחלקות הקשורות לרשת.",
+    "example": "import java.net.URI;\nURI uri = URI.create(\"https://example.com\");"
+  },
+  "java.nio": {
+    "type": "package",
+    "explanation": "חבילת New I/O עבור buffers, channels, charsets ופעולות I/O סקיילביליות.",
+    "example": "import java.nio.ByteBuffer;"
+  },
+  "java.nio.file": {
+    "type": "package",
+    "explanation": "חבילת מערכת קבצים מודרנית עם Path, Files וכלים להליכה, העתקה וטיפול בקבצים.",
+    "example": "import java.nio.file.Files;\nimport java.nio.file.Path;"
+  },
+  "java.sql": {
+    "type": "package",
+    "explanation": "חבילת JDBC לעבודה עם מסדי נתונים, כולל Connection, Statement, ResultSet וחריגות SQL.",
+    "example": "import java.sql.Connection;"
+  },
+  "java.time": {
+    "type": "package",
+    "explanation": "חבילת API מודרנית לתאריכים וזמנים, כולל LocalDate, LocalDateTime, Instant ו-Duration.",
+    "example": "import java.time.LocalDate;\nLocalDate today = LocalDate.now();"
+  },
+  "java.util": {
+    "type": "package",
+    "explanation": "חבילת עזר שמכילה את collections framework, Optional, Scanner, Random, properties ומחלקות עזר נפוצות נוספות.",
+    "example": "import java.util.List;\nimport java.util.ArrayList;"
+  },
+  "java.util.concurrent": {
+    "type": "package",
+    "explanation": "כלי concurrency כמו ExecutorService, Future, locks ואוספים בטוחים לת׳רדים.",
+    "example": "import java.util.concurrent.ExecutorService;"
+  },
+  "java.util.function": {
+    "type": "package",
+    "explanation": "ממשקים פונקציונליים שמשמשים lambdas ו-method references, כמו Function, Predicate, Consumer ו-Supplier.",
+    "example": "import java.util.function.Predicate;"
+  },
+  "java.util.regex": {
+    "type": "package",
+    "explanation": "חבילת ביטויים רגולריים עם Pattern ו-Matcher.",
+    "example": "import java.util.regex.Pattern;\nboolean ok = Pattern.matches(\"\\\\d+\", \"123\");"
+  },
+  "java.util.stream": {
+    "type": "package",
+    "explanation": "חבילת Stream API לעיבוד רצפים של נתונים באמצעות פעולות בסגנון map/filter/reduce.",
+    "example": "import java.util.stream.Stream;\nStream.of(1, 2, 3).forEach(System.out::println);"
+  },
+  "javax.swing": {
+    "type": "package",
+    "explanation": "חבילת GUI שולחנית קלאסית עבור חלונות, כפתורים, תוויות ורכיבי UI נוספים.",
+    "example": "import javax.swing.JFrame;"
+  },
+  "lambda expression": {
+    "type": "syntax_pattern",
+    "explanation": "יוצר מימוש אנונימי דמוי-פונקציה של functional interface.",
+    "example": "List<Integer> evens = nums.stream()\n    .filter(n -> n % 2 == 0)\n    .toList();"
+  },
+  "length": {
+    "type": "method",
+    "explanation": "האורך: מספר התווים במחרוזת, או מספר האיברים במערך. שימו לב - במחרוזת עם סוגריים ובמערך בלי.",
+    "example": "int n = name.length();      // String\nint m = numbers.length;     // array - no ()"
+  },
+  "long": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 64 ביט עבור מספרים שלמים גדולים.",
+    "example": "long population = 9_000_000_000L;"
+  },
+  "main": {
+    "type": "entry_point_convention",
+    "explanation": "שם מתודת כניסה מקובל שה-JVM משתמש בו כדי להתחיל תוכניות Java רבות.",
+    "example": "public static void main(String[] args) {\n    System.out.println(\"Hello\");\n}"
+  },
+  "max": {
+    "type": "method",
+    "explanation": "הגדול מבין שני מספרים.",
+    "example": "int biggest = Math.max(a, b);"
+  },
+  "method reference": {
+    "type": "syntax_pattern",
+    "explanation": "תחביר קצר להעברת מתודה קיימת כמימוש של functional interface.",
+    "example": "names.forEach(System.out::println);"
+  },
+  "min": {
+    "type": "method",
+    "explanation": "הקטן מבין שני מספרים.",
+    "example": "int smallest = Math.min(a, b);"
+  },
+  "module": {
+    "type": "contextual_keyword",
+    "explanation": "מצהיר על מודול Java בקובץ module-info.java.",
+    "example": "module com.example.app {\n    requires java.base;\n}"
+  },
+  "native": {
+    "type": "modifier_keyword",
+    "explanation": "מצהיר שמתודה ממומשת בקוד native תלוי-פלטפורמה, ולא בקוד Java.",
+    "example": "public native int systemCall();"
+  },
+  "new": {
+    "type": "object_keyword",
+    "explanation": "יוצר מופע חדש של אובייקט או מערך.",
+    "example": "Point p = new Point();\nint[] nums = new int[3];"
+  },
+  "nextDouble": {
+    "type": "method",
+    "explanation": "קורא את המספר העשרוני הבא שהמשתמש מקליד.",
+    "example": "double price = in.nextDouble();"
+  },
+  "nextInt": {
+    "type": "method",
+    "explanation": "קורא את המספר השלם הבא שהמשתמש מקליד.",
+    "example": "Scanner in = new Scanner(System.in);\nint age = in.nextInt();"
+  },
+  "nextLine": {
+    "type": "method",
+    "explanation": "קורא שורה שלמה ממה שהמשתמש מקליד, כולל רווחים.",
+    "example": "String name = in.nextLine();"
+  },
+  "non-sealed": {
+    "type": "contextual_keyword",
+    "explanation": "פותח מחדש ירושה עבור תת-מחלקה של מחלקה או ממשק sealed.",
+    "example": "non-sealed class Circle extends Shape {}"
+  },
+  "null": {
+    "type": "literal",
+    "explanation": "ליטרל reference שמייצג היעדר אובייקט.",
+    "example": "String name = null;"
+  },
+  "open": {
+    "type": "contextual_keyword",
+    "explanation": "מסמן מודול כ-open, ומאפשר גישה רפלקטיבית לכל החבילות שלו.",
+    "example": "open module com.example.app {\n    requires java.sql;\n}"
+  },
+  "opens": {
+    "type": "contextual_keyword",
+    "explanation": "בהצהרת מודול, פותח חבילה ל-deep reflection, באופן אופציונלי למודולים מסוימים בלבד.",
+    "example": "module com.example.app {\n    opens com.example.model to com.fasterxml.jackson.databind;\n}"
+  },
+  "package": {
+    "type": "declaration_keyword",
+    "explanation": "משייך את המחלקות בקובץ מקור לחבילה בשם מסוים, לצורך ארגון והבחנה בין שמות.",
+    "example": "package com.example.app;"
+  },
+  "parseDouble": {
+    "type": "method",
+    "explanation": "הופך טקסט למספר עשרוני.",
+    "example": "double d = Double.parseDouble(\"3.5\");"
+  },
+  "parseInt": {
+    "type": "method",
+    "explanation": "הופך טקסט למספר שלם. נכשל אם הטקסט הוא לא מספר.",
+    "example": "int n = Integer.parseInt(\"42\");"
+  },
+  "permits": {
+    "type": "contextual_keyword",
+    "explanation": "מפרט את המחלקות או הממשקים הספציפיים שמורשים להרחיב או לממש טיפוס sealed.",
+    "example": "sealed interface Shape permits Circle, Square {}"
+  },
+  "pow": {
+    "type": "method",
+    "explanation": "מספר בחזקת מספר אחר.",
+    "example": "double p = Math.pow(2, 10);   // 1024.0"
+  },
+  "print": {
+    "type": "method",
+    "explanation": "מדפיס טקסט בלי לעבור לשורה הבאה, כך שההדפסה הבאה ממשיכה באותה שורה.",
+    "example": "System.out.print(\"Name: \");"
+  },
+  "printf": {
+    "type": "method",
+    "explanation": "מדפיס לפי תבנית. ‎%d זה מספר שלם, ‎%s טקסט, ‎%.2f שתי ספרות אחרי הנקודה.",
+    "example": "System.out.printf(\"%s scored %d%n\", name, score);"
+  },
+  "println": {
+    "type": "method",
+    "explanation": "מדפיס שורת טקסט ועובר לשורה הבאה.",
+    "example": "System.out.println(\"Hello\");"
+  },
+  "private": {
+    "type": "access_modifier",
+    "explanation": "מאפשר לחבר מחלקה להיות נגיש רק מתוך אותה מחלקה.",
+    "example": "class Account {\n    private double balance;\n}"
+  },
+  "protected": {
+    "type": "access_modifier",
+    "explanation": "מאפשר לחבר מחלקה להיות נגיש בתוך אותה חבילה וגם מתוך מחלקות יורשות.",
+    "example": "class Base {\n    protected int id;\n}"
+  },
+  "provides": {
+    "type": "contextual_keyword",
+    "explanation": "בהצהרת מודול, מצהיר על מימוש שירות שהמודול מספק.",
+    "example": "module com.example.app {\n    provides com.example.Plugin with com.example.DefaultPlugin;\n}"
+  },
+  "public": {
+    "type": "access_modifier",
+    "explanation": "מאפשר למחלקה, מתודה, בנאי או שדה להיות נגישים מכל מקום שיכול לראות את החבילה או המודול שבהם הם הוגדרו.",
+    "example": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello\");\n    }\n}"
+  },
+  "random": {
+    "type": "method",
+    "explanation": "מספר עשרוני אקראי מ-0 עד (ולא כולל) 1.",
+    "example": "int dice = (int) (Math.random() * 6) + 1;"
+  },
+  "record": {
+    "type": "contextual_keyword",
+    "explanation": "מצהיר על מחלקת נשיאת נתונים קומפקטית עם בנאי, accessors, equals, hashCode ו-toString שנוצרים אוטומטית.",
+    "example": "record Point(int x, int y) {}\nPoint p = new Point(3, 4);"
+  },
+  "remove": {
+    "type": "method",
+    "explanation": "מוציא איבר מהרשימה, לפי מיקום או לפי ערך.",
+    "example": "names.remove(0);"
+  },
+  "replace": {
+    "type": "method",
+    "explanation": "אותו טקסט כשכל מופע של חלק אחד הוחלף באחר.",
+    "example": "String fixed = text.replace(\"colour\", \"color\");"
+  },
+  "requires": {
+    "type": "contextual_keyword",
+    "explanation": "בהצהרת מודול, מצהיר על תלות במודול אחר.",
+    "example": "module com.example.app {\n    requires java.sql;\n}"
+  },
+  "return": {
+    "type": "control_flow_keyword",
+    "explanation": "יוצא ממתודה, ובאופן אופציונלי מחזיר ערך לקוד שקרא לה.",
+    "example": "int square(int x) {\n    return x * x;\n}"
+  },
+  "round": {
+    "type": "method",
+    "explanation": "המספר השלם הקרוב ביותר.",
+    "example": "long n = Math.round(3.6);   // 4"
+  },
+  "sealed": {
+    "type": "contextual_keyword",
+    "explanation": "מגביל אילו מחלקות או ממשקים רשאים להרחיב או לממש טיפוס מסוים.",
+    "example": "sealed class Shape permits Circle, Square {}"
+  },
+  "short": {
+    "type": "primitive_type",
+    "explanation": "טיפוס פרימיטיבי של מספר שלם signed בגודל 16 ביט.",
+    "example": "short count = 1000;"
+  },
+  "size": {
+    "type": "method",
+    "explanation": "כמה איברים יש ברשימה.",
+    "example": "int howMany = names.size();"
+  },
+  "sort": {
+    "type": "method",
+    "explanation": "מסדר מערך או רשימה.",
+    "example": "Arrays.sort(numbers);"
+  },
+  "split": {
+    "type": "method",
+    "explanation": "מפרק טקסט למערך, וחותך בתו המפריד שנתתם.",
+    "example": "String[] words = sentence.split(\" \");"
+  },
+  "sqrt": {
+    "type": "method",
+    "explanation": "השורש הריבועי של מספר.",
+    "example": "double r = Math.sqrt(16);   // 4.0"
+  },
+  "static": {
+    "type": "modifier_keyword",
+    "explanation": "מסמן שחבר שייך למחלקה עצמה ולא למופע ספציפי של אובייקט.",
+    "example": "class MathUtils {\n    static int square(int x) {\n        return x * x;\n    }\n}"
+  },
+  "strictfp": {
+    "type": "modifier_keyword",
+    "explanation": "מילת מפתח מיושנת שבעבר דרשה התנהגות מחמירה בחישובי נקודה צפה; ב-Java מודרנית ביטויי נקודה צפה כבר מחושבים באופן מחמיר.",
+    "example": "strictfp class OldNumericCode {\n    double calc(double x) { return x / 3.0; }\n}"
+  },
+  "substring": {
+    "type": "method",
+    "explanation": "חלק ממחרוזת, ממקום אחד עד (ולא כולל) מקום אחר.",
+    "example": "String part = \"programming\".substring(0, 7);   // \"program\""
+  },
+  "super": {
+    "type": "object_keyword",
+    "explanation": "מתייחס למחלקת האב, בדרך כלל כדי לקרוא לבנאי של האב או למתודה שנדרסה.",
+    "example": "class Dog extends Animal {\n    Dog(String name) {\n        super(name);\n    }\n}"
+  },
+  "switch": {
+    "type": "control_flow_keyword",
+    "explanation": "בוחר ענף להרצה לפי ערך או pattern מתאים; יכול לשמש כמשפט או כביטוי.",
+    "example": "switch (day) {\n    case \"MON\" -> System.out.println(\"Monday\");\n    default -> System.out.println(\"Other\");\n}"
+  },
+  "synchronized": {
+    "type": "modifier_keyword",
+    "explanation": "מאפשר רק לת׳רד אחד בכל פעם להריץ מתודה או בלוק באמצעות אותו monitor lock.",
+    "example": "synchronized void increment() {\n    count++;\n}"
+  },
+  "this": {
+    "type": "object_keyword",
+    "explanation": "מתייחס למופע האובייקט הנוכחי, ולעיתים קרובות משמש להבחנה בין שדות לבין פרמטרים.",
+    "example": "class Point {\n    int x;\n    Point(int x) {\n        this.x = x;\n    }\n}"
+  },
+  "throw": {
+    "type": "exception_keyword",
+    "explanation": "זורק אובייקט חריגה באופן ידני.",
+    "example": "if (age < 0) {\n    throw new IllegalArgumentException(\"Age cannot be negative\");\n}"
+  },
+  "throws": {
+    "type": "exception_keyword",
+    "explanation": "מצהיר שמתודה עשויה לזרוק חריגה checked אחת או יותר.",
+    "example": "void readFile(String path) throws IOException {\n    // read file\n}"
+  },
+  "to": {
+    "type": "contextual_keyword",
+    "explanation": "משמש בהנחיות מודול כמו exports ... to או opens ... to כדי לכוון למודולים מסוימים.",
+    "example": "exports com.example.internal to com.example.tests;"
+  },
+  "toLowerCase": {
+    "type": "method",
+    "explanation": "אותו טקסט באותיות קטנות.",
+    "example": "String quiet = name.toLowerCase();"
+  },
+  "toUpperCase": {
+    "type": "method",
+    "explanation": "אותו טקסט באותיות גדולות.",
+    "example": "String loud = name.toUpperCase();"
+  },
+  "transient": {
+    "type": "modifier_keyword",
+    "explanation": "מסמן שדה כך ש-Java תדלג עליו בזמן סריאליזציה של אובייקט.",
+    "example": "class User implements java.io.Serializable {\n    transient String temporaryToken;\n}"
+  },
+  "transitive": {
+    "type": "contextual_keyword",
+    "explanation": "משמש עם requires כדי לייצא מחדש מודול נדרש למודולים שתלויים במודול הנוכחי.",
+    "example": "module com.example.app {\n    requires transitive java.sql;\n}"
+  },
+  "trim": {
+    "type": "method",
+    "explanation": "אותו טקסט בלי רווחים בשני הקצוות.",
+    "example": "String clean = input.trim();"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "ליטרל בוליאני שמייצג תנאי אמת.",
+    "example": "boolean isActive = true;"
+  },
+  "try": {
+    "type": "exception_keyword",
+    "explanation": "מתחיל בלוק קוד שבו ניתן לתפוס חריגות או לסגור משאבים אוטומטית.",
+    "example": "try {\n    int x = 1 / 0;\n} catch (ArithmeticException e) {\n    System.out.println(e.getMessage());\n}"
+  },
+  "try-with-resources": {
+    "type": "syntax_pattern",
+    "explanation": "צורת try שסוגרת אוטומטית משאבים שמממשים AutoCloseable.",
+    "example": "try (BufferedReader br = Files.newBufferedReader(path)) {\n    return br.readLine();\n}"
+  },
+  "uses": {
+    "type": "contextual_keyword",
+    "explanation": "בהצהרת מודול, מצהיר שהמודול צורך שירות.",
+    "example": "module com.example.app {\n    uses com.example.Plugin;\n}"
+  },
+  "var": {
+    "type": "contextual_keyword",
+    "explanation": "מאפשר לקומפיילר להסיק את הטיפוס של משתנה מקומי או פרמטר lambda מתוך האתחול שלו.",
+    "example": "var count = 0;\nvar names = new ArrayList<String>();"
+  },
+  "void": {
+    "type": "return_type_keyword",
+    "explanation": "משמש כטיפוס החזרה של מתודה כדי לציין שהמתודה אינה מחזירה ערך.",
+    "example": "public void printHello() {\n    System.out.println(\"Hello\");\n}"
+  },
+  "volatile": {
+    "type": "modifier_keyword",
+    "explanation": "מסמן שדה כך שקריאות וכתיבות אליו יתבצעו ישירות מול הזיכרון הראשי, כדי לשפר נראות בין ת׳רדים.",
+    "example": "volatile boolean running = true;"
+  },
+  "when": {
+    "type": "contextual_keyword",
+    "explanation": "מוסיף תנאי guard ל-pattern case בתוך switch pattern matching.",
+    "example": "switch (obj) {\n    case String s when s.length() > 3 -> System.out.println(s);\n    default -> {}\n}"
+  },
+  "while": {
+    "type": "loop_keyword",
+    "explanation": "חוזר על קוד כל עוד התנאי נשאר true, כאשר התנאי נבדק לפני כל איטרציה.",
+    "example": "while (n > 0) {\n    n--;\n}"
+  },
+  "with": {
+    "type": "contextual_keyword",
+    "explanation": "משמש בהנחיית provides כדי לציין את מחלקת המימוש של שירות.",
+    "example": "provides PaymentService with StripePaymentService;"
+  },
+  "yield": {
+    "type": "contextual_keyword",
+    "explanation": "מחזיר ערך מתוך בלוק של switch expression.",
+    "example": "int result = switch (grade) {\n    case \"A\" -> 100;\n    default -> {\n        yield 0;\n    }\n};"
+  },
+  "||": {
     "type": "operator",
-    "explanation": "השמה: מכניס את הערך שמימין למשתנה שמשמאל. להשוואה השתמשו ב-== .",
-    "example": "int total = 10;"
+    "explanation": "או לוגי: אמת כאשר אחד הצדדים אמת.",
+    "example": "if (isAdmin || isOwner) { }"
   }
 }

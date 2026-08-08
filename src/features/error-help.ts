@@ -30,8 +30,6 @@
  * Pure: no DOM, no Monaco, no language loader. Tested in node.
  */
 
-import { getErrorExplanation, getLanguage } from '../languages';
-
 /** What the lookup returns, restated so this module imports nothing. */
 export interface ErrorHelp {
   readonly explanation: string;
@@ -318,35 +316,4 @@ export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBloc
     example: help.example?.trim() ? help.example.trim() : null,
     rtl: help.rtl === true,
   };
-}
-
-/**
- * The one-paragraph explanation for a compiler message, or null.
- *
- * Exists so the explanation can travel WITH the diagnostic instead of only being
- * printed under the run's output. The output panel is where a stuck student has
- * already stopped reading; the squiggle is where they are actually looking.
- *
- * Silent when there is no entry, deliberately. A confidently wrong explanation in a
- * teaching tool is worse than none - it teaches the student the wrong model of what
- * their program did, and they have no way to tell it apart from a right one.
- */
-export function explanationFor(
-  languageId: string,
-  message: string,
-  uiLanguage: string,
-): string | null {
-  const entries = getLanguage(languageId)?.errors;
-  if (!entries) return null;
-
-  const key = selectErrorKey(languageId, message, Object.keys(entries));
-  if (!key) return null;
-
-  const help = getErrorExplanation(languageId, key, uiLanguage);
-  if (!help) return null;
-
-  const block = buildErrorHelpBlock(key, help);
-  // The explanation and, when there is one, the concrete fix. The heading is left out:
-  // it repeats the error name the student can already see on the line above.
-  return [block.explanation, block.cause, block.example].filter(Boolean).join('\n\n');
 }

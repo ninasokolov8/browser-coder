@@ -13,8 +13,9 @@
 import * as monaco from 'monaco-editor';
 
 import { parseCompilerOutput } from './compiler-output.ts';
-import { explanationFor } from '../features/error-help.ts';
+import { buildErrorHelpBlock, selectErrorKey } from '../features/error-help.ts';
 import { getUILang } from '../features/wrapped-i18n.ts';
+import { getErrorExplanation, getLanguage } from '../languages';
 import type { Diagnostic, DiagnosticsStore } from './store.ts';
 import type { MonacoModelRegistry } from '../workspace/monaco/model-registry.ts';
 import type { WorkspaceService } from '../workspace/service.ts';
@@ -75,6 +76,34 @@ function resolveDocument(
   if (documentCount === 1 && entryDocumentId) return entryDocumentId;
 
   return null;
+}
+
+/**
+ * The plain-language explanation for a compiler message, or null.
+ *
+ * Lives HERE rather than in error-help.ts because it needs the language registry, and
+ * error-help.ts is a pure module that node tests import directly - `../languages` is a
+ * directory import that Vite resolves and node's ESM loader does not, so putting this
+ * there broke every test of the module it was added to. The rules for CHOOSING an
+ * explanation stay pure and tested; only the lookup is here, where impurity already
+ * lives.
+ *
+ * Silent when there is no entry, deliberately: a confidently wrong explanation in a
+ * teaching tool is worse than none, because a student cannot tell it from a right one.
+ */
+function explanationFor(languageId: string, message: string, uiLanguage: string): string | null {
+  const entries = getLanguage(languageId)?.errors;
+  if (!entries) return null;
+
+  const key = selectErrorKey(languageId, message, Object.keys(entries));
+  if (!key) return null;
+
+  const help = getErrorExplanation(languageId, key, uiLanguage);
+  if (!help) return null;
+
+  const block = buildErrorHelpBlock(key, help);
+  // The heading is left out: it repeats the error name shown on the line above it.
+  return [block.explanation, block.cause, block.example].filter(Boolean).join('\n\n');
 }
 
 export interface PublishRunOptions {
