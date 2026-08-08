@@ -1104,6 +1104,22 @@
         direction: ltr;
       }
       .debug-var-row:hover { background: var(--bg-hover); }
+      /* A variable that moved on this step. The one thing worth looking at. */
+      .debug-var-row.debug-var-changed {
+        background: rgba(46, 160, 105, 0.14);
+        border-radius: 3px;
+      }
+      .debug-var-row.debug-var-changed .debug-var-value { color: #4ec98a; }
+      .debug-var-row.debug-var-new { background: rgba(70, 140, 220, 0.13); border-radius: 3px; }
+      .debug-var-was {
+        color: var(--text-secondary, #7a8797);
+        text-decoration: line-through;
+        flex: 0 0 auto;
+      }
+      .debug-step-note {
+        padding: 3px 10px 6px;
+        color: #4ec98a;
+      }
       .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
       .debug-var-value {
         color: var(--text-primary, #ddd);

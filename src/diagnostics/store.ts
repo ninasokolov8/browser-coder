@@ -33,6 +33,16 @@ export interface Diagnostic {
   readonly endColumn?: number;
   /** Who produced it: "ts", "javac", "python", ... Shown so the origin is legible. */
   readonly source: string;
+  /**
+   * A plain-language explanation of this message, when one exists.
+   *
+   * Carried on the diagnostic so it can reach the SQUIGGLE - the place the student is
+   * actually looking - rather than only the output panel underneath a traceback, which
+   * is where a stuck student has already stopped reading. Shown in the editor's hover;
+   * deliberately not in the Problems panel, where it would turn every row into a
+   * paragraph.
+   */
+  readonly help?: string;
 }
 
 export interface DiagnosticCounts {

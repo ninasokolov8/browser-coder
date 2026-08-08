@@ -13,6 +13,8 @@
 import * as monaco from 'monaco-editor';
 
 import { parseCompilerOutput } from './compiler-output.ts';
+import { explanationFor } from '../features/error-help.ts';
+import { getUILang } from '../features/wrapped-i18n.ts';
 import type { Diagnostic, DiagnosticsStore } from './store.ts';
 import type { MonacoModelRegistry } from '../workspace/monaco/model-registry.ts';
 import type { WorkspaceService } from '../workspace/service.ts';
@@ -154,6 +156,9 @@ export function publishCompilerDiagnostics(
       line: item.line,
       column: item.column ?? 1,
       source: languageId,
+      // Looked up once, here, so every consumer of this diagnostic has it and none of
+      // them has to know how explanations are found.
+      help: explanationFor(languageId, item.message, getUILang()) ?? undefined,
     });
     byDocument.set(documentId, list);
   }
@@ -201,7 +206,19 @@ export function connectRunMarkers({
             diagnostic.severity === 'warning'
               ? monaco.MarkerSeverity.Warning
               : monaco.MarkerSeverity.Error,
-          message: diagnostic.message,
+          /*
+           * The compiler's message, then the plain-language explanation.
+           *
+           * This is where the explanation belongs. It was only ever printed into the
+           * output panel underneath the traceback - which is exactly where a stuck
+           * student has already stopped reading - while the thing they ARE looking at,
+           * the red underline on their line, said nothing beyond the runtime's own
+           * wording. Hovering the squiggle now answers the question the squiggle
+           * raises.
+           */
+          message: diagnostic.help
+            ? `${diagnostic.message}\n\n💡 ${diagnostic.help}`
+            : diagnostic.message,
           startLineNumber: line,
           startColumn: column,
           endLineNumber: line,
