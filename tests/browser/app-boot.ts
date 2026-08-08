@@ -859,6 +859,36 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
       current.length === 1 && current[0].range.startLineNumber === 4,
       `marked lines: ${current.map(entry => entry.range.startLineNumber).join(', ') || 'none'}`,
     );
+
+    /*
+     * The highlight must be VISIBLE, not merely present.
+     *
+     * The decoration was applied correctly and still could not be seen: the fill was
+     * 14% amber over a near-black editor, a four-percent luminance shift. "A class is
+     * attached" was true and useless, so this measures the paint instead - an alpha
+     * floor and the left bar - which is the thing a student either sees or does not.
+     */
+    const probe = frameDocument.createElement('div');
+    probe.className = 'debug-current-line';
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    frameDocument.body.appendChild(probe);
+
+    const painted = frameWindow.getComputedStyle(probe);
+    const alpha = Number(/rgba?\([^)]*?,\s*([\d.]+)\s*\)/.exec(painted.backgroundColor)?.[1] ?? '1');
+
+    check(
+      'the paused line is filled strongly enough to see',
+      alpha >= 0.18,
+      `background ${painted.backgroundColor} (alpha ${alpha})`,
+    );
+    check(
+      'and carries a bar down its left edge',
+      painted.boxShadow !== 'none' && painted.boxShadow.includes('inset'),
+      `box-shadow ${painted.boxShadow}`,
+    );
+
+    probe.remove();
   }
 
   // The variables panel shows it.
