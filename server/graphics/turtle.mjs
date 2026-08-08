@@ -127,7 +127,7 @@ const ACTIVE_SVG_CONSTRUCTS = [
 const NUMERIC_FIELDS = [
   'x', 'y', 'x1', 'y1', 'x2', 'y2',
   'w', 'h', 'pw', 'r',
-  'sw', 'sl', 'ow', 'tl', 'sid',
+  'sw', 'sl', 'ow', 'tl', 'sid', 'ln',
 ];
 
 /** String fields, bounded by `maxStringLength` unless listed as text. */
@@ -145,7 +145,7 @@ const SHAPE_FIELDS = {
   texts: TEXT_FIELDS,
   points: POINT_FIELDS,
   /** Recognised kinds. An unknown kind is dropped rather than passed through. */
-  kinds: new Set(['l', 'F', 'M', 'T', 'D', 'S', 'SH']),
+  kinds: new Set(['l', 'F', 'M', 'T', 'D', 'S', 'SH', 'H', 'C', 'HT', 'ST']),
 };
 
 const CURSOR_FIELDS = {

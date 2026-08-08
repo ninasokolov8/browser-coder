@@ -242,6 +242,12 @@ bindButton(commands, stopBtn, 'workspace.stopRun');
 // refusal both come from the command's own declaration rather than from CSS.
 bindButton(commands, debugBtn, 'workspace.debug');
 
+// `when` depends on the ACTIVE MODEL. Step-Up supplies that model after the button is
+// initially bound, and tab/language changes can replace it later. Without these
+// notifications Debug stays frozen in whatever state the empty bootstrap model gave it.
+editor.onDidChangeModel(() => commands.notifyEnablementChanged());
+monaco.editor.onDidChangeModelLanguage(() => commands.notifyEnablementChanged());
+
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'workspace.run');
 // Shift+F5 is Stop in VS Code, and it already stops a DEBUG session here - so the
 // same key now ends a plain run too, rather than meaning two different things

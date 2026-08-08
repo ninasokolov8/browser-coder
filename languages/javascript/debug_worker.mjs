@@ -103,6 +103,8 @@ function post(method, params = {}) {
 
 /** line -> the breakpoint id V8 gave us, so a removal can name it. */
 const breakpoints = new Map();
+/** Generated workspace path + line -> expression for print-and-continue points. */
+const armedLogpoints = new Map();
 
 /**
  * The file URL for a workspace-relative path, or null when it escapes the job.
@@ -202,11 +204,12 @@ function workspaceRelative(url) {
  * V8's answer rather than the request is what keeps the margin honest, and it is the
  * same contract the Python adapter has.
  */
-async function setBreakpoints(lines, files, conditions) {
+async function setBreakpoints(lines, files, conditions, logpoints) {
   for (const id of breakpoints.values()) {
     await post('Debugger.removeBreakpoint', { breakpointId: id });
   }
   breakpoints.clear();
+  armedLogpoints.clear();
 
   // `lines` alone means the entry file - the shape this spoke first. `files` names
   // any workspace file, which is what lets a student stop inside a module they
@@ -229,6 +232,7 @@ async function setBreakpoints(lines, files, conditions) {
    * The empty-string key means the entry file, matching `lines`.
    */
   const conditionByTarget = new Map();
+  const logpointByTarget = new Map();
   const conditionsFor = forPath => (conditions ?? {})[forPath] ?? {};
 
   for (const [line, expression] of Object.entries(conditionsFor(''))) {
@@ -262,7 +266,26 @@ async function setBreakpoints(lines, files, conditions) {
     }
   }
 
+  for (const [relativePath, entries] of Object.entries(logpoints ?? {})) {
+    for (const [rawLine, expression] of Object.entries(entries ?? {})) {
+      const line = Number(rawLine);
+      const target = relativePath === ''
+        ? { path: workspaceRelative(PROGRAM_URL), line }
+        : toGeneratedLocation(relativePath, line);
+      if (!target) continue;
+      const url = urlForWorkspacePath(target.path);
+      if (!url) continue;
+      wanted.set(url, [...(wanted.get(url) ?? []), target.line]);
+      logpointByTarget.set(`${url}:${target.line}`, expression);
+      armedLogpoints.set(`${target.path}:${target.line}`, expression);
+      if (target.path !== relativePath && relativePath !== '') {
+        originalOf.set(`${url}:${target.line}`, { path: relativePath, line });
+      }
+    }
+  }
+
   const acceptedByPath = {};
+  const acceptedLogpoints = {};
   for (const [url, fileLines] of wanted) {
     for (const line of fileLines) {
       const condition = conditionByTarget.get(`${url}:${line}`);
@@ -285,7 +308,9 @@ async function setBreakpoints(lines, files, conditions) {
       // the same file; for a compiled language it is the source, not the output.
       const origin = originalOf.get(`${url}:${line}`)
         ?? { path: workspaceRelative(url), line: at };
-      (acceptedByPath[origin.path] ??= []).push(origin.line);
+      const logExpression = logpointByTarget.get(`${url}:${line}`);
+      if (logExpression) (acceptedLogpoints[origin.path] ??= {})[origin.line] = logExpression;
+      else (acceptedByPath[origin.path] ??= []).push(origin.line);
     }
   }
 
@@ -301,6 +326,7 @@ async function setBreakpoints(lines, files, conditions) {
     type: 'breakpoints',
     lines: acceptedByPath[toOriginalLocation(workspaceRelative(PROGRAM_URL), 1).path] ?? acceptedByPath[workspaceRelative(PROGRAM_URL)] ?? [],
     files: acceptedByPath,
+    logpoints: acceptedLogpoints,
   });
 }
 
@@ -492,6 +518,32 @@ session.on('Debugger.paused', async message => {
   }
   currentTopFrameId = top.callFrameId ?? null;
 
+  const generatedFile = fileOfFrame(top);
+  const generatedLine = top.location.lineNumber + 1;
+  const logExpression = armedLogpoints.get(`${generatedFile}:${generatedLine}`);
+  if (logExpression && params.hitBreakpoints?.length) {
+    const { result, error } = await post('Debugger.evaluateOnCallFrame', {
+      callFrameId: currentTopFrameId,
+      expression: logExpression,
+      silent: true,
+      returnByValue: false,
+    });
+    const at = toOriginalLocation(generatedFile, generatedLine);
+    if (error || result?.exceptionDetails) {
+      send({
+        type: 'log', file: at.path, line: at.line, expression: logExpression,
+        error: String(result?.exceptionDetails?.text || error?.message || 'Could not evaluate'),
+      });
+    } else {
+      send({
+        type: 'log', file: at.path, line: at.line, expression: logExpression,
+        value: describe(result.result),
+      });
+    }
+    resumeIfPaused();
+    return;
+  }
+
   const stack = own.slice(0, MAX_STACK).map(frame => {
     // Reported in the file the student wrote. For an ordinary .js this is the same
     // file and line; for a compiled one it is the source, or the whole stack would
@@ -587,6 +639,7 @@ function handleCommand(command) {
         Array.isArray(command.lines) ? command.lines : [],
         command.files,
         command.conditions,
+        command.logpoints,
       );
       return;
     case 'continue':

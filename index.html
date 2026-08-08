@@ -228,9 +228,11 @@
       #titlebar .more { position: relative; }
       #titlebar #more-toggle { min-width: 30px; padding: 0 8px; font-size: 15px; line-height: 1; }
       .more-menu {
-        position: absolute;
-        top: calc(100% + 6px);
-        inset-inline-end: 0;
+        /* Fixed escapes #titlebar's overflow clipping. Absolute positioning here
+           used to leave only the first Download row visible below the 35px bar. */
+        position: fixed;
+        top: 39px;
+        inset-inline-end: 8px;
         z-index: 60;
         min-width: 232px;
         padding: 6px;
@@ -243,6 +245,17 @@
         box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
       }
       .more-menu[hidden] { display: none; }
+      .more-menu-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 2px 4px 5px 9px; color: var(--text-secondary, #999);
+        font-size: 12px; border-bottom: 1px solid var(--border-color, #3c3c3c);
+        margin-bottom: 3px;
+      }
+      .more-menu-close {
+        border: 0; background: transparent; color: inherit; cursor: pointer;
+        font-size: 17px; line-height: 22px; width: 26px; border-radius: 4px;
+      }
+      .more-menu-close:hover { background: var(--bg-hover-strong, #3a3a3a); color: var(--text-primary); }
       .more-item {
         display: flex; align-items: center; gap: 9px;
         width: 100%;
@@ -1264,6 +1277,32 @@
         padding: 3px 10px 6px;
         color: #4ec98a;
       }
+      .output-trace-line {
+        display: block; width: max-content; max-width: 100%; border: 0;
+        background: transparent; color: inherit; padding: 0 3px; margin: 0;
+        font: inherit; text-align: left; white-space: pre-wrap; cursor: pointer;
+        border-radius: 3px;
+      }
+      .output-trace-line:hover, .output-trace-line:focus-visible { background: rgba(0,122,204,.2); outline: none; }
+      .output-trace-badge { color: #6cb6ff; }
+      .output-trace-code-line { background: rgba(58, 150, 221, .18); }
+      .error-first-aid {
+        border: 1px solid #3b8ed0; border-radius: 4px; background: #0e639c;
+        color: #fff; padding: 5px 10px; font: inherit; cursor: pointer;
+      }
+      .error-first-aid:hover:not(:disabled) { background: #1177bb; }
+      .error-first-aid:disabled { opacity: .7; cursor: default; }
+      .debug-history { padding: 2px 8px 8px; border-top: 1px solid var(--border-color); }
+      .debug-history-row { display: flex; gap: 8px; align-items: center; margin: 3px 0; min-width: 0; }
+      .debug-history-row > .debug-var-name { width: 74px; overflow: hidden; text-overflow: ellipsis; }
+      .debug-history-cells { display: flex; gap: 2px; overflow-x: auto; padding: 2px; }
+      .debug-history-cell {
+        border: 1px solid var(--border-color); border-radius: 3px;
+        background: var(--bg-input); color: var(--text-primary); min-width: 27px;
+        height: 23px; padding: 0 5px; font: 11px var(--font-mono); cursor: pointer;
+      }
+      .debug-history-cell.active { border-color: var(--accent); background: rgba(0,122,204,.28); }
+      .debug-history-cell.future { opacity: .42; }
       .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
       .debug-var-value {
         color: var(--text-primary, #ddd);
@@ -1358,6 +1397,12 @@
         background: transparent;
         border: 2px solid #e51400;
         width: 7px; height: 7px;
+      }
+      .debug-logpoint-glyph::before {
+        content: '';
+        position: absolute; width: 10px; height: 10px; top: 5px; left: 5px;
+        background: #4da3ff; transform: rotate(45deg); border-radius: 2px;
+        box-shadow: 0 0 0 1px var(--text-primary);
       }
       .debug-current-glyph::before {
         content: '\25B6';
@@ -1642,10 +1687,38 @@
         justify-content: center;
         background: var(--bg-editor, #1e1e1e);
       }
+      .popup-window-body.turtle-popup-body {
+        flex-direction: column;
+        gap: 9px;
+      }
       #turtle-canvas {
         display: block;
         background: #fff;
         border-radius: 2px;
+      }
+      .turtle-replay-controls {
+        width: min(100%, 680px);
+        display: grid;
+        grid-template-columns: auto auto auto minmax(120px, 1fr) auto auto;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-primary, #ddd);
+        font-size: 12px;
+      }
+      .turtle-replay-controls button,
+      .turtle-replay-controls select {
+        min-height: 28px;
+        border: 1px solid var(--border, #555);
+        border-radius: 4px;
+        background: var(--bg-panel, #252526);
+        color: inherit;
+        cursor: pointer;
+      }
+      .turtle-replay-controls input[type="range"] { width: 100%; }
+      .turtle-replay-label { min-width: 92px; text-align: end; }
+      .turtle-replay-code-line {
+        background: rgba(255, 196, 0, .18);
+        border-inline-start: 3px solid #ffc400;
       }
       /* An SVG has no fixed pixel size, so cap it to a comfortable window. */
       #image-window-picture {
@@ -2208,6 +2281,10 @@
                     aria-haspopup="true" aria-controls="more-menu"
                     title="More tools" data-i18n-title="titlebar.more">⋯</button>
             <div id="more-menu" class="more-menu" role="menu" aria-labelledby="more-toggle" hidden>
+              <div class="more-menu-head">
+                <span data-i18n="titlebar.more">More tools</span>
+                <button id="more-close" class="more-menu-close" type="button" aria-label="Close more tools" title="Close">×</button>
+              </div>
               <button id="download" class="more-item" role="menuitem" title="Download file">↓ <span data-i18n="titlebar.downloadFile">Download this file</span></button>
               <button id="btn-download-project" class="more-item" role="menuitem" data-i18n-title="sidebar.downloadProject">📦 <span data-i18n="titlebar.download">Download everything</span></button>
 

@@ -23,6 +23,7 @@ import type { Disposable } from '../workspace/types.ts';
 export function initializeMoreMenu(): Disposable {
   const toggle = document.getElementById('more-toggle');
   const menu = document.getElementById('more-menu');
+  const closeButton = document.getElementById('more-close');
   if (!toggle || !menu) return { dispose: () => {} };
 
   const setOpen = (open: boolean): void => {
@@ -65,8 +66,10 @@ export function initializeMoreMenu(): Disposable {
     const target = event.target as HTMLElement | null;
     if (target?.closest('.more-item')) close();
   };
+  const onCloseClick = (): void => close(true);
 
   toggle.addEventListener('click', onToggle);
+  closeButton?.addEventListener('click', onCloseClick);
   menu.addEventListener('click', onMenuClick);
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeyDown);
@@ -74,6 +77,7 @@ export function initializeMoreMenu(): Disposable {
   return {
     dispose: () => {
       toggle.removeEventListener('click', onToggle);
+      closeButton?.removeEventListener('click', onCloseClick);
       menu.removeEventListener('click', onMenuClick);
       document.removeEventListener('click', onDocumentClick);
       document.removeEventListener('keydown', onKeyDown);

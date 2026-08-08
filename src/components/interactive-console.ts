@@ -67,6 +67,8 @@ export interface RunConsoleOptions {
    * surface frozen.
    */
   debug?: boolean;
+  /** Maps a completed stdout line to the print statement that most likely emitted it. */
+  traceOutput?: (line: string) => { file: string; line: number } | null;
 }
 
 /** One frame from the debug half of the stream, with the `debug:` prefix removed. */
@@ -160,7 +162,9 @@ export function runProgram(
     panelContentEl.dir = 'ltr';
     panelContentEl.innerHTML = '';
 
-    const outEl = document.createElement('span');
+    // A div may contain the clickable output-line buttons. A span containing
+    // interactive block children is invalid markup and confusing to assistive tech.
+    const outEl = document.createElement('div');
     outEl.className = 'term-out';
 
     const inputLine = document.createElement('div');
@@ -210,6 +214,53 @@ export function runProgram(
       panelContentEl.scrollTop = panelContentEl.scrollHeight;
     };
 
+    const appendTrace = (text: string, file: string, line: number) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'output-trace-line';
+      button.dataset.outputFile = file;
+      button.dataset.outputLine = String(line);
+      button.title = `Jump to line ${line}`;
+      const badge = document.createElement('span');
+      badge.className = 'output-trace-badge';
+      badge.textContent = `${line} → `;
+      button.append(badge, document.createTextNode(text));
+      outEl.appendChild(button);
+      panelContentEl.scrollTop = panelContentEl.scrollHeight;
+    };
+
+    let pendingStdout = '';
+    let pendingStdoutNode: HTMLSpanElement | null = null;
+    const appendStdout = (chunk: string) => {
+      pendingStdout += chunk;
+      pendingStdoutNode?.remove();
+      pendingStdoutNode = null;
+      let newline = pendingStdout.indexOf('\n');
+      while (newline !== -1) {
+        const lineText = pendingStdout.slice(0, newline);
+        pendingStdout = pendingStdout.slice(newline + 1);
+        const location = options.traceOutput?.(lineText) ?? null;
+        if (location) appendTrace(lineText + '\n', location.file, location.line);
+        else append(lineText + '\n');
+        newline = pendingStdout.indexOf('\n');
+      }
+      if (pendingStdout) {
+        pendingStdoutNode = document.createElement('span');
+        pendingStdoutNode.textContent = pendingStdout;
+        outEl.appendChild(pendingStdoutNode);
+      }
+    };
+
+    // Preserve stream ordering when a partial stdout line is followed by stderr,
+    // typed input, or a debugger log event. Otherwise the next stdout chunk removes
+    // the old node and appends it after the intervening event.
+    const commitPendingStdout = () => {
+      if (!pendingStdoutNode) return;
+      pendingStdoutNode.textContent = pendingStdout;
+      pendingStdoutNode = null;
+      pendingStdout = '';
+    };
+
     const settle = (result: InteractiveResult) => {
       if (settled) return;
       settled = true;
@@ -227,6 +278,14 @@ export function runProgram(
       note?: string | null,
       turtleData?: any
     ) => {
+      if (pendingStdout) {
+        pendingStdoutNode?.remove();
+        const location = options.traceOutput?.(pendingStdout) ?? null;
+        if (location) appendTrace(pendingStdout, location.file, location.line);
+        else append(pendingStdout);
+        pendingStdout = '';
+        pendingStdoutNode = null;
+      }
       inputLine.remove();
       if (note === 'idle-timeout') append('\n[stopped: no input received in time]\n', 'error');
       else if (note === 'time-limit') append('\n[stopped: time limit reached]\n', 'error');
@@ -278,6 +337,7 @@ export function runProgram(
     const submit = () => {
       if (!sessionId || settled) return;
       const value = input.value;
+      commitPendingStdout();
       append(value + '\n');
       input.value = '';
       inputLine.style.display = 'none';
@@ -301,6 +361,7 @@ export function runProgram(
     const sendEof = () => {
       if (!sessionId || settled || sentEof) return;
       sentEof = true;
+      commitPendingStdout();
       append('\n[end of input]\n', 'info');
       inputLine.style.display = 'none';
       setStatus('Running…');
@@ -371,10 +432,11 @@ export function runProgram(
             break;
           case 'stdout':
             aggStdout += msg.data;
-            append(msg.data);
+            appendStdout(msg.data);
             break;
           case 'stderr':
             aggStderr += msg.data;
+            commitPendingStdout();
             append(msg.data, 'error');
             break;
           case 'waiting':
@@ -392,7 +454,21 @@ export function runProgram(
             // server than this client, and is ignored rather than logged - a v1
             // client must not become noisy against a v2 server.
             if (typeof msg.type === 'string' && msg.type.startsWith('debug:')) {
-              options.onDebugEvent?.({ ...msg, type: msg.type.slice('debug:'.length) });
+              const event = { ...msg, type: msg.type.slice('debug:'.length) };
+              if (event.type === 'log') {
+                commitPendingStdout();
+                const line = Number(event.line ?? 0);
+                const expression = String(event.expression ?? 'value');
+                const described = event.error
+                  ? String(event.error)
+                  : String(event.value?.text ?? event.value ?? 'null');
+                appendTrace(
+                  `line ${line} → ${expression} = ${described}\n`,
+                  String(event.file ?? ''),
+                  line,
+                );
+              }
+              options.onDebugEvent?.(event);
             }
             break;
         }

@@ -328,7 +328,43 @@ const COMMAND_SHAPES = {
       }
     }
 
-    return { command: 'setBreakpoints', lines: clean, files, conditions };
+    /*
+     * Log points use the same bounded expression grammar but do not have to be in the
+     * stopping-breakpoint lists: their whole purpose is to run, report, and continue.
+     * They are keyed by file and line so every adapter receives one identical shape.
+     */
+    const logpoints = {};
+    let logpointCount = 0;
+    if (body?.logpoints && typeof body.logpoints === 'object' && !Array.isArray(body.logpoints)) {
+      for (const [rawPath, rawEntries] of Object.entries(body.logpoints)) {
+        if (logpointCount >= MAX_BREAKPOINTS) break;
+        let key = '';
+        if (rawPath !== '') {
+          const normalized = normalizeWorkspacePath(rawPath);
+          if (!normalized.ok) continue;
+          key = normalized.path;
+        }
+        if (!rawEntries || typeof rawEntries !== 'object' || Array.isArray(rawEntries)) continue;
+
+        const kept = {};
+        for (const [rawLine, rawExpression] of Object.entries(rawEntries)) {
+          if (logpointCount >= MAX_BREAKPOINTS) break;
+          const line = Number(rawLine);
+          const expression = typeof rawExpression === 'string' ? rawExpression.trim() : '';
+          if (!Number.isInteger(line) || line < 1 || line > MAX_BREAKPOINT_LINE) continue;
+          if (!expression || expression.length > MAX_EXPRESSION_CHARS) continue;
+          kept[line] = expression;
+          logpointCount += 1;
+        }
+        if (Object.keys(kept).length > 0) logpoints[key] = kept;
+      }
+    }
+
+    return {
+      command: 'setBreakpoints', lines: clean, files, conditions,
+      // Keep the v1 command byte-for-byte shaped when no log points were requested.
+      ...(Object.keys(logpoints).length > 0 ? { logpoints } : {}),
+    };
   },
 
   evaluate: body => {

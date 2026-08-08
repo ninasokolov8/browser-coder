@@ -60,6 +60,8 @@ export interface DebugSnapshot {
   readonly breakpoints: readonly number[];
   /** Of those, the ones carrying a condition, so the margin can mark them apart. */
   readonly conditionedBreakpoints: readonly number[];
+  /** Lines that report an expression and continue instead of suspending. */
+  readonly logpointLines: readonly number[];
   /** The document breakpoints belong to, so they are not shown against another file. */
   readonly documentId: string | null;
   readonly lastError: string | null;
@@ -154,6 +156,8 @@ export class DebugSessionState {
    * the one the editor asks on every render of the glyph margin.
    */
   #conditions = new Map<string, Map<number, string>>();
+  /** Log expressions per document and line. Kept apart from stopping breakpoints. */
+  #logpoints = new Map<string, Map<number, string>>();
   #documentId: string | null = null;
   #lastError: string | null = null;
   #evaluated: DebugSnapshot['evaluated'] = null;
@@ -187,6 +191,7 @@ export class DebugSessionState {
       stop: this.#stop,
       breakpoints: this.breakpointLines(),
       conditionedBreakpoints: this.conditionedLines(),
+      logpointLines: this.logpointLines(),
       documentId: this.#documentId,
       lastError: this.#lastError,
       evaluated: this.#evaluated,
@@ -281,10 +286,53 @@ export class DebugSessionState {
       // cannot see and did not ask for a second time.
       this.#conditions.get(this.#documentId)?.delete(line);
     } else {
+      // A gutter mark has one meaning. Turning a log point into a breakpoint is an
+      // explicit change, never two invisible actions sharing the same line.
+      this.#logpoints.get(this.#documentId)?.delete(line);
       lines.add(line);
     }
     this.#emit();
     return lines.has(line);
+  }
+
+  /** Set, replace, or remove a print-and-continue point on the current document. */
+  setLogpoint(line: number, expression: string | null): boolean {
+    if (!Number.isInteger(line) || line < 1 || this.#documentId === null) return false;
+    const text = (expression ?? '').trim();
+    const forDocument = this.#logpoints.get(this.#documentId) ?? new Map<number, string>();
+
+    if (!text) {
+      if (!forDocument.delete(line)) return false;
+      if (forDocument.size === 0) this.#logpoints.delete(this.#documentId);
+      this.#emit();
+      return true;
+    }
+    if (text.length > MAX_CONDITION_CHARS) return false;
+
+    // A log point never stops. Remove a stopping mark and its condition if this line
+    // used to have one, so the diamond in the gutter tells the complete truth.
+    this.#breakpoints.get(this.#documentId)?.delete(line);
+    this.#conditions.get(this.#documentId)?.delete(line);
+    forDocument.set(line, text);
+    this.#logpoints.set(this.#documentId, forDocument);
+    this.#emit();
+    return true;
+  }
+
+  logpointExpression(line: number): string | null {
+    return this.#logpoints.get(this.#documentId ?? '')?.get(line) ?? null;
+  }
+
+  logpointLines(): number[] {
+    return [...(this.#logpoints.get(this.#documentId ?? '')?.keys() ?? [])].sort((a, b) => a - b);
+  }
+
+  allLogpoints(): Map<string, Record<number, string>> {
+    const all = new Map<string, Record<number, string>>();
+    for (const [documentId, entries] of this.#logpoints) {
+      if (entries.size > 0) all.set(documentId, Object.fromEntries(entries));
+    }
+    return all;
   }
 
   hasBreakpoint(line: number): boolean {
@@ -356,9 +404,10 @@ export class DebugSessionState {
 
   /** Clear every breakpoint, in every file. */
   clearBreakpoints(): void {
-    if (this.#breakpoints.size === 0 && this.#conditions.size === 0) return;
+    if (this.#breakpoints.size === 0 && this.#conditions.size === 0 && this.#logpoints.size === 0) return;
     this.#breakpoints.clear();
     this.#conditions.clear();
+    this.#logpoints.clear();
     this.#emit();
   }
 

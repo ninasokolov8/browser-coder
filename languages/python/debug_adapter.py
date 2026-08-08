@@ -223,11 +223,24 @@ class BrowserCoderDebugger(bdb.Bdb):
         self._workspace = os.path.dirname(self._program_path)
         self._frames = []
         self._running = True
+        # Absolute path -> line -> expression. These lines are armed in bdb like
+        # breakpoints, but are evaluated and resumed before a stopped event is sent.
+        self._logpoints = {}
         # bdb stops on the FIRST line of the program, which is what pdb wants - it
         # drops you at a prompt. The IDE's contract is the opposite: "Start
         # debugging" runs to the first breakpoint, and stopping on line 1 every time
         # reads as a bug. Tracked here so that first stop can be waved through.
         self._entered = False
+
+    def dispatch_line(self, frame):
+        """Forget the previous breakpoint before deciding why this line stopped.
+
+        bdb otherwise keeps `currentbp` after a hit. A later Step onto a log-point
+        line would look like another breakpoint and silently continue instead of
+        honouring the student's step command.
+        """
+        self.currentbp = 0
+        return super().dispatch_line(frame)
 
     # ── bdb only reports frames we admit to owning ──────────────────────────
     #
@@ -359,6 +372,31 @@ class BrowserCoderDebugger(bdb.Bdb):
             if not self.get_break(filename, frame.f_lineno):
                 self._continue_keeping_trace()
                 return
+
+        filename = os.path.realpath(frame.f_code.co_filename)
+        expression = (self._logpoints.get(filename) or {}).get(frame.f_lineno)
+        # `currentbp` is set only when bdb reached us because an armed breakpoint
+        # fired. If the student stepped onto the same line, stepping still wins.
+        if expression and getattr(self, 'currentbp', 0):
+            try:
+                value = eval(expression, frame.f_globals, frame.f_locals)  # noqa: S307
+                self._channel.send({
+                    'type': 'log',
+                    'file': self._relative_to_workspace(filename),
+                    'line': frame.f_lineno,
+                    'expression': expression,
+                    'value': _describe(value),
+                })
+            except Exception as error:  # noqa: BLE001 - the student's expression failed
+                self._channel.send({
+                    'type': 'log',
+                    'file': self._relative_to_workspace(filename),
+                    'line': frame.f_lineno,
+                    'expression': expression,
+                    'error': '%s: %s' % (type(error).__name__, error),
+                })
+            self._continue_keeping_trace()
+            return
 
         self._pause(frame, 'step')
 
@@ -499,7 +537,7 @@ class BrowserCoderDebugger(bdb.Bdb):
             return candidate
         return None
 
-    def apply_breakpoints(self, lines, files=None, conditions=None):
+    def apply_breakpoints(self, lines, files=None, conditions=None, logpoints=None):
         """Replace the breakpoint set across every file it names.
 
         `lines` alone means the entry file and is the shape the first version of this
@@ -513,6 +551,7 @@ class BrowserCoderDebugger(bdb.Bdb):
         so nothing here has to interpret Python.
         """
         self.clear_all_breaks()
+        self._logpoints = {}
 
         by_path = dict(conditions or {})
 
@@ -520,6 +559,7 @@ class BrowserCoderDebugger(bdb.Bdb):
         # Absolute path -> {line: condition}. Built alongside `wanted` so the two
         # cannot disagree about which file a relative path resolved to.
         conditions_for = {}
+        logpoints_for = {}
 
         if lines:
             wanted[self._program_path] = list(lines)
@@ -533,7 +573,20 @@ class BrowserCoderDebugger(bdb.Bdb):
             for line, expression in (by_path.get(relative_path) or {}).items():
                 conditions_for.setdefault(resolved, {})[str(line)] = expression
 
+        for relative_path, entries in (logpoints or {}).items():
+            resolved = self._program_path if relative_path == '' else self._resolve_in_workspace(relative_path)
+            if resolved is None:
+                continue
+            for line, expression in (entries or {}).items():
+                try:
+                    at = int(line)
+                except (TypeError, ValueError):
+                    continue
+                self._logpoints.setdefault(resolved, {})[at] = expression
+                wanted.setdefault(resolved, []).append(at)
+
         accepted_by_path = {}
+        accepted_logs = {}
         for absolute, file_lines in wanted.items():
             armed = []
             for line in file_lines:
@@ -546,7 +599,12 @@ class BrowserCoderDebugger(bdb.Bdb):
                 except (TypeError, ValueError):
                     problem = 'not a line number'
                 if problem is None:
-                    armed.append(int(line))
+                    at = int(line)
+                    if at in (self._logpoints.get(absolute) or {}):
+                        accepted_logs.setdefault(self._relative_to_workspace(absolute), {})[at] = \
+                            self._logpoints[absolute][at]
+                    else:
+                        armed.append(at)
             if armed:
                 accepted_by_path[self._relative_to_workspace(absolute)] = sorted(armed)
 
@@ -557,6 +615,7 @@ class BrowserCoderDebugger(bdb.Bdb):
             'type': 'breakpoints',
             'lines': accepted_by_path.get(entry_relative, []),
             'files': accepted_by_path,
+            'logpoints': accepted_logs,
         })
 
     def _relative_to_workspace(self, absolute):
@@ -752,6 +811,7 @@ def main():
                 command.get('lines') or [],
                 command.get('files') or {},
                 command.get('conditions') or {},
+                command.get('logpoints') or {},
             )
             started.set()
         elif action == 'stop':

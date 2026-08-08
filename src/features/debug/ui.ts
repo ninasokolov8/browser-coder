@@ -26,6 +26,7 @@ import {
   type VariableChange,
 } from './variable-diff.ts';
 import { stopIsOnScreen } from './stop-location.ts';
+import { StopHistory } from './history.ts';
 import {
   buildToolbar,
   debugActions,
@@ -50,6 +51,7 @@ export const debugState = new DebugSessionState();
 const BREAKPOINT_GLYPH = 'debug-breakpoint-glyph';
 /** A breakpoint with a condition. Visibly different, or a student cannot tell why it did not stop. */
 const CONDITIONAL_GLYPH = 'debug-breakpoint-glyph debug-breakpoint-conditional';
+const LOGPOINT_GLYPH = 'debug-logpoint-glyph';
 const CURRENT_LINE = 'debug-current-line';
 
 let decorations: monaco.editor.IEditorDecorationsCollection | null = null;
@@ -124,7 +126,15 @@ export function syncBreakpoints(): void {
     if (documentId === activeId) conditions[''] = forDocument;
   }
 
-  void sendCommand('setBreakpoints', { lines: entryLines, files, conditions });
+  const logpoints: Record<string, Record<number, string>> = {};
+  for (const [documentId, forDocument] of debugState.allLogpoints()) {
+    const path = workspace?.pathOf(documentId);
+    if (!path) continue;
+    logpoints[path] = forDocument;
+    if (documentId === activeId) logpoints[''] = forDocument;
+  }
+
+  void sendCommand('setBreakpoints', { lines: entryLines, files, conditions, logpoints });
 }
 
 // ── Editor decorations ──────────────────────────────────────────────────────
@@ -167,6 +177,24 @@ function renderDecorations(snapshot: DebugSnapshot): void {
           value: condition
             ? `Stops when \`${condition}\` — click to remove`
             : 'Breakpoint — click to remove',
+        },
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+      },
+    });
+  }
+
+
+  for (const line of snapshot.logpointLines) {
+    if (line > lineCount) continue;
+    const expression = debugState.logpointExpression(line);
+    wanted.push({
+      range: new monaco.Range(line, 1, line, 1),
+      options: {
+        glyphMarginClassName: LOGPOINT_GLYPH,
+        glyphMarginHoverMessage: {
+          value: expression
+            ? `Log point — prints \`${expression}\` and continues (right-click to edit)`
+            : 'Log point — prints and continues',
         },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
@@ -257,7 +285,7 @@ function variableRow(
   return row;
 }
 
-function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
+function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges = true): void {
   host.textContent = '';
 
   if (!snapshot.stop) {
@@ -283,7 +311,13 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
    * A global changing is rarely what a student is stepping to watch, and diffing both
    * would put two kinds of highlight on screen competing for the same attention.
    */
-  const diffed = variableHistory.record(snapshot.stop.stack, snapshot.stop.locals);
+  const diffed = showChanges
+    ? variableHistory.record(snapshot.stop.stack, snapshot.stop.locals)
+    : snapshot.stop.locals.map(variable => ({
+        variable,
+        change: 'same' as VariableChange,
+        previousText: undefined as string | undefined,
+      }));
   const changeOf = new Map(diffed.map(entry => [entry.variable.name, entry]));
 
   const sections: Array<[string, readonly DebugVariable[]]> = [
@@ -340,6 +374,49 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
     row.classList.toggle('error', Boolean(snapshot.evaluated.error));
     host.appendChild(row);
   }
+}
+
+/** A compact, clickable tape of every value a local has held at each recorded stop. */
+function renderHistoryTape(
+  host: HTMLElement,
+  history: StopHistory,
+  onSelect: (index: number) => void,
+): void {
+  const view = history.view();
+  if (view.total < 2) return;
+
+  const section = document.createElement('section');
+  section.className = 'debug-history';
+  const heading = document.createElement('div');
+  heading.className = 'debug-section';
+  heading.textContent = `Value history · step ${view.index + 1} of ${view.total}`;
+  section.appendChild(heading);
+
+  for (const name of history.trackedNames()) {
+    const row = document.createElement('div');
+    row.className = 'debug-history-row';
+    const label = document.createElement('span');
+    label.className = 'debug-var-name';
+    label.textContent = name;
+    row.appendChild(label);
+
+    const cells = document.createElement('span');
+    cells.className = 'debug-history-cells';
+    for (const cell of history.tape(name)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'debug-history-cell';
+      button.classList.toggle('active', cell.index === view.index);
+      button.classList.toggle('future', cell.index > view.index);
+      button.textContent = cell.text ?? '·';
+      button.title = `Show step ${cell.index + 1}`;
+      button.addEventListener('click', () => onSelect(cell.index));
+      cells.appendChild(button);
+    }
+    row.appendChild(cells);
+    section.appendChild(row);
+  }
+  host.appendChild(section);
 }
 
 // ── Watch expressions ───────────────────────────────────────────────────────
@@ -478,17 +555,56 @@ export function initializeDebugUi(): Disposable {
    * the handlers and the capability predicates are passed in, so that module decides
    * what a student sees and this one decides how a command reaches the adapter.
    */
-  const actions: ToolbarAction[] = debugActions(
+  const history = new StopHistory();
+  let latestSnapshot = debugState.snapshot();
+  let lastRecordedStop = latestSnapshot.stop;
+  let renderLatest = (): void => {};
+
+  const historyActions: ToolbarAction[] = [
+    {
+      id: 'debug-step-back', label: 'Back', shortcut: 'Alt+Left',
+      icon: '<path d="M9.8 3.2 5 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+      enabled: () => history.view().canGoBack,
+      run: () => { if (history.back()) renderLatest(); },
+    },
+    {
+      id: 'debug-history-forward', label: 'Forward', shortcut: 'Alt+Right',
+      icon: '<path d="M6.2 3.2 11 8l-4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+      enabled: () => history.view().canGoForward,
+      run: () => { if (history.forward()) renderLatest(); },
+    },
+  ];
+  const actions: ToolbarAction[] = [...historyActions, ...debugActions(
     () => debugState.capabilities(),
-    command => void sendCommand(command),
-  );
-  buildToolbar(toolbarHost, actions, () => debugState.snapshot());
+    command => {
+      history.toLive();
+      renderLatest();
+      void sendCommand(command);
+    },
+  )];
+  buildToolbar(toolbarHost, actions, () => latestSnapshot);
 
   // Clicking the glyph margin toggles a breakpoint, which is where every IDE puts it.
   const marginSubscription = editor.onMouseDown(event => {
     if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
     const line = event.target.position?.lineNumber;
     if (!line) return;
+
+    if (event.event.rightButton) {
+      event.event.preventDefault();
+      const existing = debugState.logpointExpression(line);
+      const answer = window.prompt(
+        `Print an expression whenever line ${line} runs (leave empty to remove):`,
+        existing ?? '',
+      );
+      if (answer === null) return;
+      debugState.setLogpoint(line, answer);
+      syncBreakpoints();
+      setStatus(answer.trim()
+        ? `Line ${line} will print ${answer.trim()} without stopping`
+        : `Removed the log point on line ${line}`);
+      return;
+    }
 
     debugState.toggleBreakpoint(line);
     // Pushed immediately, so a breakpoint added mid-run takes effect on THIS run -
@@ -549,25 +665,55 @@ export function initializeDebugUi(): Disposable {
     }
   };
 
+  renderLatest = () => {
+    const view = history.view();
+    const display = view.stop ? { ...latestSnapshot, stop: view.stop } : latestSnapshot;
+    renderDecorations(display);
+    renderToolbar(toolbarHost, actions, display);
+    const status = document.getElementById('debug-status');
+    if (status && view.stop) {
+      const prefix = view.viewingPast
+        ? 'Reviewing'
+        : latestSnapshot.status === 'ended' ? 'Recorded' : 'Paused on';
+      status.textContent = `${prefix} line ${view.stop.line} · step ${view.index + 1} of ${view.total}`;
+    }
+    renderVariables(variablesHost, display, !view.viewingPast);
+    renderHistoryTape(variablesHost, history, index => {
+      if (history.goTo(index)) renderLatest();
+    });
+    renderCallStack(stackHost, display);
+    if (watchHost) renderWatches(watchHost, display);
+  };
+
   const unsubscribe = debugState.subscribe(snapshot => {
-    renderDecorations(snapshot);
-    renderToolbar(toolbarHost, actions, snapshot);
-    renderVariables(variablesHost, snapshot);
-    renderCallStack(stackHost, snapshot);
-    if (watchHost) renderWatches(watchHost, snapshot);
+    latestSnapshot = snapshot;
+    if (snapshot.status === 'starting') {
+      history.reset();
+      lastRecordedStop = null;
+    } else if (snapshot.stop && snapshot.stop !== lastRecordedStop) {
+      history.record(snapshot.stop);
+      lastRecordedStop = snapshot.stop;
+    }
+    renderLatest();
     refreshWatches(snapshot);
 
-    // The panels take vertical space from the editor, so they appear only for a live
-    // session and go away when it ends - an empty Variables pane permanently below
-    // the code would be a worse default than not having the feature.
-    if (panelsHost) panelsHost.hidden = snapshot.status === 'idle' || snapshot.status === 'ended';
+    // An empty panel stays out of the editor's way. A completed run with recorded
+    // stops remains visible because reviewing how the values changed is the feature.
+    if (panelsHost) panelsHost.hidden = snapshot.status === 'idle' || (snapshot.status === 'ended' && history.view().total === 0);
 
     // A finished session's values must not be diffed against the next one's: they
     // belong to a different execution, and "changed since last time" would be a
     // comparison across two different programs.
-    if (snapshot.status === 'idle' || snapshot.status === 'ended') variableHistory.reset();
+    if (snapshot.status === 'idle' || snapshot.status === 'starting') variableHistory.reset();
 
     if (snapshot.lastError) setStatus(snapshot.lastError);
+  });
+
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.LeftArrow, () => {
+    if (history.back()) renderLatest();
+  });
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.RightArrow, () => {
+    if (history.forward()) renderLatest();
   });
 
   // Keybindings, matching what a student will already know from VS Code.

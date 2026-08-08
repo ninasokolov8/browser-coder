@@ -1067,3 +1067,87 @@ describe('conditional breakpoints', () => {
     });
   }
 });
+
+/** A log point evaluates in the paused frame, reports, and resumes by itself. */
+describe('log points print without stopping', () => {
+  let server;
+  let base;
+
+  before(async () => {
+    server = await startServer();
+    base = server.baseUrl;
+  });
+
+  after(async () => {
+    await server?.stop();
+  });
+
+  const CASES = [
+    {
+      language: 'python', version: 'python3', line: 2, expression: 'i',
+      code: ['for i in range(3):', '    value = i', 'print("done")'].join('\n'),
+    },
+    {
+      language: 'javascript', version: 'es2022', line: 2, expression: 'i',
+      code: ['for (let i = 0; i < 3; i++) {', '  const value = i;', '}', 'console.log("done");'].join('\n'),
+    },
+    {
+      language: 'php', version: 'php8', line: 3, expression: '$i',
+      code: ['<?php', 'for ($i = 0; $i < 3; $i++) {', '  $value = $i;', '}', 'echo "done\\n";'].join('\n'),
+    },
+    {
+      language: 'java', version: 'java17', line: 4, expression: 'i',
+      code: [
+        'public class Main {',
+        '  public static void main(String[] args) {',
+        '    for (int i = 0; i < 3; i++) {',
+        '      int value = i;',
+        '    }',
+        '    System.out.println("done");',
+        '  }',
+        '}',
+      ].join('\n'),
+    },
+    {
+      language: 'csharp', version: 'csharp12', line: 4, expression: 'i',
+      code: [
+        'class Program {',
+        '  static void Main() {',
+        '    for (int i = 0; i < 3; i++) {',
+        '      int value = i;',
+        '    }',
+        '    System.Console.WriteLine("done");',
+        '  }',
+        '}',
+      ].join('\n'),
+    },
+  ];
+
+  for (const testCase of CASES) {
+    describe(testCase.language, requiresDebugger(testCase.language), () => {
+      test('reports every loop value and reaches exit without a paused event', async () => {
+        const run = await new StreamedRun(base).start({
+          language: testCase.language,
+          version: testCase.version,
+          code: testCase.code,
+          debug: true,
+        });
+
+        await run.waitFor('debug:attached');
+        assert.equal(await run.debug('setBreakpoints', {
+          lines: [],
+          logpoints: { '': { [testCase.line]: testCase.expression } },
+        }), 200);
+        await run.waitFor('debug:breakpoints');
+        const exit = await run.waitFor('exit');
+        assert.equal(exit.exitCode, 0);
+
+        const logs = run.seen('debug:log');
+        assert.equal(logs.length, 3, JSON.stringify(run.events));
+        assert.deepEqual(logs.map(event => event.value?.text), ['0', '1', '2']);
+        assert.equal(run.seen('debug:stopped').length, 0);
+        await run.close();
+      });
+    });
+  }
+});

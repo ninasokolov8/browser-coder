@@ -90,6 +90,10 @@ export function setupStepUpIntegration(): void {
     setExpandedFolders(new Set());
 
     renderFileTree();
+    // Debug's `when` clause reads the active model language. A host replaces that
+    // model after command buttons were bound, so their dynamic enablement must be
+    // recomputed now (this was why Python Debug stayed grey in Step-Up).
+    runtime.commands?.notifyEnablementChanged();
   }
 
   async function handleInit(data: any) {
@@ -125,6 +129,7 @@ export function setupStepUpIntegration(): void {
           editor.setModel(model);
           updateEmptyState(false);
           renderFileTree();
+          runtime.commands?.notifyEnablementChanged();
         } else {
           const uri = monaco.Uri.parse(`inmemory:///${fileName}`);
           const model =

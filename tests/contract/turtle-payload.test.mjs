@@ -29,8 +29,6 @@ import { join, resolve } from 'node:path';
 import { sanitizeTurtleData, GRAPHICS_LIMITS } from '../../server/graphics/turtle.mjs';
 
 const SHIM = resolve(import.meta.dirname, '../../languages/python/turtle_shim.py');
-const USER_CODE_SEPARATOR = '\n\n# ── user code ──\n';
-
 function findPython() {
   for (const candidate of [process.env.PYTHON_BIN, 'python3', 'python']) {
     if (!candidate) continue;
@@ -48,10 +46,15 @@ function runShim(code) {
   const dir = mkdtempSync(join(tmpdir(), 'bc-turtle-'));
   try {
     const program = join(dir, 'main.py');
+    const launcher = join(dir, 'launcher.py');
     const output = join(dir, 'out.json');
-    writeFileSync(program, readFileSync(SHIM, 'utf8') + USER_CODE_SEPARATOR + code, 'utf8');
+    writeFileSync(program, code, 'utf8');
+    writeFileSync(launcher, [
+      `exec(compile(open(${JSON.stringify(SHIM)}, encoding="utf8").read(), ${JSON.stringify(SHIM)}, "exec"), {"__name__": "_bc_turtle_shim"})`,
+      `exec(compile(open(${JSON.stringify(program)}, encoding="utf8").read(), ${JSON.stringify(program)}, "exec"), {"__name__": "__main__"})`,
+    ].join('\n'), 'utf8');
 
-    const result = spawnSync(PYTHON, ['-u', program], {
+    const result = spawnSync(PYTHON, ['-u', launcher], {
       encoding: 'utf8',
       cwd: dir,
       env: {
@@ -164,6 +167,19 @@ describe('a drawing survives the whole chain', { skip }, () => {
     assert.equal(dot.r, 5);
   });
 
+  test('drawing commands keep the student source line through sanitisation', () => {
+    const rawLine = raw.shapes.find(shape => shape.k === 'l')?.ln;
+    const cleanLine = clean.shapes.find(shape => shape.k === 'l')?.ln;
+    assert.equal(rawLine, 5, 'the shim attributed forward() to the wrong line');
+    assert.equal(cleanLine, rawLine, 'the server dropped the source-line attribution');
+  });
+
+  test('turns are replayable and point to the line that turned the turtle', () => {
+    const turn = clean.shapes.find(shape => shape.k === 'H');
+    assert.equal(turn?.ln, 6);
+    assert.equal(turn?.h, 90);
+  });
+
   test('a filled polygon keeps its points', () => {
     const fill = clean.shapes.find(shape => shape.k === 'F');
     assert.ok(Array.isArray(fill.pts) && fill.pts.length >= 3);
@@ -187,7 +203,7 @@ describe('a drawing survives the whole chain', { skip }, () => {
 });
 
 /** Kept in step with SHAPE_FIELDS.kinds in server/graphics/turtle.mjs. */
-const SHAPE_KINDS = new Set(['l', 'F', 'M', 'T', 'D', 'S', 'SH']);
+const SHAPE_KINDS = new Set(['l', 'F', 'M', 'T', 'D', 'S', 'SH', 'H', 'C', 'HT', 'ST']);
 
 describe('unknown fields do not travel through', { skip }, () => {
   test('a field the sanitiser has not reviewed is dropped', () => {
