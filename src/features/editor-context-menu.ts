@@ -14,6 +14,7 @@ import { getUILang } from './wrapped-i18n';
 import { runtime, requireEditor, requireTabManager } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runCode } from './execution';
+import { configureLogpointAtLine } from './debug/ui.ts';
 import {
   coversWholeLines,
   dedent,
@@ -110,6 +111,7 @@ const explainKeywordAction: monaco.editor.IActionDescriptor = {
 // language can actually run a fragment. The decisions are in `selection-run.ts`,
 // which is pure and tested; this half only reads the editor.
 const runSelectionAvailable = editor.createContextKey<boolean>("runSelectionAvailable", false);
+const logpointAvailable = editor.createContextKey<boolean>('logpointAvailable', false);
 
 function activeLanguageId(): string | undefined {
   return tabManager.getActiveTab()?.file.language ?? runtime.currentLang?.id;
@@ -132,6 +134,7 @@ function hasRunnableSelection(): boolean {
 
 function updateRunSelectionAvailability() {
   runSelectionAvailable.set(hasRunnableSelection());
+  logpointAvailable.set(Boolean(editor.getModel()) && languageCan(activeLanguageId(), 'debug'));
 }
 
 editor.onDidChangeCursorSelection(updateRunSelectionAvailability);
@@ -190,6 +193,18 @@ const runSelectionAction: monaco.editor.IActionDescriptor = {
     void runtime.commands?.execute('workspace.runSelection', { source: 'ui' });
   } };
 
+const logpointAction: monaco.editor.IActionDescriptor = {
+  id: 'logpointAtLine',
+  label: t('editor.logpoint'),
+  contextMenuGroupId: '1_run',
+  contextMenuOrder: 2,
+  precondition: 'logpointAvailable',
+  run: ed => {
+    const line = ed.getPosition()?.lineNumber;
+    if (line) configureLogpointAtLine(line);
+  },
+};
+
 /**
  * (Re-)register both context-menu actions.
  *
@@ -206,8 +221,11 @@ function registerContextMenuActions(): void {
   contextActions = [
     editor.addAction({ ...explainKeywordAction, label: t("editor.explainKeyword") }),
     editor.addAction({ ...runSelectionAction, label: t("editor.runSelected") }),
+    editor.addAction({ ...logpointAction, label: t('editor.logpoint') }),
   ];
 }
 
 registerContextMenuActions();
+updateKeywordHelpAvailability();
+updateRunSelectionAvailability();
 window.addEventListener('languageChanged', registerContextMenuActions);

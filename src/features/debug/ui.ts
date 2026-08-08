@@ -26,7 +26,7 @@ import {
   type VariableChange,
 } from './variable-diff.ts';
 import { stopIsOnScreen } from './stop-location.ts';
-import { StopHistory } from './history.ts';
+import { historyValueLabel, StopHistory } from './history.ts';
 import {
   buildToolbar,
   debugActions,
@@ -137,6 +137,30 @@ export function syncBreakpoints(): void {
   void sendCommand('setBreakpoints', { lines: entryLines, files, conditions, logpoints });
 }
 
+/** Configure a print-and-continue point from the editor's ordinary code-line menu. */
+export function configureLogpointAtLine(line: number): void {
+  const existing = debugState.logpointExpression(line);
+  const answer = window.prompt(
+    [
+      `Print a value whenever line ${line} runs`,
+      '',
+      'Enter a variable or expression, for example:',
+      'total    or    score * 2',
+      '',
+      'Its value will appear in Output each time this line runs. The program will not pause.',
+      ...(existing ? ['Leave the box empty to remove this log point.'] : []),
+    ].join('\n'),
+    existing ?? '',
+  );
+  if (answer === null) return;
+
+  debugState.setLogpoint(line, answer);
+  syncBreakpoints();
+  setStatus(answer.trim()
+    ? `Line ${line} will print ${answer.trim()} in Output without pausing`
+    : `Removed the log point on line ${line}`);
+}
+
 // ── Editor decorations ──────────────────────────────────────────────────────
 
 function renderDecorations(snapshot: DebugSnapshot): void {
@@ -193,7 +217,7 @@ function renderDecorations(snapshot: DebugSnapshot): void {
         glyphMarginClassName: LOGPOINT_GLYPH,
         glyphMarginHoverMessage: {
           value: expression
-            ? `Log point — prints \`${expression}\` and continues (right-click to edit)`
+            ? `Log point — prints \`${expression}\` and continues. Right-click the code to edit it.`
             : 'Log point — prints and continues',
         },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
@@ -271,11 +295,13 @@ function variableRow(
     const was = document.createElement('span');
     was.className = 'debug-var-was';
     was.textContent = previousText;
+    was.title = `Previous value: ${previousText}`;
     row.appendChild(was);
   }
   // textContent throughout: a value is `repr()` of something the student created,
   // and a crafted __repr__ returning markup must never be parsed as HTML.
   value.textContent = variable.value.text;
+  value.title = variable.value.text;
 
   const type = document.createElement('span');
   type.className = 'debug-var-type';
@@ -392,6 +418,11 @@ function renderHistoryTape(
   heading.textContent = `Value history · step ${view.index + 1} of ${view.total}`;
   section.appendChild(heading);
 
+  const guide = document.createElement('p');
+  guide.className = 'debug-history-guide';
+  guide.textContent = 'Each cell is one pause. ↳ means unchanged. Select a cell to review that moment.';
+  section.appendChild(guide);
+
   for (const name of history.trackedNames()) {
     const row = document.createElement('div');
     row.className = 'debug-history-row';
@@ -402,16 +433,26 @@ function renderHistoryTape(
 
     const cells = document.createElement('span');
     cells.className = 'debug-history-cells';
+    let previous: string | null | undefined;
     for (const cell of history.tape(name)) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'debug-history-cell';
       button.classList.toggle('active', cell.index === view.index);
       button.classList.toggle('future', cell.index > view.index);
-      button.textContent = cell.text ?? '·';
-      button.title = `Show step ${cell.index + 1}`;
+      const unchanged = cell.text !== null && previous !== undefined && cell.text === previous;
+      button.classList.toggle('unchanged', unchanged);
+      button.textContent = cell.text === null
+        ? '·'
+        : unchanged ? '↳' : historyValueLabel(cell.text, cell.type);
+      const valueDescription = cell.text === null
+        ? `${name} is not in scope yet`
+        : `${name} = ${cell.text}${unchanged ? ' (unchanged)' : ''}`;
+      button.title = `Step ${cell.index + 1}: ${valueDescription}`;
+      button.setAttribute('aria-label', `Review step ${cell.index + 1}. ${valueDescription}`);
       button.addEventListener('click', () => onSelect(cell.index));
       cells.appendChild(button);
+      previous = cell.text;
     }
     row.appendChild(cells);
     section.appendChild(row);
@@ -545,6 +586,9 @@ export function initializeDebugUi(): Disposable {
   const toolbarHost = document.getElementById('debug-toolbar');
   const variablesHost = document.getElementById('debug-variables');
   const stackHost = document.getElementById('debug-callstack');
+  const panelsHost = document.getElementById('debug-panels');
+  const panelMinimize = document.getElementById('debug-panel-minimize') as HTMLButtonElement | null;
+  const panelClose = document.getElementById('debug-panel-close') as HTMLButtonElement | null;
 
   if (!editor || !toolbarHost || !variablesHost || !stackHost) {
     return { dispose: () => {} };
@@ -558,14 +602,41 @@ export function initializeDebugUi(): Disposable {
   const history = new StopHistory();
   let latestSnapshot = debugState.snapshot();
   let lastRecordedStop = latestSnapshot.stop;
+  let panelDismissed = false;
+  let panelCollapsed = false;
+  let reviewAfterEnd = false;
   let renderLatest = (): void => {};
+
+  const renderPanelVisibility = (): void => {
+    if (!panelsHost) return;
+    const sessionActive = latestSnapshot.status !== 'idle' && latestSnapshot.status !== 'ended';
+    panelsHost.hidden = panelDismissed || (!sessionActive && !reviewAfterEnd);
+    panelsHost.classList.toggle('collapsed', panelCollapsed);
+    if (panelMinimize) {
+      panelMinimize.textContent = panelCollapsed ? '+' : '−';
+      panelMinimize.title = panelCollapsed ? 'Show debugger details' : 'Minimize debugger details';
+      panelMinimize.setAttribute('aria-label', panelMinimize.title);
+      panelMinimize.setAttribute('aria-expanded', String(!panelCollapsed));
+    }
+  };
+
+  const showPanel = (reviewFinishedRun = false): void => {
+    panelDismissed = false;
+    panelCollapsed = false;
+    reviewAfterEnd = reviewFinishedRun;
+    renderPanelVisibility();
+  };
 
   const historyActions: ToolbarAction[] = [
     {
       id: 'debug-step-back', label: 'Back', shortcut: 'Alt+Left',
       icon: '<path d="M9.8 3.2 5 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
       enabled: () => history.view().canGoBack,
-      run: () => { if (history.back()) renderLatest(); },
+      run: () => {
+        if (!history.back()) return;
+        if (latestSnapshot.status === 'ended') showPanel(true);
+        renderLatest();
+      },
     },
     {
       id: 'debug-history-forward', label: 'Forward', shortcut: 'Alt+Right',
@@ -574,7 +645,17 @@ export function initializeDebugUi(): Disposable {
       run: () => { if (history.forward()) renderLatest(); },
     },
   ];
-  const actions: ToolbarAction[] = [...historyActions, ...debugActions(
+  const detailsAction: ToolbarAction = {
+    id: 'debug-show-details', label: 'Show values', shortcut: '',
+    icon: '<path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    enabled: snapshot => snapshot.status !== 'idle'
+      && (snapshot.status !== 'ended' || history.view().total > 0),
+    run: () => {
+      showPanel(latestSnapshot.status === 'ended');
+      renderLatest();
+    },
+  };
+  const actions: ToolbarAction[] = [...historyActions, detailsAction, ...debugActions(
     () => debugState.capabilities(),
     command => {
       history.toLive();
@@ -590,21 +671,9 @@ export function initializeDebugUi(): Disposable {
     const line = event.target.position?.lineNumber;
     if (!line) return;
 
-    if (event.event.rightButton) {
-      event.event.preventDefault();
-      const existing = debugState.logpointExpression(line);
-      const answer = window.prompt(
-        `Print an expression whenever line ${line} runs (leave empty to remove):`,
-        existing ?? '',
-      );
-      if (answer === null) return;
-      debugState.setLogpoint(line, answer);
-      syncBreakpoints();
-      setStatus(answer.trim()
-        ? `Line ${line} will print ${answer.trim()} without stopping`
-        : `Removed the log point on line ${line}`);
-      return;
-    }
+    // Right-click belongs to Monaco's normal code-line menu. Log points are offered
+    // there with an explanatory label instead of hiding behind a special gutter gesture.
+    if (event.event.rightButton) return;
 
     debugState.toggleBreakpoint(line);
     // Pushed immediately, so a breakpoint added mid-run takes effect on THIS run -
@@ -637,9 +706,18 @@ export function initializeDebugUi(): Disposable {
   const modelSubscription = editor.onDidChangeModel(trackDocument);
   trackDocument();
 
-  const panelsHost = document.getElementById('debug-panels');
   const watchHost = document.getElementById('debug-watch');
   if (watchHost) buildWatchPanel(watchHost);
+
+  panelMinimize?.addEventListener('click', () => {
+    panelCollapsed = !panelCollapsed;
+    renderPanelVisibility();
+  });
+  panelClose?.addEventListener('click', () => {
+    panelDismissed = true;
+    reviewAfterEnd = false;
+    renderPanelVisibility();
+  });
 
   /*
    * Ask the adapter for every watch, each time the program stops.
@@ -690,6 +768,9 @@ export function initializeDebugUi(): Disposable {
     if (snapshot.status === 'starting') {
       history.reset();
       lastRecordedStop = null;
+      panelDismissed = false;
+      panelCollapsed = false;
+      reviewAfterEnd = false;
     } else if (snapshot.stop && snapshot.stop !== lastRecordedStop) {
       history.record(snapshot.stop);
       lastRecordedStop = snapshot.stop;
@@ -697,9 +778,10 @@ export function initializeDebugUi(): Disposable {
     renderLatest();
     refreshWatches(snapshot);
 
-    // An empty panel stays out of the editor's way. A completed run with recorded
-    // stops remains visible because reviewing how the values changed is the feature.
-    if (panelsHost) panelsHost.hidden = snapshot.status === 'idle' || (snapshot.status === 'ended' && history.view().total === 0);
+    // Ending a run returns the editor space immediately. History is still kept; Back
+    // or Show values reopens it only when the student explicitly asks to review it.
+    if (snapshot.status === 'ended' || snapshot.status === 'idle') reviewAfterEnd = false;
+    renderPanelVisibility();
 
     // A finished session's values must not be diffed against the next one's: they
     // belong to a different execution, and "changed since last time" would be a

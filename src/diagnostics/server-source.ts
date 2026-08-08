@@ -13,10 +13,10 @@
 import * as monaco from 'monaco-editor';
 
 import { parseCompilerOutput } from './compiler-output.ts';
-import { buildErrorHelpBlock, selectErrorKey } from '../features/error-help.ts';
+import { buildErrorHelpBlock, formatErrorMarker, selectErrorKey } from '../features/error-help.ts';
 import { getUILang } from '../features/wrapped-i18n.ts';
 import { getErrorExplanation, getLanguage } from '../languages';
-import type { Diagnostic, DiagnosticsStore } from './store.ts';
+import type { Diagnostic, DiagnosticHelp, DiagnosticsStore } from './store.ts';
 import type { MonacoModelRegistry } from '../workspace/monaco/model-registry.ts';
 import type { WorkspaceService } from '../workspace/service.ts';
 import type { Disposable } from '../workspace/types.ts';
@@ -91,7 +91,7 @@ function resolveDocument(
  * Silent when there is no entry, deliberately: a confidently wrong explanation in a
  * teaching tool is worse than none, because a student cannot tell it from a right one.
  */
-function explanationFor(languageId: string, message: string, uiLanguage: string): string | null {
+function explanationFor(languageId: string, message: string, uiLanguage: string): DiagnosticHelp | null {
   const entries = getLanguage(languageId)?.errors;
   if (!entries) return null;
 
@@ -101,9 +101,7 @@ function explanationFor(languageId: string, message: string, uiLanguage: string)
   const help = getErrorExplanation(languageId, key, uiLanguage);
   if (!help) return null;
 
-  const block = buildErrorHelpBlock(key, help);
-  // The heading is left out: it repeats the error name shown on the line above it.
-  return [block.explanation, block.cause, block.example].filter(Boolean).join('\n\n');
+  return buildErrorHelpBlock(key, help);
 }
 
 export interface PublishRunOptions {
@@ -245,9 +243,7 @@ export function connectRunMarkers({
            * wording. Hovering the squiggle now answers the question the squiggle
            * raises.
            */
-          message: diagnostic.help
-            ? `${diagnostic.message}\n\n💡 ${diagnostic.help}`
-            : diagnostic.message,
+          message: formatErrorMarker(diagnostic.message, diagnostic.help),
           startLineNumber: line,
           startColumn: column,
           endLineNumber: line,

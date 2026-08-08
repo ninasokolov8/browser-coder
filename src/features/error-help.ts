@@ -317,3 +317,25 @@ export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBloc
     rtl: help.rtl === true,
   };
 }
+
+/**
+ * Lay out an editor diagnostic as short, named sections.
+ *
+ * Monaco's marker hover accepts plain text, not a custom card. Section headings and
+ * whitespace therefore carry the visual hierarchy: the runtime's wording is the
+ * error, the teaching text explains it, and an example can no longer be mistaken for
+ * another instruction or another failure.
+ */
+export function formatErrorMarker(message: string, help?: ErrorHelpBlock): string {
+  const labels = help?.rtl
+    ? { error: 'השגיאה', meaning: 'מה זה אומר', cause: 'סיבה נפוצה', example: 'דוגמה' }
+    : { error: 'ERROR', meaning: 'WHAT THIS MEANS', cause: 'COMMON CAUSE', example: 'EXAMPLE' };
+
+  const sections = [`${labels.error}\n${message.trim()}`];
+  if (!help) return sections[0];
+
+  sections.push(`${labels.meaning}\n${help.explanation}`);
+  if (help.cause) sections.push(`${labels.cause}\n${help.cause}`);
+  if (help.example) sections.push(`${labels.example}\n${help.example}`);
+  return sections.join('\n\n');
+}

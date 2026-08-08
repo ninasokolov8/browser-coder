@@ -41,6 +41,7 @@
   "editor.newFile": "קובץ חדש",
   "editor.explainKeyword": "💡 הסבר מילת מפתח זו",
   "editor.runSelected": "▶ הרץ את המסומן",
+  "editor.logpoint": "◆ הדפס ערך בכל פעם שהשורה רצה…",
   "editor.example": "דוגמה:",
   "panel.output": "פלט",
   "panel.clear": "נקה",
@@ -85,6 +86,5 @@
   "titlebar.more": "כלים נוספים",
   "titlebar.downloadFile": "הורדת הקובץ",
   "titlebar.theme": "ערכת נושא",
-  "titlebar.uiLanguage": "שפה",
-  "hover.tryThis": "נסו את זה"
+  "titlebar.uiLanguage": "שפה"
 }

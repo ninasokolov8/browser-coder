@@ -177,7 +177,7 @@ export function buildToolbar(
     button.id = action.id;
     button.type = 'button';
     button.className = `debug-btn${action.tone === 'stop' ? ' debug-btn-stop' : ''}`;
-    button.title = `${action.label} (${action.shortcut})`;
+    button.title = action.shortcut ? `${action.label} (${action.shortcut})` : action.label;
     button.innerHTML = `${icon(action.icon)}<span class="debug-btn-label">${action.label}</span>`;
 
     button.addEventListener('click', () => {
