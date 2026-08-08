@@ -218,19 +218,26 @@ export class ExecutionPipeline {
   /**
    * Compile the project and report what the compiler said, without running it.
    *
-   * This is the live-error-checking half that needs a real toolchain. Every adapter's
-   * `prepare()` already IS the check - javac, `dotnet build`, `php -l`, `tsc`, the
-   * Python preflight - and already returns `kind: 'diagnostics'` with the compiler's
-   * own text when it fails. So a check is that step and nothing after it.
+   * This is the live-error-checking half that needs a real toolchain.
    *
-   * Deliberately not a new code path per language. The alternative was a second,
-   * cheaper validator per adapter, which is exactly how the run and the check end up
-   * disagreeing about whether a program is valid - and being told a file is fine and
-   * then watching it fail to run is worse than having no check at all.
+   * For most languages `prepare()` already IS the check: javac, `tsc`, `php -l`,
+   * `node --check` and the Python preflight all run during preparation and return
+   * `kind: 'diagnostics'` with the compiler's own text when they fail. So the check is
+   * that step and nothing after it, and a `launch` result is discarded - the fact that
+   * the adapter got far enough to describe a launch IS the good news.
    *
-   * Nothing is ever spawned: a `launch` result is discarded, because the fact that the
-   * adapter got far enough to describe a launch IS the good news. The job directory is
-   * disposed either way.
+   * C# is the exception, and it is why `adapter.check` exists. Its normal launch is
+   * `dotnet run`, which compiles as part of EXECUTING, so preparing a broken C# project
+   * succeeds and the check called it clean - the precise failure this feature exists to
+   * avoid. An adapter that compiles at run time therefore says so by implementing
+   * `check`, and the one it implements is the same build its Debug path performs.
+   *
+   * Still deliberately not a second, cheaper validator per language: `check` is the
+   * REAL compiler in every case. A lighter approximation is how a run and a check come
+   * to disagree, and being told a file is fine and then watching it fail to run is
+   * worse than having no check at all.
+   *
+   * Nothing is ever spawned as a program. The job directory is disposed either way.
    */
   async check(request) {
     const plan = this.validate(request);
@@ -256,7 +263,7 @@ export class ExecutionPipeline {
         extra: { ...graphics.env },
       });
 
-      const prepared = await plan.adapter.prepare({
+      const context = {
         job,
         files: plan.files,
         entryPoint: plan.entryPoint,
@@ -266,10 +273,17 @@ export class ExecutionPipeline {
         sandboxEnv,
         templateRoot: this.templateRoot,
         // The compile's own budget, not the program's. A check never runs anything, so
-        // the run timeout is the wrong number entirely.
+        // the run timeout is the wrong number entirely. An adapter that knows its
+        // compiler is slower - C# does - uses its own.
         timeoutMs: this.config.execution.checkTimeoutMs,
         debug: null,
-      });
+      };
+
+      // An adapter that compiles at RUN time rather than during prepare implements
+      // `check`; null from it means the project compiles.
+      const prepared = plan.adapter.check
+        ? (await plan.adapter.check(context)) ?? { kind: 'launch' }
+        : await plan.adapter.prepare(context);
 
       if (prepared.kind === 'diagnostics') {
         return {
