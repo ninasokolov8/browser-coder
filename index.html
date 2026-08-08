@@ -1387,7 +1387,9 @@
        */
       .debug-current-line {
         background: var(--bg-current-line);
-        box-shadow: inset 3px 0 0 var(--glyph-current, #ffcc00);
+        /* No literal fallback: --glyph-current is defined in all three themes, and a
+           dark-palette hex here would be the exact thing theme-css.test.mjs forbids. */
+        box-shadow: inset 3px 0 0 var(--glyph-current);
       }
 
       /* ── Asset viewer ─────────────────────────────────────────────────── */
@@ -2187,11 +2189,6 @@
             <!-- Greyed for a language with no adapter rather than hidden, so the feature
                  is discoverable and its absence is explained by the tooltip. -->
             <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
-            <!-- Check my work had NO button at all. It was registered as a command and
-                 reachable only through the palette, which a student will never open, so
-                 the marking harness, the BCTEST protocol and the checklist were
-                 invisible to the person they were built for. -->
-            <button id="check-work" class="btn btn-secondary" title="Check my work" data-i18n-title="titlebar.checkWork">✓ <span data-i18n="titlebar.checkWork">Check my work</span></button>
           </div>
 
           <div class="set-group" role="group" aria-label="Language">

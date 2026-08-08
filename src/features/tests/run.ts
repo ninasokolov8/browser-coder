@@ -124,7 +124,20 @@ export async function runStudentTests(): Promise<void> {
   const found = await locateHarness();
 
   if (!found || found.kind === 'none') {
+    /*
+     * Said in the OUTPUT panel, not only the status line.
+     *
+     * The status line is twelve-pixel grey text beside the app name, and it was the only
+     * report this case produced - so running the command looked like pressing a dead
+     * button. It is also exactly why the toolbar button was removed: the feature was
+     * working and telling nobody.
+     */
     setStatus('This task has no checks to run.');
+    appendOutputHtml(
+      '\n<span class="info">── Check my work ───────────────────────────────────────────</span>\n' +
+      '<span class="info">This task has no checks. A teacher adds them by including a ' +
+      'marking file (one whose name starts with X_HIDDEN_) in the project.</span>\n',
+    );
     return;
   }
 

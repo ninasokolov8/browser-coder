@@ -1381,16 +1381,11 @@ async function checkTheTitlebarIsSimple(frameWindow: Window): Promise<void> {
   check('it starts closed', menu.hidden);
   check('and says so for a screen reader', toggle.getAttribute('aria-expanded') === 'false');
 
-  // The four things a lesson uses, together and top-level.
-  for (const id of ['run', 'stop', 'debug', 'check-work']) {
+  // The things a lesson uses, together and top-level.
+  for (const id of ['run', 'stop', 'debug']) {
     const button = frameDocument.getElementById(id);
     check(`${id} is a top-level action`, !!button && !menu.contains(button));
   }
-
-  check(
-    'Check my work has a button at all, not just a palette entry',
-    !!frameDocument.getElementById('check-work'),
-  );
 
   // The occasional and the dangerous are behind the menu.
   for (const id of ['btn-hack-lab', 'btn-clear-cache', 'btn-download-project', 'theme', 'ui-lang']) {
