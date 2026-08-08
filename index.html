@@ -238,6 +238,21 @@
         border: 1px solid var(--border-color);
       }
       #titlebar .btn-secondary:hover { background: var(--bg-tab-hover); }
+      /*
+       * Stop. Filled red rather than outlined, because it is the one control a
+       * student reaches for in a hurry - their program is stuck and they want it to
+       * end. It only exists while something is running, so it never competes with Run
+       * for attention when it could not do anything.
+       */
+      #titlebar .btn-stop {
+        background: #c62828;
+        color: #fff;
+        border: 1px solid #c62828;
+      }
+      #titlebar .btn-stop:hover:not(:disabled) { background: #e53935; border-color: #e53935; }
+      #titlebar .btn-stop:disabled { opacity: 0.6; cursor: default; }
+      #titlebar .btn-stop[hidden] { display: none; }
+
       #titlebar .btn-danger {
         background: transparent; color: var(--text-primary);
         border: 1px solid var(--border-color);
@@ -818,14 +833,32 @@
       }
 
       /* Editor Container */
+      /*
+       * A column, not a positioning context with one absolutely-placed child.
+       *
+       * `#editor` used to be `position: absolute; inset: 0`, which fills the whole
+       * container and - because a positioned element paints above in-flow siblings -
+       * covered everything else inside it. Two features were added as those siblings
+       * and were therefore invisible no matter what their own code did: the
+       * breadcrumbs bar, and the debugger's toolbar. The debugger rendered its
+       * Continue / Step over / Step into / Step out / Stop buttons correctly, on every
+       * state change, underneath Monaco.
+       *
+       * As a flex column each row gets its own space and Monaco takes what is left.
+       * `min-height: 0` is required: a flex item defaults to `min-height: auto`, which
+       * refuses to shrink below its content and would let Monaco push the toolbar off.
+       */
       #editor-container {
         flex: 1;
+        display: flex;
+        flex-direction: column;
         position: relative;
         overflow: hidden;
       }
-      #editor { 
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
+      #editor {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
       }
 
       /* Empty State - No file open */
@@ -1071,6 +1104,22 @@
         direction: ltr;
       }
       .debug-var-row:hover { background: var(--bg-hover); }
+      /* A variable that moved on this step. The one thing worth looking at. */
+      .debug-var-row.debug-var-changed {
+        background: rgba(46, 160, 105, 0.14);
+        border-radius: 3px;
+      }
+      .debug-var-row.debug-var-changed .debug-var-value { color: #4ec98a; }
+      .debug-var-row.debug-var-new { background: rgba(70, 140, 220, 0.13); border-radius: 3px; }
+      .debug-var-was {
+        color: var(--text-secondary, #7a8797);
+        text-decoration: line-through;
+        flex: 0 0 auto;
+      }
+      .debug-step-note {
+        padding: 3px 10px 6px;
+        color: #4ec98a;
+      }
       .debug-var-name { color: var(--fg-symbol); flex: 0 0 auto; }
       .debug-var-value {
         color: var(--text-primary, #ddd);
@@ -1961,6 +2010,17 @@
           </select>
           <select id="version" title="Version"></select>
           <button id="run" class="btn" title="Run (Ctrl+Enter)">▶ <span data-i18n="titlebar.run">Run</span></button>
+          <!-- Stop. Shown only while something is running.
+
+               There was no way to stop a program at all. `startRunLoader()` DISABLED
+               the Run button and put a spinner in it, so a student whose program had
+               an endless loop, or was waiting on input that never came, could only
+               wait for the timeout or reload the page and lose the console. A separate
+               button rather than a Run button that changes meaning: two clearly
+               labelled controls are easier to learn than one that morphs, and a
+               student who has just written an infinite loop should not have to notice
+               that Run has become Stop. -->
+          <button id="stop" class="btn btn-stop" title="Stop (Shift+F5)" hidden>⏹ <span data-i18n="titlebar.stop">Stop</span></button>
           <!-- Debug. Greyed for a language with no adapter rather than hidden, so the
                feature is discoverable and its absence is explained by the tooltip. -->
           <button id="debug" class="btn btn-secondary" title="Start debugging (F5)">🐞 <span data-i18n="titlebar.debug">Debug</span></button>
@@ -2087,11 +2147,6 @@
         <!-- Debugger panels: variables and the call stack. Beside the editor rather
              than in the output panel, because a student reads them WHILE looking at
              the paused line. -->
-        <aside id="debug-panels" hidden>
-          <div id="debug-variables" aria-label="Variables"></div>
-          <div id="debug-callstack" aria-label="Call stack"></div>
-          <div id="debug-watch" aria-label="Watch expressions"></div>
-        </aside>
         <div id="editor-container">
           <!-- Breadcrumbs: folder path plus the symbol the cursor is inside.
                Hidden until there is something to show, so an empty workspace does
@@ -2111,6 +2166,18 @@
               </button>
             </div>
           </div>
+          <!-- Variables, call stack and watches, BELOW the code.
+               They used to sit before #editor-container, which put them in a strip
+               across the top of the window above the code - and their own CSS says
+               otherwise (`border-top`, `max-height: 34vh`), so the markup and the
+               styling disagreed about where this belonged. Below the code the values
+               sit next to the output, and the line the debugger is paused on stays
+               where the student was already looking. -->
+          <aside id="debug-panels" hidden>
+            <div id="debug-variables" aria-label="Variables"></div>
+            <div id="debug-callstack" aria-label="Call stack"></div>
+            <div id="debug-watch" aria-label="Watch expressions"></div>
+          </aside>
         </div>
         <div id="panel">
           <div id="panel-resize"></div>

@@ -182,6 +182,27 @@ export const CONFIG = {
     javaTimeoutMs: intFromEnv('JAVA_TIMEOUT_MS', 30000),
     csharpTimeoutMs: intFromEnv('CSHARP_TIMEOUT_MS', 45000),
 
+    /*
+     * The live check's own budget, separate from a run's.
+     *
+     * A check compiles and never executes, so the run timeout - which exists to stop
+     * a student's infinite loop - is the wrong number. This one bounds a COMPILER:
+     * long enough for `dotnet build` on a cold NuGet cache, short enough that a
+     * wedged toolchain does not hold a slot while somebody types.
+     */
+    checkTimeoutMs: intFromEnv('CHECK_TIMEOUT_MS', 20000),
+
+    /*
+     * How many checks may compile at once.
+     *
+     * Checks are triggered by TYPING, so without a ceiling a class of thirty students
+     * mid-sentence would occupy every execution slot and nobody could Run. This caps
+     * them well below `maxConcurrent`, and the check route answers 429 rather than
+     * queueing: a check that arrives late is worthless - the student has typed more
+     * since - so shedding it is better than making them wait for it.
+     */
+    maxConcurrentChecks: intFromEnv('MAX_CONCURRENT_CHECKS', Math.max(2, Math.floor(MAX_CONCURRENT / 2))),
+
     // Derived from the real memory budget rather than the host's (V-36). See
     // deriveMaxConcurrent() above.
     maxConcurrent: MAX_CONCURRENT,

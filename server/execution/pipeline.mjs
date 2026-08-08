@@ -215,6 +215,77 @@ export class ExecutionPipeline {
    *
    * @returns {Promise<RunHandle>}
    */
+  /**
+   * Compile the project and report what the compiler said, without running it.
+   *
+   * This is the live-error-checking half that needs a real toolchain. Every adapter's
+   * `prepare()` already IS the check - javac, `dotnet build`, `php -l`, `tsc`, the
+   * Python preflight - and already returns `kind: 'diagnostics'` with the compiler's
+   * own text when it fails. So a check is that step and nothing after it.
+   *
+   * Deliberately not a new code path per language. The alternative was a second,
+   * cheaper validator per adapter, which is exactly how the run and the check end up
+   * disagreeing about whether a program is valid - and being told a file is fine and
+   * then watching it fail to run is worse than having no check at all.
+   *
+   * Nothing is ever spawned: a `launch` result is discarded, because the fact that the
+   * adapter got far enough to describe a launch IS the good news. The job directory is
+   * disposed either way.
+   */
+  async check(request) {
+    const plan = this.validate(request);
+    this.admit();
+
+    const job = new Job(this.jobRoot, 'check');
+    this.liveJobDirs.add(job.dir);
+
+    const startedAt = Date.now();
+    const finish = () => {
+      this.liveJobDirs.delete(job.dir);
+      this.release();
+      job.dispose();
+    };
+
+    try {
+      job.writeFiles(plan.files);
+
+      const graphics = createGraphicsChannel(job);
+      const sandboxEnv = buildSandboxEnv({
+        jobDir: job.dir,
+        config: this.config,
+        extra: { ...graphics.env },
+      });
+
+      const prepared = await plan.adapter.prepare({
+        job,
+        files: plan.files,
+        entryPoint: plan.entryPoint,
+        profile: plan.profile,
+        config: this.config,
+        graphics,
+        sandboxEnv,
+        templateRoot: this.templateRoot,
+        // The compile's own budget, not the program's. A check never runs anything, so
+        // the run timeout is the wrong number entirely.
+        timeoutMs: this.config.execution.checkTimeoutMs,
+        debug: null,
+      });
+
+      if (prepared.kind === 'diagnostics') {
+        return {
+          ok: false,
+          entryPoint: plan.entryPoint,
+          output: prepared.stderr || '',
+          durationMs: Date.now() - startedAt,
+        };
+      }
+
+      return { ok: true, entryPoint: plan.entryPoint, output: '', durationMs: Date.now() - startedAt };
+    } finally {
+      finish();
+    }
+  }
+
   async start(request, hooks = {}) {
     const plan = this.validate(request);
 

@@ -2,6 +2,7 @@
   "app.title": "Browser Coder - Web IDE",
   "app.logo": "Browser Coder",
   "titlebar.run": "Run",
+  "titlebar.stop": "Stop",
   "titlebar.running": "Running",
   "titlebar.download": "Download",
   "titlebar.clear": "Clear",

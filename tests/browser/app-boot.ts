@@ -941,7 +941,28 @@ async function checkHoverTeaches(frameWindow: Window): Promise<void> {
   const unknown = help('python', 'my_own_variable');
   check('a word with no entry produces no hover', unknown === null);
 
+  /*
+   * The library, not just the language.
+   *
+   * Hover covered keywords and built-ins and nothing else, so the functions a beginner
+   * actually types - every turtle call in the drawing exercises this course is built
+   * on - produced no hover at all. `forward` is the exact word that was reported as
+   * silent.
+   */
+  for (const word of ['forward', 'left', 'penup', 'begin_fill', 'Turtle']) {
+    const note = help('python', word);
+    check(`hovering turtle's ${word} teaches something`, Boolean(note), String(note));
+  }
+
+  const forwardHover = help('python', 'forward');
+  check(
+    'and it carries a runnable example',
+    Boolean(forwardHover && forwardHover.includes('```python')),
+    String(forwardHover).slice(0, 140),
+  );
+
   lines.push(`INFO hover for range: ${String(rangeHover).split('\n')[0]}`);
+  lines.push(`INFO hover for forward: ${String(forwardHover).split('\n')[0]}`);
 }
 
 /**
@@ -1263,6 +1284,141 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
 }
 
 /**
+ * Errors appear while typing, without pressing Run.
+ *
+ * Monaco squiggles TypeScript, JavaScript, CSS, HTML and JSON as you type because it
+ * ships language services for them. Python, Java, PHP and C# had NOTHING until a run
+ * finished - the editor looked clean while the student typed a broken line, and only
+ * admitted otherwise once they pressed Run. That is the opposite of what an IDE is for.
+ *
+ * Asserted through the real marker list rather than the store, because the store having
+ * the diagnostic and Monaco drawing it are two different things, and only the second one
+ * is what a student sees.
+ */
+async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') }).__bcMonaco;
+  if (!runtime || !monacoApi) {
+    check('runtime and monaco are reachable for the live-error check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { setContent(text: string): void } | null;
+  };
+  const models = runtime.models as { peek(id: string): { uri: unknown } | null };
+
+  const created = await workspace.createDocument({
+    name: 'live-errors.py',
+    content: 'print("ok")\n',
+    language: 'python',
+    version: 'python3',
+  });
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  await tabManager.switchToTab(created.id);
+
+  const markersFor = (): Array<{ message: string; startLineNumber: number }> => {
+    const model = models.peek(created.id);
+    if (!model) return [];
+    return monacoApi.editor.getModelMarkers({ resource: model.uri as never });
+  };
+
+  check('a correct file has no markers before running', markersFor().length === 0);
+
+  // Type something broken. No Run anywhere in this test.
+  workspace.getDocument(created.id)!.setContent('print("hello"\n');
+
+  const appeared = await waitFor(
+    'a squiggle to appear from typing alone',
+    () => markersFor().length > 0,
+    5000,
+  );
+  check('an error is marked without pressing Run', appeared, `markers: ${markersFor().length}`);
+
+  const [marker] = markersFor();
+  if (marker) {
+    check(
+      'and it points at the line the student broke',
+      marker.startLineNumber === 1,
+      `line ${marker.startLineNumber}: ${marker.message}`,
+    );
+  }
+
+  // Fixing it must clear the squiggle, or the mark outlives the mistake.
+  workspace.getDocument(created.id)!.setContent('print("hello")\n');
+  const cleared = await waitFor('the squiggle to clear once fixed', () => markersFor().length === 0, 5000);
+  check('fixing the code clears the mark', cleared, `still ${markersFor().length} marker(s)`);
+}
+
+/**
+ * The compiler's answer arrives on its own, and the student is never shown the same
+ * mistake twice.
+ *
+ * Two producers report on the same file: the instant scanner, from the text alone, and
+ * the real toolchain via POST /api/check. They find the SAME mistake constantly - an
+ * unclosed bracket is what each is best at - so the store suppresses the scanner on any
+ * line the compiler has spoken about.
+ *
+ * Asserted through Monaco's marker list, because "one problem per line" is a claim
+ * about what is drawn, not about what is stored.
+ */
+async function checkTheCompilerAgreesWithoutDuplicating(frameWindow: Window): Promise<void> {
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const monacoApi = (frameWindow as unknown as { __bcMonaco?: typeof import('monaco-editor') }).__bcMonaco;
+  if (!runtime || !monacoApi) {
+    check('runtime and monaco are reachable for the compiler check', false);
+    return;
+  }
+
+  const workspace = runtime.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+    getDocument(id: string): { setContent(text: string): void } | null;
+  };
+  const models = runtime.models as { peek(id: string): { uri: unknown } | null };
+  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+
+  const created = await workspace.createDocument({
+    name: 'dedupe-probe.py',
+    content: 'x = 1\n',
+    language: 'python',
+    version: 'python3',
+  });
+  await tabManager.switchToTab(created.id);
+
+  const markers = (): Array<{ startLineNumber: number; message: string; source?: string }> => {
+    const model = models.peek(created.id);
+    if (!model) return [];
+    return monacoApi.editor.getModelMarkers({ resource: model.uri as never });
+  };
+
+  // An unclosed bracket: the one mistake BOTH producers reliably find.
+  workspace.getDocument(created.id)!.setContent('value = (1 + 2\nprint(value)\n');
+
+  const marked = await waitFor('the bracket error to be marked', () => markers().length > 0, 6000);
+  check('an unclosed bracket is marked while typing', marked);
+
+  /*
+   * Settle for longer than the Python debounce (400ms) plus a round trip, so the
+   * compiler's answer has landed too. If deduplication were broken, THIS is when the
+   * second squiggle would appear on the same line.
+   */
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  const onLineOne = markers().filter(marker => marker.startLineNumber === 1);
+  check(
+    'exactly one problem is shown on the broken line',
+    onLineOne.length === 1,
+    onLineOne.map(marker => marker.message).join(' || '),
+  );
+
+  // And fixing it clears everything, from both producers.
+  workspace.getDocument(created.id)!.setContent('value = (1 + 2)\nprint(value)\n');
+  const cleared = await waitFor('both producers to clear', () => markers().length === 0, 8000);
+  check('fixing it clears every mark', cleared, `${markers().length} left: ${markers().map(m => m.message).join(' || ')}`);
+}
+
+/**
  * Running only the selected lines must run only the selected lines.
  *
  * The gesture the feature advertises - triple-click, or a click in the line-number
@@ -1271,6 +1427,117 @@ async function checkAnOpenImageIsNotOverwritten(frameWindow: Window): Promise<vo
  * line was executed with no indication. Asserted against a real run, because the
  * failure is in what reaches the sandbox, not in what the editor shows.
  */
+/**
+ * The Run/Stop pair, and the debugger's toolbar being on screen rather than merely
+ * rendered.
+ *
+ * Both were invisible for the same underlying reason and neither had a test.
+ *
+ * `#editor` was `position: absolute; inset: 0`, which fills #editor-container - and a
+ * positioned element paints above its in-flow siblings, so Monaco covered the
+ * breadcrumbs bar and the whole debugger toolbar. The toolbar built its five buttons
+ * and updated their enabled state on every debug event, underneath the editor.
+ *
+ * And there was no way to stop a program at all: `startRunLoader()` disabled Run and
+ * put a spinner in it, so an endless loop could only be ended by the server timeout or
+ * by reloading the page.
+ *
+ * `elementFromPoint` rather than `getBoundingClientRect`, because the bug was never
+ * that the element had no box - it had a perfectly good box that nobody could see or
+ * click. Asking the document what is actually at those coordinates is the only check
+ * that would have failed before the fix.
+ */
+async function checkRunStopAndDebugToolbarAreVisible(frameWindow: Window): Promise<void> {
+  const frameDocument = frameWindow.document;
+
+  /*
+   * Open a source file first.
+   *
+   * The preceding scenario leaves an IMAGE tab active, and the asset viewer is an
+   * overlay across the editor area - so without this the toolbar is genuinely covered,
+   * by the viewer rather than by the editor, and this check would fail for a reason
+   * that has nothing to do with what it is testing.
+   */
+  const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
+  const workspace = runtime?.workspace as {
+    createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
+  } | undefined;
+  const tabManager = runtime?.tabManager as { switchToTab(id: string): Promise<unknown> } | undefined;
+  if (workspace && tabManager) {
+    const source = await workspace.createDocument({
+      name: 'toolbar-probe.py',
+      content: 'print(1)\n',
+      language: 'python',
+      version: 'python3',
+    });
+    await tabManager.switchToTab(source.id);
+    await new Promise(resolve => frameWindow.requestAnimationFrame(() => resolve(null)));
+  }
+
+  const runButton = frameDocument.getElementById('run') as HTMLButtonElement | null;
+  const stopButton = frameDocument.getElementById('stop') as HTMLButtonElement | null;
+
+  check('there is a Run button', !!runButton);
+  check('there is a Stop button', !!stopButton);
+  if (!runButton || !stopButton) return;
+
+  check('Stop is hidden while nothing is running', stopButton.hidden);
+
+  /** Is this element the thing actually on screen at its own centre? */
+  const isOnTop = (element: HTMLElement): boolean => {
+    const box = element.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) return false;
+    const hit = frameDocument.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    return hit === element || element.contains(hit);
+  };
+
+  const toolbar = frameDocument.getElementById('debug-toolbar') as HTMLElement | null;
+  check('the debugger has a toolbar element', !!toolbar);
+  if (!toolbar) return;
+
+  // Force it visible without a debug session: this is a LAYOUT assertion, and the
+  // question is whether the editor paints over it, which does not depend on state.
+  const wasHidden = toolbar.hidden;
+  toolbar.hidden = false;
+  await new Promise(resolve => frameWindow.requestAnimationFrame(() => resolve(null)));
+
+  const buttons = ['debug-continue', 'debug-step-over', 'debug-step-in', 'debug-step-out', 'debug-stop'];
+  const missing = buttons.filter(id => !frameDocument.getElementById(id));
+  check('all five debugger buttons exist', missing.length === 0, `missing: ${missing.join(', ')}`);
+
+  const detail: string[] = [];
+  const covered = buttons
+    .map(id => frameDocument.getElementById(id) as HTMLElement | null)
+    .filter((element): element is HTMLElement => !!element)
+    .filter(element => {
+      const box = element.getBoundingClientRect();
+      const hit = frameDocument.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      ) as HTMLElement | null;
+      const ok = box.width > 0 && box.height > 0 && (hit === element || element.contains(hit));
+      if (!ok) {
+        detail.push(
+          `${element.id} box=${Math.round(box.width)}x${Math.round(box.height)}@` +
+          `${Math.round(box.left)},${Math.round(box.top)} hit=${hit ? (hit.id || hit.className || hit.tagName) : 'null'}`,
+        );
+      }
+      return !ok;
+    })
+    .map(element => element.id);
+
+  check(
+    'the debugger buttons are actually on screen, not under the editor',
+    covered.length === 0,
+    detail.join(' | '),
+  );
+
+  toolbar.hidden = wasHidden;
+}
+
 async function checkRunSelection(frameWindow: Window): Promise<void> {
   const runtime = (frameWindow as unknown as { __bcRuntime?: Record<string, unknown> }).__bcRuntime;
   if (!runtime) {
@@ -1672,6 +1939,9 @@ async function run(): Promise<void> {
   await checkKeyboardAndScreenReader(frameWindow);
   await checkClosingATabKeepsTheFileUsable(frameWindow);
   await checkAnOpenImageIsNotOverwritten(frameWindow);
+  await checkRunStopAndDebugToolbarAreVisible(frameWindow);
+  await checkErrorsAppearWhileTyping(frameWindow);
+  await checkTheCompilerAgreesWithoutDuplicating(frameWindow);
 
   // Errors are checked last, so their content is reported alongside everything
   // else rather than aborting the run.

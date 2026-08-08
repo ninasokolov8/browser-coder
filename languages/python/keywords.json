@@ -1,28 +1,318 @@
 {
+  "!=": {
+    "type": "operator",
+    "explanation": "\"Is not equal to\". Gives True when the two values differ.",
+    "example": "if name != \"\":\n    print(\"hello\", name)"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. Most often used to ask \"is this divisible?\" - n % 2 == 0 means n is even.",
+    "example": "7 % 2    # 1\nif n % 2 == 0:\n    print(\"even\")"
+  },
+  "**": {
+    "type": "operator",
+    "explanation": "Power: raises the left number to the power of the right one.",
+    "example": "2 ** 3   # 8\n9 ** 0.5 # 3.0 (square root)"
+  },
+  "**kwargs": {
+    "type": "syntax_pattern",
+    "explanation": "Function parameter pattern that collects extra named keyword arguments into a dictionary.",
+    "example": "def greet(**kwargs):\n    print(kwargs['name'])"
+  },
+  "*args": {
+    "type": "syntax_pattern",
+    "explanation": "Function parameter pattern that collects extra positional arguments into a tuple.",
+    "example": "def total(*args):\n    return sum(args)"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it. total += 5 is short for total = total + 5.",
+    "example": "total = 0\nfor n in [1, 2, 3]:\n    total += n"
+  },
+  "-=": {
+    "type": "operator",
+    "explanation": "Subtracts from a variable and stores the result back in it.",
+    "example": "lives = 3\nlives -= 1"
+  },
+  "->": {
+    "type": "operator",
+    "explanation": "Return type hint on a function. A note for readers and tools - Python does not enforce it.",
+    "example": "def double(n: int) -> int:\n    return n * 2"
+  },
+  "//": {
+    "type": "operator",
+    "explanation": "Integer division: divides and throws away the remainder, so the answer is always a whole number. Ordinary / always gives a decimal, even for 6 / 2.",
+    "example": "7 // 2   # 3\n7 / 2    # 3.5"
+  },
+  "<=": {
+    "type": "operator",
+    "explanation": "\"Is less than or equal to\".",
+    "example": "if score <= 100:\n    print(\"valid\")"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the name on the left. To COMPARE two values use == instead.",
+    "example": "total = 10"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values and gives True or False. Not the same as a single = , which ASSIGNS a value.",
+    "example": "if answer == 42:\n    print(\"correct\")"
+  },
+  ">=": {
+    "type": "operator",
+    "explanation": "\"Is greater than or equal to\".",
+    "example": "if age >= 18:\n    print(\"adult\")"
+  },
+  "Any": {
+    "type": "typing_type",
+    "explanation": "Type hint meaning any value is allowed.",
+    "example": "from typing import Any\nvalue: Any = 123"
+  },
+  "AssertionError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when an assert statement fails.",
+    "example": "assert False, 'failed'"
+  },
+  "AttributeError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when an attribute reference or assignment fails.",
+    "example": "x = 5\nx.append(1)"
+  },
+  "BaseException": {
+    "type": "built_in_exception",
+    "explanation": "Base class for all built-in exceptions.",
+    "example": "except BaseException as e:\n    print(e)"
+  },
+  "Callable": {
+    "type": "typing_type",
+    "explanation": "Type hint for a function or callable object.",
+    "example": "from typing import Callable\nfunc: Callable[[int], int]"
+  },
+  "Ellipsis": {
+    "type": "built_in_constant",
+    "explanation": "Built-in constant represented by ..., often used as a placeholder or in advanced slicing/type-hint contexts.",
+    "example": "def todo():\n    ...\n\nx = Ellipsis"
+  },
+  "Exception": {
+    "type": "built_in_exception",
+    "explanation": "Base class for most user-handled exceptions.",
+    "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
+  },
   "False": {
     "type": "core",
     "explanation": "Boolean literal representing a false/no condition.",
     "example": "is_deleted = False"
+  },
+  "FileNotFoundError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when a requested file or directory does not exist.",
+    "example": "open('missing.txt')"
+  },
+  "ImportError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when an import operation fails.",
+    "example": "from missing_module import thing"
+  },
+  "IndexError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when a sequence index is out of range.",
+    "example": "numbers = [1]\nprint(numbers[5])"
+  },
+  "Iterable": {
+    "type": "typing_type",
+    "explanation": "Type hint for objects that can be iterated over.",
+    "example": "from typing import Iterable\ndef total(xs: Iterable[int]) -> int:\n    return sum(xs)"
+  },
+  "KeyError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when a dictionary key is not found.",
+    "example": "user = {}\nprint(user['name'])"
+  },
+  "Literal": {
+    "type": "typing_type",
+    "explanation": "Type hint for values restricted to specific literal values.",
+    "example": "from typing import Literal\nmode: Literal['read', 'write'] = 'read'"
+  },
+  "ModuleNotFoundError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when Python cannot find a module during import.",
+    "example": "import module_that_does_not_exist"
+  },
+  "NameError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when a local or global name is not found.",
+    "example": "print(unknown_variable)"
   },
   "None": {
     "type": "core",
     "explanation": "Represents no value or the absence of a value - Python's equivalent of null.",
     "example": "selected_item = None\nif selected_item is None:\n    print('Nothing selected')"
   },
+  "NotImplemented": {
+    "type": "built_in_constant",
+    "explanation": "Special value returned by numeric/comparison special methods when an operation is not supported.",
+    "example": "class A:\n    def __eq__(self, other):\n        return NotImplemented"
+  },
+  "Optional": {
+    "type": "typing_type",
+    "explanation": "Type hint meaning a value can be of a given type or None.",
+    "example": "from typing import Optional\nname: Optional[str] = None"
+  },
+  "Protocol": {
+    "type": "typing_type",
+    "explanation": "Type hint tool for structural subtyping: an object matches if it has the required members.",
+    "example": "from typing import Protocol\nclass HasName(Protocol):\n    name: str"
+  },
+  "Screen": {
+    "type": "turtle",
+    "explanation": "Gets the drawing screen, so you can change the background or its size.",
+    "example": "screen = turtle.Screen()\nscreen.bgcolor(\"black\")"
+  },
+  "StopIteration": {
+    "type": "built_in_exception",
+    "explanation": "Raised by next() when an iterator has no more items.",
+    "example": "it = iter([])\nnext(it)"
+  },
   "True": {
     "type": "core",
     "explanation": "Boolean literal representing a true/yes condition.",
     "example": "is_active = True"
+  },
+  "Turtle": {
+    "type": "turtle",
+    "explanation": "Creates a new turtle - the pen that draws. Give it a name so you can tell it what to do.",
+    "example": "import turtle\npen = turtle.Turtle()\npen.forward(100)"
+  },
+  "TypeError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when an operation is applied to an object of inappropriate type.",
+    "example": "raise TypeError('Expected int')"
+  },
+  "TypeVar": {
+    "type": "typing_type",
+    "explanation": "Creates a generic type variable for type hints.",
+    "example": "from typing import TypeVar\nT = TypeVar('T')"
+  },
+  "Union": {
+    "type": "typing_type",
+    "explanation": "Type hint meaning a value may be one of several types.",
+    "example": "from typing import Union\nvalue: Union[int, str] = 5"
+  },
+  "ValueError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when a value has the right type but an invalid value.",
+    "example": "raise ValueError('Invalid age')"
+  },
+  "ZeroDivisionError": {
+    "type": "built_in_exception",
+    "explanation": "Raised when dividing by zero.",
+    "example": "x = 1 / 0"
+  },
+  "_": {
+    "type": "soft_keyword",
+    "explanation": "Acts as a wildcard pattern inside match/case. Elsewhere it is usually just a normal name by convention.",
+    "example": "match value:\n    case _:\n        print('Anything')"
+  },
+  "__enter__": {
+    "type": "special_method",
+    "explanation": "Special method called when entering a with block.",
+    "example": "class Resource:\n    def __enter__(self):\n        return self"
+  },
+  "__exit__": {
+    "type": "special_method",
+    "explanation": "Special method called when leaving a with block.",
+    "example": "class Resource:\n    def __exit__(self, exc_type, exc, tb):\n        pass"
+  },
+  "__file__": {
+    "type": "special_variable",
+    "explanation": "Special module variable containing the path to the current file when available.",
+    "example": "print(__file__)"
+  },
+  "__import__": {
+    "type": "built_in_function",
+    "explanation": "Low-level import function used internally by the import statement.",
+    "example": "math = __import__('math')\nprint(math.sqrt(16))"
+  },
+  "__init__": {
+    "type": "special_method",
+    "explanation": "Special method called when a new object is initialized, commonly used as a constructor-like setup method.",
+    "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
+  },
+  "__iter__": {
+    "type": "special_method",
+    "explanation": "Special method that returns an iterator for an object.",
+    "example": "class Numbers:\n    def __iter__(self):\n        return iter([1, 2, 3])"
+  },
+  "__len__": {
+    "type": "special_method",
+    "explanation": "Special method called by len().",
+    "example": "class Bag:\n    def __len__(self):\n        return 3"
+  },
+  "__main__": {
+    "type": "special_value",
+    "explanation": "Value of __name__ for the file currently being executed as the main program.",
+    "example": "if __name__ == '__main__':\n    print('Running directly')"
+  },
+  "__name__": {
+    "type": "special_variable",
+    "explanation": "Special module variable containing the module name. It equals '__main__' when the file is run directly.",
+    "example": "if __name__ == '__main__':\n    main()"
+  },
+  "__next__": {
+    "type": "special_method",
+    "explanation": "Special method that returns the next item from an iterator.",
+    "example": "class Counter:\n    def __next__(self):\n        return 1"
+  },
+  "__repr__": {
+    "type": "special_method",
+    "explanation": "Special method used by repr() to create a developer-oriented representation.",
+    "example": "class User:\n    def __repr__(self):\n        return 'User()'"
+  },
+  "__str__": {
+    "type": "special_method",
+    "explanation": "Special method used by str() and print() to create a user-friendly string representation.",
+    "example": "class User:\n    def __str__(self):\n        return 'User'"
+  },
+  "abc": {
+    "type": "standard_library_module",
+    "explanation": "Provides tools for abstract base classes.",
+    "example": "from abc import ABC, abstractmethod\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        pass"
+  },
+  "abs": {
+    "type": "built_in_function",
+    "explanation": "Returns the absolute value of a number.",
+    "example": "print(abs(-5))"
+  },
+  "all": {
+    "type": "built_in_function",
+    "explanation": "Returns True if all items in an iterable are truthy.",
+    "example": "print(all([True, 1, 'x']))"
   },
   "and": {
     "type": "core",
     "explanation": "Logical operator that is true only when both conditions are true.",
     "example": "if age >= 18 and has_id:\n    print('Allowed in')"
   },
+  "any": {
+    "type": "built_in_function",
+    "explanation": "Returns True if at least one item in an iterable is truthy.",
+    "example": "print(any([False, 0, 'yes']))"
+  },
+  "argparse": {
+    "type": "standard_library_module",
+    "explanation": "Builds command-line interfaces and parses command-line arguments.",
+    "example": "import argparse\nparser = argparse.ArgumentParser()"
+  },
   "as": {
     "type": "core",
     "explanation": "Gives an alias/name to something, commonly used with import, with, and except.",
     "example": "import math as m\n\nwith open('data.txt') as f:\n    text = f.read()"
+  },
+  "ascii": {
+    "type": "built_in_function",
+    "explanation": "Returns a printable ASCII-only representation of an object.",
+    "example": "print(ascii('שלום'))"
   },
   "assert": {
     "type": "core",
@@ -34,25 +324,165 @@
     "explanation": "Marks a function or context as asynchronous, allowing await inside it.",
     "example": "async def fetch_data():\n    data = await get_data()\n    return data"
   },
+  "asyncio": {
+    "type": "standard_library_module",
+    "explanation": "Provides tools for writing asynchronous programs using async and await.",
+    "example": "import asyncio\nasyncio.run(main())"
+  },
   "await": {
     "type": "core",
     "explanation": "Pauses an async function until an awaitable operation finishes, then returns its result.",
     "example": "async def main():\n    result = await fetch_data()\n    print(result)"
+  },
+  "backward": {
+    "type": "turtle",
+    "explanation": "Moves the turtle backwards without turning it around.",
+    "example": "pen.backward(50)"
+  },
+  "begin_fill": {
+    "type": "turtle",
+    "explanation": "Starts recording a shape to fill. Draw it, then call end_fill().",
+    "example": "pen.begin_fill()\nfor _ in range(3):\n    pen.forward(80)\n    pen.left(120)\npen.end_fill()"
+  },
+  "bgcolor": {
+    "type": "turtle",
+    "explanation": "Sets the background colour of the drawing.",
+    "example": "turtle.bgcolor(\"lightblue\")"
+  },
+  "bgpic": {
+    "type": "turtle",
+    "explanation": "Puts an image behind the drawing. Use an image file from your project.",
+    "example": "turtle.bgpic(\"maze.svg\")"
+  },
+  "bin": {
+    "type": "built_in_function",
+    "explanation": "Converts an integer to a binary string.",
+    "example": "print(bin(10))"
+  },
+  "bk": {
+    "type": "turtle",
+    "explanation": "Short for backward().",
+    "example": "pen.bk(50)"
+  },
+  "bool": {
+    "type": "built_in_type",
+    "explanation": "Boolean type with two values: True and False.",
+    "example": "is_valid = bool(1)"
   },
   "break": {
     "type": "core",
     "explanation": "Immediately exits the nearest enclosing loop.",
     "example": "for i in range(10):\n    if i == 3:\n        break\n    print(i)"
   },
+  "bytearray": {
+    "type": "built_in_type",
+    "explanation": "Mutable sequence of bytes.",
+    "example": "data = bytearray(b'abc')\ndata[0] = 65"
+  },
+  "bytes": {
+    "type": "built_in_type",
+    "explanation": "Immutable sequence of bytes, commonly used for binary data.",
+    "example": "data = bytes([65, 66, 67])"
+  },
+  "callable": {
+    "type": "built_in_function",
+    "explanation": "Checks whether an object can be called like a function.",
+    "example": "print(callable(print))"
+  },
+  "case": {
+    "type": "soft_keyword",
+    "explanation": "Defines one pattern branch inside a match statement. It is only keyword-like in match syntax.",
+    "example": "match status:\n    case 200:\n        print('OK')\n    case 404:\n        print('Not found')"
+  },
+  "chr": {
+    "type": "built_in_function",
+    "explanation": "Returns the Unicode character for an integer code point.",
+    "example": "print(chr(65))"
+  },
+  "circle": {
+    "type": "turtle",
+    "explanation": "Draws a circle of that radius. A negative radius curves the other way.",
+    "example": "pen.circle(50)"
+  },
   "class": {
     "type": "core",
     "explanation": "Defines a blueprint for creating objects that share properties and behavior.",
     "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
   },
+  "classmethod": {
+    "type": "built_in_type",
+    "explanation": "Wraps a method so it receives the class as cls instead of an instance as self.",
+    "example": "class User:\n    @classmethod\n    def guest(cls):\n        return cls()"
+  },
+  "clear": {
+    "type": "turtle",
+    "explanation": "Erases everything this turtle has drawn, without moving it.",
+    "example": "pen.clear()"
+  },
+  "cls": {
+    "type": "convention",
+    "explanation": "Conventional first parameter name for class methods, referring to the class itself. Not a keyword.",
+    "example": "class User:\n    @classmethod\n    def create(cls):\n        return cls()"
+  },
+  "collections": {
+    "type": "standard_library_module",
+    "explanation": "Provides specialized container datatypes such as Counter, defaultdict, and deque.",
+    "example": "from collections import Counter\nprint(Counter('banana'))"
+  },
+  "color": {
+    "type": "turtle",
+    "explanation": "Sets the pen colour, or both the pen and fill colours at once.",
+    "example": "pen.color(\"blue\")\npen.color(\"black\", \"orange\")   # line, fill"
+  },
+  "compile": {
+    "type": "built_in_function",
+    "explanation": "Compiles source code into a code object.",
+    "example": "code = compile('x = 5', '<string>', 'exec')"
+  },
+  "complex": {
+    "type": "built_in_type",
+    "explanation": "Number type for complex numbers with real and imaginary parts.",
+    "example": "z = complex(2, 3)  # 2+3j"
+  },
+  "concurrent.futures": {
+    "type": "standard_library_module",
+    "explanation": "Provides high-level thread and process pool executors.",
+    "example": "from concurrent.futures import ThreadPoolExecutor\nwith ThreadPoolExecutor() as ex:\n    ex.submit(work)"
+  },
   "continue": {
     "type": "core",
     "explanation": "Skips the rest of the current loop iteration and moves to the next iteration.",
     "example": "for i in range(5):\n    if i % 2 == 0:\n        continue\n    print(i)"
+  },
+  "copy": {
+    "type": "standard_library_module",
+    "explanation": "Provides shallow and deep copy operations.",
+    "example": "import copy\nb = copy.deepcopy(a)"
+  },
+  "csv": {
+    "type": "standard_library_module",
+    "explanation": "Reads and writes CSV files.",
+    "example": "import csv\nwith open('data.csv') as f:\n    rows = list(csv.reader(f))"
+  },
+  "dataclasses": {
+    "type": "standard_library_module",
+    "explanation": "Provides the @dataclass decorator for concise data-holding classes.",
+    "example": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: int\n    y: int"
+  },
+  "datetime": {
+    "type": "standard_library_module",
+    "explanation": "Provides classes for dates, times, datetimes, and time deltas.",
+    "example": "from datetime import datetime\nprint(datetime.now())"
+  },
+  "decimal": {
+    "type": "standard_library_module",
+    "explanation": "Provides decimal floating-point arithmetic for precise base-10 calculations.",
+    "example": "from decimal import Decimal\nprice = Decimal('19.99')"
+  },
+  "decorator": {
+    "type": "syntax_pattern",
+    "explanation": "Syntax that wraps or modifies a function or class using @ before its definition.",
+    "example": "@staticmethod\ndef square(x):\n    return x * x"
   },
   "def": {
     "type": "core",
@@ -64,6 +494,46 @@
     "explanation": "Deletes a variable binding, attribute, or item from a collection.",
     "example": "numbers = [1, 2, 3]\ndel numbers[0]\nprint(numbers)"
   },
+  "delattr": {
+    "type": "built_in_function",
+    "explanation": "Deletes an attribute from an object by name.",
+    "example": "delattr(obj, 'name')"
+  },
+  "dict": {
+    "type": "built_in_type",
+    "explanation": "Mutable key-value mapping type.",
+    "example": "user = {'name': 'Nina', 'age': 37}"
+  },
+  "dict comprehension": {
+    "type": "syntax_pattern",
+    "explanation": "Compact syntax for building a dictionary from an iterable.",
+    "example": "squares = {x: x*x for x in range(5)}"
+  },
+  "dir": {
+    "type": "built_in_function",
+    "explanation": "Returns a list of names/attributes available on an object.",
+    "example": "print(dir([]))"
+  },
+  "distance": {
+    "type": "turtle",
+    "explanation": "How far the turtle is from a point or another turtle.",
+    "example": "d = pen.distance(0, 0)"
+  },
+  "divmod": {
+    "type": "built_in_function",
+    "explanation": "Returns quotient and remainder as a tuple.",
+    "example": "print(divmod(10, 3))"
+  },
+  "done": {
+    "type": "turtle",
+    "explanation": "In real Python this keeps the window open. Here the drawing appears on its own when the program ends, so it is safe to call and does nothing.",
+    "example": "turtle.done()"
+  },
+  "dot": {
+    "type": "turtle",
+    "explanation": "Draws a single dot where the turtle is standing.",
+    "example": "pen.dot(10, \"red\")"
+  },
   "elif": {
     "type": "core",
     "explanation": "Short for else-if; checks another condition when the previous if/elif condition was false.",
@@ -74,30 +544,180 @@
     "explanation": "Runs when no preceding if/elif condition matched, or when a loop finishes without break.",
     "example": "if age >= 18:\n    print('Adult')\nelse:\n    print('Minor')"
   },
+  "end_fill": {
+    "type": "turtle",
+    "explanation": "Fills in the shape drawn since begin_fill() was called.",
+    "example": "pen.end_fill()"
+  },
+  "enum": {
+    "type": "standard_library_module",
+    "explanation": "Provides support for enumeration classes.",
+    "example": "from enum import Enum\nclass Color(Enum):\n    RED = 1"
+  },
+  "eval": {
+    "type": "built_in_function",
+    "explanation": "Evaluates a string as a Python expression. Use carefully with trusted input only.",
+    "example": "print(eval('2 + 3'))"
+  },
   "except": {
     "type": "core",
     "explanation": "Catches and handles an exception raised inside the matching try block.",
     "example": "try:\n    int('abc')\nexcept ValueError as e:\n    print('Invalid:', e)"
+  },
+  "exec": {
+    "type": "built_in_function",
+    "explanation": "Executes a string or code object as Python code. Use carefully with trusted input only.",
+    "example": "exec('x = 10')\nprint(x)"
+  },
+  "f-string": {
+    "type": "syntax_pattern",
+    "explanation": "Formatted string literal that embeds expressions inside braces.",
+    "example": "name = 'Nina'\nprint(f'Hello, {name}!')"
+  },
+  "fd": {
+    "type": "turtle",
+    "explanation": "Short for forward(). Moves the turtle forward by that many steps.",
+    "example": "pen.fd(100)"
+  },
+  "fillcolor": {
+    "type": "turtle",
+    "explanation": "Sets the colour used to fill a shape between begin_fill() and end_fill().",
+    "example": "pen.fillcolor(\"yellow\")"
+  },
+  "filter": {
+    "type": "built_in_function",
+    "explanation": "Builds an iterator containing only items that pass a test function.",
+    "example": "nums = filter(lambda x: x > 0, [-1, 0, 2])"
   },
   "finally": {
     "type": "core",
     "explanation": "Runs after try/except whether or not an exception occurred, often used for cleanup.",
     "example": "try:\n    do_work()\nfinally:\n    print('Always runs')"
   },
+  "float": {
+    "type": "built_in_type",
+    "explanation": "Floating-point number type for decimal values.",
+    "example": "price = float('19.99')"
+  },
   "for": {
     "type": "core",
     "explanation": "Loops over the items of an iterable, one item at a time.",
     "example": "for i in range(5):\n    print(i)"
+  },
+  "format": {
+    "type": "built_in_function",
+    "explanation": "Formats a value using a format specification.",
+    "example": "print(format(3.14159, '.2f'))"
+  },
+  "forward": {
+    "type": "turtle",
+    "explanation": "Moves the turtle forward by that many steps, drawing a line if the pen is down.",
+    "example": "pen.forward(100)"
+  },
+  "fractions": {
+    "type": "standard_library_module",
+    "explanation": "Provides rational number arithmetic using Fraction.",
+    "example": "from fractions import Fraction\nprint(Fraction(1, 3))"
   },
   "from": {
     "type": "core",
     "explanation": "Used with import to bring specific names from a module.",
     "example": "from math import sqrt\nprint(sqrt(16))"
   },
+  "frozenset": {
+    "type": "built_in_type",
+    "explanation": "Immutable unordered collection of unique items.",
+    "example": "locked = frozenset([1, 2, 3])"
+  },
+  "functools": {
+    "type": "standard_library_module",
+    "explanation": "Provides higher-order function helpers such as partial, reduce, and lru_cache.",
+    "example": "from functools import lru_cache\n\n@lru_cache\ndef fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)"
+  },
+  "generator expression": {
+    "type": "syntax_pattern",
+    "explanation": "Lazy expression that produces values one at a time instead of building a full list.",
+    "example": "total = sum(x*x for x in range(10))"
+  },
+  "getattr": {
+    "type": "built_in_function",
+    "explanation": "Gets an attribute from an object by name.",
+    "example": "value = getattr(obj, 'name', None)"
+  },
+  "glob": {
+    "type": "standard_library_module",
+    "explanation": "Finds pathnames matching Unix-style wildcard patterns.",
+    "example": "import glob\nprint(glob.glob('*.py'))"
+  },
   "global": {
     "type": "core",
     "explanation": "Declares that assignments inside a function should use a module-level variable.",
     "example": "counter = 0\n\ndef increment():\n    global counter\n    counter += 1"
+  },
+  "globals": {
+    "type": "built_in_function",
+    "explanation": "Returns a dictionary of the current global namespace.",
+    "example": "print(globals().keys())"
+  },
+  "goto": {
+    "type": "turtle",
+    "explanation": "Moves the turtle straight to an exact x, y position. The middle of the screen is 0, 0.",
+    "example": "pen.goto(100, -50)"
+  },
+  "hasattr": {
+    "type": "built_in_function",
+    "explanation": "Checks whether an object has an attribute with a given name.",
+    "example": "if hasattr(obj, 'name'):\n    print(obj.name)"
+  },
+  "hash": {
+    "type": "built_in_function",
+    "explanation": "Returns an integer hash value for a hashable object.",
+    "example": "print(hash('abc'))"
+  },
+  "hashlib": {
+    "type": "standard_library_module",
+    "explanation": "Provides secure hash and message digest algorithms.",
+    "example": "import hashlib\nprint(hashlib.sha256(b'hello').hexdigest())"
+  },
+  "heading": {
+    "type": "turtle",
+    "explanation": "Gives back the direction the turtle is currently facing, in degrees.",
+    "example": "angle = pen.heading()"
+  },
+  "help": {
+    "type": "built_in_function",
+    "explanation": "Starts Python's interactive help or shows help for an object.",
+    "example": "help(str)"
+  },
+  "hex": {
+    "type": "built_in_function",
+    "explanation": "Converts an integer to a hexadecimal string.",
+    "example": "print(hex(255))"
+  },
+  "hideturtle": {
+    "type": "turtle",
+    "explanation": "Hides the turtle arrow so only the drawing shows.",
+    "example": "pen.hideturtle()"
+  },
+  "home": {
+    "type": "turtle",
+    "explanation": "Sends the turtle back to the middle of the screen, pointing right.",
+    "example": "pen.home()"
+  },
+  "ht": {
+    "type": "turtle",
+    "explanation": "Short for hideturtle().",
+    "example": "pen.ht()"
+  },
+  "http": {
+    "type": "standard_library_module",
+    "explanation": "Package containing HTTP client/server utilities and status codes.",
+    "example": "from http import HTTPStatus\nprint(HTTPStatus.OK)"
+  },
+  "id": {
+    "type": "built_in_function",
+    "explanation": "Returns the identity number of an object for its lifetime.",
+    "example": "x = []\nprint(id(x))"
   },
   "if": {
     "type": "core",
@@ -114,330 +734,25 @@
     "explanation": "Checks membership in a collection, or introduces the iterable in a for loop.",
     "example": "if 3 in [1, 2, 3]:\n    print('found')"
   },
-  "is": {
-    "type": "core",
-    "explanation": "Checks whether two variables refer to the exact same object in memory.",
-    "example": "x = None\nif x is None:\n    print('No value')"
-  },
-  "lambda": {
-    "type": "core",
-    "explanation": "Creates a small anonymous function in a single expression.",
-    "example": "double = lambda x: x * 2\nprint(double(5))"
-  },
-  "nonlocal": {
-    "type": "core",
-    "explanation": "Declares that assignments inside a nested function should use a variable from the enclosing function scope.",
-    "example": "def outer():\n    count = 0\n    def inner():\n        nonlocal count\n        count += 1\n    inner()\n    return count"
-  },
-  "not": {
-    "type": "core",
-    "explanation": "Logical operator that reverses a boolean value.",
-    "example": "if not is_ready:\n    print('Not ready')"
-  },
-  "or": {
-    "type": "core",
-    "explanation": "Logical operator that is true when at least one condition is true.",
-    "example": "if is_weekend or is_holiday:\n    print('No work today')"
-  },
-  "pass": {
-    "type": "core",
-    "explanation": "A no-op placeholder statement used where Python requires a statement but you have nothing to run yet.",
-    "example": "def todo_later():\n    pass"
-  },
-  "raise": {
-    "type": "core",
-    "explanation": "Raises an exception on purpose, stopping normal execution unless it is caught.",
-    "example": "def check(age):\n    if age < 0:\n        raise ValueError('Age cannot be negative')"
-  },
-  "return": {
-    "type": "core",
-    "explanation": "Exits a function and optionally sends a value back to the caller.",
-    "example": "def square(x):\n    return x * x"
-  },
-  "try": {
-    "type": "core",
-    "explanation": "Starts a block of code whose exceptions can be handled with except/finally.",
-    "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
-  },
-  "while": {
-    "type": "core",
-    "explanation": "Repeats a block of code while a condition remains true.",
-    "example": "n = 3\nwhile n > 0:\n    print(n)\n    n -= 1"
-  },
-  "with": {
-    "type": "core",
-    "explanation": "Runs code inside a context manager that handles setup and cleanup automatically.",
-    "example": "with open('data.txt') as f:\n    content = f.read()"
-  },
-  "yield": {
-    "type": "core",
-    "explanation": "Produces a value from a generator function and pauses the function until the next value is requested.",
-    "example": "def count_up(n):\n    for i in range(n):\n        yield i"
-  },
-  "match": {
-    "type": "soft_keyword",
-    "explanation": "Starts a structural pattern matching block. It is only keyword-like in match statement syntax.",
-    "example": "match command:\n    case 'start':\n        print('Starting')\n    case _:\n        print('Unknown')"
-  },
-  "case": {
-    "type": "soft_keyword",
-    "explanation": "Defines one pattern branch inside a match statement. It is only keyword-like in match syntax.",
-    "example": "match status:\n    case 200:\n        print('OK')\n    case 404:\n        print('Not found')"
-  },
-  "_": {
-    "type": "soft_keyword",
-    "explanation": "Acts as a wildcard pattern inside match/case. Elsewhere it is usually just a normal name by convention.",
-    "example": "match value:\n    case _:\n        print('Anything')"
-  },
-  "type": {
-    "type": "soft_keyword_and_builtin_type",
-    "explanation": "In Python 3.12+, type is a soft keyword in type alias statements. It is also the built-in class/function used to inspect or create types.",
-    "example": "type Point = tuple[int, int]\n\nprint(type(123))  # <class 'int'>"
-  },
-  "Ellipsis": {
-    "type": "built_in_constant",
-    "explanation": "Built-in constant represented by ..., often used as a placeholder or in advanced slicing/type-hint contexts.",
-    "example": "def todo():\n    ...\n\nx = Ellipsis"
-  },
-  "NotImplemented": {
-    "type": "built_in_constant",
-    "explanation": "Special value returned by numeric/comparison special methods when an operation is not supported.",
-    "example": "class A:\n    def __eq__(self, other):\n        return NotImplemented"
+  "input": {
+    "type": "built_in_function",
+    "explanation": "Reads a line of text from the user.",
+    "example": "name = input('Name: ')"
   },
   "int": {
     "type": "built_in_type",
     "explanation": "Integer number type for whole numbers of arbitrary size.",
     "example": "age = int('37')"
   },
-  "float": {
-    "type": "built_in_type",
-    "explanation": "Floating-point number type for decimal values.",
-    "example": "price = float('19.99')"
+  "io": {
+    "type": "standard_library_module",
+    "explanation": "Provides tools for working with streams, text I/O, and binary I/O.",
+    "example": "from io import StringIO\nf = StringIO('hello')"
   },
-  "complex": {
-    "type": "built_in_type",
-    "explanation": "Number type for complex numbers with real and imaginary parts.",
-    "example": "z = complex(2, 3)  # 2+3j"
-  },
-  "bool": {
-    "type": "built_in_type",
-    "explanation": "Boolean type with two values: True and False.",
-    "example": "is_valid = bool(1)"
-  },
-  "str": {
-    "type": "built_in_type",
-    "explanation": "Text/string type for Unicode characters.",
-    "example": "name = str(123)"
-  },
-  "bytes": {
-    "type": "built_in_type",
-    "explanation": "Immutable sequence of bytes, commonly used for binary data.",
-    "example": "data = bytes([65, 66, 67])"
-  },
-  "bytearray": {
-    "type": "built_in_type",
-    "explanation": "Mutable sequence of bytes.",
-    "example": "data = bytearray(b'abc')\ndata[0] = 65"
-  },
-  "memoryview": {
-    "type": "built_in_type",
-    "explanation": "A view into binary data without copying it.",
-    "example": "view = memoryview(b'abc')\nprint(view[0])"
-  },
-  "list": {
-    "type": "built_in_type",
-    "explanation": "Mutable ordered collection of items.",
-    "example": "numbers = list(range(3))"
-  },
-  "tuple": {
-    "type": "built_in_type",
-    "explanation": "Immutable ordered collection of items.",
-    "example": "point = (3, 4)"
-  },
-  "range": {
-    "type": "built_in_type",
-    "explanation": "Immutable sequence representing a range of numbers, commonly used in for loops.",
-    "example": "for i in range(5):\n    print(i)"
-  },
-  "dict": {
-    "type": "built_in_type",
-    "explanation": "Mutable key-value mapping type.",
-    "example": "user = {'name': 'Nina', 'age': 37}"
-  },
-  "set": {
-    "type": "built_in_type",
-    "explanation": "Mutable unordered collection of unique items.",
-    "example": "unique = set([1, 1, 2, 3])"
-  },
-  "frozenset": {
-    "type": "built_in_type",
-    "explanation": "Immutable unordered collection of unique items.",
-    "example": "locked = frozenset([1, 2, 3])"
-  },
-  "object": {
-    "type": "built_in_type",
-    "explanation": "Base class that all Python classes ultimately inherit from.",
-    "example": "class User(object):\n    pass"
-  },
-  "slice": {
-    "type": "built_in_type",
-    "explanation": "Represents slice notation like start:stop:step.",
-    "example": "s = slice(1, 5, 2)\nprint([0, 1, 2, 3, 4, 5][s])"
-  },
-  "property": {
-    "type": "built_in_type",
-    "explanation": "Creates managed attributes using getter, setter, and deleter methods.",
-    "example": "class User:\n    @property\n    def name(self):\n        return self._name"
-  },
-  "staticmethod": {
-    "type": "built_in_type",
-    "explanation": "Wraps a method so it belongs to the class namespace but does not receive self or cls automatically.",
-    "example": "class Math:\n    @staticmethod\n    def square(x):\n        return x * x"
-  },
-  "classmethod": {
-    "type": "built_in_type",
-    "explanation": "Wraps a method so it receives the class as cls instead of an instance as self.",
-    "example": "class User:\n    @classmethod\n    def guest(cls):\n        return cls()"
-  },
-  "print": {
-    "type": "built_in_function",
-    "explanation": "Outputs text or values to the console.",
-    "example": "print('Hello, world!')"
-  },
-  "input": {
-    "type": "built_in_function",
-    "explanation": "Reads a line of text from the user.",
-    "example": "name = input('Name: ')"
-  },
-  "len": {
-    "type": "built_in_function",
-    "explanation": "Returns the length/count of items in a collection.",
-    "example": "print(len([1, 2, 3]))"
-  },
-  "open": {
-    "type": "built_in_function",
-    "explanation": "Opens a file and returns a file object.",
-    "example": "with open('data.txt', 'r') as f:\n    text = f.read()"
-  },
-  "abs": {
-    "type": "built_in_function",
-    "explanation": "Returns the absolute value of a number.",
-    "example": "print(abs(-5))"
-  },
-  "all": {
-    "type": "built_in_function",
-    "explanation": "Returns True if all items in an iterable are truthy.",
-    "example": "print(all([True, 1, 'x']))"
-  },
-  "any": {
-    "type": "built_in_function",
-    "explanation": "Returns True if at least one item in an iterable is truthy.",
-    "example": "print(any([False, 0, 'yes']))"
-  },
-  "ascii": {
-    "type": "built_in_function",
-    "explanation": "Returns a printable ASCII-only representation of an object.",
-    "example": "print(ascii('שלום'))"
-  },
-  "bin": {
-    "type": "built_in_function",
-    "explanation": "Converts an integer to a binary string.",
-    "example": "print(bin(10))"
-  },
-  "callable": {
-    "type": "built_in_function",
-    "explanation": "Checks whether an object can be called like a function.",
-    "example": "print(callable(print))"
-  },
-  "chr": {
-    "type": "built_in_function",
-    "explanation": "Returns the Unicode character for an integer code point.",
-    "example": "print(chr(65))"
-  },
-  "compile": {
-    "type": "built_in_function",
-    "explanation": "Compiles source code into a code object.",
-    "example": "code = compile('x = 5', '<string>', 'exec')"
-  },
-  "dir": {
-    "type": "built_in_function",
-    "explanation": "Returns a list of names/attributes available on an object.",
-    "example": "print(dir([]))"
-  },
-  "divmod": {
-    "type": "built_in_function",
-    "explanation": "Returns quotient and remainder as a tuple.",
-    "example": "print(divmod(10, 3))"
-  },
-  "eval": {
-    "type": "built_in_function",
-    "explanation": "Evaluates a string as a Python expression. Use carefully with trusted input only.",
-    "example": "print(eval('2 + 3'))"
-  },
-  "exec": {
-    "type": "built_in_function",
-    "explanation": "Executes a string or code object as Python code. Use carefully with trusted input only.",
-    "example": "exec('x = 10')\nprint(x)"
-  },
-  "filter": {
-    "type": "built_in_function",
-    "explanation": "Builds an iterator containing only items that pass a test function.",
-    "example": "nums = filter(lambda x: x > 0, [-1, 0, 2])"
-  },
-  "format": {
-    "type": "built_in_function",
-    "explanation": "Formats a value using a format specification.",
-    "example": "print(format(3.14159, '.2f'))"
-  },
-  "getattr": {
-    "type": "built_in_function",
-    "explanation": "Gets an attribute from an object by name.",
-    "example": "value = getattr(obj, 'name', None)"
-  },
-  "setattr": {
-    "type": "built_in_function",
-    "explanation": "Sets an attribute on an object by name.",
-    "example": "setattr(obj, 'name', 'Nina')"
-  },
-  "hasattr": {
-    "type": "built_in_function",
-    "explanation": "Checks whether an object has an attribute with a given name.",
-    "example": "if hasattr(obj, 'name'):\n    print(obj.name)"
-  },
-  "delattr": {
-    "type": "built_in_function",
-    "explanation": "Deletes an attribute from an object by name.",
-    "example": "delattr(obj, 'name')"
-  },
-  "globals": {
-    "type": "built_in_function",
-    "explanation": "Returns a dictionary of the current global namespace.",
-    "example": "print(globals().keys())"
-  },
-  "locals": {
-    "type": "built_in_function",
-    "explanation": "Returns a dictionary of the current local namespace.",
-    "example": "def f():\n    x = 1\n    print(locals())"
-  },
-  "hash": {
-    "type": "built_in_function",
-    "explanation": "Returns an integer hash value for a hashable object.",
-    "example": "print(hash('abc'))"
-  },
-  "help": {
-    "type": "built_in_function",
-    "explanation": "Starts Python's interactive help or shows help for an object.",
-    "example": "help(str)"
-  },
-  "hex": {
-    "type": "built_in_function",
-    "explanation": "Converts an integer to a hexadecimal string.",
-    "example": "print(hex(255))"
-  },
-  "id": {
-    "type": "built_in_function",
-    "explanation": "Returns the identity number of an object for its lifetime.",
-    "example": "x = []\nprint(id(x))"
+  "is": {
+    "type": "core",
+    "explanation": "Checks whether two variables refer to the exact same object in memory.",
+    "example": "x = None\nif x is None:\n    print('No value')"
   },
   "isinstance": {
     "type": "built_in_function",
@@ -454,549 +769,469 @@
     "explanation": "Returns an iterator from an iterable object.",
     "example": "it = iter([1, 2, 3])"
   },
-  "next": {
-    "type": "built_in_function",
-    "explanation": "Returns the next item from an iterator.",
-    "example": "it = iter([1, 2, 3])\nprint(next(it))"
-  },
-  "map": {
-    "type": "built_in_function",
-    "explanation": "Builds an iterator by applying a function to each item.",
-    "example": "squares = map(lambda x: x*x, [1, 2, 3])"
-  },
-  "max": {
-    "type": "built_in_function",
-    "explanation": "Returns the largest item.",
-    "example": "print(max([1, 7, 3]))"
-  },
-  "min": {
-    "type": "built_in_function",
-    "explanation": "Returns the smallest item.",
-    "example": "print(min([1, 7, 3]))"
-  },
-  "oct": {
-    "type": "built_in_function",
-    "explanation": "Converts an integer to an octal string.",
-    "example": "print(oct(8))"
-  },
-  "ord": {
-    "type": "built_in_function",
-    "explanation": "Returns the Unicode code point for a one-character string.",
-    "example": "print(ord('A'))"
-  },
-  "pow": {
-    "type": "built_in_function",
-    "explanation": "Raises a number to a power, optionally modulo another number.",
-    "example": "print(pow(2, 3))"
-  },
-  "repr": {
-    "type": "built_in_function",
-    "explanation": "Returns a developer-oriented string representation of an object.",
-    "example": "print(repr('hello\\n'))"
-  },
-  "reversed": {
-    "type": "built_in_function",
-    "explanation": "Returns a reverse iterator over a sequence.",
-    "example": "for x in reversed([1, 2, 3]):\n    print(x)"
-  },
-  "round": {
-    "type": "built_in_function",
-    "explanation": "Rounds a number to a given number of digits.",
-    "example": "print(round(3.14159, 2))"
-  },
-  "sorted": {
-    "type": "built_in_function",
-    "explanation": "Returns a new sorted list from an iterable.",
-    "example": "print(sorted([3, 1, 2]))"
-  },
-  "sum": {
-    "type": "built_in_function",
-    "explanation": "Adds numeric items in an iterable.",
-    "example": "print(sum([1, 2, 3]))"
-  },
-  "vars": {
-    "type": "built_in_function",
-    "explanation": "Returns the __dict__ attribute for an object, or local variables when called without arguments.",
-    "example": "print(vars(obj))"
-  },
-  "zip": {
-    "type": "built_in_function",
-    "explanation": "Combines iterables item-by-item into tuples.",
-    "example": "for name, score in zip(names, scores):\n    print(name, score)"
-  },
-  "__import__": {
-    "type": "built_in_function",
-    "explanation": "Low-level import function used internally by the import statement.",
-    "example": "math = __import__('math')\nprint(math.sqrt(16))"
-  },
-  "Exception": {
-    "type": "built_in_exception",
-    "explanation": "Base class for most user-handled exceptions.",
-    "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
-  },
-  "BaseException": {
-    "type": "built_in_exception",
-    "explanation": "Base class for all built-in exceptions.",
-    "example": "except BaseException as e:\n    print(e)"
-  },
-  "ValueError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when a value has the right type but an invalid value.",
-    "example": "raise ValueError('Invalid age')"
-  },
-  "TypeError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when an operation is applied to an object of inappropriate type.",
-    "example": "raise TypeError('Expected int')"
-  },
-  "IndexError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when a sequence index is out of range.",
-    "example": "numbers = [1]\nprint(numbers[5])"
-  },
-  "KeyError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when a dictionary key is not found.",
-    "example": "user = {}\nprint(user['name'])"
-  },
-  "NameError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when a local or global name is not found.",
-    "example": "print(unknown_variable)"
-  },
-  "AttributeError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when an attribute reference or assignment fails.",
-    "example": "x = 5\nx.append(1)"
-  },
-  "ImportError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when an import operation fails.",
-    "example": "from missing_module import thing"
-  },
-  "ModuleNotFoundError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when Python cannot find a module during import.",
-    "example": "import module_that_does_not_exist"
-  },
-  "ZeroDivisionError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when dividing by zero.",
-    "example": "x = 1 / 0"
-  },
-  "FileNotFoundError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when a requested file or directory does not exist.",
-    "example": "open('missing.txt')"
-  },
-  "StopIteration": {
-    "type": "built_in_exception",
-    "explanation": "Raised by next() when an iterator has no more items.",
-    "example": "it = iter([])\nnext(it)"
-  },
-  "AssertionError": {
-    "type": "built_in_exception",
-    "explanation": "Raised when an assert statement fails.",
-    "example": "assert False, 'failed'"
-  },
-  "self": {
-    "type": "convention",
-    "explanation": "Conventional first parameter name for instance methods, referring to the object itself. Not a keyword.",
-    "example": "class Counter:\n    def __init__(self):\n        self.count = 0"
-  },
-  "cls": {
-    "type": "convention",
-    "explanation": "Conventional first parameter name for class methods, referring to the class itself. Not a keyword.",
-    "example": "class User:\n    @classmethod\n    def create(cls):\n        return cls()"
-  },
-  "super": {
-    "type": "built_in_function",
-    "explanation": "Returns a proxy object for calling parent-class methods.",
-    "example": "class Dog(Animal):\n    def __init__(self, name):\n        super().__init__(name)"
-  },
-  "*args": {
-    "type": "syntax_pattern",
-    "explanation": "Function parameter pattern that collects extra positional arguments into a tuple.",
-    "example": "def total(*args):\n    return sum(args)"
-  },
-  "**kwargs": {
-    "type": "syntax_pattern",
-    "explanation": "Function parameter pattern that collects extra named keyword arguments into a dictionary.",
-    "example": "def greet(**kwargs):\n    print(kwargs['name'])"
-  },
-  "decorator": {
-    "type": "syntax_pattern",
-    "explanation": "Syntax that wraps or modifies a function or class using @ before its definition.",
-    "example": "@staticmethod\ndef square(x):\n    return x * x"
-  },
-  "list comprehension": {
-    "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a list by transforming and/or filtering an iterable.",
-    "example": "squares = [x**2 for x in range(5)]"
-  },
-  "dict comprehension": {
-    "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a dictionary from an iterable.",
-    "example": "squares = {x: x*x for x in range(5)}"
-  },
-  "set comprehension": {
-    "type": "syntax_pattern",
-    "explanation": "Compact syntax for building a set from an iterable.",
-    "example": "unique_lengths = {len(word) for word in words}"
-  },
-  "generator expression": {
-    "type": "syntax_pattern",
-    "explanation": "Lazy expression that produces values one at a time instead of building a full list.",
-    "example": "total = sum(x*x for x in range(10))"
-  },
-  "f-string": {
-    "type": "syntax_pattern",
-    "explanation": "Formatted string literal that embeds expressions inside braces.",
-    "example": "name = 'Nina'\nprint(f'Hello, {name}!')"
-  },
-  "__init__": {
-    "type": "special_method",
-    "explanation": "Special method called when a new object is initialized, commonly used as a constructor-like setup method.",
-    "example": "class Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y"
-  },
-  "__str__": {
-    "type": "special_method",
-    "explanation": "Special method used by str() and print() to create a user-friendly string representation.",
-    "example": "class User:\n    def __str__(self):\n        return 'User'"
-  },
-  "__repr__": {
-    "type": "special_method",
-    "explanation": "Special method used by repr() to create a developer-oriented representation.",
-    "example": "class User:\n    def __repr__(self):\n        return 'User()'"
-  },
-  "__len__": {
-    "type": "special_method",
-    "explanation": "Special method called by len().",
-    "example": "class Bag:\n    def __len__(self):\n        return 3"
-  },
-  "__iter__": {
-    "type": "special_method",
-    "explanation": "Special method that returns an iterator for an object.",
-    "example": "class Numbers:\n    def __iter__(self):\n        return iter([1, 2, 3])"
-  },
-  "__next__": {
-    "type": "special_method",
-    "explanation": "Special method that returns the next item from an iterator.",
-    "example": "class Counter:\n    def __next__(self):\n        return 1"
-  },
-  "__enter__": {
-    "type": "special_method",
-    "explanation": "Special method called when entering a with block.",
-    "example": "class Resource:\n    def __enter__(self):\n        return self"
-  },
-  "__exit__": {
-    "type": "special_method",
-    "explanation": "Special method called when leaving a with block.",
-    "example": "class Resource:\n    def __exit__(self, exc_type, exc, tb):\n        pass"
-  },
-  "__name__": {
-    "type": "special_variable",
-    "explanation": "Special module variable containing the module name. It equals '__main__' when the file is run directly.",
-    "example": "if __name__ == '__main__':\n    main()"
-  },
-  "__main__": {
-    "type": "special_value",
-    "explanation": "Value of __name__ for the file currently being executed as the main program.",
-    "example": "if __name__ == '__main__':\n    print('Running directly')"
-  },
-  "__file__": {
-    "type": "special_variable",
-    "explanation": "Special module variable containing the path to the current file when available.",
-    "example": "print(__file__)"
-  },
-  "sys": {
+  "itertools": {
     "type": "standard_library_module",
-    "explanation": "Provides access to interpreter-specific variables and functions, such as command-line arguments and exit.",
-    "example": "import sys\nprint(sys.argv)"
-  },
-  "os": {
-    "type": "standard_library_module",
-    "explanation": "Provides operating-system interfaces like environment variables, paths, and process utilities.",
-    "example": "import os\nprint(os.getcwd())"
-  },
-  "math": {
-    "type": "standard_library_module",
-    "explanation": "Provides common mathematical functions and constants.",
-    "example": "import math\nprint(math.sqrt(16))"
-  },
-  "random": {
-    "type": "standard_library_module",
-    "explanation": "Provides functions for pseudo-random numbers and random choices.",
-    "example": "import random\nprint(random.randint(1, 6))"
-  },
-  "datetime": {
-    "type": "standard_library_module",
-    "explanation": "Provides classes for dates, times, datetimes, and time deltas.",
-    "example": "from datetime import datetime\nprint(datetime.now())"
-  },
-  "time": {
-    "type": "standard_library_module",
-    "explanation": "Provides time-related functions such as sleep and timestamps.",
-    "example": "import time\ntime.sleep(1)"
+    "explanation": "Provides fast iterator-building tools for looping and combinations.",
+    "example": "import itertools\nprint(list(itertools.product([1, 2], ['a', 'b'])))"
   },
   "json": {
     "type": "standard_library_module",
     "explanation": "Reads and writes JSON data.",
     "example": "import json\ntext = json.dumps({'name': 'Nina'})"
   },
-  "pathlib": {
-    "type": "standard_library_module",
-    "explanation": "Provides object-oriented filesystem paths.",
-    "example": "from pathlib import Path\nprint(Path('data.txt').exists())"
+  "lambda": {
+    "type": "core",
+    "explanation": "Creates a small anonymous function in a single expression.",
+    "example": "double = lambda x: x * 2\nprint(double(5))"
   },
-  "re": {
-    "type": "standard_library_module",
-    "explanation": "Provides regular expression pattern matching.",
-    "example": "import re\nprint(re.findall(r'\\d+', 'A12 B34'))"
+  "left": {
+    "type": "turtle",
+    "explanation": "Turns the turtle anticlockwise by that many degrees. It does not move.",
+    "example": "pen.left(90)"
   },
-  "collections": {
-    "type": "standard_library_module",
-    "explanation": "Provides specialized container datatypes such as Counter, defaultdict, and deque.",
-    "example": "from collections import Counter\nprint(Counter('banana'))"
+  "len": {
+    "type": "built_in_function",
+    "explanation": "Returns the length/count of items in a collection.",
+    "example": "print(len([1, 2, 3]))"
   },
-  "itertools": {
-    "type": "standard_library_module",
-    "explanation": "Provides fast iterator-building tools for looping and combinations.",
-    "example": "import itertools\nprint(list(itertools.product([1, 2], ['a', 'b'])))"
+  "list": {
+    "type": "built_in_type",
+    "explanation": "Mutable ordered collection of items.",
+    "example": "numbers = list(range(3))"
   },
-  "functools": {
-    "type": "standard_library_module",
-    "explanation": "Provides higher-order function helpers such as partial, reduce, and lru_cache.",
-    "example": "from functools import lru_cache\n\n@lru_cache\ndef fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)"
+  "list comprehension": {
+    "type": "syntax_pattern",
+    "explanation": "Compact syntax for building a list by transforming and/or filtering an iterable.",
+    "example": "squares = [x**2 for x in range(5)]"
   },
-  "typing": {
-    "type": "standard_library_module",
-    "explanation": "Provides support for type hints and static typing tools.",
-    "example": "from typing import Optional\nname: Optional[str] = None"
-  },
-  "asyncio": {
-    "type": "standard_library_module",
-    "explanation": "Provides tools for writing asynchronous programs using async and await.",
-    "example": "import asyncio\nasyncio.run(main())"
-  },
-  "csv": {
-    "type": "standard_library_module",
-    "explanation": "Reads and writes CSV files.",
-    "example": "import csv\nwith open('data.csv') as f:\n    rows = list(csv.reader(f))"
-  },
-  "sqlite3": {
-    "type": "standard_library_module",
-    "explanation": "Provides a built-in interface to SQLite databases.",
-    "example": "import sqlite3\nconn = sqlite3.connect('app.db')"
+  "locals": {
+    "type": "built_in_function",
+    "explanation": "Returns a dictionary of the current local namespace.",
+    "example": "def f():\n    x = 1\n    print(locals())"
   },
   "logging": {
     "type": "standard_library_module",
     "explanation": "Provides flexible event logging for applications.",
     "example": "import logging\nlogging.info('Started')"
   },
-  "argparse": {
-    "type": "standard_library_module",
-    "explanation": "Builds command-line interfaces and parses command-line arguments.",
-    "example": "import argparse\nparser = argparse.ArgumentParser()"
+  "lt": {
+    "type": "turtle",
+    "explanation": "Short for left(). Turns anticlockwise by that many degrees.",
+    "example": "pen.lt(90)"
   },
-  "subprocess": {
-    "type": "standard_library_module",
-    "explanation": "Runs external commands and processes.",
-    "example": "import subprocess\nsubprocess.run(['echo', 'hi'])"
+  "map": {
+    "type": "built_in_function",
+    "explanation": "Builds an iterator by applying a function to each item.",
+    "example": "squares = map(lambda x: x*x, [1, 2, 3])"
   },
-  "threading": {
+  "match": {
+    "type": "soft_keyword",
+    "explanation": "Starts a structural pattern matching block. It is only keyword-like in match statement syntax.",
+    "example": "match command:\n    case 'start':\n        print('Starting')\n    case _:\n        print('Unknown')"
+  },
+  "math": {
     "type": "standard_library_module",
-    "explanation": "Provides thread-based parallelism tools.",
-    "example": "import threading\nthread = threading.Thread(target=work)"
+    "explanation": "Provides common mathematical functions and constants.",
+    "example": "import math\nprint(math.sqrt(16))"
+  },
+  "max": {
+    "type": "built_in_function",
+    "explanation": "Returns the largest item.",
+    "example": "print(max([1, 7, 3]))"
+  },
+  "memoryview": {
+    "type": "built_in_type",
+    "explanation": "A view into binary data without copying it.",
+    "example": "view = memoryview(b'abc')\nprint(view[0])"
+  },
+  "min": {
+    "type": "built_in_function",
+    "explanation": "Returns the smallest item.",
+    "example": "print(min([1, 7, 3]))"
   },
   "multiprocessing": {
     "type": "standard_library_module",
     "explanation": "Provides process-based parallelism tools.",
     "example": "from multiprocessing import Process\np = Process(target=work)"
   },
-  "concurrent.futures": {
-    "type": "standard_library_module",
-    "explanation": "Provides high-level thread and process pool executors.",
-    "example": "from concurrent.futures import ThreadPoolExecutor\nwith ThreadPoolExecutor() as ex:\n    ex.submit(work)"
+  "next": {
+    "type": "built_in_function",
+    "explanation": "Returns the next item from an iterator.",
+    "example": "it = iter([1, 2, 3])\nprint(next(it))"
   },
-  "dataclasses": {
-    "type": "standard_library_module",
-    "explanation": "Provides the @dataclass decorator for concise data-holding classes.",
-    "example": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: int\n    y: int"
+  "nonlocal": {
+    "type": "core",
+    "explanation": "Declares that assignments inside a nested function should use a variable from the enclosing function scope.",
+    "example": "def outer():\n    count = 0\n    def inner():\n        nonlocal count\n        count += 1\n    inner()\n    return count"
   },
-  "enum": {
-    "type": "standard_library_module",
-    "explanation": "Provides support for enumeration classes.",
-    "example": "from enum import Enum\nclass Color(Enum):\n    RED = 1"
+  "not": {
+    "type": "core",
+    "explanation": "Logical operator that reverses a boolean value.",
+    "example": "if not is_ready:\n    print('Not ready')"
   },
-  "abc": {
-    "type": "standard_library_module",
-    "explanation": "Provides tools for abstract base classes.",
-    "example": "from abc import ABC, abstractmethod\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        pass"
+  "object": {
+    "type": "built_in_type",
+    "explanation": "Base class that all Python classes ultimately inherit from.",
+    "example": "class User(object):\n    pass"
   },
-  "copy": {
-    "type": "standard_library_module",
-    "explanation": "Provides shallow and deep copy operations.",
-    "example": "import copy\nb = copy.deepcopy(a)"
+  "oct": {
+    "type": "built_in_function",
+    "explanation": "Converts an integer to an octal string.",
+    "example": "print(oct(8))"
   },
-  "io": {
-    "type": "standard_library_module",
-    "explanation": "Provides tools for working with streams, text I/O, and binary I/O.",
-    "example": "from io import StringIO\nf = StringIO('hello')"
+  "open": {
+    "type": "built_in_function",
+    "explanation": "Opens a file and returns a file object.",
+    "example": "with open('data.txt', 'r') as f:\n    text = f.read()"
   },
-  "decimal": {
-    "type": "standard_library_module",
-    "explanation": "Provides decimal floating-point arithmetic for precise base-10 calculations.",
-    "example": "from decimal import Decimal\nprice = Decimal('19.99')"
+  "or": {
+    "type": "core",
+    "explanation": "Logical operator that is true when at least one condition is true.",
+    "example": "if is_weekend or is_holiday:\n    print('No work today')"
   },
-  "fractions": {
-    "type": "standard_library_module",
-    "explanation": "Provides rational number arithmetic using Fraction.",
-    "example": "from fractions import Fraction\nprint(Fraction(1, 3))"
+  "ord": {
+    "type": "built_in_function",
+    "explanation": "Returns the Unicode code point for a one-character string.",
+    "example": "print(ord('A'))"
   },
-  "statistics": {
+  "os": {
     "type": "standard_library_module",
-    "explanation": "Provides basic statistical functions such as mean and median.",
-    "example": "import statistics\nprint(statistics.mean([1, 2, 3]))"
+    "explanation": "Provides operating-system interfaces like environment variables, paths, and process utilities.",
+    "example": "import os\nprint(os.getcwd())"
   },
-  "hashlib": {
-    "type": "standard_library_module",
-    "explanation": "Provides secure hash and message digest algorithms.",
-    "example": "import hashlib\nprint(hashlib.sha256(b'hello').hexdigest())"
+  "pass": {
+    "type": "core",
+    "explanation": "A no-op placeholder statement used where Python requires a statement but you have nothing to run yet.",
+    "example": "def todo_later():\n    pass"
   },
-  "secrets": {
+  "pathlib": {
     "type": "standard_library_module",
-    "explanation": "Provides cryptographically strong random values for secrets and tokens.",
-    "example": "import secrets\nprint(secrets.token_hex(16))"
+    "explanation": "Provides object-oriented filesystem paths.",
+    "example": "from pathlib import Path\nprint(Path('data.txt').exists())"
   },
-  "urllib": {
-    "type": "standard_library_module",
-    "explanation": "Package for working with URLs and basic HTTP requests.",
-    "example": "from urllib.request import urlopen\n# response = urlopen('https://example.com')"
+  "pd": {
+    "type": "turtle",
+    "explanation": "Short for pendown(). Puts the pen down so moving draws.",
+    "example": "pen.pd()"
   },
-  "http": {
-    "type": "standard_library_module",
-    "explanation": "Package containing HTTP client/server utilities and status codes.",
-    "example": "from http import HTTPStatus\nprint(HTTPStatus.OK)"
+  "pencolor": {
+    "type": "turtle",
+    "explanation": "Sets the colour of the line the turtle draws.",
+    "example": "pen.pencolor(\"red\")\npen.pencolor(\"#00aaff\")"
   },
-  "unittest": {
-    "type": "standard_library_module",
-    "explanation": "Python's built-in unit testing framework.",
-    "example": "import unittest\nclass MyTest(unittest.TestCase):\n    pass"
+  "pendown": {
+    "type": "turtle",
+    "explanation": "Puts the pen back down, so moving draws again.",
+    "example": "pen.pendown()"
   },
-  "pprint": {
-    "type": "standard_library_module",
-    "explanation": "Pretty-prints data structures in a more readable way.",
-    "example": "from pprint import pprint\npprint({'a': [1, 2, 3]})"
+  "pensize": {
+    "type": "turtle",
+    "explanation": "Sets how thick the line is. Bigger numbers draw fatter lines.",
+    "example": "pen.pensize(5)"
+  },
+  "penup": {
+    "type": "turtle",
+    "explanation": "Lifts the pen, so moving does not draw. Use it to move without leaving a line.",
+    "example": "pen.penup()\npen.goto(50, 50)\npen.pendown()"
   },
   "pickle": {
     "type": "standard_library_module",
     "explanation": "Serializes and deserializes Python objects. Only unpickle trusted data.",
     "example": "import pickle\ndata = pickle.dumps({'a': 1})"
   },
+  "pow": {
+    "type": "built_in_function",
+    "explanation": "Raises a number to a power, optionally modulo another number.",
+    "example": "print(pow(2, 3))"
+  },
+  "pprint": {
+    "type": "standard_library_module",
+    "explanation": "Pretty-prints data structures in a more readable way.",
+    "example": "from pprint import pprint\npprint({'a': [1, 2, 3]})"
+  },
+  "print": {
+    "type": "built_in_function",
+    "explanation": "Outputs text or values to the console.",
+    "example": "print('Hello, world!')"
+  },
+  "property": {
+    "type": "built_in_type",
+    "explanation": "Creates managed attributes using getter, setter, and deleter methods.",
+    "example": "class User:\n    @property\n    def name(self):\n        return self._name"
+  },
+  "pu": {
+    "type": "turtle",
+    "explanation": "Short for penup(). Lifts the pen so moving does not draw.",
+    "example": "pen.pu()"
+  },
+  "raise": {
+    "type": "core",
+    "explanation": "Raises an exception on purpose, stopping normal execution unless it is caught.",
+    "example": "def check(age):\n    if age < 0:\n        raise ValueError('Age cannot be negative')"
+  },
+  "random": {
+    "type": "standard_library_module",
+    "explanation": "Provides functions for pseudo-random numbers and random choices.",
+    "example": "import random\nprint(random.randint(1, 6))"
+  },
+  "range": {
+    "type": "built_in_type",
+    "explanation": "Immutable sequence representing a range of numbers, commonly used in for loops.",
+    "example": "for i in range(5):\n    print(i)"
+  },
+  "re": {
+    "type": "standard_library_module",
+    "explanation": "Provides regular expression pattern matching.",
+    "example": "import re\nprint(re.findall(r'\\d+', 'A12 B34'))"
+  },
+  "repr": {
+    "type": "built_in_function",
+    "explanation": "Returns a developer-oriented string representation of an object.",
+    "example": "print(repr('hello\\n'))"
+  },
+  "reset": {
+    "type": "turtle",
+    "explanation": "Erases this turtle’s drawing and sends it home.",
+    "example": "pen.reset()"
+  },
+  "return": {
+    "type": "core",
+    "explanation": "Exits a function and optionally sends a value back to the caller.",
+    "example": "def square(x):\n    return x * x"
+  },
+  "reversed": {
+    "type": "built_in_function",
+    "explanation": "Returns a reverse iterator over a sequence.",
+    "example": "for x in reversed([1, 2, 3]):\n    print(x)"
+  },
+  "right": {
+    "type": "turtle",
+    "explanation": "Turns the turtle clockwise by that many degrees. It does not move.",
+    "example": "pen.right(90)   # a quarter turn"
+  },
+  "round": {
+    "type": "built_in_function",
+    "explanation": "Rounds a number to a given number of digits.",
+    "example": "print(round(3.14159, 2))"
+  },
+  "rt": {
+    "type": "turtle",
+    "explanation": "Short for right(). Turns clockwise by that many degrees.",
+    "example": "pen.rt(90)"
+  },
+  "secrets": {
+    "type": "standard_library_module",
+    "explanation": "Provides cryptographically strong random values for secrets and tokens.",
+    "example": "import secrets\nprint(secrets.token_hex(16))"
+  },
+  "self": {
+    "type": "convention",
+    "explanation": "Conventional first parameter name for instance methods, referring to the object itself. Not a keyword.",
+    "example": "class Counter:\n    def __init__(self):\n        self.count = 0"
+  },
+  "set": {
+    "type": "built_in_type",
+    "explanation": "Mutable unordered collection of unique items.",
+    "example": "unique = set([1, 1, 2, 3])"
+  },
+  "set comprehension": {
+    "type": "syntax_pattern",
+    "explanation": "Compact syntax for building a set from an iterable.",
+    "example": "unique_lengths = {len(word) for word in words}"
+  },
+  "setattr": {
+    "type": "built_in_function",
+    "explanation": "Sets an attribute on an object by name.",
+    "example": "setattr(obj, 'name', 'Nina')"
+  },
+  "seth": {
+    "type": "turtle",
+    "explanation": "Short for setheading(). Points the turtle in an exact direction.",
+    "example": "pen.seth(0)"
+  },
+  "setheading": {
+    "type": "turtle",
+    "explanation": "Points the turtle in an exact direction. 0 is right, 90 is up, 180 is left.",
+    "example": "pen.setheading(90)   # face up"
+  },
+  "setpos": {
+    "type": "turtle",
+    "explanation": "Same as goto(): moves the turtle to an exact x, y position.",
+    "example": "pen.setpos(0, 0)"
+  },
+  "setx": {
+    "type": "turtle",
+    "explanation": "Moves the turtle to a new x position, keeping its y.",
+    "example": "pen.setx(120)"
+  },
+  "sety": {
+    "type": "turtle",
+    "explanation": "Moves the turtle to a new y position, keeping its x.",
+    "example": "pen.sety(-80)"
+  },
+  "shape": {
+    "type": "turtle",
+    "explanation": "Changes what the turtle looks like.",
+    "example": "pen.shape(\"turtle\")   # also: arrow, circle, square"
+  },
+  "showturtle": {
+    "type": "turtle",
+    "explanation": "Shows the turtle arrow again.",
+    "example": "pen.showturtle()"
+  },
   "shutil": {
     "type": "standard_library_module",
     "explanation": "Provides high-level file and directory operations.",
     "example": "import shutil\nshutil.copy('a.txt', 'b.txt')"
   },
-  "glob": {
+  "slice": {
+    "type": "built_in_type",
+    "explanation": "Represents slice notation like start:stop:step.",
+    "example": "s = slice(1, 5, 2)\nprint([0, 1, 2, 3, 4, 5][s])"
+  },
+  "sorted": {
+    "type": "built_in_function",
+    "explanation": "Returns a new sorted list from an iterable.",
+    "example": "print(sorted([3, 1, 2]))"
+  },
+  "speed": {
+    "type": "turtle",
+    "explanation": "Sets the drawing speed, 1 (slowest) to 10, or 0 for instant. In this IDE the picture is shown when the program finishes, so this mainly documents your intent.",
+    "example": "pen.speed(0)"
+  },
+  "sqlite3": {
     "type": "standard_library_module",
-    "explanation": "Finds pathnames matching Unix-style wildcard patterns.",
-    "example": "import glob\nprint(glob.glob('*.py'))"
+    "explanation": "Provides a built-in interface to SQLite databases.",
+    "example": "import sqlite3\nconn = sqlite3.connect('app.db')"
   },
-  "Any": {
-    "type": "typing_type",
-    "explanation": "Type hint meaning any value is allowed.",
-    "example": "from typing import Any\nvalue: Any = 123"
+  "st": {
+    "type": "turtle",
+    "explanation": "Short for showturtle().",
+    "example": "pen.st()"
   },
-  "Optional": {
-    "type": "typing_type",
-    "explanation": "Type hint meaning a value can be of a given type or None.",
+  "stamp": {
+    "type": "turtle",
+    "explanation": "Leaves a copy of the turtle shape at its current position.",
+    "example": "pen.stamp()"
+  },
+  "staticmethod": {
+    "type": "built_in_type",
+    "explanation": "Wraps a method so it belongs to the class namespace but does not receive self or cls automatically.",
+    "example": "class Math:\n    @staticmethod\n    def square(x):\n        return x * x"
+  },
+  "statistics": {
+    "type": "standard_library_module",
+    "explanation": "Provides basic statistical functions such as mean and median.",
+    "example": "import statistics\nprint(statistics.mean([1, 2, 3]))"
+  },
+  "str": {
+    "type": "built_in_type",
+    "explanation": "Text/string type for Unicode characters.",
+    "example": "name = str(123)"
+  },
+  "subprocess": {
+    "type": "standard_library_module",
+    "explanation": "Runs external commands and processes.",
+    "example": "import subprocess\nsubprocess.run(['echo', 'hi'])"
+  },
+  "sum": {
+    "type": "built_in_function",
+    "explanation": "Adds numeric items in an iterable.",
+    "example": "print(sum([1, 2, 3]))"
+  },
+  "super": {
+    "type": "built_in_function",
+    "explanation": "Returns a proxy object for calling parent-class methods.",
+    "example": "class Dog(Animal):\n    def __init__(self, name):\n        super().__init__(name)"
+  },
+  "sys": {
+    "type": "standard_library_module",
+    "explanation": "Provides access to interpreter-specific variables and functions, such as command-line arguments and exit.",
+    "example": "import sys\nprint(sys.argv)"
+  },
+  "threading": {
+    "type": "standard_library_module",
+    "explanation": "Provides thread-based parallelism tools.",
+    "example": "import threading\nthread = threading.Thread(target=work)"
+  },
+  "time": {
+    "type": "standard_library_module",
+    "explanation": "Provides time-related functions such as sleep and timestamps.",
+    "example": "import time\ntime.sleep(1)"
+  },
+  "towards": {
+    "type": "turtle",
+    "explanation": "The angle from the turtle to a point - useful with setheading().",
+    "example": "pen.setheading(pen.towards(0, 0))"
+  },
+  "try": {
+    "type": "core",
+    "explanation": "Starts a block of code whose exceptions can be handled with except/finally.",
+    "example": "try:\n    risky()\nexcept Exception as e:\n    print(e)"
+  },
+  "tuple": {
+    "type": "built_in_type",
+    "explanation": "Immutable ordered collection of items.",
+    "example": "point = (3, 4)"
+  },
+  "type": {
+    "type": "soft_keyword_and_builtin_type",
+    "explanation": "In Python 3.12+, type is a soft keyword in type alias statements. It is also the built-in class/function used to inspect or create types.",
+    "example": "type Point = tuple[int, int]\n\nprint(type(123))  # <class 'int'>"
+  },
+  "typing": {
+    "type": "standard_library_module",
+    "explanation": "Provides support for type hints and static typing tools.",
     "example": "from typing import Optional\nname: Optional[str] = None"
   },
-  "Union": {
-    "type": "typing_type",
-    "explanation": "Type hint meaning a value may be one of several types.",
-    "example": "from typing import Union\nvalue: Union[int, str] = 5"
+  "unittest": {
+    "type": "standard_library_module",
+    "explanation": "Python's built-in unit testing framework.",
+    "example": "import unittest\nclass MyTest(unittest.TestCase):\n    pass"
   },
-  "Callable": {
-    "type": "typing_type",
-    "explanation": "Type hint for a function or callable object.",
-    "example": "from typing import Callable\nfunc: Callable[[int], int]"
+  "urllib": {
+    "type": "standard_library_module",
+    "explanation": "Package for working with URLs and basic HTTP requests.",
+    "example": "from urllib.request import urlopen\n# response = urlopen('https://example.com')"
   },
-  "Iterable": {
-    "type": "typing_type",
-    "explanation": "Type hint for objects that can be iterated over.",
-    "example": "from typing import Iterable\ndef total(xs: Iterable[int]) -> int:\n    return sum(xs)"
+  "vars": {
+    "type": "built_in_function",
+    "explanation": "Returns the __dict__ attribute for an object, or local variables when called without arguments.",
+    "example": "print(vars(obj))"
   },
-  "Literal": {
-    "type": "typing_type",
-    "explanation": "Type hint for values restricted to specific literal values.",
-    "example": "from typing import Literal\nmode: Literal['read', 'write'] = 'read'"
+  "while": {
+    "type": "core",
+    "explanation": "Repeats a block of code while a condition remains true.",
+    "example": "n = 3\nwhile n > 0:\n    print(n)\n    n -= 1"
   },
-  "Protocol": {
-    "type": "typing_type",
-    "explanation": "Type hint tool for structural subtyping: an object matches if it has the required members.",
-    "example": "from typing import Protocol\nclass HasName(Protocol):\n    name: str"
+  "with": {
+    "type": "core",
+    "explanation": "Runs code inside a context manager that handles setup and cleanup automatically.",
+    "example": "with open('data.txt') as f:\n    content = f.read()"
   },
-  "TypeVar": {
-    "type": "typing_type",
-    "explanation": "Creates a generic type variable for type hints.",
-    "example": "from typing import TypeVar\nT = TypeVar('T')"
+  "write": {
+    "type": "turtle",
+    "explanation": "Writes text on the drawing at the turtle’s position.",
+    "example": "pen.write(\"Hello\", font=(\"Arial\", 16, \"normal\"))"
   },
-  "//": {
-    "type": "operator",
-    "explanation": "Integer division: divides and throws away the remainder, so the answer is always a whole number. Ordinary / always gives a decimal, even for 6 / 2.",
-    "example": "7 // 2   # 3\n7 / 2    # 3.5"
+  "xcor": {
+    "type": "turtle",
+    "explanation": "Gives back the turtle’s current x position as a number.",
+    "example": "x = pen.xcor()"
   },
-  "%": {
-    "type": "operator",
-    "explanation": "Remainder (modulo): what is left over after division. Most often used to ask \"is this divisible?\" - n % 2 == 0 means n is even.",
-    "example": "7 % 2    # 1\nif n % 2 == 0:\n    print(\"even\")"
+  "ycor": {
+    "type": "turtle",
+    "explanation": "Gives back the turtle’s current y position as a number.",
+    "example": "y = pen.ycor()"
   },
-  "**": {
-    "type": "operator",
-    "explanation": "Power: raises the left number to the power of the right one.",
-    "example": "2 ** 3   # 8\n9 ** 0.5 # 3.0 (square root)"
+  "yield": {
+    "type": "core",
+    "explanation": "Produces a value from a generator function and pauses the function until the next value is requested.",
+    "example": "def count_up(n):\n    for i in range(n):\n        yield i"
   },
-  "==": {
-    "type": "operator",
-    "explanation": "Compares two values and gives True or False. Not the same as a single = , which ASSIGNS a value.",
-    "example": "if answer == 42:\n    print(\"correct\")"
-  },
-  "!=": {
-    "type": "operator",
-    "explanation": "\"Is not equal to\". Gives True when the two values differ.",
-    "example": "if name != \"\":\n    print(\"hello\", name)"
-  },
-  "=": {
-    "type": "operator",
-    "explanation": "Assignment: puts the value on the right into the name on the left. To COMPARE two values use == instead.",
-    "example": "total = 10"
-  },
-  "+=": {
-    "type": "operator",
-    "explanation": "Adds to a variable and stores the result back in it. total += 5 is short for total = total + 5.",
-    "example": "total = 0\nfor n in [1, 2, 3]:\n    total += n"
-  },
-  "-=": {
-    "type": "operator",
-    "explanation": "Subtracts from a variable and stores the result back in it.",
-    "example": "lives = 3\nlives -= 1"
-  },
-  "<=": {
-    "type": "operator",
-    "explanation": "\"Is less than or equal to\".",
-    "example": "if score <= 100:\n    print(\"valid\")"
-  },
-  ">=": {
-    "type": "operator",
-    "explanation": "\"Is greater than or equal to\".",
-    "example": "if age >= 18:\n    print(\"adult\")"
-  },
-  "->": {
-    "type": "operator",
-    "explanation": "Return type hint on a function. A note for readers and tools - Python does not enforce it.",
-    "example": "def double(n: int) -> int:\n    return n * 2"
+  "zip": {
+    "type": "built_in_function",
+    "explanation": "Combines iterables item-by-item into tuples.",
+    "example": "for name, score in zip(names, scores):\n    print(name, score)"
   }
 }

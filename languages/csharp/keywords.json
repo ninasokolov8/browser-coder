@@ -1,418 +1,663 @@
 {
+  "!=": {
+    "type": "operator",
+    "explanation": "\"Is not equal to\".",
+    "example": "if (total != 0) { }"
+  },
+  "#define": {
+    "type": "preprocessor_directive",
+    "explanation": "Defines a conditional compilation symbol for the current file.",
+    "example": "#define EXPERIMENTAL"
+  },
+  "#elif": {
+    "type": "preprocessor_directive",
+    "explanation": "Adds an else-if branch to a preprocessor conditional.",
+    "example": "#if WINDOWS\nConsole.WriteLine(\"Windows\");\n#elif LINUX\nConsole.WriteLine(\"Linux\");\n#endif"
+  },
+  "#else": {
+    "type": "preprocessor_directive",
+    "explanation": "Provides the alternative branch for a preprocessor conditional.",
+    "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#else\nConsole.WriteLine(\"Release\");\n#endif"
+  },
+  "#endif": {
+    "type": "preprocessor_directive",
+    "explanation": "Ends a preprocessor conditional block.",
+    "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#endif"
+  },
+  "#endregion": {
+    "type": "preprocessor_directive",
+    "explanation": "Ends a collapsible region.",
+    "example": "#region Helpers\nvoid Help() { }\n#endregion"
+  },
+  "#error": {
+    "type": "preprocessor_directive",
+    "explanation": "Emits a compiler error.",
+    "example": "#error This build target is not supported"
+  },
+  "#if": {
+    "type": "preprocessor_directive",
+    "explanation": "Conditionally includes code when a symbol expression is true.",
+    "example": "#if DEBUG\nConsole.WriteLine(\"Debug mode\");\n#endif"
+  },
+  "#line": {
+    "type": "preprocessor_directive",
+    "explanation": "Changes the compiler's reported line number or file name.",
+    "example": "#line 200 \"Generated.cs\""
+  },
+  "#nullable": {
+    "type": "preprocessor_directive",
+    "explanation": "Controls nullable reference type warnings and annotations.",
+    "example": "#nullable enable\nstring? name = null;"
+  },
+  "#pragma": {
+    "type": "preprocessor_directive",
+    "explanation": "Gives special instructions to the compiler, commonly to enable or disable warnings.",
+    "example": "#pragma warning disable CS0168"
+  },
+  "#region": {
+    "type": "preprocessor_directive",
+    "explanation": "Starts a collapsible region in editors.",
+    "example": "#region Helpers\nvoid Help() { }\n#endregion"
+  },
+  "#undef": {
+    "type": "preprocessor_directive",
+    "explanation": "Undefines a conditional compilation symbol for the current file.",
+    "example": "#undef EXPERIMENTAL"
+  },
+  "#warning": {
+    "type": "preprocessor_directive",
+    "explanation": "Emits a compiler warning.",
+    "example": "#warning This code needs review"
+  },
+  "%": {
+    "type": "operator",
+    "explanation": "Remainder (modulo): what is left over after division. n % 2 == 0 means n is even.",
+    "example": "int rest = 7 % 2;   // 1"
+  },
+  "&&": {
+    "type": "operator",
+    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side.",
+    "example": "if (list != null && list.Count > 0) { }"
+  },
+  "++": {
+    "type": "operator",
+    "explanation": "Adds one to a variable, in place.",
+    "example": "for (int i = 0; i < 5; i++) { }"
+  },
+  "+=": {
+    "type": "operator",
+    "explanation": "Adds to a variable and stores the result back in it.",
+    "example": "total += n;"
+  },
+  "/": {
+    "type": "operator",
+    "explanation": "Division. Between two INTEGERS the remainder is thrown away: 7 / 2 is 3. Make one side a double to get a decimal.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+  },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
+    "example": "int total = 10;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values. For strings C# compares the TEXT, which is different from Java - but for your own classes it compares identity unless the class says otherwise.",
+    "example": "if (name == \"Ada\") { }   // works in C#"
+  },
+  "=>": {
+    "type": "operator",
+    "explanation": "Lambda, or an expression-bodied member: a short way to write a function or a property.",
+    "example": "list.ForEach(item => Console.WriteLine(item));"
+  },
+  "?.": {
+    "type": "operator",
+    "explanation": "Null-conditional: read a member only if the object is not null, instead of throwing.",
+    "example": "int? length = name?.Length;"
+  },
+  "??": {
+    "type": "operator",
+    "explanation": "Null coalescing: use the right side only when the left is null.",
+    "example": "string display = name ?? \"unknown\";"
+  },
+  "Abs": {
+    "type": "method",
+    "explanation": "The size of a number, ignoring its sign.",
+    "example": "int distance = Math.Abs(-5);"
+  },
+  "Add": {
+    "type": "method",
+    "explanation": "Puts an item into a list.",
+    "example": "var names = new List<string>();\nnames.Add(\"Ada\");"
+  },
+  "Array": {
+    "type": "fundamental_class",
+    "explanation": "Common shorthand for System.Array when System is imported.",
+    "example": "Array.Sort(numbers);"
+  },
+  "CancellationToken": {
+    "type": "threading_type",
+    "explanation": "Signals cancellation to async or long-running operations.",
+    "example": "Task LoadAsync(CancellationToken token) => Task.Delay(1000, token);"
+  },
+  "Cdecl": {
+    "type": "contextual_keyword",
+    "explanation": "Specifies the Cdecl unmanaged calling convention for function pointers.",
+    "example": "delegate* unmanaged[Cdecl]<int, int> f;"
+  },
+  "Clear": {
+    "type": "method",
+    "explanation": "Empties a list completely.",
+    "example": "names.Clear();"
+  },
+  "Console": {
+    "type": "fundamental_class",
+    "explanation": "The commonly used class for reading from and writing to the console, usually imported from System.",
+    "example": "Console.WriteLine(\"Hello\");\nstring? input = Console.ReadLine();"
+  },
+  "Contains": {
+    "type": "method",
+    "explanation": "Whether the text or list has that inside it.",
+    "example": "if (sentence.Contains(\"cat\")) { ... }"
+  },
+  "Count": {
+    "type": "method",
+    "explanation": "How many items a list holds.",
+    "example": "int howMany = names.Count;"
+  },
+  "DateTime": {
+    "type": "fundamental_struct",
+    "explanation": "Common shorthand for System.DateTime when System is imported.",
+    "example": "DateTime today = DateTime.Today;"
+  },
+  "Dictionary": {
+    "type": "collection_type",
+    "explanation": "A key/value collection, usually used as Dictionary<TKey,TValue>.",
+    "example": "Dictionary<string, int> ages = new();"
+  },
+  "Directory": {
+    "type": "io_class",
+    "explanation": "Provides static methods for working with directories.",
+    "example": "Directory.CreateDirectory(\"logs\");"
+  },
+  "EndsWith": {
+    "type": "method",
+    "explanation": "Whether the text ends with that.",
+    "example": "if (name.EndsWith(\".txt\")) { ... }"
+  },
+  "Exception": {
+    "type": "fundamental_class",
+    "explanation": "Common shorthand for System.Exception when System is imported.",
+    "example": "throw new Exception(\"Something went wrong\");"
+  },
+  "Fastcall": {
+    "type": "contextual_keyword",
+    "explanation": "Specifies the Fastcall unmanaged calling convention for function pointers.",
+    "example": "delegate* unmanaged[Fastcall]<int, int> f;"
+  },
+  "File": {
+    "type": "io_class",
+    "explanation": "Provides static methods for creating, reading, writing, and deleting files.",
+    "example": "string text = File.ReadAllText(\"data.txt\");"
+  },
+  "FileStream": {
+    "type": "io_class",
+    "explanation": "Represents a stream backed by a file.",
+    "example": "using FileStream fs = File.OpenRead(\"data.txt\");"
+  },
+  "FirstOrDefault": {
+    "type": "linq_method",
+    "explanation": "Returns the first matching item or the default value if none exists.",
+    "example": "var user = users.FirstOrDefault(u => u.Id == id);"
+  },
+  "GroupBy": {
+    "type": "linq_method",
+    "explanation": "Groups items in a sequence by a key.",
+    "example": "var groups = people.GroupBy(p => p.City);"
+  },
+  "Guid": {
+    "type": "fundamental_struct",
+    "explanation": "Common shorthand for System.Guid when System is imported.",
+    "example": "Guid id = Guid.NewGuid();"
+  },
+  "HashSet": {
+    "type": "collection_type",
+    "explanation": "A collection of unique values, usually used as HashSet<T>.",
+    "example": "HashSet<int> ids = new();"
+  },
+  "HttpClient": {
+    "type": "networking_class",
+    "explanation": "Sends HTTP requests and receives HTTP responses.",
+    "example": "using var client = new HttpClient();\nstring html = await client.GetStringAsync(url);"
+  },
+  "ICollection": {
+    "type": "fundamental_interface",
+    "explanation": "Represents a collection of items, usually as ICollection<T>.",
+    "example": "ICollection<string> names = new List<string>();"
+  },
+  "IDisposable": {
+    "type": "fundamental_interface",
+    "explanation": "Common shorthand for System.IDisposable when System is imported.",
+    "example": "void Close(IDisposable resource) => resource.Dispose();"
+  },
+  "IEnumerable": {
+    "type": "fundamental_interface",
+    "explanation": "Represents a sequence that can be iterated with foreach, usually as IEnumerable<T>.",
+    "example": "IEnumerable<int> nums = new[] { 1, 2, 3 };"
+  },
+  "IList": {
+    "type": "fundamental_interface",
+    "explanation": "Represents an indexable list, usually as IList<T>.",
+    "example": "IList<string> names = new List<string>();"
+  },
+  "IndexOf": {
+    "type": "method",
+    "explanation": "Where something first appears, or -1 if it is not there.",
+    "example": "int at = word.IndexOf(\"a\");"
+  },
+  "JsonSerializer": {
+    "type": "serialization_class",
+    "explanation": "Serializes objects to JSON and deserializes JSON into objects.",
+    "example": "string json = JsonSerializer.Serialize(user);"
+  },
+  "LINQ": {
+    "type": "feature",
+    "explanation": "Language Integrated Query: C# query syntax plus extension methods for filtering, projecting, grouping, and transforming data.",
+    "example": "var evens = numbers.Where(n => n % 2 == 0).ToList();"
+  },
+  "Length": {
+    "type": "method",
+    "explanation": "How long something is: characters in a string, or items in an array or list.",
+    "example": "int n = name.Length;"
+  },
+  "List": {
+    "type": "collection_type",
+    "explanation": "A strongly typed resizable list of items, usually used as List<T>.",
+    "example": "List<string> names = new List<string>();"
+  },
+  "Math": {
+    "type": "fundamental_class",
+    "explanation": "Common shorthand for System.Math when System is imported.",
+    "example": "double rounded = Math.Round(3.14);"
+  },
+  "Max": {
+    "type": "method",
+    "explanation": "The larger of two numbers.",
+    "example": "int biggest = Math.Max(a, b);"
+  },
+  "Min": {
+    "type": "method",
+    "explanation": "The smaller of two numbers.",
+    "example": "int smallest = Math.Min(a, b);"
+  },
+  "Next": {
+    "type": "method",
+    "explanation": "A random whole number, up to (not including) the limit you give.",
+    "example": "var rng = new Random();\nint dice = rng.Next(1, 7);"
+  },
+  "Object": {
+    "type": "fundamental_class",
+    "explanation": "The base class for all .NET types; equivalent to the C# object alias when System is imported.",
+    "example": "Object value = \"text\";"
+  },
+  "OrderBy": {
+    "type": "linq_method",
+    "explanation": "Sorts a sequence in ascending order by a key.",
+    "example": "var sorted = people.OrderBy(p => p.Name);"
+  },
+  "Parse": {
+    "type": "method",
+    "explanation": "Turns text into a number. Fails if the text is not one.",
+    "example": "int n = int.Parse(\"42\");"
+  },
+  "Pow": {
+    "type": "method",
+    "explanation": "One number raised to the power of another.",
+    "example": "double p = Math.Pow(2, 10);"
+  },
+  "Queue": {
+    "type": "collection_type",
+    "explanation": "A first-in, first-out collection, usually used as Queue<T>.",
+    "example": "Queue<string> queue = new();"
+  },
+  "Random": {
+    "type": "fundamental_class",
+    "explanation": "Common shorthand for System.Random when System is imported.",
+    "example": "Random rng = new Random();"
+  },
+  "ReadLine": {
+    "type": "method",
+    "explanation": "Reads a whole line of what the user types. Always gives back text.",
+    "example": "string name = Console.ReadLine();"
+  },
+  "Remove": {
+    "type": "method",
+    "explanation": "Takes an item out of a list.",
+    "example": "names.Remove(\"Ada\");"
+  },
+  "RemoveAt": {
+    "type": "method",
+    "explanation": "Takes the item at that position out of a list.",
+    "example": "names.RemoveAt(0);"
+  },
+  "Replace": {
+    "type": "method",
+    "explanation": "The same text with every copy of one part swapped for another.",
+    "example": "string fixedText = text.Replace(\"colour\", \"color\");"
+  },
+  "Round": {
+    "type": "method",
+    "explanation": "The nearest whole number.",
+    "example": "double n = Math.Round(3.6);"
+  },
+  "Select": {
+    "type": "linq_method",
+    "explanation": "Projects each item in a sequence into a new form.",
+    "example": "var names = people.Select(p => p.Name);"
+  },
+  "Sort": {
+    "type": "method",
+    "explanation": "Puts a list in order.",
+    "example": "names.Sort();"
+  },
+  "Split": {
+    "type": "method",
+    "explanation": "Breaks text into an array, cutting at the separator you give.",
+    "example": "string[] words = sentence.Split(' ');"
+  },
+  "Sqrt": {
+    "type": "method",
+    "explanation": "The square root of a number.",
+    "example": "double r = Math.Sqrt(16);   // 4"
+  },
+  "Stack": {
+    "type": "collection_type",
+    "explanation": "A last-in, first-out collection, usually used as Stack<T>.",
+    "example": "Stack<string> stack = new();"
+  },
+  "StartsWith": {
+    "type": "method",
+    "explanation": "Whether the text begins with that.",
+    "example": "if (line.StartsWith(\"#\")) { ... }"
+  },
+  "Stdcall": {
+    "type": "contextual_keyword",
+    "explanation": "Specifies the Stdcall unmanaged calling convention for function pointers.",
+    "example": "delegate* unmanaged[Stdcall]<int, int> f;"
+  },
+  "Stopwatch": {
+    "type": "diagnostics_class",
+    "explanation": "Measures elapsed time.",
+    "example": "Stopwatch sw = Stopwatch.StartNew();"
+  },
+  "Stream": {
+    "type": "io_class",
+    "explanation": "Base type for reading and writing byte streams.",
+    "example": "Stream stream = File.OpenRead(\"data.txt\");"
+  },
+  "String": {
+    "type": "fundamental_class",
+    "explanation": "The .NET class for text; equivalent to the C# string alias when System is imported.",
+    "example": "String text = \"hello\";"
+  },
+  "StringBuilder": {
+    "type": "text_class",
+    "explanation": "Builds strings efficiently through repeated appends or modifications.",
+    "example": "StringBuilder sb = new StringBuilder();\nsb.Append(\"Hello\");"
+  },
+  "Substring": {
+    "type": "method",
+    "explanation": "A piece of a string, starting at a position.",
+    "example": "string part = \"programming\".Substring(0, 7);   // \"program\""
+  },
+  "System": {
+    "type": "namespace",
+    "explanation": "The root .NET namespace containing fundamental types such as Console, Math, DateTime, String, Object, and Exception.",
+    "example": "using System;\nConsole.WriteLine(DateTime.Now);"
+  },
+  "System.ArgumentException": {
+    "type": "fundamental_class",
+    "explanation": "Exception used when a method receives an invalid argument.",
+    "example": "throw new ArgumentException(\"Invalid name\");"
+  },
+  "System.Array": {
+    "type": "fundamental_class",
+    "explanation": "The base class for all arrays in .NET.",
+    "example": "int[] numbers = { 1, 2, 3 };\nArray.Sort(numbers);"
+  },
+  "System.Boolean": {
+    "type": "fundamental_struct",
+    "explanation": "The .NET type behind the C# bool keyword.",
+    "example": "System.Boolean ok = true;"
+  },
+  "System.Collections": {
+    "type": "namespace",
+    "explanation": "Contains non-generic collection types such as ArrayList and Hashtable.",
+    "example": "using System.Collections;"
+  },
+  "System.Collections.Generic": {
+    "type": "namespace",
+    "explanation": "Contains strongly typed generic collection interfaces and classes such as List<T> and Dictionary<TKey,TValue>.",
+    "example": "using System.Collections.Generic;\nList<int> nums = new();"
+  },
+  "System.Console": {
+    "type": "fundamental_class",
+    "explanation": "Provides standard input, output, and error streams for console applications.",
+    "example": "System.Console.WriteLine(\"Hello\");"
+  },
+  "System.DateTime": {
+    "type": "fundamental_struct",
+    "explanation": "Represents a date and time value.",
+    "example": "DateTime now = DateTime.Now;"
+  },
+  "System.Decimal": {
+    "type": "fundamental_struct",
+    "explanation": "The .NET type behind the C# decimal keyword.",
+    "example": "System.Decimal money = 10.5m;"
+  },
+  "System.Diagnostics": {
+    "type": "namespace",
+    "explanation": "Contains types for diagnostics, tracing, processes, and debugging.",
+    "example": "using System.Diagnostics;\nStopwatch sw = Stopwatch.StartNew();"
+  },
+  "System.Double": {
+    "type": "fundamental_struct",
+    "explanation": "The .NET type behind the C# double keyword.",
+    "example": "System.Double value = 3.14;"
+  },
+  "System.Exception": {
+    "type": "fundamental_class",
+    "explanation": "The base class for runtime errors that can be thrown and caught.",
+    "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
+  },
+  "System.Guid": {
+    "type": "fundamental_struct",
+    "explanation": "Represents a globally unique identifier.",
+    "example": "Guid id = Guid.NewGuid();"
+  },
+  "System.IDisposable": {
+    "type": "fundamental_interface",
+    "explanation": "Interface for objects that release resources through Dispose().",
+    "example": "using FileStream stream = File.OpenRead(\"data.txt\");"
+  },
+  "System.IO": {
+    "type": "namespace",
+    "explanation": "Contains types for reading and writing files, directories, and streams.",
+    "example": "using System.IO;\nstring text = File.ReadAllText(\"data.txt\");"
+  },
+  "System.Int32": {
+    "type": "fundamental_struct",
+    "explanation": "The .NET type behind the C# int keyword.",
+    "example": "System.Int32 count = 42;"
+  },
+  "System.InvalidOperationException": {
+    "type": "fundamental_class",
+    "explanation": "Exception used when an object is in the wrong state for an operation.",
+    "example": "throw new InvalidOperationException(\"Not ready\");"
+  },
+  "System.Linq": {
+    "type": "namespace",
+    "explanation": "Contains LINQ extension methods for querying and transforming sequences.",
+    "example": "using System.Linq;\nvar evens = nums.Where(n => n % 2 == 0);"
+  },
+  "System.Math": {
+    "type": "fundamental_class",
+    "explanation": "Provides mathematical constants and static methods.",
+    "example": "double root = Math.Sqrt(16);"
+  },
+  "System.Net.Http": {
+    "type": "namespace",
+    "explanation": "Contains HTTP client APIs for sending requests and receiving responses.",
+    "example": "using System.Net.Http;\nvar client = new HttpClient();"
+  },
+  "System.Object": {
+    "type": "fundamental_class",
+    "explanation": "The .NET base type behind the C# object keyword.",
+    "example": "System.Object value = 123;"
+  },
+  "System.Random": {
+    "type": "fundamental_class",
+    "explanation": "Generates pseudo-random numbers.",
+    "example": "Random rng = new Random();\nint n = rng.Next(1, 10);"
+  },
+  "System.Reflection": {
+    "type": "namespace",
+    "explanation": "Contains APIs for inspecting assemblies, types, and members at runtime.",
+    "example": "using System.Reflection;\nType t = typeof(User);"
+  },
+  "System.String": {
+    "type": "fundamental_class",
+    "explanation": "The .NET type behind the C# string keyword.",
+    "example": "System.String text = \"hello\";"
+  },
+  "System.Text": {
+    "type": "namespace",
+    "explanation": "Contains types for text processing and encoding.",
+    "example": "using System.Text;\nvar sb = new StringBuilder();"
+  },
+  "System.Text.Json": {
+    "type": "namespace",
+    "explanation": "Contains APIs for JSON serialization and deserialization.",
+    "example": "using System.Text.Json;\nstring json = JsonSerializer.Serialize(user);"
+  },
+  "System.Threading": {
+    "type": "namespace",
+    "explanation": "Contains types for threading, synchronization, and cancellation.",
+    "example": "using System.Threading;\nCancellationToken token = CancellationToken.None;"
+  },
+  "System.Threading.Tasks": {
+    "type": "namespace",
+    "explanation": "Contains Task-based asynchronous programming types.",
+    "example": "using System.Threading.Tasks;\nTask task = Task.Delay(1000);"
+  },
+  "System.TimeSpan": {
+    "type": "fundamental_struct",
+    "explanation": "Represents a duration or time interval.",
+    "example": "TimeSpan duration = TimeSpan.FromMinutes(30);"
+  },
+  "Task": {
+    "type": "async_type",
+    "explanation": "Represents an asynchronous operation.",
+    "example": "Task<string> task = LoadAsync();"
+  },
+  "Task<T>": {
+    "type": "async_type",
+    "explanation": "Represents an asynchronous operation that returns a value.",
+    "example": "Task<int> task = GetCountAsync();"
+  },
+  "Thiscall": {
+    "type": "contextual_keyword",
+    "explanation": "Specifies the Thiscall unmanaged calling convention for function pointers.",
+    "example": "delegate* unmanaged[Thiscall]<int, int> f;"
+  },
+  "TimeSpan": {
+    "type": "fundamental_struct",
+    "explanation": "Common shorthand for System.TimeSpan when System is imported.",
+    "example": "TimeSpan wait = TimeSpan.FromSeconds(5);"
+  },
+  "ToList": {
+    "type": "linq_method",
+    "explanation": "Creates a List<T> from a sequence.",
+    "example": "var list = numbers.ToList();"
+  },
+  "ToLower": {
+    "type": "method",
+    "explanation": "The same text in small letters.",
+    "example": "string quiet = name.ToLower();"
+  },
+  "ToString": {
+    "type": "method",
+    "explanation": "The text version of a value.",
+    "example": "string s = 42.ToString();"
+  },
+  "ToUpper": {
+    "type": "method",
+    "explanation": "The same text in capitals.",
+    "example": "string loud = name.ToUpper();"
+  },
+  "Trim": {
+    "type": "method",
+    "explanation": "The same text with spaces removed from both ends.",
+    "example": "string clean = input.Trim();"
+  },
+  "TryParse": {
+    "type": "method",
+    "explanation": "Tries to turn text into a number, and tells you whether it worked - safer than Parse.",
+    "example": "if (int.TryParse(Console.ReadLine(), out int age)) { ... }"
+  },
+  "Where": {
+    "type": "linq_method",
+    "explanation": "Filters a sequence using a condition.",
+    "example": "var adults = people.Where(p => p.Age >= 18);"
+  },
+  "Write": {
+    "type": "method",
+    "explanation": "Prints text WITHOUT moving to the next line.",
+    "example": "Console.Write(\"Name: \");"
+  },
+  "WriteLine": {
+    "type": "method",
+    "explanation": "Prints a line of text and moves to the next line.",
+    "example": "Console.WriteLine(\"Hello\");"
+  },
   "abstract": {
     "type": "core_keyword",
     "explanation": "Marks a class as incomplete or a member as requiring implementation in a derived class.",
     "example": "abstract class Shape { public abstract double Area(); }"
-  },
-  "as": {
-    "type": "core_keyword",
-    "explanation": "Safely converts a value to a compatible reference or nullable type, returning null if the conversion fails.",
-    "example": "object value = \"hi\";\nstring text = value as string;"
-  },
-  "base": {
-    "type": "core_keyword",
-    "explanation": "Refers to the base class, usually to call a base constructor or overridden member.",
-    "example": "class Dog : Animal { public Dog(string name) : base(name) {} }"
-  },
-  "break": {
-    "type": "control_flow",
-    "explanation": "Exits the nearest loop or switch statement immediately.",
-    "example": "for (int i = 0; i < 10; i++) { if (i == 3) break; }"
-  },
-  "case": {
-    "type": "control_flow",
-    "explanation": "Defines a matching branch inside a switch statement or switch expression.",
-    "example": "switch (grade) { case 'A': Console.WriteLine(\"Great\"); break; }"
-  },
-  "catch": {
-    "type": "exception_handling",
-    "explanation": "Handles an exception thrown by a matching try block.",
-    "example": "try { Risky(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
-  },
-  "checked": {
-    "type": "core_keyword",
-    "explanation": "Enables overflow checking for arithmetic operations and conversions.",
-    "example": "int x = checked(int.MaxValue + 1);"
-  },
-  "class": {
-    "type": "core_keyword",
-    "explanation": "Defines a reference type blueprint for objects with fields, properties, methods, and events.",
-    "example": "class User { public string Name { get; set; } = \"Nina\"; }"
-  },
-  "const": {
-    "type": "modifier",
-    "explanation": "Declares a compile-time constant whose value cannot change.",
-    "example": "const double Pi = 3.14159;"
-  },
-  "continue": {
-    "type": "control_flow",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
-    "example": "for (int i = 0; i < 5; i++) { if (i == 2) continue; Console.WriteLine(i); }"
-  },
-  "default": {
-    "type": "core_keyword",
-    "explanation": "Gets the default value of a type, or labels the fallback branch in a switch.",
-    "example": "int n = default;\nswitch (n) { default: Console.WriteLine(\"Other\"); break; }"
-  },
-  "delegate": {
-    "type": "core_keyword",
-    "explanation": "Defines a type-safe reference to a method with a specific signature.",
-    "example": "delegate int MathOp(int a, int b);\nMathOp add = (a, b) => a + b;"
-  },
-  "do": {
-    "type": "control_flow",
-    "explanation": "Starts a do-while loop, which runs the body before checking the condition.",
-    "example": "int n = 0;\ndo { Console.WriteLine(n++); } while (n < 3);"
-  },
-  "else": {
-    "type": "control_flow",
-    "explanation": "Runs code when a previous if or else-if condition is false.",
-    "example": "if (age >= 18) Console.WriteLine(\"Adult\"); else Console.WriteLine(\"Minor\");"
-  },
-  "enum": {
-    "type": "core_keyword",
-    "explanation": "Defines a named set of constant values.",
-    "example": "enum Color { Red, Green, Blue }\nColor c = Color.Green;"
-  },
-  "event": {
-    "type": "core_keyword",
-    "explanation": "Declares a member that other code can subscribe to and unsubscribe from.",
-    "example": "public event EventHandler? Clicked;"
-  },
-  "explicit": {
-    "type": "operator_keyword",
-    "explanation": "Declares a conversion operator that requires an explicit cast.",
-    "example": "public static explicit operator int(User u) => u.Id;"
-  },
-  "extern": {
-    "type": "modifier",
-    "explanation": "Declares a method implemented outside the C# source, often in native code.",
-    "example": "extern static void NativeCall();"
-  },
-  "finally": {
-    "type": "exception_handling",
-    "explanation": "Runs after try/catch whether or not an exception occurred, commonly for cleanup.",
-    "example": "try { Work(); } finally { Console.WriteLine(\"cleanup\"); }"
-  },
-  "fixed": {
-    "type": "unsafe_keyword",
-    "explanation": "Pins a movable variable so the garbage collector cannot relocate it during unsafe pointer work.",
-    "example": "unsafe { fixed (char* p = text) { } }"
-  },
-  "for": {
-    "type": "control_flow",
-    "explanation": "Repeats a block using an initializer, condition, and iterator.",
-    "example": "for (int i = 0; i < 3; i++) Console.WriteLine(i);"
-  },
-  "foreach": {
-    "type": "control_flow",
-    "explanation": "Iterates through every item in a collection or array.",
-    "example": "foreach (int n in numbers) Console.WriteLine(n);"
-  },
-  "goto": {
-    "type": "control_flow",
-    "explanation": "Jumps to a labeled statement, case label, or default label.",
-    "example": "goto End;\nEnd: Console.WriteLine(\"done\");"
-  },
-  "if": {
-    "type": "control_flow",
-    "explanation": "Runs a block only when a condition is true.",
-    "example": "if (score >= 60) Console.WriteLine(\"Pass\");"
-  },
-  "implicit": {
-    "type": "operator_keyword",
-    "explanation": "Declares a conversion operator that can run automatically without a cast.",
-    "example": "public static implicit operator string(User u) => u.Name;"
-  },
-  "in": {
-    "type": "parameter_modifier",
-    "explanation": "Marks a parameter as passed by readonly reference, or appears in foreach and query syntax.",
-    "example": "void Print(in int value) { Console.WriteLine(value); }\nforeach (var item in items) { }"
-  },
-  "interface": {
-    "type": "core_keyword",
-    "explanation": "Declares a contract of members that implementing types must provide.",
-    "example": "interface IShape { double Area(); }"
-  },
-  "internal": {
-    "type": "access_modifier",
-    "explanation": "Makes a type or member accessible only inside the same assembly/project.",
-    "example": "internal class Helper { }"
-  },
-  "is": {
-    "type": "core_keyword",
-    "explanation": "Tests whether a value is compatible with a type or pattern.",
-    "example": "if (value is string text) Console.WriteLine(text);"
-  },
-  "lock": {
-    "type": "threading_keyword",
-    "explanation": "Acquires a mutual-exclusion lock to protect a critical section from concurrent access.",
-    "example": "lock (syncObj) { count++; }"
-  },
-  "namespace": {
-    "type": "core_keyword",
-    "explanation": "Groups related types under a named container and avoids naming collisions.",
-    "example": "namespace MyApp.Models { class User { } }"
-  },
-  "new": {
-    "type": "core_keyword",
-    "explanation": "Creates an instance, hides an inherited member, or constrains generics to types with a public parameterless constructor.",
-    "example": "var user = new User();"
-  },
-  "operator": {
-    "type": "operator_keyword",
-    "explanation": "Declares a custom operator overload for a user-defined type.",
-    "example": "public static Point operator +(Point a, Point b) => new(a.X + b.X, a.Y + b.Y);"
-  },
-  "out": {
-    "type": "parameter_modifier",
-    "explanation": "Marks a parameter assigned by the called method, or appears in generic variance.",
-    "example": "int.TryParse(\"42\", out int number);"
-  },
-  "override": {
-    "type": "modifier",
-    "explanation": "Replaces a virtual, abstract, or override member inherited from a base class.",
-    "example": "public override string ToString() => Name;"
-  },
-  "params": {
-    "type": "parameter_modifier",
-    "explanation": "Allows a method to accept a variable number of arguments as an array.",
-    "example": "void Log(params string[] messages) { }"
-  },
-  "private": {
-    "type": "access_modifier",
-    "explanation": "Makes a member accessible only inside the containing type.",
-    "example": "class Account { private decimal balance; }"
-  },
-  "protected": {
-    "type": "access_modifier",
-    "explanation": "Makes a member accessible inside the containing type and derived types.",
-    "example": "class Base { protected int Id; }"
-  },
-  "public": {
-    "type": "access_modifier",
-    "explanation": "Makes a type or member accessible from any code that can reference it.",
-    "example": "public class User { public string Name { get; set; } = \"\"; }"
-  },
-  "readonly": {
-    "type": "modifier",
-    "explanation": "Prevents reassignment of a field after construction, or marks members/structs as not mutating state.",
-    "example": "readonly int id;\npublic User(int id) { this.id = id; }"
-  },
-  "ref": {
-    "type": "parameter_modifier",
-    "explanation": "Passes a variable by reference so the called method can read and assign the caller's variable.",
-    "example": "void Increment(ref int x) { x++; }"
-  },
-  "return": {
-    "type": "control_flow",
-    "explanation": "Exits a method and optionally returns a value.",
-    "example": "int Square(int x) { return x * x; }"
-  },
-  "sealed": {
-    "type": "modifier",
-    "explanation": "Prevents a class from being inherited, or prevents an override from being overridden again.",
-    "example": "sealed class FinalConfig { }"
-  },
-  "sizeof": {
-    "type": "unsafe_keyword",
-    "explanation": "Returns the size in bytes of an unmanaged type.",
-    "example": "int bytes = sizeof(int);"
-  },
-  "stackalloc": {
-    "type": "unsafe_keyword",
-    "explanation": "Allocates a block of memory on the stack.",
-    "example": "Span<int> buffer = stackalloc int[10];"
-  },
-  "static": {
-    "type": "modifier",
-    "explanation": "Marks a member as belonging to the type itself instead of an instance, or declares a static type/member.",
-    "example": "static int Count;\nstatic void Print() { }"
-  },
-  "struct": {
-    "type": "core_keyword",
-    "explanation": "Defines a value type, usually for small data structures.",
-    "example": "struct Point { public int X; public int Y; }"
-  },
-  "switch": {
-    "type": "control_flow",
-    "explanation": "Selects one branch from multiple possible cases using statements or expressions.",
-    "example": "string label = score switch { >= 90 => \"A\", _ => \"Other\" };"
-  },
-  "this": {
-    "type": "core_keyword",
-    "explanation": "Refers to the current instance of a type.",
-    "example": "public User(string name) { this.Name = name; }"
-  },
-  "throw": {
-    "type": "exception_handling",
-    "explanation": "Raises an exception or rethrows the current exception.",
-    "example": "throw new ArgumentException(\"Invalid value\");"
-  },
-  "try": {
-    "type": "exception_handling",
-    "explanation": "Starts a block where exceptions can be caught or cleaned up with finally.",
-    "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
-  },
-  "typeof": {
-    "type": "core_keyword",
-    "explanation": "Gets the System.Type object that represents a type.",
-    "example": "Type t = typeof(string);"
-  },
-  "unchecked": {
-    "type": "core_keyword",
-    "explanation": "Disables overflow checking for arithmetic operations and conversions.",
-    "example": "int x = unchecked(int.MaxValue + 1);"
-  },
-  "unsafe": {
-    "type": "unsafe_keyword",
-    "explanation": "Allows pointer operations and other unsafe code inside a block, member, or type.",
-    "example": "unsafe { int* p = &number; }"
-  },
-  "using": {
-    "type": "core_keyword",
-    "explanation": "Imports a namespace/type, creates an alias, or disposes a resource at the end of a scope.",
-    "example": "using System;\nusing var reader = File.OpenText(\"data.txt\");"
-  },
-  "virtual": {
-    "type": "modifier",
-    "explanation": "Allows a member to be overridden in a derived class.",
-    "example": "public virtual void Speak() { Console.WriteLine(\"...\"); }"
-  },
-  "volatile": {
-    "type": "modifier",
-    "explanation": "Indicates that a field can be modified by multiple threads and should not be aggressively optimized.",
-    "example": "private volatile bool _running;"
-  },
-  "while": {
-    "type": "control_flow",
-    "explanation": "Repeats a block while a condition remains true.",
-    "example": "while (count > 0) { count--; }"
-  },
-  "bool": {
-    "type": "predefined_type",
-    "explanation": "Represents true/false Boolean values. It is also a reserved C# keyword.",
-    "example": "bool isReady = true;"
-  },
-  "byte": {
-    "type": "predefined_type",
-    "explanation": "Represents an unsigned 8-bit integer from 0 to 255. It is also a reserved C# keyword.",
-    "example": "byte level = 255;"
-  },
-  "sbyte": {
-    "type": "predefined_type",
-    "explanation": "Represents a signed 8-bit integer from -128 to 127. It is also a reserved C# keyword.",
-    "example": "sbyte delta = -5;"
-  },
-  "char": {
-    "type": "predefined_type",
-    "explanation": "Represents a single UTF-16 character. It is also a reserved C# keyword.",
-    "example": "char letter = 'A';"
-  },
-  "decimal": {
-    "type": "predefined_type",
-    "explanation": "Represents a high-precision decimal number, commonly used for money. It is also a reserved C# keyword.",
-    "example": "decimal price = 19.99m;"
-  },
-  "double": {
-    "type": "predefined_type",
-    "explanation": "Represents a double-precision floating-point number. It is also a reserved C# keyword.",
-    "example": "double distance = 12.5;"
-  },
-  "float": {
-    "type": "predefined_type",
-    "explanation": "Represents a single-precision floating-point number. It is also a reserved C# keyword.",
-    "example": "float ratio = 0.5f;"
-  },
-  "int": {
-    "type": "predefined_type",
-    "explanation": "Represents a signed 32-bit integer. It is also a reserved C# keyword.",
-    "example": "int count = 42;"
-  },
-  "uint": {
-    "type": "predefined_type",
-    "explanation": "Represents an unsigned 32-bit integer. It is also a reserved C# keyword.",
-    "example": "uint count = 42u;"
-  },
-  "long": {
-    "type": "predefined_type",
-    "explanation": "Represents a signed 64-bit integer. It is also a reserved C# keyword.",
-    "example": "long population = 9000000000L;"
-  },
-  "ulong": {
-    "type": "predefined_type",
-    "explanation": "Represents an unsigned 64-bit integer. It is also a reserved C# keyword.",
-    "example": "ulong big = 9000000000UL;"
-  },
-  "short": {
-    "type": "predefined_type",
-    "explanation": "Represents a signed 16-bit integer. It is also a reserved C# keyword.",
-    "example": "short small = 123;"
-  },
-  "ushort": {
-    "type": "predefined_type",
-    "explanation": "Represents an unsigned 16-bit integer. It is also a reserved C# keyword.",
-    "example": "ushort small = 123;"
-  },
-  "object": {
-    "type": "predefined_type",
-    "explanation": "The base type of all C# types. It is also a reserved C# keyword.",
-    "example": "object value = \"hello\";"
-  },
-  "string": {
-    "type": "predefined_type",
-    "explanation": "Represents text as a sequence of characters. It is also a reserved C# keyword and aliases System.String.",
-    "example": "string name = \"Nina\";"
-  },
-  "void": {
-    "type": "predefined_type",
-    "explanation": "Used as a method return type to say the method returns no value. It is also a reserved C# keyword.",
-    "example": "void Print() { Console.WriteLine(\"Hello\"); }"
-  },
-  "true": {
-    "type": "literal",
-    "explanation": "Boolean literal representing the value true.",
-    "example": "bool ok = true;"
-  },
-  "false": {
-    "type": "literal",
-    "explanation": "Boolean literal representing the value false.",
-    "example": "bool ok = false;"
-  },
-  "null": {
-    "type": "literal",
-    "explanation": "Represents the absence of an object reference or nullable value.",
-    "example": "string? name = null;"
   },
   "add": {
     "type": "contextual_keyword",
     "explanation": "Defines a custom event subscription accessor.",
     "example": "event EventHandler Clicked { add { handlers += value; } remove { handlers -= value; } }"
   },
-  "allows": {
-    "type": "contextual_keyword",
-    "explanation": "Used in newer generic constraint syntax to permit specific anti-constraints.",
-    "example": "class Box<T> where T : allows ref struct { }"
-  },
   "alias": {
     "type": "contextual_keyword",
     "explanation": "Used with extern alias to reference types from assemblies with the same fully qualified names.",
     "example": "extern alias LibV1;"
+  },
+  "allows": {
+    "type": "contextual_keyword",
+    "explanation": "Used in newer generic constraint syntax to permit specific anti-constraints.",
+    "example": "class Box<T> where T : allows ref struct { }"
   },
   "and": {
     "type": "contextual_keyword",
     "explanation": "Combines patterns in pattern matching.",
     "example": "if (x is > 0 and < 10) Console.WriteLine(\"single digit\");"
   },
-  "ascending": {
-    "type": "contextual_keyword",
-    "explanation": "Specifies ascending order in a LINQ query expression.",
-    "example": "var q = from n in nums orderby n ascending select n;"
-  },
   "args": {
     "type": "contextual_keyword",
     "explanation": "Represents command-line arguments in top-level statements.",
     "example": "Console.WriteLine(args.Length);"
+  },
+  "as": {
+    "type": "core_keyword",
+    "explanation": "Safely converts a value to a compatible reference or nullable type, returning null if the conversion fails.",
+    "example": "object value = \"hi\";\nstring text = value as string;"
+  },
+  "ascending": {
+    "type": "contextual_keyword",
+    "explanation": "Specifies ascending order in a LINQ query expression.",
+    "example": "var q = from n in nums orderby n ascending select n;"
   },
   "async": {
     "type": "contextual_keyword",
@@ -424,45 +669,145 @@
     "explanation": "Suspends an async method until an awaitable operation completes.",
     "example": "string text = await LoadAsync();"
   },
+  "base": {
+    "type": "core_keyword",
+    "explanation": "Refers to the base class, usually to call a base constructor or overridden member.",
+    "example": "class Dog : Animal { public Dog(string name) : base(name) {} }"
+  },
+  "bool": {
+    "type": "predefined_type",
+    "explanation": "Represents true/false Boolean values. It is also a reserved C# keyword.",
+    "example": "bool isReady = true;"
+  },
+  "break": {
+    "type": "control_flow",
+    "explanation": "Exits the nearest loop or switch statement immediately.",
+    "example": "for (int i = 0; i < 10; i++) { if (i == 3) break; }"
+  },
   "by": {
     "type": "contextual_keyword",
     "explanation": "Specifies the grouping key in a LINQ group clause.",
     "example": "var q = from p in people group p by p.City;"
+  },
+  "byte": {
+    "type": "predefined_type",
+    "explanation": "Represents an unsigned 8-bit integer from 0 to 255. It is also a reserved C# keyword.",
+    "example": "byte level = 255;"
+  },
+  "case": {
+    "type": "control_flow",
+    "explanation": "Defines a matching branch inside a switch statement or switch expression.",
+    "example": "switch (grade) { case 'A': Console.WriteLine(\"Great\"); break; }"
+  },
+  "catch": {
+    "type": "exception_handling",
+    "explanation": "Handles an exception thrown by a matching try block.",
+    "example": "try { Risky(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
+  },
+  "char": {
+    "type": "predefined_type",
+    "explanation": "Represents a single UTF-16 character. It is also a reserved C# keyword.",
+    "example": "char letter = 'A';"
+  },
+  "checked": {
+    "type": "core_keyword",
+    "explanation": "Enables overflow checking for arithmetic operations and conversions.",
+    "example": "int x = checked(int.MaxValue + 1);"
+  },
+  "class": {
+    "type": "core_keyword",
+    "explanation": "Defines a reference type blueprint for objects with fields, properties, methods, and events.",
+    "example": "class User { public string Name { get; set; } = \"Nina\"; }"
   },
   "closed": {
     "type": "contextual_keyword",
     "explanation": "Contextual keyword listed for newer/preview C# syntax; use only when the selected language version supports it.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
-  "Cdecl": {
-    "type": "contextual_keyword",
-    "explanation": "Specifies the Cdecl unmanaged calling convention for function pointers.",
-    "example": "delegate* unmanaged[Cdecl]<int, int> f;"
+  "const": {
+    "type": "modifier",
+    "explanation": "Declares a compile-time constant whose value cannot change.",
+    "example": "const double Pi = 3.14159;"
+  },
+  "continue": {
+    "type": "control_flow",
+    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "example": "for (int i = 0; i < 5; i++) { if (i == 2) continue; Console.WriteLine(i); }"
+  },
+  "decimal": {
+    "type": "predefined_type",
+    "explanation": "Represents a high-precision decimal number, commonly used for money. It is also a reserved C# keyword.",
+    "example": "decimal price = 19.99m;"
+  },
+  "default": {
+    "type": "core_keyword",
+    "explanation": "Gets the default value of a type, or labels the fallback branch in a switch.",
+    "example": "int n = default;\nswitch (n) { default: Console.WriteLine(\"Other\"); break; }"
+  },
+  "delegate": {
+    "type": "core_keyword",
+    "explanation": "Defines a type-safe reference to a method with a specific signature.",
+    "example": "delegate int MathOp(int a, int b);\nMathOp add = (a, b) => a + b;"
   },
   "descending": {
     "type": "contextual_keyword",
     "explanation": "Specifies descending order in a LINQ query expression.",
     "example": "var q = from n in nums orderby n descending select n;"
   },
+  "do": {
+    "type": "control_flow",
+    "explanation": "Starts a do-while loop, which runs the body before checking the condition.",
+    "example": "int n = 0;\ndo { Console.WriteLine(n++); } while (n < 3);"
+  },
+  "double": {
+    "type": "predefined_type",
+    "explanation": "Represents a double-precision floating-point number. It is also a reserved C# keyword.",
+    "example": "double distance = 12.5;"
+  },
   "dynamic": {
     "type": "contextual_keyword",
     "explanation": "Defers member binding to runtime instead of compile time.",
     "example": "dynamic x = \"hello\";\nConsole.WriteLine(x.Length);"
+  },
+  "else": {
+    "type": "control_flow",
+    "explanation": "Runs code when a previous if or else-if condition is false.",
+    "example": "if (age >= 18) Console.WriteLine(\"Adult\"); else Console.WriteLine(\"Minor\");"
+  },
+  "enum": {
+    "type": "core_keyword",
+    "explanation": "Defines a named set of constant values.",
+    "example": "enum Color { Red, Green, Blue }\nColor c = Color.Green;"
   },
   "equals": {
     "type": "contextual_keyword",
     "explanation": "Specifies equality comparison in a LINQ join clause.",
     "example": "var q = from a in authors join b in books on a.Id equals b.AuthorId select b;"
   },
+  "event": {
+    "type": "core_keyword",
+    "explanation": "Declares a member that other code can subscribe to and unsubscribe from.",
+    "example": "public event EventHandler? Clicked;"
+  },
+  "explicit": {
+    "type": "operator_keyword",
+    "explanation": "Declares a conversion operator that requires an explicit cast.",
+    "example": "public static explicit operator int(User u) => u.Id;"
+  },
   "extension": {
     "type": "contextual_keyword",
     "explanation": "Contextual keyword used by newer/preview C# extension-member syntax.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
-  "Fastcall": {
-    "type": "contextual_keyword",
-    "explanation": "Specifies the Fastcall unmanaged calling convention for function pointers.",
-    "example": "delegate* unmanaged[Fastcall]<int, int> f;"
+  "extern": {
+    "type": "modifier",
+    "explanation": "Declares a method implemented outside the C# source, often in native code.",
+    "example": "extern static void NativeCall();"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "Boolean literal representing the value false.",
+    "example": "bool ok = false;"
   },
   "field": {
     "type": "contextual_keyword",
@@ -473,6 +818,31 @@
     "type": "contextual_keyword",
     "explanation": "Restricts a top-level type so it is visible only within the current source file.",
     "example": "file class ParserHelper { }"
+  },
+  "finally": {
+    "type": "exception_handling",
+    "explanation": "Runs after try/catch whether or not an exception occurred, commonly for cleanup.",
+    "example": "try { Work(); } finally { Console.WriteLine(\"cleanup\"); }"
+  },
+  "fixed": {
+    "type": "unsafe_keyword",
+    "explanation": "Pins a movable variable so the garbage collector cannot relocate it during unsafe pointer work.",
+    "example": "unsafe { fixed (char* p = text) { } }"
+  },
+  "float": {
+    "type": "predefined_type",
+    "explanation": "Represents a single-precision floating-point number. It is also a reserved C# keyword.",
+    "example": "float ratio = 0.5f;"
+  },
+  "for": {
+    "type": "control_flow",
+    "explanation": "Repeats a block using an initializer, condition, and iterator.",
+    "example": "for (int i = 0; i < 3; i++) Console.WriteLine(i);"
+  },
+  "foreach": {
+    "type": "control_flow",
+    "explanation": "Iterates through every item in a collection or array.",
+    "example": "foreach (int n in numbers) Console.WriteLine(n);"
   },
   "from": {
     "type": "contextual_keyword",
@@ -489,20 +859,60 @@
     "explanation": "Qualifies the global namespace or declares a global using directive.",
     "example": "global using System;\nvar text = global::System.String.Empty;"
   },
+  "goto": {
+    "type": "control_flow",
+    "explanation": "Jumps to a labeled statement, case label, or default label.",
+    "example": "goto End;\nEnd: Console.WriteLine(\"done\");"
+  },
   "group": {
     "type": "contextual_keyword",
     "explanation": "Groups LINQ query results by a key.",
     "example": "var q = from p in people group p by p.City;"
+  },
+  "if": {
+    "type": "control_flow",
+    "explanation": "Runs a block only when a condition is true.",
+    "example": "if (score >= 60) Console.WriteLine(\"Pass\");"
+  },
+  "implicit": {
+    "type": "operator_keyword",
+    "explanation": "Declares a conversion operator that can run automatically without a cast.",
+    "example": "public static implicit operator string(User u) => u.Name;"
+  },
+  "in": {
+    "type": "parameter_modifier",
+    "explanation": "Marks a parameter as passed by readonly reference, or appears in foreach and query syntax.",
+    "example": "void Print(in int value) { Console.WriteLine(value); }\nforeach (var item in items) { }"
   },
   "init": {
     "type": "contextual_keyword",
     "explanation": "Defines an init-only property setter that can be assigned during object initialization.",
     "example": "public string Name { get; init; } = \"\";"
   },
+  "int": {
+    "type": "predefined_type",
+    "explanation": "Represents a signed 32-bit integer. It is also a reserved C# keyword.",
+    "example": "int count = 42;"
+  },
+  "interface": {
+    "type": "core_keyword",
+    "explanation": "Declares a contract of members that implementing types must provide.",
+    "example": "interface IShape { double Area(); }"
+  },
+  "internal": {
+    "type": "access_modifier",
+    "explanation": "Makes a type or member accessible only inside the same assembly/project.",
+    "example": "internal class Helper { }"
+  },
   "into": {
     "type": "contextual_keyword",
     "explanation": "Introduces a continuation identifier in LINQ query syntax.",
     "example": "var q = from n in nums group n by n % 2 into g select g;"
+  },
+  "is": {
+    "type": "core_keyword",
+    "explanation": "Tests whether a value is compatible with a type or pattern.",
+    "example": "if (value is string text) Console.WriteLine(text);"
   },
   "join": {
     "type": "contextual_keyword",
@@ -514,6 +924,16 @@
     "explanation": "Introduces a temporary range variable inside a LINQ query.",
     "example": "var q = from s in names let len = s.Length where len > 3 select s;"
   },
+  "lock": {
+    "type": "threading_keyword",
+    "explanation": "Acquires a mutual-exclusion lock to protect a critical section from concurrent access.",
+    "example": "lock (syncObj) { count++; }"
+  },
+  "long": {
+    "type": "predefined_type",
+    "explanation": "Represents a signed 64-bit integer. It is also a reserved C# keyword.",
+    "example": "long population = 9000000000L;"
+  },
   "managed": {
     "type": "contextual_keyword",
     "explanation": "Specifies a managed function pointer calling convention.",
@@ -523,6 +943,16 @@
     "type": "contextual_keyword",
     "explanation": "Returns the name of a variable, type, or member as a string.",
     "example": "string property = nameof(User.Name);"
+  },
+  "namespace": {
+    "type": "core_keyword",
+    "explanation": "Groups related types under a named container and avoids naming collisions.",
+    "example": "namespace MyApp.Models { class User { } }"
+  },
+  "new": {
+    "type": "core_keyword",
+    "explanation": "Creates an instance, hides an inherited member, or constrains generics to types with a public parameterless constructor.",
+    "example": "var user = new User();"
   },
   "nint": {
     "type": "predefined_type",
@@ -544,10 +974,25 @@
     "explanation": "Represents an unsigned native-sized integer. It is a contextual keyword and predefined type.",
     "example": "nuint handle = 123;"
   },
+  "null": {
+    "type": "literal",
+    "explanation": "Represents the absence of an object reference or nullable value.",
+    "example": "string? name = null;"
+  },
+  "object": {
+    "type": "predefined_type",
+    "explanation": "The base type of all C# types. It is also a reserved C# keyword.",
+    "example": "object value = \"hello\";"
+  },
   "on": {
     "type": "contextual_keyword",
     "explanation": "Specifies the left key in a LINQ join clause.",
     "example": "var q = from a in authors join b in books on a.Id equals b.AuthorId select b;"
+  },
+  "operator": {
+    "type": "operator_keyword",
+    "explanation": "Declares a custom operator overload for a user-defined type.",
+    "example": "public static Point operator +(Point a, Point b) => new(a.X + b.X, a.Y + b.Y);"
   },
   "or": {
     "type": "contextual_keyword",
@@ -559,15 +1004,55 @@
     "explanation": "Sorts query results in LINQ query syntax.",
     "example": "var q = from n in nums orderby n select n;"
   },
+  "out": {
+    "type": "parameter_modifier",
+    "explanation": "Marks a parameter assigned by the called method, or appears in generic variance.",
+    "example": "int.TryParse(\"42\", out int number);"
+  },
+  "override": {
+    "type": "modifier",
+    "explanation": "Replaces a virtual, abstract, or override member inherited from a base class.",
+    "example": "public override string ToString() => Name;"
+  },
+  "params": {
+    "type": "parameter_modifier",
+    "explanation": "Allows a method to accept a variable number of arguments as an array.",
+    "example": "void Log(params string[] messages) { }"
+  },
   "partial": {
     "type": "contextual_keyword",
     "explanation": "Splits a type or member declaration across multiple files or declarations.",
     "example": "partial class User { }\npartial class User { }"
   },
+  "private": {
+    "type": "access_modifier",
+    "explanation": "Makes a member accessible only inside the containing type.",
+    "example": "class Account { private decimal balance; }"
+  },
+  "protected": {
+    "type": "access_modifier",
+    "explanation": "Makes a member accessible inside the containing type and derived types.",
+    "example": "class Base { protected int Id; }"
+  },
+  "public": {
+    "type": "access_modifier",
+    "explanation": "Makes a type or member accessible from any code that can reference it.",
+    "example": "public class User { public string Name { get; set; } = \"\"; }"
+  },
+  "readonly": {
+    "type": "modifier",
+    "explanation": "Prevents reassignment of a field after construction, or marks members/structs as not mutating state.",
+    "example": "readonly int id;\npublic User(int id) { this.id = id; }"
+  },
   "record": {
     "type": "contextual_keyword",
     "explanation": "Declares a reference or value type with value-based equality and concise data syntax.",
     "example": "record User(string Name, int Age);"
+  },
+  "ref": {
+    "type": "parameter_modifier",
+    "explanation": "Passes a variable by reference so the called method can read and assign the caller's variable.",
+    "example": "void Increment(ref int x) { x++; }"
   },
   "remove": {
     "type": "contextual_keyword",
@@ -579,15 +1064,30 @@
     "explanation": "Requires a property or field to be initialized by an object initializer or constructor.",
     "example": "class User { public required string Name { get; init; } }"
   },
+  "return": {
+    "type": "control_flow",
+    "explanation": "Exits a method and optionally returns a value.",
+    "example": "int Square(int x) { return x * x; }"
+  },
   "safe": {
     "type": "contextual_keyword",
     "explanation": "Contextual keyword listed for newer/preview C# syntax; use only when the selected language version supports it.",
     "example": "/* Preview contextual keyword; exact syntax depends on the enabled C# language version. */"
   },
+  "sbyte": {
+    "type": "predefined_type",
+    "explanation": "Represents a signed 8-bit integer from -128 to 127. It is also a reserved C# keyword.",
+    "example": "sbyte delta = -5;"
+  },
   "scoped": {
     "type": "contextual_keyword",
     "explanation": "Restricts the lifetime of a ref-safe value so it cannot escape its scope.",
     "example": "void M(scoped ref int value) { }"
+  },
+  "sealed": {
+    "type": "modifier",
+    "explanation": "Prevents a class from being inherited, or prevents an override from being overridden again.",
+    "example": "sealed class FinalConfig { }"
   },
   "select": {
     "type": "contextual_keyword",
@@ -599,20 +1099,100 @@
     "explanation": "Defines a property or indexer setter accessor.",
     "example": "public string Name { get; set; } = \"\";"
   },
-  "Stdcall": {
-    "type": "contextual_keyword",
-    "explanation": "Specifies the Stdcall unmanaged calling convention for function pointers.",
-    "example": "delegate* unmanaged[Stdcall]<int, int> f;"
+  "short": {
+    "type": "predefined_type",
+    "explanation": "Represents a signed 16-bit integer. It is also a reserved C# keyword.",
+    "example": "short small = 123;"
   },
-  "Thiscall": {
-    "type": "contextual_keyword",
-    "explanation": "Specifies the Thiscall unmanaged calling convention for function pointers.",
-    "example": "delegate* unmanaged[Thiscall]<int, int> f;"
+  "sizeof": {
+    "type": "unsafe_keyword",
+    "explanation": "Returns the size in bytes of an unmanaged type.",
+    "example": "int bytes = sizeof(int);"
+  },
+  "stackalloc": {
+    "type": "unsafe_keyword",
+    "explanation": "Allocates a block of memory on the stack.",
+    "example": "Span<int> buffer = stackalloc int[10];"
+  },
+  "static": {
+    "type": "modifier",
+    "explanation": "Marks a member as belonging to the type itself instead of an instance, or declares a static type/member.",
+    "example": "static int Count;\nstatic void Print() { }"
+  },
+  "string": {
+    "type": "predefined_type",
+    "explanation": "Represents text as a sequence of characters. It is also a reserved C# keyword and aliases System.String.",
+    "example": "string name = \"Nina\";"
+  },
+  "struct": {
+    "type": "core_keyword",
+    "explanation": "Defines a value type, usually for small data structures.",
+    "example": "struct Point { public int X; public int Y; }"
+  },
+  "switch": {
+    "type": "control_flow",
+    "explanation": "Selects one branch from multiple possible cases using statements or expressions.",
+    "example": "string label = score switch { >= 90 => \"A\", _ => \"Other\" };"
+  },
+  "this": {
+    "type": "core_keyword",
+    "explanation": "Refers to the current instance of a type.",
+    "example": "public User(string name) { this.Name = name; }"
+  },
+  "throw": {
+    "type": "exception_handling",
+    "explanation": "Raises an exception or rethrows the current exception.",
+    "example": "throw new ArgumentException(\"Invalid value\");"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "Boolean literal representing the value true.",
+    "example": "bool ok = true;"
+  },
+  "try": {
+    "type": "exception_handling",
+    "explanation": "Starts a block where exceptions can be caught or cleaned up with finally.",
+    "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
+  },
+  "typeof": {
+    "type": "core_keyword",
+    "explanation": "Gets the System.Type object that represents a type.",
+    "example": "Type t = typeof(string);"
+  },
+  "uint": {
+    "type": "predefined_type",
+    "explanation": "Represents an unsigned 32-bit integer. It is also a reserved C# keyword.",
+    "example": "uint count = 42u;"
+  },
+  "ulong": {
+    "type": "predefined_type",
+    "explanation": "Represents an unsigned 64-bit integer. It is also a reserved C# keyword.",
+    "example": "ulong big = 9000000000UL;"
+  },
+  "unchecked": {
+    "type": "core_keyword",
+    "explanation": "Disables overflow checking for arithmetic operations and conversions.",
+    "example": "int x = unchecked(int.MaxValue + 1);"
   },
   "unmanaged": {
     "type": "contextual_keyword",
     "explanation": "Used as a generic constraint for unmanaged types or as a function pointer calling convention context.",
     "example": "class Buffer<T> where T : unmanaged { }"
+  },
+  "unsafe": {
+    "type": "unsafe_keyword",
+    "explanation": "Allows pointer operations and other unsafe code inside a block, member, or type.",
+    "example": "unsafe { int* p = &number; }"
+  },
+  "ushort": {
+    "type": "predefined_type",
+    "explanation": "Represents an unsigned 16-bit integer. It is also a reserved C# keyword.",
+    "example": "ushort small = 123;"
+  },
+  "using": {
+    "type": "core_keyword",
+    "explanation": "Imports a namespace/type, creates an alias, or disposes a resource at the end of a scope.",
+    "example": "using System;\nusing var reader = File.OpenText(\"data.txt\");"
   },
   "value": {
     "type": "contextual_keyword",
@@ -624,6 +1204,21 @@
     "explanation": "Lets the compiler infer the type of a local variable from its initializer.",
     "example": "var count = 0;"
   },
+  "virtual": {
+    "type": "modifier",
+    "explanation": "Allows a member to be overridden in a derived class.",
+    "example": "public virtual void Speak() { Console.WriteLine(\"...\"); }"
+  },
+  "void": {
+    "type": "predefined_type",
+    "explanation": "Used as a method return type to say the method returns no value. It is also a reserved C# keyword.",
+    "example": "void Print() { Console.WriteLine(\"Hello\"); }"
+  },
+  "volatile": {
+    "type": "modifier",
+    "explanation": "Indicates that a field can be modified by multiple threads and should not be aggressively optimized.",
+    "example": "private volatile bool _running;"
+  },
   "when": {
     "type": "contextual_keyword",
     "explanation": "Adds a condition to a catch clause or switch case/pattern.",
@@ -633,6 +1228,11 @@
     "type": "contextual_keyword",
     "explanation": "Adds a generic type constraint or filters results in a LINQ query.",
     "example": "class Box<T> where T : class { }\nvar q = from n in nums where n > 0 select n;"
+  },
+  "while": {
+    "type": "control_flow",
+    "explanation": "Repeats a block while a condition remains true.",
+    "example": "while (count > 0) { count--; }"
   },
   "with": {
     "type": "contextual_keyword",
@@ -644,459 +1244,9 @@
     "explanation": "Returns items one at a time from an iterator method.",
     "example": "IEnumerable<int> Count() { yield return 1; yield return 2; }"
   },
-  "System": {
-    "type": "namespace",
-    "explanation": "The root .NET namespace containing fundamental types such as Console, Math, DateTime, String, Object, and Exception.",
-    "example": "using System;\nConsole.WriteLine(DateTime.Now);"
-  },
-  "System.Console": {
-    "type": "fundamental_class",
-    "explanation": "Provides standard input, output, and error streams for console applications.",
-    "example": "System.Console.WriteLine(\"Hello\");"
-  },
-  "Console": {
-    "type": "fundamental_class",
-    "explanation": "The commonly used class for reading from and writing to the console, usually imported from System.",
-    "example": "Console.WriteLine(\"Hello\");\nstring? input = Console.ReadLine();"
-  },
-  "System.Math": {
-    "type": "fundamental_class",
-    "explanation": "Provides mathematical constants and static methods.",
-    "example": "double root = Math.Sqrt(16);"
-  },
-  "Math": {
-    "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Math when System is imported.",
-    "example": "double rounded = Math.Round(3.14);"
-  },
-  "System.String": {
-    "type": "fundamental_class",
-    "explanation": "The .NET type behind the C# string keyword.",
-    "example": "System.String text = \"hello\";"
-  },
-  "String": {
-    "type": "fundamental_class",
-    "explanation": "The .NET class for text; equivalent to the C# string alias when System is imported.",
-    "example": "String text = \"hello\";"
-  },
-  "System.Object": {
-    "type": "fundamental_class",
-    "explanation": "The .NET base type behind the C# object keyword.",
-    "example": "System.Object value = 123;"
-  },
-  "Object": {
-    "type": "fundamental_class",
-    "explanation": "The base class for all .NET types; equivalent to the C# object alias when System is imported.",
-    "example": "Object value = \"text\";"
-  },
-  "System.Boolean": {
-    "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# bool keyword.",
-    "example": "System.Boolean ok = true;"
-  },
-  "System.Int32": {
-    "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# int keyword.",
-    "example": "System.Int32 count = 42;"
-  },
-  "System.Double": {
-    "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# double keyword.",
-    "example": "System.Double value = 3.14;"
-  },
-  "System.Decimal": {
-    "type": "fundamental_struct",
-    "explanation": "The .NET type behind the C# decimal keyword.",
-    "example": "System.Decimal money = 10.5m;"
-  },
-  "System.DateTime": {
-    "type": "fundamental_struct",
-    "explanation": "Represents a date and time value.",
-    "example": "DateTime now = DateTime.Now;"
-  },
-  "DateTime": {
-    "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.DateTime when System is imported.",
-    "example": "DateTime today = DateTime.Today;"
-  },
-  "System.TimeSpan": {
-    "type": "fundamental_struct",
-    "explanation": "Represents a duration or time interval.",
-    "example": "TimeSpan duration = TimeSpan.FromMinutes(30);"
-  },
-  "TimeSpan": {
-    "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.TimeSpan when System is imported.",
-    "example": "TimeSpan wait = TimeSpan.FromSeconds(5);"
-  },
-  "System.Guid": {
-    "type": "fundamental_struct",
-    "explanation": "Represents a globally unique identifier.",
-    "example": "Guid id = Guid.NewGuid();"
-  },
-  "Guid": {
-    "type": "fundamental_struct",
-    "explanation": "Common shorthand for System.Guid when System is imported.",
-    "example": "Guid id = Guid.NewGuid();"
-  },
-  "System.Exception": {
-    "type": "fundamental_class",
-    "explanation": "The base class for runtime errors that can be thrown and caught.",
-    "example": "try { Work(); } catch (Exception ex) { Console.WriteLine(ex.Message); }"
-  },
-  "Exception": {
-    "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Exception when System is imported.",
-    "example": "throw new Exception(\"Something went wrong\");"
-  },
-  "System.ArgumentException": {
-    "type": "fundamental_class",
-    "explanation": "Exception used when a method receives an invalid argument.",
-    "example": "throw new ArgumentException(\"Invalid name\");"
-  },
-  "System.InvalidOperationException": {
-    "type": "fundamental_class",
-    "explanation": "Exception used when an object is in the wrong state for an operation.",
-    "example": "throw new InvalidOperationException(\"Not ready\");"
-  },
-  "System.IDisposable": {
-    "type": "fundamental_interface",
-    "explanation": "Interface for objects that release resources through Dispose().",
-    "example": "using FileStream stream = File.OpenRead(\"data.txt\");"
-  },
-  "IDisposable": {
-    "type": "fundamental_interface",
-    "explanation": "Common shorthand for System.IDisposable when System is imported.",
-    "example": "void Close(IDisposable resource) => resource.Dispose();"
-  },
-  "System.Array": {
-    "type": "fundamental_class",
-    "explanation": "The base class for all arrays in .NET.",
-    "example": "int[] numbers = { 1, 2, 3 };\nArray.Sort(numbers);"
-  },
-  "Array": {
-    "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Array when System is imported.",
-    "example": "Array.Sort(numbers);"
-  },
-  "System.Random": {
-    "type": "fundamental_class",
-    "explanation": "Generates pseudo-random numbers.",
-    "example": "Random rng = new Random();\nint n = rng.Next(1, 10);"
-  },
-  "Random": {
-    "type": "fundamental_class",
-    "explanation": "Common shorthand for System.Random when System is imported.",
-    "example": "Random rng = new Random();"
-  },
-  "System.Collections": {
-    "type": "namespace",
-    "explanation": "Contains non-generic collection types such as ArrayList and Hashtable.",
-    "example": "using System.Collections;"
-  },
-  "System.Collections.Generic": {
-    "type": "namespace",
-    "explanation": "Contains strongly typed generic collection interfaces and classes such as List<T> and Dictionary<TKey,TValue>.",
-    "example": "using System.Collections.Generic;\nList<int> nums = new();"
-  },
-  "List": {
-    "type": "collection_type",
-    "explanation": "A strongly typed resizable list of items, usually used as List<T>.",
-    "example": "List<string> names = new List<string>();"
-  },
-  "Dictionary": {
-    "type": "collection_type",
-    "explanation": "A key/value collection, usually used as Dictionary<TKey,TValue>.",
-    "example": "Dictionary<string, int> ages = new();"
-  },
-  "HashSet": {
-    "type": "collection_type",
-    "explanation": "A collection of unique values, usually used as HashSet<T>.",
-    "example": "HashSet<int> ids = new();"
-  },
-  "Queue": {
-    "type": "collection_type",
-    "explanation": "A first-in, first-out collection, usually used as Queue<T>.",
-    "example": "Queue<string> queue = new();"
-  },
-  "Stack": {
-    "type": "collection_type",
-    "explanation": "A last-in, first-out collection, usually used as Stack<T>.",
-    "example": "Stack<string> stack = new();"
-  },
-  "IEnumerable": {
-    "type": "fundamental_interface",
-    "explanation": "Represents a sequence that can be iterated with foreach, usually as IEnumerable<T>.",
-    "example": "IEnumerable<int> nums = new[] { 1, 2, 3 };"
-  },
-  "ICollection": {
-    "type": "fundamental_interface",
-    "explanation": "Represents a collection of items, usually as ICollection<T>.",
-    "example": "ICollection<string> names = new List<string>();"
-  },
-  "IList": {
-    "type": "fundamental_interface",
-    "explanation": "Represents an indexable list, usually as IList<T>.",
-    "example": "IList<string> names = new List<string>();"
-  },
-  "System.Linq": {
-    "type": "namespace",
-    "explanation": "Contains LINQ extension methods for querying and transforming sequences.",
-    "example": "using System.Linq;\nvar evens = nums.Where(n => n % 2 == 0);"
-  },
-  "LINQ": {
-    "type": "feature",
-    "explanation": "Language Integrated Query: C# query syntax plus extension methods for filtering, projecting, grouping, and transforming data.",
-    "example": "var evens = numbers.Where(n => n % 2 == 0).ToList();"
-  },
-  "Where": {
-    "type": "linq_method",
-    "explanation": "Filters a sequence using a condition.",
-    "example": "var adults = people.Where(p => p.Age >= 18);"
-  },
-  "Select": {
-    "type": "linq_method",
-    "explanation": "Projects each item in a sequence into a new form.",
-    "example": "var names = people.Select(p => p.Name);"
-  },
-  "OrderBy": {
-    "type": "linq_method",
-    "explanation": "Sorts a sequence in ascending order by a key.",
-    "example": "var sorted = people.OrderBy(p => p.Name);"
-  },
-  "GroupBy": {
-    "type": "linq_method",
-    "explanation": "Groups items in a sequence by a key.",
-    "example": "var groups = people.GroupBy(p => p.City);"
-  },
-  "ToList": {
-    "type": "linq_method",
-    "explanation": "Creates a List<T> from a sequence.",
-    "example": "var list = numbers.ToList();"
-  },
-  "FirstOrDefault": {
-    "type": "linq_method",
-    "explanation": "Returns the first matching item or the default value if none exists.",
-    "example": "var user = users.FirstOrDefault(u => u.Id == id);"
-  },
-  "System.IO": {
-    "type": "namespace",
-    "explanation": "Contains types for reading and writing files, directories, and streams.",
-    "example": "using System.IO;\nstring text = File.ReadAllText(\"data.txt\");"
-  },
-  "File": {
-    "type": "io_class",
-    "explanation": "Provides static methods for creating, reading, writing, and deleting files.",
-    "example": "string text = File.ReadAllText(\"data.txt\");"
-  },
-  "Directory": {
-    "type": "io_class",
-    "explanation": "Provides static methods for working with directories.",
-    "example": "Directory.CreateDirectory(\"logs\");"
-  },
-  "Stream": {
-    "type": "io_class",
-    "explanation": "Base type for reading and writing byte streams.",
-    "example": "Stream stream = File.OpenRead(\"data.txt\");"
-  },
-  "FileStream": {
-    "type": "io_class",
-    "explanation": "Represents a stream backed by a file.",
-    "example": "using FileStream fs = File.OpenRead(\"data.txt\");"
-  },
-  "System.Text": {
-    "type": "namespace",
-    "explanation": "Contains types for text processing and encoding.",
-    "example": "using System.Text;\nvar sb = new StringBuilder();"
-  },
-  "StringBuilder": {
-    "type": "text_class",
-    "explanation": "Builds strings efficiently through repeated appends or modifications.",
-    "example": "StringBuilder sb = new StringBuilder();\nsb.Append(\"Hello\");"
-  },
-  "System.Text.Json": {
-    "type": "namespace",
-    "explanation": "Contains APIs for JSON serialization and deserialization.",
-    "example": "using System.Text.Json;\nstring json = JsonSerializer.Serialize(user);"
-  },
-  "JsonSerializer": {
-    "type": "serialization_class",
-    "explanation": "Serializes objects to JSON and deserializes JSON into objects.",
-    "example": "string json = JsonSerializer.Serialize(user);"
-  },
-  "System.Threading": {
-    "type": "namespace",
-    "explanation": "Contains types for threading, synchronization, and cancellation.",
-    "example": "using System.Threading;\nCancellationToken token = CancellationToken.None;"
-  },
-  "System.Threading.Tasks": {
-    "type": "namespace",
-    "explanation": "Contains Task-based asynchronous programming types.",
-    "example": "using System.Threading.Tasks;\nTask task = Task.Delay(1000);"
-  },
-  "Task": {
-    "type": "async_type",
-    "explanation": "Represents an asynchronous operation.",
-    "example": "Task<string> task = LoadAsync();"
-  },
-  "Task<T>": {
-    "type": "async_type",
-    "explanation": "Represents an asynchronous operation that returns a value.",
-    "example": "Task<int> task = GetCountAsync();"
-  },
-  "CancellationToken": {
-    "type": "threading_type",
-    "explanation": "Signals cancellation to async or long-running operations.",
-    "example": "Task LoadAsync(CancellationToken token) => Task.Delay(1000, token);"
-  },
-  "System.Net.Http": {
-    "type": "namespace",
-    "explanation": "Contains HTTP client APIs for sending requests and receiving responses.",
-    "example": "using System.Net.Http;\nvar client = new HttpClient();"
-  },
-  "HttpClient": {
-    "type": "networking_class",
-    "explanation": "Sends HTTP requests and receives HTTP responses.",
-    "example": "using var client = new HttpClient();\nstring html = await client.GetStringAsync(url);"
-  },
-  "System.Reflection": {
-    "type": "namespace",
-    "explanation": "Contains APIs for inspecting assemblies, types, and members at runtime.",
-    "example": "using System.Reflection;\nType t = typeof(User);"
-  },
-  "System.Diagnostics": {
-    "type": "namespace",
-    "explanation": "Contains types for diagnostics, tracing, processes, and debugging.",
-    "example": "using System.Diagnostics;\nStopwatch sw = Stopwatch.StartNew();"
-  },
-  "Stopwatch": {
-    "type": "diagnostics_class",
-    "explanation": "Measures elapsed time.",
-    "example": "Stopwatch sw = Stopwatch.StartNew();"
-  },
-  "#if": {
-    "type": "preprocessor_directive",
-    "explanation": "Conditionally includes code when a symbol expression is true.",
-    "example": "#if DEBUG\nConsole.WriteLine(\"Debug mode\");\n#endif"
-  },
-  "#else": {
-    "type": "preprocessor_directive",
-    "explanation": "Provides the alternative branch for a preprocessor conditional.",
-    "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#else\nConsole.WriteLine(\"Release\");\n#endif"
-  },
-  "#elif": {
-    "type": "preprocessor_directive",
-    "explanation": "Adds an else-if branch to a preprocessor conditional.",
-    "example": "#if WINDOWS\nConsole.WriteLine(\"Windows\");\n#elif LINUX\nConsole.WriteLine(\"Linux\");\n#endif"
-  },
-  "#endif": {
-    "type": "preprocessor_directive",
-    "explanation": "Ends a preprocessor conditional block.",
-    "example": "#if DEBUG\nConsole.WriteLine(\"Debug\");\n#endif"
-  },
-  "#define": {
-    "type": "preprocessor_directive",
-    "explanation": "Defines a conditional compilation symbol for the current file.",
-    "example": "#define EXPERIMENTAL"
-  },
-  "#undef": {
-    "type": "preprocessor_directive",
-    "explanation": "Undefines a conditional compilation symbol for the current file.",
-    "example": "#undef EXPERIMENTAL"
-  },
-  "#warning": {
-    "type": "preprocessor_directive",
-    "explanation": "Emits a compiler warning.",
-    "example": "#warning This code needs review"
-  },
-  "#error": {
-    "type": "preprocessor_directive",
-    "explanation": "Emits a compiler error.",
-    "example": "#error This build target is not supported"
-  },
-  "#line": {
-    "type": "preprocessor_directive",
-    "explanation": "Changes the compiler's reported line number or file name.",
-    "example": "#line 200 \"Generated.cs\""
-  },
-  "#region": {
-    "type": "preprocessor_directive",
-    "explanation": "Starts a collapsible region in editors.",
-    "example": "#region Helpers\nvoid Help() { }\n#endregion"
-  },
-  "#endregion": {
-    "type": "preprocessor_directive",
-    "explanation": "Ends a collapsible region.",
-    "example": "#region Helpers\nvoid Help() { }\n#endregion"
-  },
-  "#pragma": {
-    "type": "preprocessor_directive",
-    "explanation": "Gives special instructions to the compiler, commonly to enable or disable warnings.",
-    "example": "#pragma warning disable CS0168"
-  },
-  "#nullable": {
-    "type": "preprocessor_directive",
-    "explanation": "Controls nullable reference type warnings and annotations.",
-    "example": "#nullable enable\nstring? name = null;"
-  },
-  "==": {
-    "type": "operator",
-    "explanation": "Compares two values. For strings C# compares the TEXT, which is different from Java - but for your own classes it compares identity unless the class says otherwise.",
-    "example": "if (name == \"Ada\") { }   // works in C#"
-  },
-  "!=": {
-    "type": "operator",
-    "explanation": "\"Is not equal to\".",
-    "example": "if (total != 0) { }"
-  },
-  "%": {
-    "type": "operator",
-    "explanation": "Remainder (modulo): what is left over after division. n % 2 == 0 means n is even.",
-    "example": "int rest = 7 % 2;   // 1"
-  },
-  "/": {
-    "type": "operator",
-    "explanation": "Division. Between two INTEGERS the remainder is thrown away: 7 / 2 is 3. Make one side a double to get a decimal.",
-    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
-  },
-  "++": {
-    "type": "operator",
-    "explanation": "Adds one to a variable, in place.",
-    "example": "for (int i = 0; i < 5; i++) { }"
-  },
-  "+=": {
-    "type": "operator",
-    "explanation": "Adds to a variable and stores the result back in it.",
-    "example": "total += n;"
-  },
-  "&&": {
-    "type": "operator",
-    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side.",
-    "example": "if (list != null && list.Count > 0) { }"
-  },
   "||": {
     "type": "operator",
     "explanation": "Logical OR: true when either side is true.",
     "example": "if (isAdmin || isOwner) { }"
-  },
-  "??": {
-    "type": "operator",
-    "explanation": "Null coalescing: use the right side only when the left is null.",
-    "example": "string display = name ?? \"unknown\";"
-  },
-  "?.": {
-    "type": "operator",
-    "explanation": "Null-conditional: read a member only if the object is not null, instead of throwing.",
-    "example": "int? length = name?.Length;"
-  },
-  "=>": {
-    "type": "operator",
-    "explanation": "Lambda, or an expression-bodied member: a short way to write a function or a property.",
-    "example": "list.ForEach(item => Console.WriteLine(item));"
-  },
-  "=": {
-    "type": "operator",
-    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
-    "example": "int total = 10;"
   }
 }

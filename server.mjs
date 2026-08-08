@@ -47,6 +47,7 @@ import { registerShareRoutes } from './server/http/routes/shares.mjs';
 import { ShareStore } from './server/shares/store.mjs';
 import { registerReportRoutes } from './server/http/routes/reports.mjs';
 import { registerRunRoutes } from './server/http/routes/run.mjs';
+import { registerCheckRoutes } from './server/http/routes/check.mjs';
 import { createLifecycle } from './server/http/lifecycle.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -190,6 +191,8 @@ registerLanguageRoutes(app, { rootDir: __dirname, log });
 // These handlers hold no language logic: they translate HTTP into a pipeline
 // request and the result back into the frozen v1 envelope.
 registerRunRoutes(app, { pipeline, sessions, config: CONFIG, blobStore });
+// Live error checking: the same compilers, asked without running anything.
+registerCheckRoutes(app, { pipeline, config: CONFIG });
 registerBlobRoutes(app, { store: blobStore, config: CONFIG, log });
 registerShareRoutes(app, { store: shareStore, log });
 

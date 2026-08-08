@@ -203,10 +203,27 @@ describe('V-06 C# multi-file can reach MSBuild', () => {
 
 describe('V-20 signal and output-limit termination must not report success', () => {
   it('reports a nonzero exit code when output is truncated', async () => {
+      /*
+       * 50,000 lines - about 3 MB - not 5,000,000.
+       *
+       * The original flooded 305 MB, and on Linux that made this test a RACE it
+       * regularly lost. Node's writes to a pipe are queued, and a synchronous loop
+       * never yields to the event loop, so the program filled the heap faster than the
+       * reader drained the pipe and died of allocation failure (SIGABRT) at ~1.8s -
+       * with `--max-old-space-size=128` from the sandbox launch args. Whether the
+       * reader had crossed the 100,000-character cap before that happened depended on
+       * how fast the machine was: a container reproduced 1.28 MB delivered (cap fires,
+       * test passes) while CI saw 63 KB (cap never fires, test fails).
+       *
+       * A gate on a security property must fail for the reason it exists, or people
+       * learn to re-run it. 3 MB is thirty times the cap and a fortieth of the heap, so
+       * the OUTPUT_LIMIT path is the only one that can be taken - the program cannot
+       * run out of memory, and it cannot finish before the cap is reached either.
+       */
       const { body } = await server.postJson('/api/run', {
         language: 'javascript',
         version: 'es2022',
-        code: 'for (let i = 0; i < 5_000_000; i++) console.log("flood-".repeat(10))',
+        code: 'for (let i = 0; i < 50_000; i++) console.log("flood-".repeat(10))',
       });
 
       assert.match(body.stdout, /output truncated/);

@@ -1,974 +1,4 @@
 {
-  "public": {
-    "type": "access_modifier",
-    "explanation": "Makes a class, method, constructor, or field accessible from anywhere that can see the declaring package/module.",
-    "example": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello\");\n    }\n}"
-  },
-  "private": {
-    "type": "access_modifier",
-    "explanation": "Makes a member accessible only inside the same class.",
-    "example": "class Account {\n    private double balance;\n}"
-  },
-  "protected": {
-    "type": "access_modifier",
-    "explanation": "Makes a member accessible inside the same package and from subclasses.",
-    "example": "class Base {\n    protected int id;\n}"
-  },
-  "abstract": {
-    "type": "modifier_keyword",
-    "explanation": "Marks a class that cannot be instantiated directly, or a method that has no body and must be implemented by a subclass.",
-    "example": "abstract class Shape {\n    abstract double area();\n}"
-  },
-  "final": {
-    "type": "modifier_keyword",
-    "explanation": "Prevents reassignment for variables, overriding for methods, or inheritance for classes.",
-    "example": "final double PI = 3.14159;"
-  },
-  "static": {
-    "type": "modifier_keyword",
-    "explanation": "Marks a member as belonging to the class itself instead of to a specific object instance.",
-    "example": "class MathUtils {\n    static int square(int x) {\n        return x * x;\n    }\n}"
-  },
-  "strictfp": {
-    "type": "modifier_keyword",
-    "explanation": "Obsolete keyword that used to require strict floating-point behavior; modern Java already evaluates floating-point expressions strictly.",
-    "example": "strictfp class OldNumericCode {\n    double calc(double x) { return x / 3.0; }\n}"
-  },
-  "synchronized": {
-    "type": "modifier_keyword",
-    "explanation": "Allows only one thread at a time to execute a method or block using the same monitor lock.",
-    "example": "synchronized void increment() {\n    count++;\n}"
-  },
-  "transient": {
-    "type": "modifier_keyword",
-    "explanation": "Marks a field so it is skipped by Java object serialization.",
-    "example": "class User implements java.io.Serializable {\n    transient String temporaryToken;\n}"
-  },
-  "volatile": {
-    "type": "modifier_keyword",
-    "explanation": "Marks a field so reads and writes go directly to main memory, helping visibility between threads.",
-    "example": "volatile boolean running = true;"
-  },
-  "native": {
-    "type": "modifier_keyword",
-    "explanation": "Declares that a method is implemented in platform-specific native code, not in Java.",
-    "example": "public native int systemCall();"
-  },
-  "class": {
-    "type": "declaration_keyword",
-    "explanation": "Defines a blueprint for creating objects with fields, methods, constructors, and nested types.",
-    "example": "public class Point {\n    int x;\n    int y;\n}"
-  },
-  "interface": {
-    "type": "declaration_keyword",
-    "explanation": "Defines a contract of methods/constants that classes can implement; modern interfaces may also contain default and static methods.",
-    "example": "interface Shape {\n    double area();\n}"
-  },
-  "enum": {
-    "type": "declaration_keyword",
-    "explanation": "Defines a fixed set of named constants as a special class type.",
-    "example": "enum Color {\n    RED, GREEN, BLUE\n}"
-  },
-  "package": {
-    "type": "declaration_keyword",
-    "explanation": "Places a source file's classes inside a named package for organization and name disambiguation.",
-    "example": "package com.example.app;"
-  },
-  "import": {
-    "type": "declaration_keyword",
-    "explanation": "Brings a type or static member into scope so it can be used without its fully qualified name.",
-    "example": "import java.util.ArrayList;\n\nArrayList<String> names = new ArrayList<>();"
-  },
-  "extends": {
-    "type": "inheritance_keyword",
-    "explanation": "Declares that a class inherits from another class, or that an interface extends another interface.",
-    "example": "class Dog extends Animal {\n    void speak() { System.out.println(\"Woof\"); }\n}"
-  },
-  "implements": {
-    "type": "inheritance_keyword",
-    "explanation": "Declares that a class provides the methods required by one or more interfaces.",
-    "example": "class Circle implements Shape {\n    public double area() { return Math.PI * r * r; }\n}"
-  },
-  "this": {
-    "type": "object_keyword",
-    "explanation": "Refers to the current object instance, often used to distinguish fields from parameters.",
-    "example": "class Point {\n    int x;\n    Point(int x) {\n        this.x = x;\n    }\n}"
-  },
-  "super": {
-    "type": "object_keyword",
-    "explanation": "Refers to the parent class, commonly used to call a parent constructor or overridden method.",
-    "example": "class Dog extends Animal {\n    Dog(String name) {\n        super(name);\n    }\n}"
-  },
-  "new": {
-    "type": "object_keyword",
-    "explanation": "Creates a new object or array instance.",
-    "example": "Point p = new Point();\nint[] nums = new int[3];"
-  },
-  "instanceof": {
-    "type": "type_check_keyword",
-    "explanation": "Tests whether an object is compatible with a type; also supports pattern variables in modern Java.",
-    "example": "if (obj instanceof String s) {\n    System.out.println(s.length());\n}"
-  },
-  "if": {
-    "type": "control_flow_keyword",
-    "explanation": "Runs a block only when a condition is true.",
-    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n}"
-  },
-  "else": {
-    "type": "control_flow_keyword",
-    "explanation": "Runs an alternative block when the preceding if condition is false.",
-    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n} else {\n    System.out.println(\"Minor\");\n}"
-  },
-  "switch": {
-    "type": "control_flow_keyword",
-    "explanation": "Selects a branch based on a matching value or pattern; can be used as a statement or expression.",
-    "example": "switch (day) {\n    case \"MON\" -> System.out.println(\"Monday\");\n    default -> System.out.println(\"Other\");\n}"
-  },
-  "case": {
-    "type": "control_flow_keyword",
-    "explanation": "Defines a branch inside a switch statement or switch expression.",
-    "example": "switch (grade) {\n    case 'A' -> System.out.println(\"Great\");\n    default -> System.out.println(\"Keep going\");\n}"
-  },
-  "default": {
-    "type": "control_flow_keyword",
-    "explanation": "Defines the fallback branch in a switch, or a default method implementation in an interface.",
-    "example": "switch (grade) {\n    default -> System.out.println(\"Unknown grade\");\n}"
-  },
-  "for": {
-    "type": "loop_keyword",
-    "explanation": "Repeats code using a traditional counter loop or an enhanced for loop over arrays/collections.",
-    "example": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
-  },
-  "while": {
-    "type": "loop_keyword",
-    "explanation": "Repeats code while a condition remains true, checking the condition before each iteration.",
-    "example": "while (n > 0) {\n    n--;\n}"
-  },
-  "do": {
-    "type": "loop_keyword",
-    "explanation": "Starts a do-while loop, which runs the body once before checking the condition.",
-    "example": "do {\n    n++;\n} while (n < 3);"
-  },
-  "break": {
-    "type": "control_flow_keyword",
-    "explanation": "Immediately exits the nearest loop or switch.",
-    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n}"
-  },
-  "continue": {
-    "type": "control_flow_keyword",
-    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
-    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    System.out.println(i);\n}"
-  },
-  "return": {
-    "type": "control_flow_keyword",
-    "explanation": "Exits a method and optionally sends a value back to the caller.",
-    "example": "int square(int x) {\n    return x * x;\n}"
-  },
-  "try": {
-    "type": "exception_keyword",
-    "explanation": "Starts a block of code whose exceptions can be caught or whose resources can be automatically closed.",
-    "example": "try {\n    int x = 1 / 0;\n} catch (ArithmeticException e) {\n    System.out.println(e.getMessage());\n}"
-  },
-  "catch": {
-    "type": "exception_keyword",
-    "explanation": "Handles an exception thrown inside a matching try block.",
-    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
-  },
-  "finally": {
-    "type": "exception_keyword",
-    "explanation": "Runs cleanup code after try/catch, whether or not an exception occurred.",
-    "example": "try {\n    doWork();\n} finally {\n    System.out.println(\"Always runs\");\n}"
-  },
-  "throw": {
-    "type": "exception_keyword",
-    "explanation": "Throws an exception object manually.",
-    "example": "if (age < 0) {\n    throw new IllegalArgumentException(\"Age cannot be negative\");\n}"
-  },
-  "throws": {
-    "type": "exception_keyword",
-    "explanation": "Declares that a method may throw one or more checked exceptions.",
-    "example": "void readFile(String path) throws IOException {\n    // read file\n}"
-  },
-  "assert": {
-    "type": "debug_keyword",
-    "explanation": "Checks an assumption during debugging and throws AssertionError if the condition is false when assertions are enabled.",
-    "example": "assert balance >= 0 : \"Balance cannot be negative\";"
-  },
-  "boolean": {
-    "type": "primitive_type",
-    "explanation": "Primitive type that stores either true or false.",
-    "example": "boolean isActive = true;"
-  },
-  "byte": {
-    "type": "primitive_type",
-    "explanation": "8-bit signed integer primitive type.",
-    "example": "byte small = 42;"
-  },
-  "short": {
-    "type": "primitive_type",
-    "explanation": "16-bit signed integer primitive type.",
-    "example": "short count = 1000;"
-  },
-  "int": {
-    "type": "primitive_type",
-    "explanation": "32-bit signed integer primitive type, commonly used for whole numbers.",
-    "example": "int age = 37;"
-  },
-  "long": {
-    "type": "primitive_type",
-    "explanation": "64-bit signed integer primitive type for large whole numbers.",
-    "example": "long population = 9_000_000_000L;"
-  },
-  "float": {
-    "type": "primitive_type",
-    "explanation": "32-bit floating-point primitive type; literals usually use the f suffix.",
-    "example": "float price = 19.99f;"
-  },
-  "double": {
-    "type": "primitive_type",
-    "explanation": "64-bit floating-point primitive type, commonly used for decimal calculations.",
-    "example": "double average = 93.5;"
-  },
-  "char": {
-    "type": "primitive_type",
-    "explanation": "16-bit UTF-16 code unit used to store a single character.",
-    "example": "char grade = 'A';"
-  },
-  "void": {
-    "type": "return_type_keyword",
-    "explanation": "Used as a method return type to show that the method does not return a value.",
-    "example": "public void printHello() {\n    System.out.println(\"Hello\");\n}"
-  },
-  "const": {
-    "type": "reserved_unused_keyword",
-    "explanation": "Reserved for possible future use; Java does not use it for constants. Use final instead.",
-    "example": "final int MAX_USERS = 100; // not const"
-  },
-  "goto": {
-    "type": "reserved_unused_keyword",
-    "explanation": "Reserved but not used by Java; included so compilers can give better errors.",
-    "example": "// goto is reserved but not supported in Java"
-  },
-  "_": {
-    "type": "reserved_keyword",
-    "explanation": "The single underscore is reserved and cannot be used as a normal identifier; in some contexts it can mark an unnamed variable/pattern.",
-    "example": "try (var _ = lock.acquire()) {\n    // unnamed resource variable style\n}"
-  },
-  "true": {
-    "type": "literal",
-    "explanation": "Boolean literal representing a true condition.",
-    "example": "boolean isActive = true;"
-  },
-  "false": {
-    "type": "literal",
-    "explanation": "Boolean literal representing a false condition.",
-    "example": "boolean isDeleted = false;"
-  },
-  "null": {
-    "type": "literal",
-    "explanation": "Reference literal representing the absence of an object.",
-    "example": "String name = null;"
-  },
-  "module": {
-    "type": "contextual_keyword",
-    "explanation": "Declares a Java module in module-info.java.",
-    "example": "module com.example.app {\n    requires java.base;\n}"
-  },
-  "open": {
-    "type": "contextual_keyword",
-    "explanation": "Marks a module as open, allowing reflective access to all its packages.",
-    "example": "open module com.example.app {\n    requires java.sql;\n}"
-  },
-  "opens": {
-    "type": "contextual_keyword",
-    "explanation": "In a module declaration, opens a package for deep reflection, optionally to specific modules.",
-    "example": "module com.example.app {\n    opens com.example.model to com.fasterxml.jackson.databind;\n}"
-  },
-  "exports": {
-    "type": "contextual_keyword",
-    "explanation": "In a module declaration, exports a package so other modules can access its public types.",
-    "example": "module com.example.app {\n    exports com.example.api;\n}"
-  },
-  "requires": {
-    "type": "contextual_keyword",
-    "explanation": "In a module declaration, declares a dependency on another module.",
-    "example": "module com.example.app {\n    requires java.sql;\n}"
-  },
-  "transitive": {
-    "type": "contextual_keyword",
-    "explanation": "Used with requires to re-export a required module to modules that depend on this module.",
-    "example": "module com.example.app {\n    requires transitive java.sql;\n}"
-  },
-  "uses": {
-    "type": "contextual_keyword",
-    "explanation": "In a module declaration, declares that the module consumes a service.",
-    "example": "module com.example.app {\n    uses com.example.Plugin;\n}"
-  },
-  "provides": {
-    "type": "contextual_keyword",
-    "explanation": "In a module declaration, declares a service implementation supplied by the module.",
-    "example": "module com.example.app {\n    provides com.example.Plugin with com.example.DefaultPlugin;\n}"
-  },
-  "to": {
-    "type": "contextual_keyword",
-    "explanation": "Used in module directives such as exports ... to or opens ... to to target specific modules.",
-    "example": "exports com.example.internal to com.example.tests;"
-  },
-  "with": {
-    "type": "contextual_keyword",
-    "explanation": "Used in a provides directive to name the implementation class for a service.",
-    "example": "provides PaymentService with StripePaymentService;"
-  },
-  "var": {
-    "type": "contextual_keyword",
-    "explanation": "Lets the compiler infer a local variable or lambda parameter type from the initializer.",
-    "example": "var count = 0;\nvar names = new ArrayList<String>();"
-  },
-  "yield": {
-    "type": "contextual_keyword",
-    "explanation": "Returns a value from a switch expression block.",
-    "example": "int result = switch (grade) {\n    case \"A\" -> 100;\n    default -> {\n        yield 0;\n    }\n};"
-  },
-  "record": {
-    "type": "contextual_keyword",
-    "explanation": "Declares a compact data carrier class with generated constructor, accessors, equals, hashCode, and toString.",
-    "example": "record Point(int x, int y) {}\nPoint p = new Point(3, 4);"
-  },
-  "sealed": {
-    "type": "contextual_keyword",
-    "explanation": "Restricts which classes or interfaces may extend or implement a type.",
-    "example": "sealed class Shape permits Circle, Square {}"
-  },
-  "non-sealed": {
-    "type": "contextual_keyword",
-    "explanation": "Reopens inheritance for a subclass of a sealed class or interface.",
-    "example": "non-sealed class Circle extends Shape {}"
-  },
-  "permits": {
-    "type": "contextual_keyword",
-    "explanation": "Lists the specific classes or interfaces allowed to extend or implement a sealed type.",
-    "example": "sealed interface Shape permits Circle, Square {}"
-  },
-  "when": {
-    "type": "contextual_keyword",
-    "explanation": "Adds a guard condition to a pattern case in switch pattern matching.",
-    "example": "switch (obj) {\n    case String s when s.length() > 3 -> System.out.println(s);\n    default -> {}\n}"
-  },
-  "main": {
-    "type": "entry_point_convention",
-    "explanation": "Conventional application entry method name used by the JVM to start many Java programs.",
-    "example": "public static void main(String[] args) {\n    System.out.println(\"Hello\");\n}"
-  },
-  "String[] args": {
-    "type": "entry_point_convention",
-    "explanation": "Common parameter for command-line arguments passed to the main method.",
-    "example": "public static void main(String[] args) {\n    System.out.println(args.length);\n}"
-  },
-  "for-each": {
-    "type": "syntax_pattern",
-    "explanation": "Informal name for Java's enhanced for loop over arrays or Iterable collections.",
-    "example": "for (String name : names) {\n    System.out.println(name);\n}"
-  },
-  "enhanced for": {
-    "type": "syntax_pattern",
-    "explanation": "Official-style term for the for loop form that iterates directly over arrays or Iterable values.",
-    "example": "for (int n : numbers) {\n    total += n;\n}"
-  },
-  "do-while": {
-    "type": "syntax_pattern",
-    "explanation": "Loop pattern using do and while where the body runs at least once.",
-    "example": "do {\n    n++;\n} while (n < 3);"
-  },
-  "try-with-resources": {
-    "type": "syntax_pattern",
-    "explanation": "try form that automatically closes resources implementing AutoCloseable.",
-    "example": "try (BufferedReader br = Files.newBufferedReader(path)) {\n    return br.readLine();\n}"
-  },
-  "lambda expression": {
-    "type": "syntax_pattern",
-    "explanation": "Creates an anonymous function-like implementation of a functional interface.",
-    "example": "List<Integer> evens = nums.stream()\n    .filter(n -> n % 2 == 0)\n    .toList();"
-  },
-  "method reference": {
-    "type": "syntax_pattern",
-    "explanation": "Short syntax for passing an existing method as a functional interface implementation.",
-    "example": "names.forEach(System.out::println);"
-  },
-  "generics": {
-    "type": "syntax_pattern",
-    "explanation": "The <T> syntax lets classes, interfaces, and methods work with specific types while preserving compile-time type safety.",
-    "example": "class Box<T> {\n    T value;\n}\nBox<String> box = new Box<>();"
-  },
-  "diamond operator": {
-    "type": "syntax_pattern",
-    "explanation": "The <> syntax lets Java infer generic type arguments during object creation.",
-    "example": "List<String> names = new ArrayList<>();"
-  },
-  "annotation": {
-    "type": "syntax_pattern",
-    "explanation": "Metadata attached to code elements using @ syntax.",
-    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
-  },
-  "array": {
-    "type": "syntax_pattern",
-    "explanation": "Fixed-size indexed container whose elements all have the same type.",
-    "example": "int[] nums = {1, 2, 3};\nSystem.out.println(nums[0]);"
-  },
-  "java.base": {
-    "type": "module",
-    "explanation": "The fundamental Java module that contains core packages such as java.lang, java.util, java.io, java.nio, and java.time.",
-    "example": "module com.example.app {\n    requires java.base; // usually implicit\n}"
-  },
-  "java.lang": {
-    "type": "package",
-    "explanation": "Fundamental package automatically imported into every Java source file; includes Object, String, System, Math, wrapper classes, and exceptions.",
-    "example": "String text = \"Hello\";\nSystem.out.println(text);"
-  },
-  "java.util": {
-    "type": "package",
-    "explanation": "Utility package containing the collections framework, Optional, Scanner, Random, properties, and other common utility classes.",
-    "example": "import java.util.List;\nimport java.util.ArrayList;"
-  },
-  "java.io": {
-    "type": "package",
-    "explanation": "Classic input/output package for streams, readers, writers, files, and IOException.",
-    "example": "import java.io.File;\nimport java.io.IOException;"
-  },
-  "java.nio": {
-    "type": "package",
-    "explanation": "New I/O package for buffers, channels, charsets, and scalable I/O operations.",
-    "example": "import java.nio.ByteBuffer;"
-  },
-  "java.nio.file": {
-    "type": "package",
-    "explanation": "Modern file-system package with Path, Files, and file walking/copying utilities.",
-    "example": "import java.nio.file.Files;\nimport java.nio.file.Path;"
-  },
-  "java.time": {
-    "type": "package",
-    "explanation": "Modern date and time API package including LocalDate, LocalDateTime, Instant, and Duration.",
-    "example": "import java.time.LocalDate;\nLocalDate today = LocalDate.now();"
-  },
-  "java.math": {
-    "type": "package",
-    "explanation": "Package for arbitrary-precision numeric classes such as BigInteger and BigDecimal.",
-    "example": "import java.math.BigDecimal;\nBigDecimal price = new BigDecimal(\"19.99\");"
-  },
-  "java.net": {
-    "type": "package",
-    "explanation": "Networking package for URLs, URIs, sockets, and network-related classes.",
-    "example": "import java.net.URI;\nURI uri = URI.create(\"https://example.com\");"
-  },
-  "java.util.concurrent": {
-    "type": "package",
-    "explanation": "Concurrency utilities such as ExecutorService, Future, locks, and thread-safe collections.",
-    "example": "import java.util.concurrent.ExecutorService;"
-  },
-  "java.util.function": {
-    "type": "package",
-    "explanation": "Functional interfaces used by lambdas and method references, such as Function, Predicate, Consumer, and Supplier.",
-    "example": "import java.util.function.Predicate;"
-  },
-  "java.util.stream": {
-    "type": "package",
-    "explanation": "Stream API package for processing sequences of data with map/filter/reduce-style operations.",
-    "example": "import java.util.stream.Stream;\nStream.of(1, 2, 3).forEach(System.out::println);"
-  },
-  "java.util.regex": {
-    "type": "package",
-    "explanation": "Regular expression package with Pattern and Matcher.",
-    "example": "import java.util.regex.Pattern;\nboolean ok = Pattern.matches(\"\\\\d+\", \"123\");"
-  },
-  "java.sql": {
-    "type": "package",
-    "explanation": "JDBC database API package for Connection, Statement, ResultSet, and SQL exceptions.",
-    "example": "import java.sql.Connection;"
-  },
-  "javax.swing": {
-    "type": "package",
-    "explanation": "Classic desktop GUI toolkit package for windows, buttons, labels, and other UI components.",
-    "example": "import javax.swing.JFrame;"
-  },
-  "Object": {
-    "type": "core_class",
-    "explanation": "Root superclass of all Java classes.",
-    "example": "Object obj = \"hello\";"
-  },
-  "Class": {
-    "type": "core_class",
-    "explanation": "Runtime representation of a class or interface.",
-    "example": "Class<?> type = String.class;"
-  },
-  "String": {
-    "type": "core_class",
-    "explanation": "Immutable sequence of characters used for text.",
-    "example": "String name = \"Nina\";"
-  },
-  "StringBuilder": {
-    "type": "core_class",
-    "explanation": "Mutable sequence of characters, useful for efficiently building strings.",
-    "example": "StringBuilder sb = new StringBuilder();\nsb.append(\"Hello\");"
-  },
-  "StringBuffer": {
-    "type": "core_class",
-    "explanation": "Thread-safe mutable sequence of characters.",
-    "example": "StringBuffer sb = new StringBuffer(\"Hello\");"
-  },
-  "System": {
-    "type": "core_class",
-    "explanation": "Provides standard input/output/error streams, current time, environment access, array copy, and system utilities.",
-    "example": "System.out.println(\"Hello\");"
-  },
-  "Math": {
-    "type": "utility_class",
-    "explanation": "Provides common mathematical functions and constants.",
-    "example": "double root = Math.sqrt(16);"
-  },
-  "StrictMath": {
-    "type": "utility_class",
-    "explanation": "Provides reproducible math functions with strict results across platforms.",
-    "example": "double root = StrictMath.sqrt(16);"
-  },
-  "Enum": {
-    "type": "core_class",
-    "explanation": "Common base class of all enum types.",
-    "example": "enum Direction { NORTH, SOUTH }"
-  },
-  "Throwable": {
-    "type": "exception_class",
-    "explanation": "Superclass of all objects that can be thrown and caught.",
-    "example": "try {\n    throw new Throwable(\"Problem\");\n} catch (Throwable t) {\n    System.out.println(t.getMessage());\n}"
-  },
-  "Exception": {
-    "type": "exception_class",
-    "explanation": "Base class for checked exceptions that applications may catch or declare.",
-    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
-  },
-  "RuntimeException": {
-    "type": "exception_class",
-    "explanation": "Base class for unchecked exceptions that usually indicate programming/runtime errors.",
-    "example": "throw new RuntimeException(\"Something went wrong\");"
-  },
-  "Error": {
-    "type": "exception_class",
-    "explanation": "Base class for serious JVM or system-level problems that applications usually should not catch.",
-    "example": "// OutOfMemoryError and StackOverflowError extend Error"
-  },
-  "Thread": {
-    "type": "concurrency_class",
-    "explanation": "Represents a thread of execution.",
-    "example": "Thread t = new Thread(() -> System.out.println(\"Running\"));\nt.start();"
-  },
-  "Runnable": {
-    "type": "functional_interface",
-    "explanation": "Functional interface representing code that can run without returning a value.",
-    "example": "Runnable job = () -> System.out.println(\"Run\");"
-  },
-  "Comparable": {
-    "type": "core_interface",
-    "explanation": "Interface for objects that define their natural ordering.",
-    "example": "class User implements Comparable<User> {\n    public int compareTo(User other) { return 0; }\n}"
-  },
-  "Iterable": {
-    "type": "core_interface",
-    "explanation": "Interface for objects that can be used in an enhanced for loop.",
-    "example": "for (String item : iterable) {\n    System.out.println(item);\n}"
-  },
-  "AutoCloseable": {
-    "type": "core_interface",
-    "explanation": "Interface for resources that can be closed automatically by try-with-resources.",
-    "example": "try (AutoCloseable r = openResource()) {\n    // use resource\n}"
-  },
-  "Cloneable": {
-    "type": "marker_interface",
-    "explanation": "Marker interface indicating that Object.clone may make a field-for-field copy.",
-    "example": "class User implements Cloneable {}"
-  },
-  "Number": {
-    "type": "core_class",
-    "explanation": "Abstract superclass of numeric wrapper classes like Integer, Long, Float, and Double.",
-    "example": "Number n = Integer.valueOf(5);"
-  },
-  "Boolean": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive boolean type.",
-    "example": "Boolean flag = Boolean.TRUE;"
-  },
-  "Byte": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive byte type.",
-    "example": "Byte b = Byte.valueOf((byte) 1);"
-  },
-  "Short": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive short type.",
-    "example": "Short s = Short.valueOf((short) 10);"
-  },
-  "Integer": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive int type.",
-    "example": "Integer count = Integer.valueOf(42);"
-  },
-  "Long": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive long type.",
-    "example": "Long big = Long.valueOf(123456789L);"
-  },
-  "Float": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive float type.",
-    "example": "Float price = Float.valueOf(19.99f);"
-  },
-  "Double": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive double type.",
-    "example": "Double average = Double.valueOf(93.5);"
-  },
-  "Character": {
-    "type": "wrapper_class",
-    "explanation": "Wrapper class for the primitive char type.",
-    "example": "Character grade = Character.valueOf('A');"
-  },
-  "Void": {
-    "type": "wrapper_class",
-    "explanation": "Non-instantiable class representing the void type in reflection.",
-    "example": "Class<Void> type = Void.TYPE;"
-  },
-  "Collection": {
-    "type": "collection_interface",
-    "explanation": "Root interface for many container types such as List, Set, and Queue.",
-    "example": "Collection<String> items = new ArrayList<>();"
-  },
-  "List": {
-    "type": "collection_interface",
-    "explanation": "Ordered collection that allows indexed access and usually allows duplicates.",
-    "example": "List<String> names = new ArrayList<>();"
-  },
-  "ArrayList": {
-    "type": "collection_class",
-    "explanation": "Resizable array implementation of List.",
-    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Nina\");"
-  },
-  "LinkedList": {
-    "type": "collection_class",
-    "explanation": "Doubly-linked list implementation of List and Deque.",
-    "example": "LinkedList<String> queue = new LinkedList<>();"
-  },
-  "Set": {
-    "type": "collection_interface",
-    "explanation": "Collection that does not contain duplicate elements.",
-    "example": "Set<String> uniqueNames = new HashSet<>();"
-  },
-  "HashSet": {
-    "type": "collection_class",
-    "explanation": "Hash-table implementation of Set with fast lookup and no guaranteed order.",
-    "example": "HashSet<Integer> ids = new HashSet<>();"
-  },
-  "TreeSet": {
-    "type": "collection_class",
-    "explanation": "Sorted Set implementation based on a tree.",
-    "example": "TreeSet<String> sorted = new TreeSet<>();"
-  },
-  "Map": {
-    "type": "collection_interface",
-    "explanation": "Associates keys with values; each key maps to at most one value.",
-    "example": "Map<String, Integer> ages = new HashMap<>();"
-  },
-  "HashMap": {
-    "type": "collection_class",
-    "explanation": "Hash-table implementation of Map with fast key lookup and no guaranteed order.",
-    "example": "HashMap<String, Integer> ages = new HashMap<>();\nages.put(\"Nina\", 37);"
-  },
-  "TreeMap": {
-    "type": "collection_class",
-    "explanation": "Sorted Map implementation based on keys' natural order or a Comparator.",
-    "example": "TreeMap<String, Integer> sortedAges = new TreeMap<>();"
-  },
-  "Queue": {
-    "type": "collection_interface",
-    "explanation": "Collection designed for holding elements before processing, often FIFO.",
-    "example": "Queue<String> q = new LinkedList<>();"
-  },
-  "Deque": {
-    "type": "collection_interface",
-    "explanation": "Double-ended queue that supports adding/removing from both ends.",
-    "example": "Deque<String> deque = new ArrayDeque<>();"
-  },
-  "ArrayDeque": {
-    "type": "collection_class",
-    "explanation": "Resizable-array implementation of Deque, often used as a stack or queue.",
-    "example": "ArrayDeque<Integer> stack = new ArrayDeque<>();\nstack.push(1);"
-  },
-  "Collections": {
-    "type": "utility_class",
-    "explanation": "Utility class with static methods for sorting, searching, synchronizing, and creating collection views.",
-    "example": "Collections.sort(names);"
-  },
-  "Arrays": {
-    "type": "utility_class",
-    "explanation": "Utility class with static methods for arrays, such as sort, binarySearch, fill, and asList.",
-    "example": "int[] nums = {3, 1, 2};\nArrays.sort(nums);"
-  },
-  "Optional": {
-    "type": "utility_class",
-    "explanation": "Container object that may or may not hold a non-null value.",
-    "example": "Optional<String> name = Optional.of(\"Nina\");"
-  },
-  "Scanner": {
-    "type": "utility_class",
-    "explanation": "Parses text input from strings, files, or streams.",
-    "example": "Scanner scanner = new Scanner(System.in);\nString line = scanner.nextLine();"
-  },
-  "Random": {
-    "type": "utility_class",
-    "explanation": "Generates pseudorandom values.",
-    "example": "Random random = new Random();\nint n = random.nextInt(10);"
-  },
-  "Properties": {
-    "type": "utility_class",
-    "explanation": "Hashtable-based class commonly used for configuration key/value pairs.",
-    "example": "Properties props = new Properties();\nprops.setProperty(\"mode\", \"dev\");"
-  },
-  "Comparator": {
-    "type": "functional_interface",
-    "explanation": "Compares two objects to define custom ordering.",
-    "example": "names.sort(Comparator.naturalOrder());"
-  },
-  "Stream": {
-    "type": "stream_class",
-    "explanation": "Represents a sequence of elements that can be processed with operations like map, filter, and reduce.",
-    "example": "List<String> shortNames = names.stream()\n    .filter(s -> s.length() < 5)\n    .toList();"
-  },
-  "Predicate": {
-    "type": "functional_interface",
-    "explanation": "Functional interface representing a boolean test of one value.",
-    "example": "Predicate<String> longName = s -> s.length() > 5;"
-  },
-  "Function": {
-    "type": "functional_interface",
-    "explanation": "Functional interface representing a transformation from one value to another.",
-    "example": "Function<String, Integer> length = String::length;"
-  },
-  "Consumer": {
-    "type": "functional_interface",
-    "explanation": "Functional interface representing an operation that accepts a value and returns nothing.",
-    "example": "Consumer<String> printer = System.out::println;"
-  },
-  "Supplier": {
-    "type": "functional_interface",
-    "explanation": "Functional interface representing a provider of values.",
-    "example": "Supplier<Double> randomValue = Math::random;"
-  },
-  "LocalDate": {
-    "type": "date_time_class",
-    "explanation": "Date without time-of-day or time zone.",
-    "example": "LocalDate today = LocalDate.now();"
-  },
-  "LocalDateTime": {
-    "type": "date_time_class",
-    "explanation": "Date and time without a time zone.",
-    "example": "LocalDateTime now = LocalDateTime.now();"
-  },
-  "Instant": {
-    "type": "date_time_class",
-    "explanation": "A point on the UTC time-line.",
-    "example": "Instant now = Instant.now();"
-  },
-  "Duration": {
-    "type": "date_time_class",
-    "explanation": "Time-based amount, such as 5 minutes or 2 hours.",
-    "example": "Duration timeout = Duration.ofSeconds(30);"
-  },
-  "Period": {
-    "type": "date_time_class",
-    "explanation": "Date-based amount, such as 3 days or 2 months.",
-    "example": "Period twoWeeks = Period.ofWeeks(2);"
-  },
-  "BigInteger": {
-    "type": "math_class",
-    "explanation": "Arbitrary-precision integer class for whole numbers larger than long can hold.",
-    "example": "BigInteger big = new BigInteger(\"12345678901234567890\");"
-  },
-  "BigDecimal": {
-    "type": "math_class",
-    "explanation": "Arbitrary-precision decimal class, commonly used for money and exact decimal arithmetic.",
-    "example": "BigDecimal price = new BigDecimal(\"19.99\");"
-  },
-  "File": {
-    "type": "io_class",
-    "explanation": "Legacy file and directory pathname class from java.io.",
-    "example": "File file = new File(\"data.txt\");"
-  },
-  "Path": {
-    "type": "io_class",
-    "explanation": "Modern representation of a file-system path.",
-    "example": "Path path = Path.of(\"data.txt\");"
-  },
-  "Files": {
-    "type": "io_utility_class",
-    "explanation": "Utility class for reading, writing, copying, moving, and walking files using Path.",
-    "example": "String text = Files.readString(Path.of(\"data.txt\"));"
-  },
-  "InputStream": {
-    "type": "io_class",
-    "explanation": "Base class for reading bytes from a source.",
-    "example": "InputStream in = System.in;"
-  },
-  "OutputStream": {
-    "type": "io_class",
-    "explanation": "Base class for writing bytes to a destination.",
-    "example": "OutputStream out = System.out;"
-  },
-  "Reader": {
-    "type": "io_class",
-    "explanation": "Base class for reading character streams.",
-    "example": "Reader reader = Files.newBufferedReader(Path.of(\"data.txt\"));"
-  },
-  "Writer": {
-    "type": "io_class",
-    "explanation": "Base class for writing character streams.",
-    "example": "Writer writer = Files.newBufferedWriter(Path.of(\"out.txt\"));"
-  },
-  "BufferedReader": {
-    "type": "io_class",
-    "explanation": "Reads text efficiently by buffering characters from another Reader.",
-    "example": "BufferedReader br = Files.newBufferedReader(Path.of(\"data.txt\"));"
-  },
-  "URI": {
-    "type": "network_class",
-    "explanation": "Represents a Uniform Resource Identifier.",
-    "example": "URI uri = URI.create(\"https://example.com/path\");"
-  },
-  "URL": {
-    "type": "network_class",
-    "explanation": "Represents a Uniform Resource Locator.",
-    "example": "URL url = URI.create(\"https://example.com\").toURL();"
-  },
-  "IOException": {
-    "type": "exception_class",
-    "explanation": "Checked exception for input/output failures.",
-    "example": "void load() throws IOException {\n    Files.readString(Path.of(\"data.txt\"));\n}"
-  },
-  "IllegalArgumentException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception thrown when a method receives an invalid argument.",
-    "example": "if (age < 0) throw new IllegalArgumentException(\"age\");"
-  },
-  "NullPointerException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception thrown when code tries to use null as if it were an object.",
-    "example": "String s = null;\n// s.length(); // would throw NullPointerException"
-  },
-  "IndexOutOfBoundsException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception for invalid index access.",
-    "example": "throw new IndexOutOfBoundsException(\"Bad index\");"
-  },
-  "ArrayIndexOutOfBoundsException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception for invalid array index access.",
-    "example": "int[] nums = {1};\n// nums[2]; // would throw this"
-  },
-  "NumberFormatException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception thrown when parsing a number from invalid text.",
-    "example": "int n = Integer.parseInt(\"123\");"
-  },
-  "ClassCastException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception thrown when an object is cast to an incompatible type.",
-    "example": "Object x = \"hello\";\n// Integer n = (Integer) x;"
-  },
-  "InterruptedException": {
-    "type": "exception_class",
-    "explanation": "Checked exception thrown when a waiting/sleeping thread is interrupted.",
-    "example": "Thread.sleep(1000); // must handle or declare InterruptedException"
-  },
-  "ArithmeticException": {
-    "type": "exception_class",
-    "explanation": "Unchecked exception for arithmetic errors such as integer division by zero.",
-    "example": "int x = 1 / 0; // throws ArithmeticException"
-  },
-  "AssertionError": {
-    "type": "exception_class",
-    "explanation": "Error thrown when an assert statement fails while assertions are enabled.",
-    "example": "assert size >= 0 : \"size\";"
-  },
-  "@Override": {
-    "type": "annotation",
-    "explanation": "Tells the compiler that a method is intended to override a superclass or interface method.",
-    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
-  },
-  "@Deprecated": {
-    "type": "annotation",
-    "explanation": "Marks an API element as discouraged for use, often because it will be removed or replaced.",
-    "example": "@Deprecated\nvoid oldMethod() {}"
-  },
-  "@SuppressWarnings": {
-    "type": "annotation",
-    "explanation": "Suppresses selected compiler warnings for the annotated element.",
-    "example": "@SuppressWarnings(\"unchecked\")\nvoid legacyCode() {}"
-  },
-  "@FunctionalInterface": {
-    "type": "annotation",
-    "explanation": "Marks an interface as intended to have exactly one abstract method.",
-    "example": "@FunctionalInterface\ninterface Action {\n    void run();\n}"
-  },
-  "@SafeVarargs": {
-    "type": "annotation",
-    "explanation": "Suppresses heap-pollution warnings for safe generic varargs methods or constructors.",
-    "example": "@SafeVarargs\nstatic <T> void printAll(T... items) {}"
-  },
-  "Connection": {
-    "type": "sql_interface",
-    "explanation": "JDBC interface representing a database connection.",
-    "example": "Connection conn = DriverManager.getConnection(url, user, password);"
-  },
-  "DriverManager": {
-    "type": "sql_class",
-    "explanation": "JDBC utility class for obtaining database connections.",
-    "example": "Connection conn = DriverManager.getConnection(url);"
-  },
-  "PreparedStatement": {
-    "type": "sql_interface",
-    "explanation": "Precompiled SQL statement that safely accepts parameters.",
-    "example": "PreparedStatement ps = conn.prepareStatement(\"select * from users where id = ?\");"
-  },
-  "ResultSet": {
-    "type": "sql_interface",
-    "explanation": "Represents rows returned from a database query.",
-    "example": "ResultSet rs = ps.executeQuery();"
-  },
-  "SQLException": {
-    "type": "exception_class",
-    "explanation": "Checked exception for JDBC/database access errors.",
-    "example": "catch (SQLException e) {\n    e.printStackTrace();\n}"
-  },
-  "ExecutorService": {
-    "type": "concurrency_interface",
-    "explanation": "Manages and executes asynchronous tasks using a pool of worker threads.",
-    "example": "ExecutorService pool = Executors.newFixedThreadPool(4);"
-  },
-  "Executors": {
-    "type": "concurrency_utility_class",
-    "explanation": "Factory utility class for creating ExecutorService instances.",
-    "example": "ExecutorService pool = Executors.newSingleThreadExecutor();"
-  },
-  "Future": {
-    "type": "concurrency_interface",
-    "explanation": "Represents the result of an asynchronous computation that may complete later.",
-    "example": "Future<Integer> future = pool.submit(() -> 42);"
-  },
-  "CompletableFuture": {
-    "type": "concurrency_class",
-    "explanation": "Future implementation that supports chaining asynchronous operations.",
-    "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
-  },
-  "==": {
-    "type": "operator",
-    "explanation": "Compares two values. For objects - INCLUDING Strings - this asks whether they are the same object in memory, not whether they look the same. Use .equals() to compare text.",
-    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
-  },
   "!=": {
     "type": "operator",
     "explanation": "\"Is not equal to\". For objects this compares identity, like == does.",
@@ -979,10 +9,10 @@
     "explanation": "Remainder (modulo): what is left over after division. n % 2 == 0 means n is even.",
     "example": "int rest = 7 % 2;   // 1"
   },
-  "/": {
+  "&&": {
     "type": "operator",
-    "explanation": "Division. Between two INTEGERS this throws away the remainder: 7 / 2 is 3, not 3.5. Make one side a double to get a decimal.",
-    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
+    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side, so the right side is not even evaluated.",
+    "example": "if (list != null && list.size() > 0) { }"
   },
   "++": {
     "type": "operator",
@@ -994,34 +24,1179 @@
     "explanation": "Adds to a variable and stores the result back in it.",
     "example": "total += n;"
   },
-  "&&": {
+  "->": {
     "type": "operator",
-    "explanation": "Logical AND: true only when both sides are true. Stops at the first false side, so the right side is not even evaluated.",
-    "example": "if (list != null && list.size() > 0) { }"
+    "explanation": "Lambda: a short unnamed function.",
+    "example": "list.forEach(item -> System.out.println(item));"
   },
-  "||": {
+  "/": {
     "type": "operator",
-    "explanation": "Logical OR: true when either side is true.",
-    "example": "if (isAdmin || isOwner) { }"
+    "explanation": "Division. Between two INTEGERS this throws away the remainder: 7 / 2 is 3, not 3.5. Make one side a double to get a decimal.",
+    "example": "int a = 7 / 2;        // 3\ndouble b = 7 / 2.0;   // 3.5"
   },
   "<=": {
     "type": "operator",
     "explanation": "\"Is less than or equal to\".",
     "example": "if (score <= 100) { }"
   },
+  "=": {
+    "type": "operator",
+    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
+    "example": "int total = 10;"
+  },
+  "==": {
+    "type": "operator",
+    "explanation": "Compares two values. For objects - INCLUDING Strings - this asks whether they are the same object in memory, not whether they look the same. Use .equals() to compare text.",
+    "example": "if (count == 3) { }\nif (name.equals(\"Ada\")) { }   // not name == \"Ada\""
+  },
   ">=": {
     "type": "operator",
     "explanation": "\"Is greater than or equal to\".",
     "example": "if (age >= 18) { }"
   },
-  "->": {
-    "type": "operator",
-    "explanation": "Lambda: a short unnamed function.",
-    "example": "list.forEach(item -> System.out.println(item));"
+  "@Deprecated": {
+    "type": "annotation",
+    "explanation": "Marks an API element as discouraged for use, often because it will be removed or replaced.",
+    "example": "@Deprecated\nvoid oldMethod() {}"
   },
-  "=": {
+  "@FunctionalInterface": {
+    "type": "annotation",
+    "explanation": "Marks an interface as intended to have exactly one abstract method.",
+    "example": "@FunctionalInterface\ninterface Action {\n    void run();\n}"
+  },
+  "@Override": {
+    "type": "annotation",
+    "explanation": "Tells the compiler that a method is intended to override a superclass or interface method.",
+    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
+  },
+  "@SafeVarargs": {
+    "type": "annotation",
+    "explanation": "Suppresses heap-pollution warnings for safe generic varargs methods or constructors.",
+    "example": "@SafeVarargs\nstatic <T> void printAll(T... items) {}"
+  },
+  "@SuppressWarnings": {
+    "type": "annotation",
+    "explanation": "Suppresses selected compiler warnings for the annotated element.",
+    "example": "@SuppressWarnings(\"unchecked\")\nvoid legacyCode() {}"
+  },
+  "ArithmeticException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception for arithmetic errors such as integer division by zero.",
+    "example": "int x = 1 / 0; // throws ArithmeticException"
+  },
+  "ArrayDeque": {
+    "type": "collection_class",
+    "explanation": "Resizable-array implementation of Deque, often used as a stack or queue.",
+    "example": "ArrayDeque<Integer> stack = new ArrayDeque<>();\nstack.push(1);"
+  },
+  "ArrayIndexOutOfBoundsException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception for invalid array index access.",
+    "example": "int[] nums = {1};\n// nums[2]; // would throw this"
+  },
+  "ArrayList": {
+    "type": "collection_class",
+    "explanation": "Resizable array implementation of List.",
+    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Nina\");"
+  },
+  "Arrays": {
+    "type": "utility_class",
+    "explanation": "Utility class with static methods for arrays, such as sort, binarySearch, fill, and asList.",
+    "example": "int[] nums = {3, 1, 2};\nArrays.sort(nums);"
+  },
+  "AssertionError": {
+    "type": "exception_class",
+    "explanation": "Error thrown when an assert statement fails while assertions are enabled.",
+    "example": "assert size >= 0 : \"size\";"
+  },
+  "AutoCloseable": {
+    "type": "core_interface",
+    "explanation": "Interface for resources that can be closed automatically by try-with-resources.",
+    "example": "try (AutoCloseable r = openResource()) {\n    // use resource\n}"
+  },
+  "BigDecimal": {
+    "type": "math_class",
+    "explanation": "Arbitrary-precision decimal class, commonly used for money and exact decimal arithmetic.",
+    "example": "BigDecimal price = new BigDecimal(\"19.99\");"
+  },
+  "BigInteger": {
+    "type": "math_class",
+    "explanation": "Arbitrary-precision integer class for whole numbers larger than long can hold.",
+    "example": "BigInteger big = new BigInteger(\"12345678901234567890\");"
+  },
+  "Boolean": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive boolean type.",
+    "example": "Boolean flag = Boolean.TRUE;"
+  },
+  "BufferedReader": {
+    "type": "io_class",
+    "explanation": "Reads text efficiently by buffering characters from another Reader.",
+    "example": "BufferedReader br = Files.newBufferedReader(Path.of(\"data.txt\"));"
+  },
+  "Byte": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive byte type.",
+    "example": "Byte b = Byte.valueOf((byte) 1);"
+  },
+  "Character": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive char type.",
+    "example": "Character grade = Character.valueOf('A');"
+  },
+  "Class": {
+    "type": "core_class",
+    "explanation": "Runtime representation of a class or interface.",
+    "example": "Class<?> type = String.class;"
+  },
+  "ClassCastException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception thrown when an object is cast to an incompatible type.",
+    "example": "Object x = \"hello\";\n// Integer n = (Integer) x;"
+  },
+  "Cloneable": {
+    "type": "marker_interface",
+    "explanation": "Marker interface indicating that Object.clone may make a field-for-field copy.",
+    "example": "class User implements Cloneable {}"
+  },
+  "Collection": {
+    "type": "collection_interface",
+    "explanation": "Root interface for many container types such as List, Set, and Queue.",
+    "example": "Collection<String> items = new ArrayList<>();"
+  },
+  "Collections": {
+    "type": "utility_class",
+    "explanation": "Utility class with static methods for sorting, searching, synchronizing, and creating collection views.",
+    "example": "Collections.sort(names);"
+  },
+  "Comparable": {
+    "type": "core_interface",
+    "explanation": "Interface for objects that define their natural ordering.",
+    "example": "class User implements Comparable<User> {\n    public int compareTo(User other) { return 0; }\n}"
+  },
+  "Comparator": {
+    "type": "functional_interface",
+    "explanation": "Compares two objects to define custom ordering.",
+    "example": "names.sort(Comparator.naturalOrder());"
+  },
+  "CompletableFuture": {
+    "type": "concurrency_class",
+    "explanation": "Future implementation that supports chaining asynchronous operations.",
+    "example": "CompletableFuture.supplyAsync(() -> 42)\n    .thenAccept(System.out::println);"
+  },
+  "Connection": {
+    "type": "sql_interface",
+    "explanation": "JDBC interface representing a database connection.",
+    "example": "Connection conn = DriverManager.getConnection(url, user, password);"
+  },
+  "Consumer": {
+    "type": "functional_interface",
+    "explanation": "Functional interface representing an operation that accepts a value and returns nothing.",
+    "example": "Consumer<String> printer = System.out::println;"
+  },
+  "Deque": {
+    "type": "collection_interface",
+    "explanation": "Double-ended queue that supports adding/removing from both ends.",
+    "example": "Deque<String> deque = new ArrayDeque<>();"
+  },
+  "Double": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive double type.",
+    "example": "Double average = Double.valueOf(93.5);"
+  },
+  "DriverManager": {
+    "type": "sql_class",
+    "explanation": "JDBC utility class for obtaining database connections.",
+    "example": "Connection conn = DriverManager.getConnection(url);"
+  },
+  "Duration": {
+    "type": "date_time_class",
+    "explanation": "Time-based amount, such as 5 minutes or 2 hours.",
+    "example": "Duration timeout = Duration.ofSeconds(30);"
+  },
+  "Enum": {
+    "type": "core_class",
+    "explanation": "Common base class of all enum types.",
+    "example": "enum Direction { NORTH, SOUTH }"
+  },
+  "Error": {
+    "type": "exception_class",
+    "explanation": "Base class for serious JVM or system-level problems that applications usually should not catch.",
+    "example": "// OutOfMemoryError and StackOverflowError extend Error"
+  },
+  "Exception": {
+    "type": "exception_class",
+    "explanation": "Base class for checked exceptions that applications may catch or declare.",
+    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
+  },
+  "ExecutorService": {
+    "type": "concurrency_interface",
+    "explanation": "Manages and executes asynchronous tasks using a pool of worker threads.",
+    "example": "ExecutorService pool = Executors.newFixedThreadPool(4);"
+  },
+  "Executors": {
+    "type": "concurrency_utility_class",
+    "explanation": "Factory utility class for creating ExecutorService instances.",
+    "example": "ExecutorService pool = Executors.newSingleThreadExecutor();"
+  },
+  "File": {
+    "type": "io_class",
+    "explanation": "Legacy file and directory pathname class from java.io.",
+    "example": "File file = new File(\"data.txt\");"
+  },
+  "Files": {
+    "type": "io_utility_class",
+    "explanation": "Utility class for reading, writing, copying, moving, and walking files using Path.",
+    "example": "String text = Files.readString(Path.of(\"data.txt\"));"
+  },
+  "Float": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive float type.",
+    "example": "Float price = Float.valueOf(19.99f);"
+  },
+  "Function": {
+    "type": "functional_interface",
+    "explanation": "Functional interface representing a transformation from one value to another.",
+    "example": "Function<String, Integer> length = String::length;"
+  },
+  "Future": {
+    "type": "concurrency_interface",
+    "explanation": "Represents the result of an asynchronous computation that may complete later.",
+    "example": "Future<Integer> future = pool.submit(() -> 42);"
+  },
+  "HashMap": {
+    "type": "collection_class",
+    "explanation": "Hash-table implementation of Map with fast key lookup and no guaranteed order.",
+    "example": "HashMap<String, Integer> ages = new HashMap<>();\nages.put(\"Nina\", 37);"
+  },
+  "HashSet": {
+    "type": "collection_class",
+    "explanation": "Hash-table implementation of Set with fast lookup and no guaranteed order.",
+    "example": "HashSet<Integer> ids = new HashSet<>();"
+  },
+  "IOException": {
+    "type": "exception_class",
+    "explanation": "Checked exception for input/output failures.",
+    "example": "void load() throws IOException {\n    Files.readString(Path.of(\"data.txt\"));\n}"
+  },
+  "IllegalArgumentException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception thrown when a method receives an invalid argument.",
+    "example": "if (age < 0) throw new IllegalArgumentException(\"age\");"
+  },
+  "IndexOutOfBoundsException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception for invalid index access.",
+    "example": "throw new IndexOutOfBoundsException(\"Bad index\");"
+  },
+  "InputStream": {
+    "type": "io_class",
+    "explanation": "Base class for reading bytes from a source.",
+    "example": "InputStream in = System.in;"
+  },
+  "Instant": {
+    "type": "date_time_class",
+    "explanation": "A point on the UTC time-line.",
+    "example": "Instant now = Instant.now();"
+  },
+  "Integer": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive int type.",
+    "example": "Integer count = Integer.valueOf(42);"
+  },
+  "InterruptedException": {
+    "type": "exception_class",
+    "explanation": "Checked exception thrown when a waiting/sleeping thread is interrupted.",
+    "example": "Thread.sleep(1000); // must handle or declare InterruptedException"
+  },
+  "Iterable": {
+    "type": "core_interface",
+    "explanation": "Interface for objects that can be used in an enhanced for loop.",
+    "example": "for (String item : iterable) {\n    System.out.println(item);\n}"
+  },
+  "LinkedList": {
+    "type": "collection_class",
+    "explanation": "Doubly-linked list implementation of List and Deque.",
+    "example": "LinkedList<String> queue = new LinkedList<>();"
+  },
+  "List": {
+    "type": "collection_interface",
+    "explanation": "Ordered collection that allows indexed access and usually allows duplicates.",
+    "example": "List<String> names = new ArrayList<>();"
+  },
+  "LocalDate": {
+    "type": "date_time_class",
+    "explanation": "Date without time-of-day or time zone.",
+    "example": "LocalDate today = LocalDate.now();"
+  },
+  "LocalDateTime": {
+    "type": "date_time_class",
+    "explanation": "Date and time without a time zone.",
+    "example": "LocalDateTime now = LocalDateTime.now();"
+  },
+  "Long": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive long type.",
+    "example": "Long big = Long.valueOf(123456789L);"
+  },
+  "Map": {
+    "type": "collection_interface",
+    "explanation": "Associates keys with values; each key maps to at most one value.",
+    "example": "Map<String, Integer> ages = new HashMap<>();"
+  },
+  "Math": {
+    "type": "utility_class",
+    "explanation": "Provides common mathematical functions and constants.",
+    "example": "double root = Math.sqrt(16);"
+  },
+  "NullPointerException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception thrown when code tries to use null as if it were an object.",
+    "example": "String s = null;\n// s.length(); // would throw NullPointerException"
+  },
+  "Number": {
+    "type": "core_class",
+    "explanation": "Abstract superclass of numeric wrapper classes like Integer, Long, Float, and Double.",
+    "example": "Number n = Integer.valueOf(5);"
+  },
+  "NumberFormatException": {
+    "type": "exception_class",
+    "explanation": "Unchecked exception thrown when parsing a number from invalid text.",
+    "example": "int n = Integer.parseInt(\"123\");"
+  },
+  "Object": {
+    "type": "core_class",
+    "explanation": "Root superclass of all Java classes.",
+    "example": "Object obj = \"hello\";"
+  },
+  "Optional": {
+    "type": "utility_class",
+    "explanation": "Container object that may or may not hold a non-null value.",
+    "example": "Optional<String> name = Optional.of(\"Nina\");"
+  },
+  "OutputStream": {
+    "type": "io_class",
+    "explanation": "Base class for writing bytes to a destination.",
+    "example": "OutputStream out = System.out;"
+  },
+  "Path": {
+    "type": "io_class",
+    "explanation": "Modern representation of a file-system path.",
+    "example": "Path path = Path.of(\"data.txt\");"
+  },
+  "Period": {
+    "type": "date_time_class",
+    "explanation": "Date-based amount, such as 3 days or 2 months.",
+    "example": "Period twoWeeks = Period.ofWeeks(2);"
+  },
+  "Predicate": {
+    "type": "functional_interface",
+    "explanation": "Functional interface representing a boolean test of one value.",
+    "example": "Predicate<String> longName = s -> s.length() > 5;"
+  },
+  "PreparedStatement": {
+    "type": "sql_interface",
+    "explanation": "Precompiled SQL statement that safely accepts parameters.",
+    "example": "PreparedStatement ps = conn.prepareStatement(\"select * from users where id = ?\");"
+  },
+  "Properties": {
+    "type": "utility_class",
+    "explanation": "Hashtable-based class commonly used for configuration key/value pairs.",
+    "example": "Properties props = new Properties();\nprops.setProperty(\"mode\", \"dev\");"
+  },
+  "Queue": {
+    "type": "collection_interface",
+    "explanation": "Collection designed for holding elements before processing, often FIFO.",
+    "example": "Queue<String> q = new LinkedList<>();"
+  },
+  "Random": {
+    "type": "utility_class",
+    "explanation": "Generates pseudorandom values.",
+    "example": "Random random = new Random();\nint n = random.nextInt(10);"
+  },
+  "Reader": {
+    "type": "io_class",
+    "explanation": "Base class for reading character streams.",
+    "example": "Reader reader = Files.newBufferedReader(Path.of(\"data.txt\"));"
+  },
+  "ResultSet": {
+    "type": "sql_interface",
+    "explanation": "Represents rows returned from a database query.",
+    "example": "ResultSet rs = ps.executeQuery();"
+  },
+  "Runnable": {
+    "type": "functional_interface",
+    "explanation": "Functional interface representing code that can run without returning a value.",
+    "example": "Runnable job = () -> System.out.println(\"Run\");"
+  },
+  "RuntimeException": {
+    "type": "exception_class",
+    "explanation": "Base class for unchecked exceptions that usually indicate programming/runtime errors.",
+    "example": "throw new RuntimeException(\"Something went wrong\");"
+  },
+  "SQLException": {
+    "type": "exception_class",
+    "explanation": "Checked exception for JDBC/database access errors.",
+    "example": "catch (SQLException e) {\n    e.printStackTrace();\n}"
+  },
+  "Scanner": {
+    "type": "utility_class",
+    "explanation": "Parses text input from strings, files, or streams.",
+    "example": "Scanner scanner = new Scanner(System.in);\nString line = scanner.nextLine();"
+  },
+  "Set": {
+    "type": "collection_interface",
+    "explanation": "Collection that does not contain duplicate elements.",
+    "example": "Set<String> uniqueNames = new HashSet<>();"
+  },
+  "Short": {
+    "type": "wrapper_class",
+    "explanation": "Wrapper class for the primitive short type.",
+    "example": "Short s = Short.valueOf((short) 10);"
+  },
+  "Stream": {
+    "type": "stream_class",
+    "explanation": "Represents a sequence of elements that can be processed with operations like map, filter, and reduce.",
+    "example": "List<String> shortNames = names.stream()\n    .filter(s -> s.length() < 5)\n    .toList();"
+  },
+  "StrictMath": {
+    "type": "utility_class",
+    "explanation": "Provides reproducible math functions with strict results across platforms.",
+    "example": "double root = StrictMath.sqrt(16);"
+  },
+  "String": {
+    "type": "core_class",
+    "explanation": "Immutable sequence of characters used for text.",
+    "example": "String name = \"Nina\";"
+  },
+  "StringBuffer": {
+    "type": "core_class",
+    "explanation": "Thread-safe mutable sequence of characters.",
+    "example": "StringBuffer sb = new StringBuffer(\"Hello\");"
+  },
+  "StringBuilder": {
+    "type": "core_class",
+    "explanation": "Mutable sequence of characters, useful for efficiently building strings.",
+    "example": "StringBuilder sb = new StringBuilder();\nsb.append(\"Hello\");"
+  },
+  "String[] args": {
+    "type": "entry_point_convention",
+    "explanation": "Common parameter for command-line arguments passed to the main method.",
+    "example": "public static void main(String[] args) {\n    System.out.println(args.length);\n}"
+  },
+  "Supplier": {
+    "type": "functional_interface",
+    "explanation": "Functional interface representing a provider of values.",
+    "example": "Supplier<Double> randomValue = Math::random;"
+  },
+  "System": {
+    "type": "core_class",
+    "explanation": "Provides standard input/output/error streams, current time, environment access, array copy, and system utilities.",
+    "example": "System.out.println(\"Hello\");"
+  },
+  "Thread": {
+    "type": "concurrency_class",
+    "explanation": "Represents a thread of execution.",
+    "example": "Thread t = new Thread(() -> System.out.println(\"Running\"));\nt.start();"
+  },
+  "Throwable": {
+    "type": "exception_class",
+    "explanation": "Superclass of all objects that can be thrown and caught.",
+    "example": "try {\n    throw new Throwable(\"Problem\");\n} catch (Throwable t) {\n    System.out.println(t.getMessage());\n}"
+  },
+  "TreeMap": {
+    "type": "collection_class",
+    "explanation": "Sorted Map implementation based on keys' natural order or a Comparator.",
+    "example": "TreeMap<String, Integer> sortedAges = new TreeMap<>();"
+  },
+  "TreeSet": {
+    "type": "collection_class",
+    "explanation": "Sorted Set implementation based on a tree.",
+    "example": "TreeSet<String> sorted = new TreeSet<>();"
+  },
+  "URI": {
+    "type": "network_class",
+    "explanation": "Represents a Uniform Resource Identifier.",
+    "example": "URI uri = URI.create(\"https://example.com/path\");"
+  },
+  "URL": {
+    "type": "network_class",
+    "explanation": "Represents a Uniform Resource Locator.",
+    "example": "URL url = URI.create(\"https://example.com\").toURL();"
+  },
+  "Void": {
+    "type": "wrapper_class",
+    "explanation": "Non-instantiable class representing the void type in reflection.",
+    "example": "Class<Void> type = Void.TYPE;"
+  },
+  "Writer": {
+    "type": "io_class",
+    "explanation": "Base class for writing character streams.",
+    "example": "Writer writer = Files.newBufferedWriter(Path.of(\"out.txt\"));"
+  },
+  "_": {
+    "type": "reserved_keyword",
+    "explanation": "The single underscore is reserved and cannot be used as a normal identifier; in some contexts it can mark an unnamed variable/pattern.",
+    "example": "try (var _ = lock.acquire()) {\n    // unnamed resource variable style\n}"
+  },
+  "abs": {
+    "type": "method",
+    "explanation": "The size of a number, ignoring its sign.",
+    "example": "int distance = Math.abs(-5);   // 5"
+  },
+  "abstract": {
+    "type": "modifier_keyword",
+    "explanation": "Marks a class that cannot be instantiated directly, or a method that has no body and must be implemented by a subclass.",
+    "example": "abstract class Shape {\n    abstract double area();\n}"
+  },
+  "add": {
+    "type": "method",
+    "explanation": "Puts an item into a list.",
+    "example": "ArrayList<String> names = new ArrayList<>();\nnames.add(\"Ada\");"
+  },
+  "annotation": {
+    "type": "syntax_pattern",
+    "explanation": "Metadata attached to code elements using @ syntax.",
+    "example": "@Override\npublic String toString() {\n    return \"User\";\n}"
+  },
+  "array": {
+    "type": "syntax_pattern",
+    "explanation": "Fixed-size indexed container whose elements all have the same type.",
+    "example": "int[] nums = {1, 2, 3};\nSystem.out.println(nums[0]);"
+  },
+  "assert": {
+    "type": "debug_keyword",
+    "explanation": "Checks an assumption during debugging and throws AssertionError if the condition is false when assertions are enabled.",
+    "example": "assert balance >= 0 : \"Balance cannot be negative\";"
+  },
+  "boolean": {
+    "type": "primitive_type",
+    "explanation": "Primitive type that stores either true or false.",
+    "example": "boolean isActive = true;"
+  },
+  "break": {
+    "type": "control_flow_keyword",
+    "explanation": "Immediately exits the nearest loop or switch.",
+    "example": "for (int i = 0; i < 10; i++) {\n    if (i == 3) break;\n}"
+  },
+  "byte": {
+    "type": "primitive_type",
+    "explanation": "8-bit signed integer primitive type.",
+    "example": "byte small = 42;"
+  },
+  "case": {
+    "type": "control_flow_keyword",
+    "explanation": "Defines a branch inside a switch statement or switch expression.",
+    "example": "switch (grade) {\n    case 'A' -> System.out.println(\"Great\");\n    default -> System.out.println(\"Keep going\");\n}"
+  },
+  "catch": {
+    "type": "exception_keyword",
+    "explanation": "Handles an exception thrown inside a matching try block.",
+    "example": "try {\n    risky();\n} catch (Exception e) {\n    e.printStackTrace();\n}"
+  },
+  "char": {
+    "type": "primitive_type",
+    "explanation": "16-bit UTF-16 code unit used to store a single character.",
+    "example": "char grade = 'A';"
+  },
+  "charAt": {
+    "type": "method",
+    "explanation": "The character at that position. Counting starts at 0.",
+    "example": "char first = word.charAt(0);"
+  },
+  "class": {
+    "type": "declaration_keyword",
+    "explanation": "Defines a blueprint for creating objects with fields, methods, constructors, and nested types.",
+    "example": "public class Point {\n    int x;\n    int y;\n}"
+  },
+  "const": {
+    "type": "reserved_unused_keyword",
+    "explanation": "Reserved for possible future use; Java does not use it for constants. Use final instead.",
+    "example": "final int MAX_USERS = 100; // not const"
+  },
+  "contains": {
+    "type": "method",
+    "explanation": "Whether the text (or list) has that inside it.",
+    "example": "if (sentence.contains(\"cat\")) { ... }"
+  },
+  "continue": {
+    "type": "control_flow_keyword",
+    "explanation": "Skips the rest of the current loop iteration and moves to the next one.",
+    "example": "for (int i = 0; i < 5; i++) {\n    if (i % 2 == 0) continue;\n    System.out.println(i);\n}"
+  },
+  "default": {
+    "type": "control_flow_keyword",
+    "explanation": "Defines the fallback branch in a switch, or a default method implementation in an interface.",
+    "example": "switch (grade) {\n    default -> System.out.println(\"Unknown grade\");\n}"
+  },
+  "diamond operator": {
+    "type": "syntax_pattern",
+    "explanation": "The <> syntax lets Java infer generic type arguments during object creation.",
+    "example": "List<String> names = new ArrayList<>();"
+  },
+  "do": {
+    "type": "loop_keyword",
+    "explanation": "Starts a do-while loop, which runs the body once before checking the condition.",
+    "example": "do {\n    n++;\n} while (n < 3);"
+  },
+  "do-while": {
+    "type": "syntax_pattern",
+    "explanation": "Loop pattern using do and while where the body runs at least once.",
+    "example": "do {\n    n++;\n} while (n < 3);"
+  },
+  "double": {
+    "type": "primitive_type",
+    "explanation": "64-bit floating-point primitive type, commonly used for decimal calculations.",
+    "example": "double average = 93.5;"
+  },
+  "else": {
+    "type": "control_flow_keyword",
+    "explanation": "Runs an alternative block when the preceding if condition is false.",
+    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n} else {\n    System.out.println(\"Minor\");\n}"
+  },
+  "enhanced for": {
+    "type": "syntax_pattern",
+    "explanation": "Official-style term for the for loop form that iterates directly over arrays or Iterable values.",
+    "example": "for (int n : numbers) {\n    total += n;\n}"
+  },
+  "enum": {
+    "type": "declaration_keyword",
+    "explanation": "Defines a fixed set of named constants as a special class type.",
+    "example": "enum Color {\n    RED, GREEN, BLUE\n}"
+  },
+  "equals": {
+    "type": "method",
+    "explanation": "Whether two values are the same. Use this for Strings, never ==.",
+    "example": "if (answer.equals(\"yes\")) { ... }"
+  },
+  "equalsIgnoreCase": {
+    "type": "method",
+    "explanation": "Like equals(), but treats upper and lower case as the same.",
+    "example": "if (answer.equalsIgnoreCase(\"YES\")) { ... }"
+  },
+  "exports": {
+    "type": "contextual_keyword",
+    "explanation": "In a module declaration, exports a package so other modules can access its public types.",
+    "example": "module com.example.app {\n    exports com.example.api;\n}"
+  },
+  "extends": {
+    "type": "inheritance_keyword",
+    "explanation": "Declares that a class inherits from another class, or that an interface extends another interface.",
+    "example": "class Dog extends Animal {\n    void speak() { System.out.println(\"Woof\"); }\n}"
+  },
+  "false": {
+    "type": "literal",
+    "explanation": "Boolean literal representing a false condition.",
+    "example": "boolean isDeleted = false;"
+  },
+  "final": {
+    "type": "modifier_keyword",
+    "explanation": "Prevents reassignment for variables, overriding for methods, or inheritance for classes.",
+    "example": "final double PI = 3.14159;"
+  },
+  "finally": {
+    "type": "exception_keyword",
+    "explanation": "Runs cleanup code after try/catch, whether or not an exception occurred.",
+    "example": "try {\n    doWork();\n} finally {\n    System.out.println(\"Always runs\");\n}"
+  },
+  "float": {
+    "type": "primitive_type",
+    "explanation": "32-bit floating-point primitive type; literals usually use the f suffix.",
+    "example": "float price = 19.99f;"
+  },
+  "for": {
+    "type": "loop_keyword",
+    "explanation": "Repeats code using a traditional counter loop or an enhanced for loop over arrays/collections.",
+    "example": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
+  },
+  "for-each": {
+    "type": "syntax_pattern",
+    "explanation": "Informal name for Java's enhanced for loop over arrays or Iterable collections.",
+    "example": "for (String name : names) {\n    System.out.println(name);\n}"
+  },
+  "generics": {
+    "type": "syntax_pattern",
+    "explanation": "The <T> syntax lets classes, interfaces, and methods work with specific types while preserving compile-time type safety.",
+    "example": "class Box<T> {\n    T value;\n}\nBox<String> box = new Box<>();"
+  },
+  "get": {
+    "type": "method",
+    "explanation": "The item at that position in a list. Counting starts at 0.",
+    "example": "String first = names.get(0);"
+  },
+  "goto": {
+    "type": "reserved_unused_keyword",
+    "explanation": "Reserved but not used by Java; included so compilers can give better errors.",
+    "example": "// goto is reserved but not supported in Java"
+  },
+  "hasNextInt": {
+    "type": "method",
+    "explanation": "True when the next thing waiting to be read is a whole number. Use it to check before reading.",
+    "example": "if (in.hasNextInt()) { int n = in.nextInt(); }"
+  },
+  "hasNextLine": {
+    "type": "method",
+    "explanation": "True while there is another line to read.",
+    "example": "while (in.hasNextLine()) { System.out.println(in.nextLine()); }"
+  },
+  "if": {
+    "type": "control_flow_keyword",
+    "explanation": "Runs a block only when a condition is true.",
+    "example": "if (age >= 18) {\n    System.out.println(\"Adult\");\n}"
+  },
+  "implements": {
+    "type": "inheritance_keyword",
+    "explanation": "Declares that a class provides the methods required by one or more interfaces.",
+    "example": "class Circle implements Shape {\n    public double area() { return Math.PI * r * r; }\n}"
+  },
+  "import": {
+    "type": "declaration_keyword",
+    "explanation": "Brings a type or static member into scope so it can be used without its fully qualified name.",
+    "example": "import java.util.ArrayList;\n\nArrayList<String> names = new ArrayList<>();"
+  },
+  "indexOf": {
+    "type": "method",
+    "explanation": "Where something first appears, or -1 if it is not there. Counting starts at 0.",
+    "example": "int at = word.indexOf(\"a\");"
+  },
+  "instanceof": {
+    "type": "type_check_keyword",
+    "explanation": "Tests whether an object is compatible with a type; also supports pattern variables in modern Java.",
+    "example": "if (obj instanceof String s) {\n    System.out.println(s.length());\n}"
+  },
+  "int": {
+    "type": "primitive_type",
+    "explanation": "32-bit signed integer primitive type, commonly used for whole numbers.",
+    "example": "int age = 37;"
+  },
+  "interface": {
+    "type": "declaration_keyword",
+    "explanation": "Defines a contract of methods/constants that classes can implement; modern interfaces may also contain default and static methods.",
+    "example": "interface Shape {\n    double area();\n}"
+  },
+  "isEmpty": {
+    "type": "method",
+    "explanation": "True when there is nothing in it.",
+    "example": "if (names.isEmpty()) { ... }"
+  },
+  "java.base": {
+    "type": "module",
+    "explanation": "The fundamental Java module that contains core packages such as java.lang, java.util, java.io, java.nio, and java.time.",
+    "example": "module com.example.app {\n    requires java.base; // usually implicit\n}"
+  },
+  "java.io": {
+    "type": "package",
+    "explanation": "Classic input/output package for streams, readers, writers, files, and IOException.",
+    "example": "import java.io.File;\nimport java.io.IOException;"
+  },
+  "java.lang": {
+    "type": "package",
+    "explanation": "Fundamental package automatically imported into every Java source file; includes Object, String, System, Math, wrapper classes, and exceptions.",
+    "example": "String text = \"Hello\";\nSystem.out.println(text);"
+  },
+  "java.math": {
+    "type": "package",
+    "explanation": "Package for arbitrary-precision numeric classes such as BigInteger and BigDecimal.",
+    "example": "import java.math.BigDecimal;\nBigDecimal price = new BigDecimal(\"19.99\");"
+  },
+  "java.net": {
+    "type": "package",
+    "explanation": "Networking package for URLs, URIs, sockets, and network-related classes.",
+    "example": "import java.net.URI;\nURI uri = URI.create(\"https://example.com\");"
+  },
+  "java.nio": {
+    "type": "package",
+    "explanation": "New I/O package for buffers, channels, charsets, and scalable I/O operations.",
+    "example": "import java.nio.ByteBuffer;"
+  },
+  "java.nio.file": {
+    "type": "package",
+    "explanation": "Modern file-system package with Path, Files, and file walking/copying utilities.",
+    "example": "import java.nio.file.Files;\nimport java.nio.file.Path;"
+  },
+  "java.sql": {
+    "type": "package",
+    "explanation": "JDBC database API package for Connection, Statement, ResultSet, and SQL exceptions.",
+    "example": "import java.sql.Connection;"
+  },
+  "java.time": {
+    "type": "package",
+    "explanation": "Modern date and time API package including LocalDate, LocalDateTime, Instant, and Duration.",
+    "example": "import java.time.LocalDate;\nLocalDate today = LocalDate.now();"
+  },
+  "java.util": {
+    "type": "package",
+    "explanation": "Utility package containing the collections framework, Optional, Scanner, Random, properties, and other common utility classes.",
+    "example": "import java.util.List;\nimport java.util.ArrayList;"
+  },
+  "java.util.concurrent": {
+    "type": "package",
+    "explanation": "Concurrency utilities such as ExecutorService, Future, locks, and thread-safe collections.",
+    "example": "import java.util.concurrent.ExecutorService;"
+  },
+  "java.util.function": {
+    "type": "package",
+    "explanation": "Functional interfaces used by lambdas and method references, such as Function, Predicate, Consumer, and Supplier.",
+    "example": "import java.util.function.Predicate;"
+  },
+  "java.util.regex": {
+    "type": "package",
+    "explanation": "Regular expression package with Pattern and Matcher.",
+    "example": "import java.util.regex.Pattern;\nboolean ok = Pattern.matches(\"\\\\d+\", \"123\");"
+  },
+  "java.util.stream": {
+    "type": "package",
+    "explanation": "Stream API package for processing sequences of data with map/filter/reduce-style operations.",
+    "example": "import java.util.stream.Stream;\nStream.of(1, 2, 3).forEach(System.out::println);"
+  },
+  "javax.swing": {
+    "type": "package",
+    "explanation": "Classic desktop GUI toolkit package for windows, buttons, labels, and other UI components.",
+    "example": "import javax.swing.JFrame;"
+  },
+  "lambda expression": {
+    "type": "syntax_pattern",
+    "explanation": "Creates an anonymous function-like implementation of a functional interface.",
+    "example": "List<Integer> evens = nums.stream()\n    .filter(n -> n % 2 == 0)\n    .toList();"
+  },
+  "length": {
+    "type": "method",
+    "explanation": "How long something is: the number of characters in a String, or of items in an array.",
+    "example": "int n = name.length();      // String\nint m = numbers.length;     // array - no ()"
+  },
+  "long": {
+    "type": "primitive_type",
+    "explanation": "64-bit signed integer primitive type for large whole numbers.",
+    "example": "long population = 9_000_000_000L;"
+  },
+  "main": {
+    "type": "entry_point_convention",
+    "explanation": "Conventional application entry method name used by the JVM to start many Java programs.",
+    "example": "public static void main(String[] args) {\n    System.out.println(\"Hello\");\n}"
+  },
+  "max": {
+    "type": "method",
+    "explanation": "The larger of two numbers.",
+    "example": "int biggest = Math.max(a, b);"
+  },
+  "method reference": {
+    "type": "syntax_pattern",
+    "explanation": "Short syntax for passing an existing method as a functional interface implementation.",
+    "example": "names.forEach(System.out::println);"
+  },
+  "min": {
+    "type": "method",
+    "explanation": "The smaller of two numbers.",
+    "example": "int smallest = Math.min(a, b);"
+  },
+  "module": {
+    "type": "contextual_keyword",
+    "explanation": "Declares a Java module in module-info.java.",
+    "example": "module com.example.app {\n    requires java.base;\n}"
+  },
+  "native": {
+    "type": "modifier_keyword",
+    "explanation": "Declares that a method is implemented in platform-specific native code, not in Java.",
+    "example": "public native int systemCall();"
+  },
+  "new": {
+    "type": "object_keyword",
+    "explanation": "Creates a new object or array instance.",
+    "example": "Point p = new Point();\nint[] nums = new int[3];"
+  },
+  "nextDouble": {
+    "type": "method",
+    "explanation": "Reads the next decimal number the user types.",
+    "example": "double price = in.nextDouble();"
+  },
+  "nextInt": {
+    "type": "method",
+    "explanation": "Reads the next whole number the user types.",
+    "example": "Scanner in = new Scanner(System.in);\nint age = in.nextInt();"
+  },
+  "nextLine": {
+    "type": "method",
+    "explanation": "Reads a whole line of what the user types, including spaces.",
+    "example": "String name = in.nextLine();"
+  },
+  "non-sealed": {
+    "type": "contextual_keyword",
+    "explanation": "Reopens inheritance for a subclass of a sealed class or interface.",
+    "example": "non-sealed class Circle extends Shape {}"
+  },
+  "null": {
+    "type": "literal",
+    "explanation": "Reference literal representing the absence of an object.",
+    "example": "String name = null;"
+  },
+  "open": {
+    "type": "contextual_keyword",
+    "explanation": "Marks a module as open, allowing reflective access to all its packages.",
+    "example": "open module com.example.app {\n    requires java.sql;\n}"
+  },
+  "opens": {
+    "type": "contextual_keyword",
+    "explanation": "In a module declaration, opens a package for deep reflection, optionally to specific modules.",
+    "example": "module com.example.app {\n    opens com.example.model to com.fasterxml.jackson.databind;\n}"
+  },
+  "package": {
+    "type": "declaration_keyword",
+    "explanation": "Places a source file's classes inside a named package for organization and name disambiguation.",
+    "example": "package com.example.app;"
+  },
+  "parseDouble": {
+    "type": "method",
+    "explanation": "Turns text into a decimal number.",
+    "example": "double d = Double.parseDouble(\"3.5\");"
+  },
+  "parseInt": {
+    "type": "method",
+    "explanation": "Turns text into a whole number. Fails if the text is not a number.",
+    "example": "int n = Integer.parseInt(\"42\");"
+  },
+  "permits": {
+    "type": "contextual_keyword",
+    "explanation": "Lists the specific classes or interfaces allowed to extend or implement a sealed type.",
+    "example": "sealed interface Shape permits Circle, Square {}"
+  },
+  "pow": {
+    "type": "method",
+    "explanation": "One number raised to the power of another.",
+    "example": "double p = Math.pow(2, 10);   // 1024.0"
+  },
+  "print": {
+    "type": "method",
+    "explanation": "Prints text WITHOUT moving to the next line, so the next print continues on the same line.",
+    "example": "System.out.print(\"Name: \");"
+  },
+  "printf": {
+    "type": "method",
+    "explanation": "Prints using a format string. %d is a whole number, %s text, %.2f two decimal places.",
+    "example": "System.out.printf(\"%s scored %d%n\", name, score);"
+  },
+  "println": {
+    "type": "method",
+    "explanation": "Prints a line of text and moves to the next line.",
+    "example": "System.out.println(\"Hello\");"
+  },
+  "private": {
+    "type": "access_modifier",
+    "explanation": "Makes a member accessible only inside the same class.",
+    "example": "class Account {\n    private double balance;\n}"
+  },
+  "protected": {
+    "type": "access_modifier",
+    "explanation": "Makes a member accessible inside the same package and from subclasses.",
+    "example": "class Base {\n    protected int id;\n}"
+  },
+  "provides": {
+    "type": "contextual_keyword",
+    "explanation": "In a module declaration, declares a service implementation supplied by the module.",
+    "example": "module com.example.app {\n    provides com.example.Plugin with com.example.DefaultPlugin;\n}"
+  },
+  "public": {
+    "type": "access_modifier",
+    "explanation": "Makes a class, method, constructor, or field accessible from anywhere that can see the declaring package/module.",
+    "example": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello\");\n    }\n}"
+  },
+  "random": {
+    "type": "method",
+    "explanation": "A random decimal from 0 up to (not including) 1.",
+    "example": "int dice = (int) (Math.random() * 6) + 1;"
+  },
+  "record": {
+    "type": "contextual_keyword",
+    "explanation": "Declares a compact data carrier class with generated constructor, accessors, equals, hashCode, and toString.",
+    "example": "record Point(int x, int y) {}\nPoint p = new Point(3, 4);"
+  },
+  "remove": {
+    "type": "method",
+    "explanation": "Takes an item out of a list, by position or by value.",
+    "example": "names.remove(0);"
+  },
+  "replace": {
+    "type": "method",
+    "explanation": "The same text with every copy of one part swapped for another.",
+    "example": "String fixed = text.replace(\"colour\", \"color\");"
+  },
+  "requires": {
+    "type": "contextual_keyword",
+    "explanation": "In a module declaration, declares a dependency on another module.",
+    "example": "module com.example.app {\n    requires java.sql;\n}"
+  },
+  "return": {
+    "type": "control_flow_keyword",
+    "explanation": "Exits a method and optionally sends a value back to the caller.",
+    "example": "int square(int x) {\n    return x * x;\n}"
+  },
+  "round": {
+    "type": "method",
+    "explanation": "The nearest whole number.",
+    "example": "long n = Math.round(3.6);   // 4"
+  },
+  "sealed": {
+    "type": "contextual_keyword",
+    "explanation": "Restricts which classes or interfaces may extend or implement a type.",
+    "example": "sealed class Shape permits Circle, Square {}"
+  },
+  "short": {
+    "type": "primitive_type",
+    "explanation": "16-bit signed integer primitive type.",
+    "example": "short count = 1000;"
+  },
+  "size": {
+    "type": "method",
+    "explanation": "How many items a list holds.",
+    "example": "int howMany = names.size();"
+  },
+  "sort": {
+    "type": "method",
+    "explanation": "Puts an array or list in order.",
+    "example": "Arrays.sort(numbers);"
+  },
+  "split": {
+    "type": "method",
+    "explanation": "Breaks text into an array, cutting at the separator you give.",
+    "example": "String[] words = sentence.split(\" \");"
+  },
+  "sqrt": {
+    "type": "method",
+    "explanation": "The square root of a number.",
+    "example": "double r = Math.sqrt(16);   // 4.0"
+  },
+  "static": {
+    "type": "modifier_keyword",
+    "explanation": "Marks a member as belonging to the class itself instead of to a specific object instance.",
+    "example": "class MathUtils {\n    static int square(int x) {\n        return x * x;\n    }\n}"
+  },
+  "strictfp": {
+    "type": "modifier_keyword",
+    "explanation": "Obsolete keyword that used to require strict floating-point behavior; modern Java already evaluates floating-point expressions strictly.",
+    "example": "strictfp class OldNumericCode {\n    double calc(double x) { return x / 3.0; }\n}"
+  },
+  "substring": {
+    "type": "method",
+    "explanation": "A piece of a String, from one position up to (but not including) another.",
+    "example": "String part = \"programming\".substring(0, 7);   // \"program\""
+  },
+  "super": {
+    "type": "object_keyword",
+    "explanation": "Refers to the parent class, commonly used to call a parent constructor or overridden method.",
+    "example": "class Dog extends Animal {\n    Dog(String name) {\n        super(name);\n    }\n}"
+  },
+  "switch": {
+    "type": "control_flow_keyword",
+    "explanation": "Selects a branch based on a matching value or pattern; can be used as a statement or expression.",
+    "example": "switch (day) {\n    case \"MON\" -> System.out.println(\"Monday\");\n    default -> System.out.println(\"Other\");\n}"
+  },
+  "synchronized": {
+    "type": "modifier_keyword",
+    "explanation": "Allows only one thread at a time to execute a method or block using the same monitor lock.",
+    "example": "synchronized void increment() {\n    count++;\n}"
+  },
+  "this": {
+    "type": "object_keyword",
+    "explanation": "Refers to the current object instance, often used to distinguish fields from parameters.",
+    "example": "class Point {\n    int x;\n    Point(int x) {\n        this.x = x;\n    }\n}"
+  },
+  "throw": {
+    "type": "exception_keyword",
+    "explanation": "Throws an exception object manually.",
+    "example": "if (age < 0) {\n    throw new IllegalArgumentException(\"Age cannot be negative\");\n}"
+  },
+  "throws": {
+    "type": "exception_keyword",
+    "explanation": "Declares that a method may throw one or more checked exceptions.",
+    "example": "void readFile(String path) throws IOException {\n    // read file\n}"
+  },
+  "to": {
+    "type": "contextual_keyword",
+    "explanation": "Used in module directives such as exports ... to or opens ... to to target specific modules.",
+    "example": "exports com.example.internal to com.example.tests;"
+  },
+  "toLowerCase": {
+    "type": "method",
+    "explanation": "The same text in small letters.",
+    "example": "String quiet = name.toLowerCase();"
+  },
+  "toUpperCase": {
+    "type": "method",
+    "explanation": "The same text in capitals.",
+    "example": "String loud = name.toUpperCase();"
+  },
+  "transient": {
+    "type": "modifier_keyword",
+    "explanation": "Marks a field so it is skipped by Java object serialization.",
+    "example": "class User implements java.io.Serializable {\n    transient String temporaryToken;\n}"
+  },
+  "transitive": {
+    "type": "contextual_keyword",
+    "explanation": "Used with requires to re-export a required module to modules that depend on this module.",
+    "example": "module com.example.app {\n    requires transitive java.sql;\n}"
+  },
+  "trim": {
+    "type": "method",
+    "explanation": "The same text with spaces removed from both ends.",
+    "example": "String clean = input.trim();"
+  },
+  "true": {
+    "type": "literal",
+    "explanation": "Boolean literal representing a true condition.",
+    "example": "boolean isActive = true;"
+  },
+  "try": {
+    "type": "exception_keyword",
+    "explanation": "Starts a block of code whose exceptions can be caught or whose resources can be automatically closed.",
+    "example": "try {\n    int x = 1 / 0;\n} catch (ArithmeticException e) {\n    System.out.println(e.getMessage());\n}"
+  },
+  "try-with-resources": {
+    "type": "syntax_pattern",
+    "explanation": "try form that automatically closes resources implementing AutoCloseable.",
+    "example": "try (BufferedReader br = Files.newBufferedReader(path)) {\n    return br.readLine();\n}"
+  },
+  "uses": {
+    "type": "contextual_keyword",
+    "explanation": "In a module declaration, declares that the module consumes a service.",
+    "example": "module com.example.app {\n    uses com.example.Plugin;\n}"
+  },
+  "var": {
+    "type": "contextual_keyword",
+    "explanation": "Lets the compiler infer a local variable or lambda parameter type from the initializer.",
+    "example": "var count = 0;\nvar names = new ArrayList<String>();"
+  },
+  "void": {
+    "type": "return_type_keyword",
+    "explanation": "Used as a method return type to show that the method does not return a value.",
+    "example": "public void printHello() {\n    System.out.println(\"Hello\");\n}"
+  },
+  "volatile": {
+    "type": "modifier_keyword",
+    "explanation": "Marks a field so reads and writes go directly to main memory, helping visibility between threads.",
+    "example": "volatile boolean running = true;"
+  },
+  "when": {
+    "type": "contextual_keyword",
+    "explanation": "Adds a guard condition to a pattern case in switch pattern matching.",
+    "example": "switch (obj) {\n    case String s when s.length() > 3 -> System.out.println(s);\n    default -> {}\n}"
+  },
+  "while": {
+    "type": "loop_keyword",
+    "explanation": "Repeats code while a condition remains true, checking the condition before each iteration.",
+    "example": "while (n > 0) {\n    n--;\n}"
+  },
+  "with": {
+    "type": "contextual_keyword",
+    "explanation": "Used in a provides directive to name the implementation class for a service.",
+    "example": "provides PaymentService with StripePaymentService;"
+  },
+  "yield": {
+    "type": "contextual_keyword",
+    "explanation": "Returns a value from a switch expression block.",
+    "example": "int result = switch (grade) {\n    case \"A\" -> 100;\n    default -> {\n        yield 0;\n    }\n};"
+  },
+  "||": {
     "type": "operator",
-    "explanation": "Assignment: puts the value on the right into the variable on the left. To COMPARE use == .",
-    "example": "int total = 10;"
+    "explanation": "Logical OR: true when either side is true.",
+    "example": "if (isAdmin || isOwner) { }"
   }
 }

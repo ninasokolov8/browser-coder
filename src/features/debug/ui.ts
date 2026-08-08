@@ -20,7 +20,22 @@ import {
   type DebugSnapshot,
   type DebugVariable,
 } from './state.ts';
+import {
+  describeChange,
+  VariableHistory,
+  type VariableChange,
+} from './variable-diff.ts';
 import type { Disposable } from '../../workspace/types.ts';
+
+/**
+ * The previous pause's locals, so each stop can be shown as a change rather than a
+ * fresh list of numbers.
+ *
+ * Module-level because there is one debugger. Reset when a session ends, so the first
+ * stop of the next run highlights nothing - everything is new then, and marking it all
+ * would be noise on the one stop where the student is orienting themselves.
+ */
+const variableHistory = new VariableHistory();
 
 /** One session state for the whole IDE. */
 export const debugState = new DebugSessionState();
@@ -269,9 +284,15 @@ function renderToolbar(host: HTMLElement, snapshot: DebugSnapshot): void {
 
 // ── Variables and call stack ────────────────────────────────────────────────
 
-function variableRow(variable: DebugVariable, depth: number): HTMLElement {
+function variableRow(
+  variable: DebugVariable,
+  depth: number,
+  change: VariableChange = 'same',
+  previousText?: string,
+): HTMLElement {
   const row = document.createElement('div');
   row.className = 'debug-var-row';
+  if (change !== 'same') row.classList.add(`debug-var-${change}`);
   row.style.paddingLeft = `${8 + depth * 14}px`;
 
   const name = document.createElement('span');
@@ -280,6 +301,20 @@ function variableRow(variable: DebugVariable, depth: number): HTMLElement {
 
   const value = document.createElement('span');
   value.className = 'debug-var-value';
+
+  /*
+   * The old value, struck through, before the new one.
+   *
+   * This is the whole point of the panel for a student: seeing `2` become `3` is what
+   * teaches that a variable is a box whose contents change, and reading it as a pair
+   * costs nothing where re-deriving it from memory costs everything.
+   */
+  if (change === 'changed' && previousText !== undefined) {
+    const was = document.createElement('span');
+    was.className = 'debug-var-was';
+    was.textContent = previousText;
+    row.appendChild(was);
+  }
   // textContent throughout: a value is `repr()` of something the student created,
   // and a crafted __repr__ returning markup must never be parsed as HTML.
   value.textContent = variable.value.text;
@@ -312,6 +347,15 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
     host.appendChild(banner);
   }
 
+  /*
+   * Locals are diffed against the previous pause; globals are not.
+   *
+   * A global changing is rarely what a student is stepping to watch, and diffing both
+   * would put two kinds of highlight on screen competing for the same attention.
+   */
+  const diffed = variableHistory.record(snapshot.stop.stack, snapshot.stop.locals);
+  const changeOf = new Map(diffed.map(entry => [entry.variable.name, entry]));
+
   const sections: Array<[string, readonly DebugVariable[]]> = [
     ['Locals', snapshot.stop.locals],
     ['Globals', snapshot.stop.globals],
@@ -329,11 +373,32 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot): void {
     host.appendChild(heading);
 
     for (const variable of variables) {
-      host.appendChild(variableRow(variable, 0));
+      const entry = title === 'Locals' ? changeOf.get(variable.name) : undefined;
+      host.appendChild(variableRow(variable, 0, entry?.change ?? 'same', entry?.previousText));
       for (const child of variable.value.children ?? []) {
         host.appendChild(variableRow(child, 1));
       }
     }
+  }
+
+  /*
+   * And the same fact in words, when exactly one thing moved.
+   *
+   * "side went from 2 to 3" is the sentence a student would say out loud. Reading it
+   * once is what turns a highlighted row into an understood one. Suppressed when
+   * several things changed - then the list itself is clearer than a summary of it.
+   */
+  const sentence = describeChange(diffed);
+  if (sentence) {
+    const heading = document.createElement('div');
+    heading.className = 'debug-section';
+    heading.textContent = 'This step';
+    host.appendChild(heading);
+
+    const line = document.createElement('div');
+    line.className = 'debug-step-note';
+    line.textContent = sentence;
+    host.appendChild(line);
   }
 
   if (snapshot.evaluated) {
@@ -557,6 +622,11 @@ export function initializeDebugUi(): Disposable {
     // session and go away when it ends - an empty Variables pane permanently below
     // the code would be a worse default than not having the feature.
     if (panelsHost) panelsHost.hidden = snapshot.status === 'idle' || snapshot.status === 'ended';
+
+    // A finished session's values must not be diffed against the next one's: they
+    // belong to a different execution, and "changed since last time" would be a
+    // comparison across two different programs.
+    if (snapshot.status === 'idle' || snapshot.status === 'ended') variableHistory.reset();
 
     if (snapshot.lastError) setStatus(snapshot.lastError);
   });

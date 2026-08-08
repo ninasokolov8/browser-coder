@@ -32,6 +32,9 @@ const TYPE_LABELS: Record<string, string> = {
   declaration: 'declaration',
   module: 'module',
   exception: 'exception',
+  // The drawing library, which is most of what a beginner's Python actually calls.
+  // Labelled so a student can tell `forward` from a language keyword at a glance.
+  turtle: 'turtle drawing',
 };
 
 /**

@@ -13,6 +13,9 @@
 import * as monaco from 'monaco-editor';
 
 import { parseCompilerOutput } from './compiler-output.ts';
+import { buildErrorHelpBlock, selectErrorKey } from '../features/error-help.ts';
+import { getUILang } from '../features/wrapped-i18n.ts';
+import { getErrorExplanation, getLanguage } from '../languages';
 import type { Diagnostic, DiagnosticsStore } from './store.ts';
 import type { MonacoModelRegistry } from '../workspace/monaco/model-registry.ts';
 import type { WorkspaceService } from '../workspace/service.ts';
@@ -29,8 +32,17 @@ import type { Disposable } from '../workspace/types.ts';
  */
 export const RUN_MARKER_OWNER = 'browser-coder-run';
 
-/** Producer key in the store. */
+/** Producer key in the store for diagnostics from an actual run. */
 export const RUN_SOURCE = 'run';
+
+/**
+ * Producer key for the live check - the same compiler, invoked without executing.
+ *
+ * Kept apart from `run` because they answer at different times about different things:
+ * a run reports what happened when the program ran, a check reports whether it would
+ * compile at all. Merging them would mean whichever answered last erased the other.
+ */
+export const CHECK_SOURCE = 'check';
 
 /**
  * Which document a reported filename belongs to.
@@ -66,10 +78,40 @@ function resolveDocument(
   return null;
 }
 
+/**
+ * The plain-language explanation for a compiler message, or null.
+ *
+ * Lives HERE rather than in error-help.ts because it needs the language registry, and
+ * error-help.ts is a pure module that node tests import directly - `../languages` is a
+ * directory import that Vite resolves and node's ESM loader does not, so putting this
+ * there broke every test of the module it was added to. The rules for CHOOSING an
+ * explanation stay pure and tested; only the lookup is here, where impurity already
+ * lives.
+ *
+ * Silent when there is no entry, deliberately: a confidently wrong explanation in a
+ * teaching tool is worse than none, because a student cannot tell it from a right one.
+ */
+function explanationFor(languageId: string, message: string, uiLanguage: string): string | null {
+  const entries = getLanguage(languageId)?.errors;
+  if (!entries) return null;
+
+  const key = selectErrorKey(languageId, message, Object.keys(entries));
+  if (!key) return null;
+
+  const help = getErrorExplanation(languageId, key, uiLanguage);
+  if (!help) return null;
+
+  const block = buildErrorHelpBlock(key, help);
+  // The heading is left out: it repeats the error name shown on the line above it.
+  return [block.explanation, block.cause, block.example].filter(Boolean).join('\n\n');
+}
+
 export interface PublishRunOptions {
   store: DiagnosticsStore;
   service: WorkspaceService;
-  models: MonacoModelRegistry;
+  // No `models` here. It was required, passed by the one caller, and never read: the
+  // markers are driven by `connectRunMarkers` watching the store, not written at
+  // publish time. Keeping it would have forced the live check to invent one.
   languageId: string;
   /** stderr and stdout concatenated - compilers use both. */
   output: string;
@@ -84,12 +126,41 @@ export interface PublishRunOptions {
  * a fixed error disappears instead of accumulating.
  */
 export function publishRunDiagnostics(options: PublishRunOptions): void {
-  const { store, service, languageId, output, entryDocumentId, documentCount } = options;
+  publishCompilerDiagnostics({ ...options, producer: RUN_SOURCE });
+}
+
+/**
+ * Turn raw compiler text into diagnostics under one producer.
+ *
+ * Shared by the run and the live check, which differ only in WHEN the compiler was
+ * asked. Everything after that - parsing its text, working out which file each
+ * message belongs to, binding the result to the revision that was compiled - is
+ * identical, and having it once is what stops a run and a check from attributing the
+ * same javac output to different files.
+ */
+export function publishCompilerDiagnostics(
+  options: PublishRunOptions & {
+    producer: string;
+    /**
+     * The revision that was COMPILED, per document.
+     *
+     * Reading `document.revision` at publish time is only safe when the compile just
+     * happened, which is true of a run and false of a debounced check: the student
+     * keeps typing while it is in flight, and stamping the answer with the revision
+     * they have now would present a stale result as current. Defaults to the live
+     * revision, which is the run's behaviour unchanged.
+     */
+    revisionOf?: (documentId: string) => number | undefined;
+  },
+): void {
+  const {
+    store, service, languageId, output, entryDocumentId, documentCount, producer, revisionOf,
+  } = options;
 
   // A new run supersedes the last one entirely. Without this, fixing one of two
   // errors leaves the fixed one on screen.
   for (const document of service.allDocuments()) {
-    store.clear(document.id, RUN_SOURCE);
+    store.clear(document.id, producer);
   }
 
   const parsed = parseCompilerOutput(languageId, output);
@@ -114,6 +185,9 @@ export function publishRunDiagnostics(options: PublishRunOptions): void {
       line: item.line,
       column: item.column ?? 1,
       source: languageId,
+      // Looked up once, here, so every consumer of this diagnostic has it and none of
+      // them has to know how explanations are found.
+      help: explanationFor(languageId, item.message, getUILang()) ?? undefined,
     });
     byDocument.set(documentId, list);
   }
@@ -123,7 +197,7 @@ export function publishRunDiagnostics(options: PublishRunOptions): void {
     if (!document) continue;
     // Bound to the revision the run actually executed. If the student has already
     // edited since, the store discards these rather than pointing at moved lines.
-    store.set(documentId, RUN_SOURCE, document.revision, diagnostics);
+    store.set(documentId, producer, revisionOf?.(documentId) ?? document.revision, diagnostics);
   }
 }
 
@@ -161,7 +235,19 @@ export function connectRunMarkers({
             diagnostic.severity === 'warning'
               ? monaco.MarkerSeverity.Warning
               : monaco.MarkerSeverity.Error,
-          message: diagnostic.message,
+          /*
+           * The compiler's message, then the plain-language explanation.
+           *
+           * This is where the explanation belongs. It was only ever printed into the
+           * output panel underneath the traceback - which is exactly where a stuck
+           * student has already stopped reading - while the thing they ARE looking at,
+           * the red underline on their line, said nothing beyond the runtime's own
+           * wording. Hovering the squiggle now answers the question the squiggle
+           * raises.
+           */
+          message: diagnostic.help
+            ? `${diagnostic.message}\n\n💡 ${diagnostic.help}`
+            : diagnostic.message,
           startLineNumber: line,
           startColumn: column,
           endLineNumber: line,

@@ -47,12 +47,56 @@ async function locateHarness() {
   );
 }
 
+/**
+ * A twelve-cell bar. Enough to read at a glance, short enough not to wrap.
+ *
+ * Proportional rather than one cell per check: a harness that loops can report
+ * hundreds, and a bar that grows with them stops being a bar.
+ */
+function progressBar(passed: number, total: number): string {
+  if (total <= 0) return '';
+  const filled = Math.round((passed / total) * 12);
+  return '█'.repeat(filled) + '░'.repeat(12 - filled);
+}
+
 /** Render one case per line, which is the whole point of the feature. */
 function renderReport(report: TestReport): void {
+  const total = report.passed + report.failed + report.skipped;
+  const firstFailure = report.cases.find(entry => entry.status === 'fail');
+
+  /*
+   * The verdict FIRST, then the list.
+   *
+   * It used to be last. A harness that loops prints hundreds of cases, so "3 of 5
+   * passing" was below a screen of them and a student had to scroll to find out how
+   * they had done - past the very list they needed the summary to make sense of.
+   */
+  const headline = total > 0
+    ? `${progressBar(report.passed, total)}  ${report.passed} of ${total} checks passing`
+    : 'The checks produced no results.';
+
   const lines: string[] = [
     '',
     '<span class="info">── Check my work ───────────────────────────────────────────</span>',
+    `<span class="${report.failed > 0 ? 'warning' : 'success'}">${escapeHtml(headline)}</span>`,
   ];
+
+  /*
+   * One thing to do next.
+   *
+   * A list of four failures is a list; the FIRST one is an instruction. A student who
+   * fixes it re-runs and gets the next, which is the loop this feature exists to
+   * create - and it is far less discouraging than being handed everything at once.
+   */
+  if (firstFailure) {
+    const detail = firstFailure.detail ? ` — ${firstFailure.detail}` : '';
+    lines.push(
+      `<span class="info">Start here: </span>` +
+      `<span class="error">${escapeHtml(firstFailure.name + detail)}</span>`,
+    );
+  }
+
+  lines.push('');
 
   for (const entry of report.cases) {
     const detail = entry.detail ? `  <span class="info">${escapeHtml(entry.detail)}</span>` : '';
