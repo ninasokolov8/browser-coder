@@ -30,6 +30,8 @@ import * as monaco from 'monaco-editor';
 import { getKeywordExplanation, getLanguage, languagesThatCan } from '../languages';
 import { getUILang } from './wrapped-i18n';
 import { maskCommentsAndStrings, syntaxFor } from '../languages/syntax.ts';
+import { tryExampleLink } from './try-example-format.ts';
+import { t } from '../i18n';
 import { renderHover } from './hover-content.ts';
 import { hoverTargetAt } from './hover-symbols.ts';
 import type { Disposable } from '../workspace/types.ts';
@@ -128,6 +130,23 @@ export function initializeHoverHelp(): Disposable {
                 isTrusted: false,
                 supportHtml: false,
               },
+              /*
+               * "Try this", as a SEPARATE trusted part.
+               *
+               * A `command:` link only works in trusted markdown, and marking the note
+               * above trusted would hand that power to every string in the content
+               * files. This part is built here from a fixed template, and it carries
+               * only the language and the word - the example is looked up again when
+               * the command runs, so no content-file text is ever interpolated into a
+               * trusted string.
+               */
+              ...(entry.example
+                ? [{
+                    value: tryExampleLink(languageId, found.text, t('hover.tryThis') || 'Try this'),
+                    isTrusted: true,
+                    supportHtml: false,
+                  }]
+                : []),
             ],
           };
         },

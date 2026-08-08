@@ -1038,6 +1038,40 @@ async function checkHoverTeaches(frameWindow: Window): Promise<void> {
 
   lines.push(`INFO hover for range: ${String(rangeHover).split('\n')[0]}`);
   lines.push(`INFO hover for forward: ${String(forwardHover).split('\n')[0]}`);
+
+  /*
+   * "Try this", end to end.
+   *
+   * Every one of the 1,568 curated entries carries a runnable example, and until now it
+   * was text to look at. This drives the command the hover's link invokes and asserts
+   * the student ends up in a file they can run and edit - not a preview, not a modal.
+   */
+  const tryExample = (runtime as {
+    tryExample?: (language: string, word: string) => Promise<void>;
+  }).tryExample;
+  check('the Try this command is reachable', typeof tryExample === 'function');
+
+  if (typeof tryExample === 'function') {
+    await tryExample('python', 'forward');
+
+    const workspaceApi = runtime.workspace as {
+      allDocuments(): Array<{ id: string; name: string; getContent(): string }>;
+    };
+    const scratch = workspaceApi.allDocuments().find(item => item.name === 'try-it.py');
+    check('it creates a scratch file the student can edit', !!scratch, 'try-it.py missing');
+
+    if (scratch) {
+      const text = scratch.getContent();
+      check('holding the example from the hover', text.includes('pen.forward'), text.slice(0, 80));
+      check('with a header saying it is safe to change', /Try it/.test(text));
+
+      // Reused rather than accumulating: trying a second word must not add a file.
+      await tryExample('python', 'left');
+      const scratchFiles = workspaceApi.allDocuments().filter(item => item.name === 'try-it.py');
+      check('a second Try this reuses the same file', scratchFiles.length === 1, `${scratchFiles.length} files`);
+      check('and replaces its contents', scratchFiles[0].getContent().includes('pen.left'));
+    }
+  }
 }
 
 /**

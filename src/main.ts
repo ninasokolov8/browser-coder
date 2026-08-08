@@ -34,6 +34,7 @@ import { initializeGoToDefinition } from './features/go-to-definition';
 import { initializeWebPreview } from './features/live-preview';
 import { initializeFormatting } from './features/formatting';
 import { initializeHoverHelp } from './features/hover-help';
+import { initializeTryExample, tryExample } from './features/try-example';
 import { renderHover } from './features/hover-content';
 import { getKeywordExplanation as getKeywordExplanationForSeam } from './languages';
 
@@ -118,6 +119,10 @@ async function bootstrap(): Promise<void> {
     // The hover text for a word, so the browser suite can assert the teaching note
     // without invoking Monaco's hover widget - the standalone build exposes no
     // supported way to execute a hover provider.
+    // The Try this command, so the browser suite can drive the hover's link without
+    // synthesising a click inside Monaco's hover widget - which the standalone build
+    // gives no supported way to open.
+    (seam as unknown as { __bcRuntime: Record<string, unknown> }).__bcRuntime.tryExample = tryExample;
     (seam as unknown as { __bcRuntime: Record<string, unknown> }).__bcRuntime.hoverHelp =
       (language: string, word: string) => {
         const entry = getKeywordExplanationForSeam(language, word);
@@ -165,6 +170,9 @@ async function bootstrap(): Promise<void> {
   initializeFormatting();
   // Teaching hovers, from the same curated explanations the right-click menu uses.
   // Registered before any document opens, so the very first file already teaches.
+  // The command the hover's "Try this" link invokes. Registered BEFORE the hover
+  // provider, so a link can never resolve to a command that does not exist yet.
+  initializeTryExample(monaco);
   initializeHoverHelp();
 
   // Execution and run-panel handlers depend on the initialized editor. Load

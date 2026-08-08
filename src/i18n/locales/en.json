@@ -85,5 +85,6 @@
   "titlebar.more": "More tools",
   "titlebar.downloadFile": "Download this file",
   "titlebar.theme": "Theme",
-  "titlebar.uiLanguage": "Language"
+  "titlebar.uiLanguage": "Language",
+  "hover.tryThis": "Try this"
 }
