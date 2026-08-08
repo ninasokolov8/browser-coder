@@ -941,7 +941,28 @@ async function checkHoverTeaches(frameWindow: Window): Promise<void> {
   const unknown = help('python', 'my_own_variable');
   check('a word with no entry produces no hover', unknown === null);
 
+  /*
+   * The library, not just the language.
+   *
+   * Hover covered keywords and built-ins and nothing else, so the functions a beginner
+   * actually types - every turtle call in the drawing exercises this course is built
+   * on - produced no hover at all. `forward` is the exact word that was reported as
+   * silent.
+   */
+  for (const word of ['forward', 'left', 'penup', 'begin_fill', 'Turtle']) {
+    const note = help('python', word);
+    check(`hovering turtle's ${word} teaches something`, Boolean(note), String(note));
+  }
+
+  const forwardHover = help('python', 'forward');
+  check(
+    'and it carries a runnable example',
+    Boolean(forwardHover && forwardHover.includes('```python')),
+    String(forwardHover).slice(0, 140),
+  );
+
   lines.push(`INFO hover for range: ${String(rangeHover).split('\n')[0]}`);
+  lines.push(`INFO hover for forward: ${String(forwardHover).split('\n')[0]}`);
 }
 
 /**
