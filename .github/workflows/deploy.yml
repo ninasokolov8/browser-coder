@@ -51,7 +51,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy to DigitalOcean Droplet
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.DO_HOST }}
           username: ${{ secrets.DO_USERNAME }}
