@@ -2,7 +2,7 @@
 # Capacity depends on measured workload and deployment resources; it is not a
 # property of the image itself.
 
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -12,7 +12,7 @@ COPY . .
 RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 
 # Production runtime
-FROM node:22-alpine
+FROM node:26-alpine
 
 # Install language runtimes
 # su-exec: lets the entrypoint start as root (to fix bind-mounted volume
