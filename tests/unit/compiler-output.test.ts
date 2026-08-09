@@ -173,7 +173,7 @@ describe('csharp', () => {
 
   test('several compiler errors are all reported', () => {
     const output = [
-      "Program.cs(3,9): error CS0103: The name 'first' does not exist in the current context",
+      "Program.cs(3,9): error CS1525: Invalid expression term ';'",
       "Program.cs(4,9): error CS0103: The name 'second' does not exist in the current context",
       "Program.cs(5,9): error CS0103: The name 'first' does not exist in the current context",
     ].join('\n');
@@ -207,7 +207,7 @@ describe('php', () => {
 
   test('several reported PHP diagnostics are all preserved', () => {
     const output = [
-      'PHP Warning: Undefined variable $first in main.php on line 2',
+      'PHP Parse error: syntax error, unexpected token ";" in main.php on line 2',
       'PHP Warning: Undefined variable $second in main.php on line 3',
       'PHP Warning: Undefined variable $first in main.php on line 4',
     ].join('\n');

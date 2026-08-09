@@ -70,6 +70,79 @@ describe('nothing is ever executed', requires('python'), () => {
     assert.match(body.output, /line 2/);
     assert.match(body.output, /line 3/);
   });
+
+  it('keeps syntax and name diagnostics together after parser recovery', async () => {
+    const { status, body } = await server.postJson('/api/check', {
+      language: 'python',
+      code: [
+        't',
+        'g',
+        'terry.forward(18g0)',
+        'time.sleep(0.7-)',
+        'g',
+      ].join('\n'),
+    });
+
+    assert.equal(status, 200);
+    assert.equal(body.ok, false);
+    assert.equal((body.output.match(/SyntaxError:/g) || []).length, 2, body.output);
+    assert.equal((body.output.match(/NameError:/g) || []).length, 3, body.output);
+    for (const line of [1, 2, 3, 4, 5]) {
+      assert.match(body.output, new RegExp(`line ${line}(?:\\D|$)`), body.output);
+    }
+  });
+
+  it('recovers past malformed blocks and expressions without cascade errors', async () => {
+    const block = await server.postJson('/api/check', {
+      language: 'python',
+      code: [
+        'if ready',
+        '    inside_missing',
+        'outside_missing',
+      ].join('\n'),
+    });
+    assert.equal(block.status, 200);
+    assert.equal((block.body.output.match(/SyntaxError:/g) || []).length, 1, block.body.output);
+    assert.match(block.body.output, /name 'inside_missing' is not defined/);
+    assert.match(block.body.output, /name 'outside_missing' is not defined/);
+
+    const expression = await server.postJson('/api/check', {
+      language: 'python',
+      code: [
+        'value = (',
+        '    1 +',
+        ')',
+        'later_missing',
+      ].join('\n'),
+    });
+    assert.equal(expression.status, 200);
+    assert.match(expression.body.output, /SyntaxError:/);
+    assert.match(expression.body.output, /name 'later_missing' is not defined/);
+
+    const binding = await server.postJson('/api/check', {
+      language: 'python',
+      code: [
+        'answer =',
+        'print(answer)',
+        'independent_missing',
+      ].join('\n'),
+    });
+    assert.equal(binding.status, 200);
+    assert.doesNotMatch(binding.body.output, /name 'answer' is not defined/);
+    assert.match(binding.body.output, /name 'independent_missing' is not defined/);
+
+    const receiver = await server.postJson('/api/check', {
+      language: 'python',
+      code: [
+        'terry.forward(18g0)',
+        'terry.forward(10)',
+      ].join('\n'),
+    });
+    assert.equal(receiver.status, 200);
+    assert.match(receiver.body.output, /SyntaxError:/);
+    assert.match(receiver.body.output, /line 2/);
+    assert.match(receiver.body.output, /name 'terry' is not defined/);
+  });
 });
 
 /*
