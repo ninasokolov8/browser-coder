@@ -125,6 +125,22 @@ export function activeSessionId(): string | null {
 }
 
 export function stopInteractive(): void {
+  stopActiveSession(false);
+}
+
+/**
+ * Release a run while the document itself is leaving.
+ *
+ * `sendBeacon` survives page teardown more reliably than a normal fetch. Aborting
+ * the stream is still essential: it makes the server's response-close handler the
+ * source of truth even when the beacon cannot be sent (offline, process crash, or
+ * a browser that has already begun destroying the page).
+ */
+export function stopInteractiveOnPageExit(): void {
+  stopActiveSession(true);
+}
+
+function stopActiveSession(pageIsExiting: boolean): void {
   if (!active) return;
   const { sessionId, controller } = active;
   active = null;
@@ -132,7 +148,13 @@ export function stopInteractive(): void {
   // would also stop it (the request's close handler kills the process), but
   // the explicit call makes cleanup immediate and independent of socket teardown.
   if (sessionId) {
-    fetch(`/api/run/interactive/${sessionId}/close`, { method: 'POST' }).catch(() => {});
+    const closeUrl = `/api/run/interactive/${sessionId}/close`;
+    const sentByBeacon = pageIsExiting &&
+      typeof navigator.sendBeacon === 'function' &&
+      navigator.sendBeacon(closeUrl);
+    if (!sentByBeacon) {
+      fetch(closeUrl, { method: 'POST', keepalive: pageIsExiting }).catch(() => {});
+    }
   }
   try { controller.abort(); } catch { /* noop */ }
 }
@@ -182,8 +204,8 @@ export function runProgram(
     // The server has always had /eof, and nothing in the UI ever called it. A
     // program that reads UNTIL end of input - `for line in sys.stdin`, a JS
     // `process.stdin` reader, `while (scanner.hasNextLine())` - therefore had no
-    // way to finish: the student could type lines forever and the program only
-    // stopped when the idle timeout killed it. In a real terminal this is Ctrl+D,
+    // way to finish: the student could type lines forever and the program never
+    // received EOF. In a real terminal this is Ctrl+D,
     // so that works here, with a button because Ctrl+D is not discoverable.
     const eofButton = document.createElement('button');
     eofButton.className = 'term-eof';
@@ -350,8 +372,8 @@ export function runProgram(
      *
      * Distinct from `close`, which kills the process. This says "there is no more
      * input", letting a program that reads until end-of-input finish normally and
-     * print whatever it computed. Without it such a program could only ever be
-     * killed by the idle timeout.
+     * print whatever it computed. Without it such a program keeps waiting, exactly
+     * as a terminal program does while stdin remains open.
      */
     let sentEof = false;
     const sendEof = () => {

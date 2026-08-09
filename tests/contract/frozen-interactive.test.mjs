@@ -204,6 +204,105 @@ describe('POST /api/run/interactive', () => {
   });
 });
 
+describe('interactive session ownership', () => {
+  let noExpiryServer;
+
+  before(async () => {
+    // These values reproduce the old policy in a fraction of a second. They are
+    // intentionally ignored now: a connected page, not elapsed time, owns the run.
+    noExpiryServer = await startServer({
+      env: {
+        INTERACTIVE_IDLE_MS: '250',
+        INTERACTIVE_MAX_MS: '250',
+      },
+    });
+  });
+
+  after(async () => {
+    await noExpiryServer?.stop();
+  });
+
+  it('keeps a connected program waiting until the user answers', async () => {
+    let answered = false;
+    const result = await runInteractive(
+      noExpiryServer,
+      {
+        language: 'javascript',
+        version: 'es2022',
+        code: [
+          'process.stdout.write("Value: ");',
+          'process.stdin.once("data", value => {',
+          '  console.log("received " + String(value).trim());',
+          '  process.stdin.pause();',
+          '});',
+        ].join('\n'),
+      },
+      {
+        async onEvent(event, sessionId) {
+          if (event.type !== 'waiting' || !sessionId || answered) return;
+          answered = true;
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const reply = await noExpiryServer.postJson(
+            `/api/run/interactive/${sessionId}/stdin`,
+            { data: 'still here' },
+          );
+          assert.equal(reply.status, 200, 'elapsed think time ended the session');
+          await noExpiryServer.postJson(`/api/run/interactive/${sessionId}/eof`, {});
+        },
+      },
+    );
+
+    const stdout = result.events
+      .filter(event => event.type === 'stdout')
+      .map(event => event.data)
+      .join('');
+    assert.match(stdout, /received still here/);
+    assert.equal(result.events.at(-1)?.exitCode, 0);
+  });
+
+  it('stops and releases a run when its response stream disconnects', async () => {
+    const response = await fetch(`${noExpiryServer.baseUrl}/api/run/interactive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: 'javascript',
+        version: 'es2022',
+        code: 'process.stdout.write("waiting: "); process.stdin.resume();',
+      }),
+    });
+    assert.equal(response.status, 200);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let sessionId = null;
+    const deadline = Date.now() + 5_000;
+    while (!sessionId && Date.now() < deadline) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      for (const line of buffer.split('\n').slice(0, -1)) {
+        const event = JSON.parse(line);
+        if (event.type === 'session') sessionId = event.sessionId;
+      }
+      buffer = buffer.slice(buffer.lastIndexOf('\n') + 1);
+    }
+    assert.ok(sessionId, 'the session never opened');
+
+    await reader.cancel('test client left the page');
+
+    let stats = null;
+    const releaseDeadline = Date.now() + 5_000;
+    while (Date.now() < releaseDeadline) {
+      stats = (await noExpiryServer.get('/api/stats')).body;
+      if (stats?.active === 0 && stats?.interactiveSessions === 0) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    assert.equal(stats?.active, 0, 'the disconnected process still occupied an execution slot');
+    assert.equal(stats?.interactiveSessions, 0, 'the disconnected session stayed registered');
+  });
+});
+
 describe('the waiting hint distinguishes a prompt from slow work', () => {
   // Every run streams now, not only the ones a regex thought would read input.
   // That makes the hint's accuracy matter: announcing "ready for input" whenever a
@@ -253,10 +352,9 @@ describe('the waiting hint distinguishes a prompt from slow work', () => {
             answered = true;
             await server.postJson(`/api/run/interactive/${sessionId}/stdin`, { data: 'Ada' });
             // Then end input, the way Ctrl+D does. Node keeps the event loop
-            // alive while stdin is open, so without EOF this program would run
-            // until the idle timeout even though it has nothing left to do -
-            // which is exactly the situation the console's new End-input control
-            // exists for.
+            // alive while stdin is open, so without EOF this program would correctly
+            // keep waiting even though it has nothing left to do - which is exactly
+            // the situation the console's End-input control exists for.
             await server.postJson(`/api/run/interactive/${sessionId}/eof`, {});
           }
         },
