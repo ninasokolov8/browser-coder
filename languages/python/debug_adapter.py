@@ -213,6 +213,72 @@ class _Channel:
         self._closed.set()
 
 
+class _ChannelBinaryOutput:
+    """The ``.buffer`` half of a debug-routed text stream."""
+
+    def __init__(self, channel, stream):
+        self._channel = channel
+        self._stream = stream
+
+    def write(self, value):
+        data = bytes(value)
+        if data:
+            self._channel.send({
+                'type': 'output', 'stream': self._stream,
+                'data': data.decode('utf-8', errors='replace'),
+            })
+        return len(data)
+
+    def flush(self):
+        return None
+
+    def writable(self):
+        return True
+
+
+class _ChannelTextOutput:
+    """A stdout/stderr-compatible stream serialized with debugger events."""
+
+    def __init__(self, channel, stream, original):
+        self._channel = channel
+        self._stream = stream
+        self._original = original
+        self.buffer = _ChannelBinaryOutput(channel, stream)
+        self.encoding = getattr(original, 'encoding', None) or 'utf-8'
+        self.errors = getattr(original, 'errors', None) or 'strict'
+
+    def write(self, text):
+        if not isinstance(text, str):
+            raise TypeError('write() argument must be str, not %s' % type(text).__name__)
+        if text:
+            self._channel.send({'type': 'output', 'stream': self._stream, 'data': text})
+        return len(text)
+
+    def flush(self):
+        return None
+
+    def writable(self):
+        return True
+
+    def isatty(self):
+        return False
+
+    def fileno(self):
+        return self._original.fileno()
+
+
+def _turtle_snapshot():
+    """Return the shim's current drawing without importing or mutating turtle."""
+    module = sys.modules.get('turtle')
+    snapshot = getattr(module, '_browser_coder_snapshot', None) if module else None
+    if not callable(snapshot):
+        return None
+    try:
+        return snapshot()
+    except Exception:                                                # noqa: BLE001
+        return None
+
+
 class BrowserCoderDebugger(bdb.Bdb):
     """The trace hook, wired to the channel."""
 
@@ -339,6 +405,9 @@ class BrowserCoderDebugger(bdb.Bdb):
             'postMortem': True,
         }
         event.update(self._variables(frame))
+        turtle_data = _turtle_snapshot()
+        if turtle_data is not None:
+            event['turtleData'] = turtle_data
         self._channel.send(event)
 
         while True:
@@ -487,6 +556,9 @@ class BrowserCoderDebugger(bdb.Bdb):
             'stack': self._stack_frames(frame),
         }
         event.update(self._variables(frame))
+        turtle_data = _turtle_snapshot()
+        if turtle_data is not None:
+            event['turtleData'] = turtle_data
         if extra:
             event.update(extra)
         self._channel.send(event)
@@ -798,6 +870,11 @@ def main():
     sock = socket.create_connection(('127.0.0.1', port), timeout=10)
     sock.settimeout(None)
     channel = _Channel(sock, token)
+
+    # Logpoints and program output must share one transport or the OS can deliver
+    # their two independent streams in a different order from the source code.
+    sys.stdout = _ChannelTextOutput(channel, 'stdout', sys.stdout)
+    sys.stderr = _ChannelTextOutput(channel, 'stderr', sys.stderr)
 
     debugger = BrowserCoderDebugger(channel, program)
 

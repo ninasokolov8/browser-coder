@@ -1,4 +1,5 @@
 import { t } from "../i18n/index.ts";
+import { typeLabel } from "../features/hover-content.ts";
 
 // ===== Keyword help popup ("Explain this keyword") =====
 let keywordPopupEl: HTMLDivElement | null = null;
@@ -22,16 +23,6 @@ function onKeywordPopupEscape(e: KeyboardEvent) {
   if (e.key === "Escape") closeKeywordHelpPopup();
 }
 
-// Formats a snake_case/underscore type tag (e.g. "control_flow") into a
-// friendlier display label (e.g. "Control Flow") for the popup badge.
-function formatKeywordTypeTag(type: string): string {
-  return type
-    .split(/[_\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 export function showKeywordHelpPopup(keyword: string, type: string | undefined, explanation: string, example: string, rtl: boolean, x: number, y: number) {
   closeKeywordHelpPopup();
 
@@ -49,7 +40,11 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
   if (type) {
     const tag = document.createElement("span");
     tag.className = "kw-help-tag";
-    tag.textContent = formatKeywordTypeTag(type);
+    tag.textContent = typeLabel(type, rtl) ?? type;
+    if (rtl) {
+      tag.dir = "rtl";
+      tag.classList.add("kw-help-tag-rtl");
+    }
     titleGroup.appendChild(tag);
   }
   const closeBtn = document.createElement("button");
@@ -68,6 +63,7 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
   desc.textContent = explanation;
   if (rtl) {
     desc.dir = "rtl";
+    desc.lang = "he";
     desc.classList.add("kw-help-desc-rtl");
   }
   popup.appendChild(desc);
@@ -75,11 +71,14 @@ export function showKeywordHelpPopup(keyword: string, type: string | undefined, 
   const exampleLabel = document.createElement("div");
   exampleLabel.className = "kw-help-example-label";
   exampleLabel.textContent = t("editor.example");
+  exampleLabel.dir = rtl ? "rtl" : "ltr";
+  if (rtl) exampleLabel.classList.add("kw-help-example-label-rtl");
   popup.appendChild(exampleLabel);
 
   const code = document.createElement("pre");
   code.className = "kw-help-code";
   code.textContent = example;
+  code.dir = "ltr";
   popup.appendChild(code);
 
   document.body.appendChild(popup);

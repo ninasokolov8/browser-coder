@@ -131,6 +131,10 @@ class DebugSession {
       } catch {
         continue;
       }
+      if (event.type === 'output') {
+        const stream = event.stream === 'stderr' ? 'stderr' : 'stdout';
+        this[stream] += String(event.data ?? '');
+      }
       this.#events.push(event);
       const waiterIndex = this.#waiters.findIndex(waiter => waiter.type === event.type);
       if (waiterIndex !== -1) {

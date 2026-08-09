@@ -714,6 +714,15 @@ function stackFrames(stack) {
 }
 
 parentPort.on('message', message => {
+  if (message?.kind === 'output') {
+    send({
+      type: 'output',
+      stream: message.stream === 'stderr' ? 'stderr' : 'stdout',
+      data: String(message.data ?? ''),
+    });
+    return;
+  }
+
   if (message?.kind !== 'finished') return;
 
   /*

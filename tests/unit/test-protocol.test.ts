@@ -156,7 +156,7 @@ describe('the summary sentence', () => {
 
     const summary = summariseReport(report);
     assert.match(summary, /^3 of 4 checks passed/);
-    assert.match(summary, /first failure: d — off by one/);
+    assert.match(summary, /first failure: d - off by one/);
   });
 
   test('says plainly when the harness produced nothing', () => {

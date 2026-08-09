@@ -46,10 +46,10 @@ describe('rendering', () => {
       type: 'core',
     });
 
-    assert.match(markdown, /\*\*range\*\*/);
+    assert.match(markdown, /\*\*\u2066range\u2069\*\*/);
     // `built\-in`: the hyphen is escaped, correctly - an unescaped leading `-` starts
     // a Markdown list item.
-    assert.match(markdown, /built\\?-in/);
+    assert.match(markdown, /built\\-in/);
     assert.match(markdown, /Produces a sequence/);
     assert.match(markdown, /```python/);
     assert.match(markdown, /for i in range\(3\):/);
@@ -74,6 +74,11 @@ describe('rendering', () => {
   test('an unmapped type is shown rather than dropped', () => {
     // A new category in the data should still label the popup.
     assert.equal(typeLabel('coroutine_thing'), 'coroutine thing');
+  });
+
+  test('a category is translated when the explanation is Hebrew', () => {
+    assert.equal(typeLabel('control_flow', true), 'בקרת זרימה');
+    assert.equal(typeLabel('turtle', true), 'ציור בצב');
   });
 });
 
@@ -134,14 +139,13 @@ describe('Hebrew', () => {
       explanation: 'מגדיר פונקציה חדשה.',
       rtl: true,
     });
-    // U+200F RIGHT-TO-LEFT MARK. Without it the trailing full stop renders on the
-    // left of a right-to-left sentence.
-    assert.ok(markdown.includes('‏'), 'no RTL mark on a Hebrew explanation');
+    assert.ok(markdown.includes('\u2067'), 'no RTL isolate on a Hebrew explanation');
+    assert.ok(markdown.includes('\u2069'), 'no closing directional isolate');
   });
 
   test('an English explanation is not marked', () => {
     const markdown = renderHover('python', 'def', { explanation: 'Defines a function.' });
-    assert.ok(!markdown.includes('‏'));
+    assert.ok(!markdown.includes('\u2067'));
   });
 });
 

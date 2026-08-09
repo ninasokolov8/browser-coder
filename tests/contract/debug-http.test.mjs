@@ -1082,6 +1082,39 @@ describe('log points print without stopping', () => {
     await server?.stop();
   });
 
+  test('Python logpoints and stdout remain interleaved in source order',
+    requiresDebugger('python'), async () => {
+      const run = await new StreamedRun(base).start({
+        language: 'python',
+        version: 'python3',
+        debug: true,
+        code: ['x = 10', 'for i in range(3):', '    x += 1', '    print(x)'].join('\n'),
+      });
+      await run.waitFor('debug:attached');
+      assert.equal(await run.debug('setBreakpoints', {
+        lines: [], logpoints: { '': { 3: 'i' } },
+      }), 200);
+      await run.waitFor('debug:breakpoints');
+      await run.waitFor('exit');
+
+      const timeline = [];
+      let stdout = '';
+      for (const event of run.events) {
+        if (event.type === 'debug:log') timeline.push(`i=${event.value.text}`);
+        if (event.type !== 'stdout') continue;
+        stdout += String(event.data ?? '');
+        let newline;
+        while ((newline = stdout.indexOf('\n')) !== -1) {
+          timeline.push(`print=${stdout.slice(0, newline)}`);
+          stdout = stdout.slice(newline + 1);
+        }
+      }
+      assert.deepEqual(timeline, [
+        'i=0', 'print=11', 'i=1', 'print=12', 'i=2', 'print=13',
+      ]);
+      await run.close();
+    });
+
   const CASES = [
     {
       language: 'python', version: 'python3', line: 2, expression: 'i',

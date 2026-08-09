@@ -3,6 +3,26 @@ import {
   panelContentEl,
 } from "./dom";
 import { escapeHtml } from './html-escape.ts';
+import { getLanguageConfig, t } from '../i18n/index.ts';
+
+const OUTPUT_STATE_ATTRIBUTE = 'outputState';
+
+/** Render the translated empty-panel prompt without treating it as program output. */
+export function showOutputPlaceholder(): void {
+  panelContentEl.dataset[OUTPUT_STATE_ATTRIBUTE] = 'placeholder';
+  panelContentEl.dir = getLanguageConfig().dir;
+  panelContentEl.textContent = t('panel.placeholder');
+}
+
+/** Whether a locale change may safely replace the panel's current text. */
+export function isOutputPlaceholderVisible(): boolean {
+  return panelContentEl.dataset[OUTPUT_STATE_ATTRIBUTE] === 'placeholder';
+}
+
+function markProgramOutput(): void {
+  delete panelContentEl.dataset[OUTPUT_STATE_ATTRIBUTE];
+  panelContentEl.dir = 'ltr';
+}
 
 /**
  * Escape a plain string for safe insertion as HTML content.
@@ -24,7 +44,7 @@ export function setOutput(text: string) {
   // Output is always raw program stdout/stderr/exit-code text - never
   // translated - so it must stay LTR even if the element previously held a
   // translated (and possibly RTL) placeholder via data-i18n.
-  panelContentEl.dir = 'ltr';
+  markProgramOutput();
   // Use innerHTML so formatted output (spans with CSS classes) can coexist
   // with plain-text output. All content is HTML-escaped to prevent injection.
   panelContentEl.innerHTML = escHtml(text || '');
@@ -40,7 +60,7 @@ export function setOutput(text: string) {
  * has to learn to read the real message eventually, so it stays on screen.
  */
 export function appendOutputHtml(html: string) {
-  panelContentEl.dir = 'ltr';
+  markProgramOutput();
   panelContentEl.innerHTML = panelContentEl.innerHTML + (html || '');
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
@@ -51,7 +71,7 @@ export function appendOutputHtml(html: string) {
  * using escHtml() before embedding it in the html argument.
  */
 export function setOutputHtml(html: string) {
-  panelContentEl.dir = 'ltr';
+  markProgramOutput();
   panelContentEl.innerHTML = html || '';
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }

@@ -5,7 +5,7 @@ mapped port answered nothing (blueprint V-42).
 
 The fix is not a `listen 443 ssl` block in `nginx.conf`. **nginx refuses to start
 when a referenced certificate file is missing**, so hardcoding one turns "no
-certificate yet" into a total outage rather than a missing feature — including on a
+certificate yet" into a total outage rather than a missing feature - including on a
 fresh clone, in CI, and in the dev compose stack that has no certificates at all.
 
 So `nginx.conf` ends with:

@@ -14,11 +14,13 @@ export function createIdeDebugChannel(port) {
   let closed = false;
 
   const send = frame => {
-    if (closed || socket.destroyed) return;
+    if (closed || socket.destroyed) return false;
     try {
       socket.write(`${JSON.stringify(frame)}\n`);
+      return true;
     } catch {
       // Losing the debugger UI must not lose the student's run.
+      return false;
     }
   };
 

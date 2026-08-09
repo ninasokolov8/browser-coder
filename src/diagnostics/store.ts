@@ -21,6 +21,7 @@ import type { Disposable } from '../workspace/types.ts';
 export type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
 export interface DiagnosticHelp {
+  readonly key: string;
   readonly heading: string;
   readonly explanation: string;
   readonly cause: string | null;

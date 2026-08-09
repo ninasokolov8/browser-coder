@@ -218,13 +218,15 @@ connection.on('output', body => {
       .split(/(?<=\n)/)
       .filter(line => !isDebuggerChatter(line))
       .join('');
-    if (kept) process.stderr.write(kept);
+    if (kept && !send({ type: 'output', stream: 'stderr', data: kept })) process.stderr.write(kept);
     return;
   }
 
   // `console` is the debugger talking about itself; only the program's own streams
   // reach the student.
-  if (body.category === 'stdout' || body.category === undefined) process.stdout.write(text);
+  if (body.category === 'stdout' || body.category === undefined) {
+    if (!send({ type: 'output', stream: 'stdout', data: text })) process.stdout.write(text);
+  }
 });
 
 /*

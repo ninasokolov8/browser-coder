@@ -1,7 +1,7 @@
 # Shareable web previews, and what Run does for a web file
 
-This replaces four top-level READMEs — `SHAREABLE_PREVIEW_README.md`,
-`SHORT_PREVIEW_README.md`, `STATELESS_PREVIEW_README.md` and `CSS_RUN_README.md` — which
+This replaces four top-level READMEs - `SHAREABLE_PREVIEW_README.md`,
+`SHORT_PREVIEW_README.md`, `STATELESS_PREVIEW_README.md` and `CSS_RUN_README.md` - which
 between them described three different designs, two of which no longer exist. Nothing
 referenced any of them, so there was no way to tell which was current except by reading
 the server.
@@ -12,16 +12,16 @@ The state below is checked against `server/http/routes/previews.mjs`,
 ## What a preview is
 
 An HTML page a student can publish and send to somebody. It has to work for a person
-who has no account, on a phone, a week later — so it is a real URL serving real files,
+who has no account, on a phone, a week later - so it is a real URL serving real files,
 not a link back into the IDE.
 
 ```
 POST /api/previews        publish an immutable project, returns its id
-GET  /preview/:id         the wrapper document — never contains student code
+GET  /preview/:id         the wrapper document - never contains student code
 GET  /preview/:id/*       the student's own files
 ```
 
-Ids are 16 random bytes, base64url — 128 bits, so guessing one is not a thing that
+Ids are 16 random bytes, base64url - 128 bits, so guessing one is not a thing that
 happens. Each publish creates a **new** preview; nothing is ever overwritten, so a link
 that was sent to somebody keeps showing what was sent.
 
@@ -48,7 +48,7 @@ is framed or navigated to.
 
 The storage directory is the one that matters. A container-local temporary directory
 gives every replica its own set of previews, so a link published through one and opened
-through another answers "Preview not found" — intermittently, in proportion to the
+through another answers "Preview not found" - intermittently, in proportion to the
 replica count, which is the hardest possible shape of bug to report.
 
 ## Two designs that are gone, and why
@@ -67,7 +67,7 @@ stylesheet or an image, which is most of what a beginner's first web page is.
 
 ## Run, for a web file
 
-A web file is not sent to `/api/run` at all — there is nothing to execute server-side.
+A web file is not sent to `/api/run` at all - there is nothing to execute server-side.
 Run publishes and opens a preview instead.
 
 **HTML** publishes that page along with everything it references.

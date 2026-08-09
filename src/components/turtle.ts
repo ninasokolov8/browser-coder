@@ -11,11 +11,11 @@ const TURTLE_WINDOW_ID = 'turtle-window';
 
 // ── Turtle graphics renderer ─────────────────────────────────────────────────
 // Animated step-by-step replay of the drawing commands captured by the Python
-// shim, with a moving turtle cursor — just like a real IDE.
+// shim, with a moving turtle cursor - just like a real IDE.
 //
 // Architecture: double-buffer
-//   offscreen canvas  — all shapes accumulated so far (never erased mid-run)
-//   visible canvas    — offscreen snapshot + cursor composited on top each frame
+//   offscreen canvas  - all shapes accumulated so far (never erased mid-run)
+//   visible canvas    - offscreen snapshot + cursor composited on top each frame
 //
 // Coordinate system:
 //   Python turtle: origin at centre, y increases upward
@@ -70,14 +70,14 @@ export interface TurtleData {
   picData?:   string;   // that picture as a data URL, resolved by the frontend
 }
 
-// Animation RAF id (requestAnimationFrame) — null when idle
+// Animation RAF id (requestAnimationFrame) - null when idle
 let turtleAnimRafId: number | null = null;
 let turtleReplayTimer: number | null = null;
 let turtleReplayDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
 
 // Background picture (bgpic) of the drawing currently on screen. Module-level
 // because it is needed both while painting the background and later, whenever
-// the program clears the canvas — and because only one drawing is ever
+// the program clears the canvas - and because only one drawing is ever
 // rendered at a time.
 let turtleBgImage: HTMLImageElement | null = null;
 
@@ -492,7 +492,7 @@ function drawTurtleShape(
       }
       case 'C': {
         // clear() wipes the drawing but keeps the screen's background, which
-        // includes the bgpic picture — same as real turtle.
+        // includes the bgpic picture - same as real turtle.
         sctx.clearRect(0, 0, cw, ch);
         paintTurtleBackground(sctx, cw, ch, bg);
         break;
@@ -500,7 +500,7 @@ function drawTurtleShape(
       case 'S': {
         // A stamp is an imprint of the cursor: same shape, colours and size.
         // Payloads from before shape support only carry the pen colour `c`;
-        // those render the way they always did — a plain black arrowhead.
+        // those render the way they always did - a plain black arrowhead.
         const legacy: TurtleLook = {
           ...DEFAULT_LOOK,
           sh: 'classic', sw: 1, sl: 1,
@@ -575,7 +575,7 @@ function drawTurtlePrefix(
 
 // ── Pixel-per-second speeds for each turtle speed level (1–10) ───────────────
 // Calibrated to match real Python IDLE turtle feel.
-// speed(3) is the default (real turtle default) — feels educational and visible.
+// speed(3) is the default (real turtle default) - feels educational and visible.
 // speed(0) / tracer(0) are handled separately as "instant".
 const TURTLE_PX_PER_SEC: Record<number, number> = {
   1: 100, 2: 200, 3: 350, 4: 600,
@@ -589,7 +589,12 @@ const TURTLE_PX_PER_SEC: Record<number, number> = {
  * decoded before anything can be painted, so the drawing starts once the image
  * has loaded (or failed). Everything else renders immediately.
  */
-export function renderTurtle(data: TurtleData): void {
+export interface TurtleRenderOptions {
+  /** Paint the state reached so far immediately, without replay animation. */
+  readonly live?: boolean;
+}
+
+export function renderTurtle(data: TurtleData, options: TurtleRenderOptions = {}): void {
   // Cancel a running animation right away: even while an image is loading, the
   // previous drawing must not keep animating onto the canvas.
   if (turtleAnimRafId !== null) {
@@ -608,7 +613,7 @@ export function renderTurtle(data: TurtleData): void {
   // Preserve the original fast path exactly for every existing Turtle program.
   // Image loading is introduced only when bgpic or an SVG cursor is present.
   if (!data.picData && svgEntries.length === 0) {
-    drawTurtleData(data);
+    drawTurtleData(data, options.live === true);
     return;
   }
 
@@ -617,7 +622,7 @@ export function renderTurtle(data: TurtleData): void {
   const imageFinished = () => {
     pendingImages -= 1;
     if (pendingImages === 0 && seq === turtleRenderSeq) {
-      drawTurtleData(data);
+      drawTurtleData(data, options.live === true);
     }
   };
 
@@ -642,7 +647,7 @@ export function renderTurtle(data: TurtleData): void {
   }
 }
 
-function drawTurtleData(data: TurtleData): void {
+function drawTurtleData(data: TurtleData, live = false): void {
   // ── Cancel any previous animation ──────────────────────────────────────────
   if (turtleAnimRafId !== null) {
     cancelAnimationFrame(turtleAnimRafId);
@@ -683,11 +688,19 @@ function drawTurtleData(data: TurtleData): void {
   // ── Show the popup window ───────────────────────────────────────────────────
   showPopupWindow(turtleWindow);
 
+  if (live) {
+    // A debugger step is already the animation clock. Paint this snapshot and wait
+    // for the student's next command.
+    turtleBody.querySelector('#turtle-replay-controls')?.remove();
+    drawTurtlePrefix(ctx, shapes, shapes.length, cw, ch, bg, cursors, polys);
+    return;
+  }
+
   const replay = createTurtleReplayControls(turtleBody, shapes, count => {
     drawTurtlePrefix(ctx, shapes, count, cw, ch, bg, cursors, polys);
   });
 
-  // Nothing was drawn, but the turtles themselves are still worth showing —
+  // Nothing was drawn, but the turtles themselves are still worth showing -
   // that is what a real turtle window looks like after a program that only
   // moves the cursor around.
   if (shapes.length === 0) {
@@ -754,7 +767,7 @@ function drawTurtleData(data: TurtleData): void {
         const len = Math.hypot(dx, dy);
 
         if (len < 0.5) {
-          // Zero-length line — commit and move on
+          // Zero-length line - commit and move on
           drawTurtleShape(octx, s, cw, ch, bg, polys);
           curX = s.x2 as number; curY = s.y2 as number;
           curH = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -833,7 +846,7 @@ function drawTurtleData(data: TurtleData): void {
       ctx.restore();
     }
 
-    // 3. Cursor overlay — while drawing, the single animated cursor; once the
+    // 3. Cursor overlay - while drawing, the single animated cursor; once the
     //    replay is over, every turtle at its final position (a program can use
     //    several Turtle() objects, all of which stay on screen at the end).
     const finished = shapeIdx >= shapes.length && lineProgress <= 0;

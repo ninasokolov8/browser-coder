@@ -31,7 +31,8 @@
  */
 
 /** What the lookup returns, restated so this module imports nothing. */
-import { t } from '../i18n/index.ts';
+import { translateInLanguage } from '../i18n/index.ts';
+import { escapeMarkdown } from './hover-content.ts';
 
 export interface ErrorHelp {
   readonly explanation: string;
@@ -295,6 +296,7 @@ export function selectErrorKey(
  * markup out of here is also what lets this be tested in node.
  */
 export interface ErrorHelpBlock {
+  readonly key: string;
   readonly heading: string;
   readonly explanation: string;
   readonly cause: string | null;
@@ -310,9 +312,9 @@ export interface ErrorHelpBlock {
  * of red text.
  */
 export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBlock {
-  const label = help.type ? `${key} — ${help.type}` : key;
   return {
-    heading: label,
+    key,
+    heading: key,
     explanation: help.explanation.trim(),
     cause: help.cause?.trim() ? help.cause.trim() : null,
     example: help.example?.trim() ? help.example.trim() : null,
@@ -321,26 +323,49 @@ export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBloc
 }
 
 /**
- * Lay out an editor diagnostic as short, named sections.
+ * Lay out a custom Monaco diagnostic hover as short, named sections.
  *
- * Monaco's marker hover accepts plain text, not a custom card. Section headings and
- * whitespace therefore carry the visual hierarchy: the runtime's wording is the
- * error, the teaching text explains it, and an example can no longer be mistaken for
- * another instruction or another failure.
+ * Markdown headings, theme colours, icons, spacing, and fenced code create the
+ * hierarchy. The runtime's wording remains literal, the teaching text explains it,
+ * and the example cannot be mistaken for another instruction or another failure.
  */
-export function formatErrorMarker(message: string, help?: ErrorHelpBlock): string {
+export function formatErrorHover(
+  message: string,
+  help?: ErrorHelpBlock,
+  languageId = 'text',
+  uiLanguage = 'en',
+): string {
   const labels = {
-    error: t('error.marker.error'),
-    meaning: t('error.marker.meaning'),
-    cause: t('error.marker.cause'),
-    example: t('error.marker.example'),
+    error: translateInLanguage(uiLanguage, 'error.marker.error'),
+    meaning: translateInLanguage(uiLanguage, 'error.marker.meaning'),
+    cause: translateInLanguage(uiLanguage, 'error.marker.cause'),
+    example: translateInLanguage(uiLanguage, 'error.marker.example'),
   };
 
-  const sections = [`${labels.error}\n${message.trim()}`];
+  const colourHeading = (icon: string, label: string, colour: string, level: 2 | 3) =>
+    `${'#'.repeat(level)} <span style="color:var(${colour});">${icon} ${escapeMarkdown(label)}</span>`;
+  const prose = (text: string) =>
+    help?.rtl ? `\u2067${escapeMarkdown(text)}\u2069` : escapeMarkdown(text);
+  const safeMessage = message.trim().replace(/```/g, '``\u200b`');
+  const sections = [
+    `${colourHeading('⛔', labels.error, '--vscode-errorForeground', 2)}\n\n\`\`\`text\n${safeMessage}\n\`\`\``,
+  ];
   if (!help) return sections[0];
 
-  sections.push(`${labels.meaning}\n${help.explanation}`);
-  if (help.cause) sections.push(`${labels.cause}\n${help.cause}`);
-  if (help.example) sections.push(`${labels.example}\n${help.example}`);
+  sections.push('---');
+  sections.push(
+    `${colourHeading('💡', labels.meaning, '--vscode-editorInfo-foreground', 3)}\n\n${prose(help.explanation)}`,
+  );
+  if (help.cause) {
+    sections.push(
+      `${colourHeading('⚠', labels.cause, '--vscode-editorWarning-foreground', 3)}\n\n${prose(help.cause)}`,
+    );
+  }
+  if (help.example) {
+    sections.push(
+      `${colourHeading('✓', labels.example, '--vscode-testing-iconPassed', 3)}\n\n` +
+      `\`\`\`${languageId}\n${help.example.replace(/```/g, '``\u200b`')}\n\`\`\``,
+    );
+  }
   return sections.join('\n\n');
 }

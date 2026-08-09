@@ -460,7 +460,7 @@ def _setup_turtle():
         if s is _gs:
             _gs_used[0] = True
         if _tracer[0] == 0:
-            return           # instant draw — only the final look matters
+            return           # instant draw - only the final look matters
         d = _app_data(s)
         if d == _last_app[0]:
             return
@@ -1297,8 +1297,8 @@ def _setup_turtle():
     # the same class - kept as names so `isinstance(t, turtle.RawPen)` resolves.
     RawPen = _Turtle
 
-    # ── atexit: emit drawing data ─────────────────────────────────────────────
-    def _emit():
+    # ── snapshots and final emission ─────────────────────────────────────────
+    def _snapshot():
         # Where every turtle ended up. Used to draw the cursors once the
         # drawing is complete (and as the only cursor source when animation
         # is switched off, since no 'SH' events are recorded in that mode).
@@ -1323,6 +1323,10 @@ def _setup_turtle():
             data['svgShapes'] = _svg_shapes
         if _cfg[0]['pic']:
             data['pic'] = _cfg[0]['pic']
+        return data
+
+    def _emit():
+        data = _snapshot()
         json_str = _j.dumps(data, separators=(',', ':'))
 
         # ── Write the drawing to the target the SERVICE chose ─────────────────
@@ -1630,6 +1634,7 @@ def _setup_turtle():
     # modules at all.
     _tm.__all__ = sorted(_exported)
     _tm.__doc__ = 'Browser Coder turtle: a canvas renderer with the CPython turtle API.'
+    _tm._browser_coder_snapshot = _snapshot
 
     _sys.modules['turtle'] = _tm
 

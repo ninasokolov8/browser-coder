@@ -1,20 +1,20 @@
 # ─── Pre-run static checker for Browser Coder (Python) ──────────────────────
 # Scans user code WITHOUT executing it and reports blocking problems so the
-# sandbox can refuse to run code that would fail — instead of running it up to
+# sandbox can refuse to run code that would fail - instead of running it up to
 # the first bad line and failing halfway through.
 #
 # It detects:
 #   1. Syntax errors    (SyntaxError / IndentationError / TabError)
-#   2. Undefined names  (e.g. `prin("hi")` — a typo for `print`)
+#   2. Undefined names  (e.g. `prin("hi")` - a typo for `print`)
 #
 # Design: conservative. A name is treated as "defined" if it is bound in ANY
 # scope of the module (function, class, comprehension, import, param, …), so the
 # checker NEVER blocks code that would actually run. It only flags names that
 # appear nowhere as a binding and are not Python builtins. It also bails out of
 # the undefined-name check entirely (still reporting syntax errors) whenever the
-# code uses constructs that can inject names dynamically — star-imports,
+# code uses constructs that can inject names dynamically - star-imports,
 # exec/eval/globals/locals/vars/compile/__import__, `from __future__ import
-# annotations`, or `match` statements — because those make static name analysis
+# annotations`, or `match` statements - because those make static name analysis
 # unreliable and could otherwise produce false positives.
 #
 # Output: a JSON array on stdout. Empty array = nothing to block. Each entry:

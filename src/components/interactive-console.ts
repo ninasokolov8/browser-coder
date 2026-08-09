@@ -107,7 +107,7 @@ function compileLabel(langId: string): string {
     case 'csharp':     return 'Compile Error (dotnet build)';
     case 'typescript': return 'TypeScript Error';
     case 'php':        return 'Parse Error (php -l)';
-    case 'python':     return 'Problem Detected — code was not run';
+    case 'python':     return 'Problem Detected - code was not run';
     default:           return 'Compile Error';
   }
 }
@@ -333,7 +333,7 @@ export function runProgram(
               );
             }
           }
-          renderTurtle(turtleData);
+          renderTurtle(turtleData, { live: options.debug === true });
         } catch (renderErr) {
           append(`\n[turtle render error: ${String(renderErr)}]\n`, 'error');
         }

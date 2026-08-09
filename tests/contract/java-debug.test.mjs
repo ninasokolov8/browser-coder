@@ -149,6 +149,10 @@ class DebugSession {
       } catch {
         continue;
       }
+      if (event.type === 'output') {
+        const stream = event.stream === 'stderr' ? 'stderr' : 'stdout';
+        this[stream] += String(event.data ?? '');
+      }
       this.#events.push(event);
       const waiterIndex = this.#waiters.findIndex(waiter => waiter.type === event.type);
       if (waiterIndex !== -1) {
@@ -181,7 +185,7 @@ class DebugSession {
     });
   }
 
-  /** The JVM's stdout is a separate pipe from the debug socket and drains later. */
+  /** Wait for adapter teardown and any final atexit work. */
   waitForExit(timeoutMs = 20000) {
     if (this.exited !== null) return Promise.resolve(this.exited);
     return new Promise((resolvePromise, reject) => {

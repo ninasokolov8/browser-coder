@@ -13,7 +13,7 @@
 import * as monaco from 'monaco-editor';
 
 import { parseCompilerOutput } from './compiler-output.ts';
-import { buildErrorHelpBlock, formatErrorMarker, selectErrorKey } from '../features/error-help.ts';
+import { buildErrorHelpBlock, formatErrorHover, selectErrorKey } from '../features/error-help.ts';
 import { getUILang } from '../features/wrapped-i18n.ts';
 import { getErrorExplanation, getLanguage } from '../languages';
 import type { Diagnostic, DiagnosticHelp, DiagnosticsStore } from './store.ts';
@@ -214,6 +214,13 @@ export function connectRunMarkers({
   models: MonacoModelRegistry;
   service: WorkspaceService;
 }): Disposable {
+  const helpFor = (diagnostic: Diagnostic, languageId: string): DiagnosticHelp | undefined => {
+    const key = diagnostic.help?.key;
+    if (!key) return diagnostic.help;
+    const current = getErrorExplanation(languageId, key, getUILang());
+    return current ? buildErrorHelpBlock(key, current) : diagnostic.help;
+  };
+
   const apply = () => {
     for (const entry of models.all()) {
       const forDocument = store
@@ -233,17 +240,9 @@ export function connectRunMarkers({
             diagnostic.severity === 'warning'
               ? monaco.MarkerSeverity.Warning
               : monaco.MarkerSeverity.Error,
-          /*
-           * The compiler's message, then the plain-language explanation.
-           *
-           * This is where the explanation belongs. It was only ever printed into the
-           * output panel underneath the traceback - which is exactly where a stuck
-           * student has already stopped reading - while the thing they ARE looking at,
-           * the red underline on their line, said nothing beyond the runtime's own
-           * wording. Hovering the squiggle now answers the question the squiggle
-           * raises.
-           */
-          message: formatErrorMarker(diagnostic.message, diagnostic.help),
+          // Keep Monaco's marker and Problems-row message literal and concise. The
+          // registered hover provider below adds the structured teaching card.
+          message: diagnostic.message,
           startLineNumber: line,
           startColumn: column,
           endLineNumber: line,
@@ -261,12 +260,51 @@ export function connectRunMarkers({
   const subscription = store.onDidChange(apply);
   // A document appearing or disappearing changes which models need markers.
   const workspaceSubscription = service.onDidChangeWorkspace(apply);
+  const hoverSubscriptions = [
+    'python', 'javascript', 'typescript', 'java', 'php', 'csharp',
+  ].map(languageId => monaco.languages.registerHoverProvider(languageId, {
+    provideHover(model, position) {
+      const entry = models.all().find(candidate => candidate.model === model);
+      if (!entry) return null;
+      const diagnostic = store.forDocument(entry.id).find(item => {
+        const endLine = item.endLine ?? item.line;
+        return item.help && position.lineNumber >= item.line && position.lineNumber <= endLine;
+      });
+      if (!diagnostic) return null;
+      const help = helpFor(diagnostic, model.getLanguageId());
+      if (!help) return null;
+      const line = Math.min(Math.max(1, diagnostic.line), model.getLineCount());
+      const endLine = Math.min(
+        Math.max(line, diagnostic.endLine ?? diagnostic.line),
+        model.getLineCount(),
+      );
+      return {
+        range: new monaco.Range(
+          line,
+          Math.min(Math.max(1, diagnostic.column), model.getLineMaxColumn(line)),
+          endLine,
+          model.getLineMaxColumn(endLine),
+        ),
+        contents: [{
+          value: formatErrorHover(
+            diagnostic.message,
+            help,
+            model.getLanguageId(),
+            getUILang(),
+          ),
+          isTrusted: false,
+          supportHtml: true,
+        }],
+      };
+    },
+  }));
   apply();
 
   return {
     dispose: () => {
       subscription.dispose();
       workspaceSubscription.dispose();
+      for (const hoverSubscription of hoverSubscriptions) hoverSubscription.dispose();
     },
   };
 }

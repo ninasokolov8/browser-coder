@@ -358,9 +358,22 @@ export class ExecutionPipeline {
        */
       let debugChannel = null;
       let debugEnv = {};
+      let managed = null;
+      const pendingDebugOutput = [];
       if (hooks.debug && plan.adapter.supportsDebug) {
         debugChannel = new DebugChannel({
-          onEvent: hooks.onDebugEvent ?? (() => {}),
+          onEvent: event => {
+            if (event.type !== 'debug:output') {
+              (hooks.onDebugEvent ?? (() => {}))(event);
+              return;
+            }
+            const output = {
+              stream: event.stream === 'stderr' ? 'stderr' : 'stdout',
+              data: String(event.data ?? ''),
+            };
+            if (managed) managed.writeOutput(output.stream, output.data);
+            else pendingDebugOutput.push(output);
+          },
           onClose: hooks.onDebugClose,
         });
         const port = await debugChannel.listen();
@@ -418,7 +431,7 @@ export class ExecutionPipeline {
         };
       }
 
-      const managed = spawnManaged({
+      managed = spawnManaged({
         command: prepared.command,
         args: prepared.args,
         cwd: prepared.cwd || job.dir,
@@ -435,6 +448,10 @@ export class ExecutionPipeline {
         onStderr: hooks.onStderr,
         transformStderr: prepared.transformStderr,
       });
+
+      for (const output of pendingDebugOutput) {
+        managed.writeOutput(output.stream, output.data);
+      }
 
       // Tear the channel down with the run. A listener outlasting the process it
       // was serving is a leaked socket per debug session.
