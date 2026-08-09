@@ -104,8 +104,12 @@ jobs:
       - name: Install language toolchains
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq python3 php-cli openjdk-17-jdk-headless
-          python3 --version && php --version | head -1 && javac -version
+          sudo apt-get install -y -qq python3 python3-tk php-cli php-xdebug openjdk-17-jdk-headless
+          python3 --version
+          python3 -c 'import tkinter; print("tkinter available")'
+          php --version | head -1
+          php -r 'if (!extension_loaded("xdebug")) { fwrite(STDERR, "Xdebug missing\n"); exit(1); } echo "Xdebug available\n";'
+          javac -version
 
       - uses: actions/setup-dotnet@v4
         with:

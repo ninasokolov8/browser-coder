@@ -37,6 +37,7 @@ import {
   uriFromPath,
   workspaceRelative as relativeToRoot,
 } from './dbgp.mjs';
+import { xdebugLoadArgs } from './xdebug-loader.mjs';
 
 const PORT = Number(process.env.BROWSER_CODER_DEBUG_PORT || 0);
 const TOKEN = process.env.BROWSER_CODER_DEBUG_TOKEN || '';
@@ -94,7 +95,7 @@ const php = spawn(
   PHP_BIN,
   [
     ...PHP_ARGS,
-    '-dzend_extension=xdebug',
+    ...xdebugLoadArgs(PHP_BIN, PHP_ARGS),
     // `debug` alone: no profiling, no tracing, no code coverage. Each of the other
     // modes costs real time on every function call and none of them is wanted here.
     '-dxdebug.mode=debug',
@@ -528,7 +529,7 @@ async function handleCommand(command) {
  */
 let markReady = () => {};
 const ready = new Promise(resolve => { markReady = resolve; });
-handleChannelCommands({
+const commandQueue = handleChannelCommands({
   ready,
   handleCommand,
   reportError(error) {
@@ -567,4 +568,4 @@ markReady();
 await firstBreakpointsCommand;
 
 send({ type: 'started' });
-handling = handling.then(() => proceed('run', 'breakpoint'));
+await commandQueue.enqueue(() => proceed('run', 'breakpoint'));

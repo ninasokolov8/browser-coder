@@ -73,4 +73,45 @@ describe('shared debugger IDE channel', () => {
       assert.deepEqual(errors, []);
     });
   });
+
+  test('serializes adapter startup work behind commands that already arrived', async () => {
+    await withPeer(async (channel, peer) => {
+      let markReady;
+      const ready = new Promise(resolve => { markReady = resolve; });
+      const order = [];
+      let commandStarted;
+      const commandHasStarted = new Promise(resolve => { commandStarted = resolve; });
+      let commandFinished;
+      const commandComplete = new Promise(resolve => { commandFinished = resolve; });
+
+      const queue = channel.handleCommands({
+        ready,
+        async handleCommand(command) {
+          order.push(`command:${command.value}:start`);
+          commandStarted();
+          await new Promise(resolve => setTimeout(resolve, 5));
+          order.push(`command:${command.value}:end`);
+          commandFinished();
+        },
+        reportError(error) {
+          throw error;
+        },
+      });
+
+      peer.write('{"value":"breakpoints"}\n');
+      markReady();
+      await commandHasStarted;
+      const startupComplete = queue.enqueue(async () => {
+        order.push('startup');
+      });
+      await Promise.all([commandComplete, startupComplete]);
+
+      assert.deepEqual(order, [
+        'command:breakpoints:start',
+        'command:breakpoints:end',
+        'startup',
+      ]);
+      queue.dispose();
+    });
+  });
 });

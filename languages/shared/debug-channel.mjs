@@ -35,6 +35,20 @@ export function createIdeDebugChannel(port) {
     let buffer = '';
     let handling = Promise.resolve(ready);
 
+    /**
+     * Put adapter-owned startup work on the same queue as IDE commands.
+     *
+     * Some debugger protocols allow only one request at a time. Startup also sends
+     * protocol requests, so running it beside a just-arrived `setBreakpoints` command
+     * can interleave the two even though ordinary IDE commands are serialized.
+     */
+    const enqueue = task => {
+      handling = handling
+        .then(task, task)
+        .catch(reportError);
+      return handling;
+    };
+
     const onData = chunk => {
       buffer += chunk.toString('utf8');
       let newline;
@@ -51,14 +65,15 @@ export function createIdeDebugChannel(port) {
           continue;
         }
 
-        handling = handling
-          .then(() => handleCommand(command), () => handleCommand(command))
-          .catch(reportError);
+        enqueue(() => handleCommand(command));
       }
     };
 
     socket.on('data', onData);
-    return () => socket.off('data', onData);
+    return {
+      enqueue,
+      dispose: () => socket.off('data', onData),
+    };
   };
 
   return { socket, send, close, handleCommands };
