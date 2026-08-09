@@ -488,6 +488,15 @@
   line-height: 1.35;
   margin: 12px 0 5px;
 }
+/* Keep Monaco's window anchored exactly where it is. In Hebrew, only the text
+   inside each hover row flows from the right. `plaintext` lets an English compiler
+   message retain its own LTR character order while remaining right-aligned. */
+html[lang="he"] .monaco-hover .markdown-hover {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
 .monaco-hover .markdown-hover pre,
 .monaco-hover .markdown-hover div[data-code],
 .monaco-hover .markdown-hover div[data-code] > span {

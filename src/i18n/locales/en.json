@@ -138,7 +138,6 @@
   "error.whatThisMeans": "WHAT THIS MEANS",
   "error.commonCause": "COMMON CAUSE",
   "error.typescript": "TypeScript error",
-  "error.marker.error": "ERROR",
   "error.marker.meaning": "WHAT THIS MEANS",
   "error.marker.cause": "COMMON CAUSE",
   "error.marker.example": "EXAMPLE",

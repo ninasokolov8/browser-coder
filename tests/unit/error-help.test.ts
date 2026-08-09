@@ -389,9 +389,8 @@ describe('laying the explanation out', () => {
     assert.equal(buildErrorHelpBlock('X', { explanation: 'a' }).rtl, false);
   });
 
-  test('the marker separates the error, explanation, cause and example', () => {
+  test('the teaching card separates explanation, cause and example', () => {
     const text = formatErrorHover(
-      "NameError: name 'total' is not defined",
       buildErrorHelpBlock('NameError', {
         explanation: 'Python cannot find that name.',
         cause: 'It may be misspelled.',
@@ -399,9 +398,8 @@ describe('laying the explanation out', () => {
       }),
     );
 
-    assert.match(text, /^## .*⛔ ERROR/);
-    assert.match(text, /```text\nNameError: name 'total' is not defined\n```/);
-    assert.match(text, /### .*💡 WHAT THIS MEANS/);
+    assert.match(text, /^## .*💡 WHAT THIS MEANS/);
+    assert.doesNotMatch(text, /ERROR|NameError/);
     assert.match(text, /Python cannot find that name\\\./);
     assert.match(text, /### .*⚠ COMMON CAUSE/);
     assert.match(text, /It may be misspelled\\\./);
@@ -409,13 +407,8 @@ describe('laying the explanation out', () => {
     assert.match(text, /```text\ntotal = 10\nprint\(total\)\n```/);
   });
 
-  test('an error without curated help still has a clear error heading', () => {
-    assert.match(formatErrorHover('Unexpected token'), /^## .*⛔ ERROR[\s\S]*```text\nUnexpected token\n```$/);
-  });
-
   test('Hebrew section labels and prose stay separate from LTR code', () => {
     const text = formatErrorHover(
-      "NameError: name 'x' is not defined",
       buildErrorHelpBlock('NameError', {
         explanation: 'פייתון לא מכירה את השם הזה.',
         cause: 'כנראה שגיאת כתיב.',
@@ -425,7 +418,6 @@ describe('laying the explanation out', () => {
       'python',
       'he',
     );
-    assert.match(text, /⛔ השגיאה/);
     assert.match(text, /💡 מה זה אומר/);
     assert.match(text, /⚠ סיבה נפוצה/);
     assert.match(text, /✓ דוגמה/);

@@ -1649,6 +1649,9 @@ async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> 
     getDocument(id: string): { setContent(text: string): void } | null;
   };
   const models = runtime.models as { peek(id: string): { uri: unknown } | null };
+  const diagnostics = runtime.diagnostics as {
+    forDocument(id: string): Array<{ line: number; message: string }>;
+  };
 
   const created = await workspace.createDocument({
     name: 'live-errors.py',
@@ -1690,6 +1693,90 @@ async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> 
   workspace.getDocument(created.id)!.setContent('print("hello")\n');
   const cleared = await waitFor('the squiggle to clear once fixed', () => markersFor().length === 0, 5000);
   check('fixing the code clears the mark', cleared, `still ${markersFor().length} marker(s)`);
+
+  /*
+   * The Python preflight emits one familiar File/Error block per undefined name.
+   * The output parser used to keep only its final block, and the preflight separately
+   * collapsed repeated names. This exact shape reproduces the reported t/g/g failure.
+   */
+  workspace.getDocument(created.id)!.setContent('t\ng\ng\n');
+  const allNamesMarked = await waitFor(
+    'all repeated undefined names to be marked',
+    () => markersFor().filter(marker => /NameError/.test(marker.message)).length === 3,
+    10000,
+  );
+  const nameMarkers = markersFor().filter(marker => /NameError/.test(marker.message));
+  check(
+    'every undefined-name occurrence gets its own squiggle',
+    allNamesMarked && nameMarkers.map(marker => marker.startLineNumber).join(',') === '1,2,3',
+    nameMarkers.map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
+  );
+  check(
+    'the Problems count receives every undefined-name occurrence',
+    diagnostics.forDocument(created.id).filter(item => /NameError/.test(item.message)).length === 3,
+    JSON.stringify(diagnostics.forDocument(created.id)),
+  );
+
+  workspace.getDocument(created.id)!.setContent('t = 1\ng = 2\nprint(t, g)\n');
+  const allNamesCleared = await waitFor(
+    'all undefined-name marks to clear together',
+    () => markersFor().filter(marker => /NameError/.test(marker.message)).length === 0,
+    10000,
+  );
+  check('fixing all names clears all of their marks', allNamesCleared);
+
+  // The shared marker pipeline must keep every scanner result in each language which
+  // has no Monaco parser. Three independent closing tokens are unambiguous errors.
+  for (const language of ['python', 'java', 'php', 'csharp']) {
+    const extension = { python: 'py', java: 'java', php: 'php', csharp: 'cs' }[language]!;
+    const version = {
+      python: 'python3', java: 'java17', php: 'php8', csharp: 'csharp12',
+    }[language]!;
+    const probe = await workspace.createDocument({
+      name: `multi-errors-${language}.${extension}`,
+      content: ')\n]\n}\n',
+      language,
+      version,
+    });
+    await tabManager.switchToTab(probe.id);
+    const probeMarkers = () => {
+      const model = models.peek(probe.id);
+      return model ? monacoApi.editor.getModelMarkers({ resource: model.uri as never }) : [];
+    };
+    const allMarked = await waitFor(
+      `${language}'s independent errors to be marked`,
+      () => probeMarkers().length >= 3,
+      5000,
+    );
+    check(
+      `${language} keeps every independently detectable error`,
+      allMarked && new Set(probeMarkers().map(marker => marker.startLineNumber)).size >= 3,
+      probeMarkers().map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
+    );
+  }
+
+  // JavaScript uses Monaco's real language service instead of the shared scanner.
+  const javascript = await workspace.createDocument({
+    name: 'multi-errors-javascript.js',
+    content: 'firstMissing;\nsecondMissing;\nthirdMissing;\n',
+    language: 'javascript',
+    version: 'es2022',
+  });
+  await tabManager.switchToTab(javascript.id);
+  const javascriptMarkers = () => {
+    const model = models.peek(javascript.id);
+    return model ? monacoApi.editor.getModelMarkers({ resource: model.uri as never }) : [];
+  };
+  const allJavaScriptMarked = await waitFor(
+    'JavaScript language-service errors to be marked',
+    () => javascriptMarkers().filter(marker => /Cannot find name/.test(marker.message)).length === 3,
+    15000,
+  );
+  check(
+    'javascript keeps every language-service error',
+    allJavaScriptMarked,
+    javascriptMarkers().map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
+  );
 }
 
 /**
@@ -2006,14 +2093,18 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
   const hoverText = hover?.textContent ?? '';
   const sectionHeadings = [...(hover?.querySelectorAll('h2, h3') ?? [])];
   check('the structured error hover appears', hoverAppeared, hoverText || 'hover missing');
-  check('the error hover has a clear ERROR section', sectionHeadings.some(node => /ERROR/.test(node.textContent ?? '')), hoverText);
   check('the explanation is labeled separately', sectionHeadings.some(node => /WHAT THIS MEANS/.test(node.textContent ?? '')), hoverText);
   check('the likely cause is labeled separately', sectionHeadings.some(node => /COMMON CAUSE/.test(node.textContent ?? '')), hoverText);
   check('the example is labeled as an example', sectionHeadings.some(node => /EXAMPLE/.test(node.textContent ?? '')), hoverText);
+  check(
+    'the primary diagnostic appears exactly once in the hover',
+    hoverText.split("Cannot find name 'notDeclaredAnywhere'.").length - 1 === 1,
+    hoverText,
+  );
   const title = hover?.querySelector('h2');
   const body = hover?.querySelector('p');
   check(
-    'the error title is visually larger than its explanation',
+    'the main explanation title is visually larger than its prose',
     Boolean(title && body) &&
       Number.parseFloat(frameWindow.getComputedStyle(title!).fontSize) >
         Number.parseFloat(frameWindow.getComputedStyle(body!).fontSize),
@@ -2090,9 +2181,16 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
     const hebrewText = hebrewHover?.textContent ?? '';
     check('the error explanation follows the current Hebrew UI language', hebrewHoverAppeared, hebrewText);
     check('the Hebrew explanation is isolated as RTL text', hebrewText.includes('\u2067') && hebrewText.includes('\u2069'));
+    const hebrewMarkdown = hebrewHover?.querySelector('.markdown-hover');
+    check(
+      'Hebrew hover text starts at the right without moving the hover window',
+      Boolean(hebrewMarkdown) &&
+        frameWindow.getComputedStyle(hebrewMarkdown!).direction === 'rtl' &&
+        frameWindow.getComputedStyle(hebrewMarkdown!).textAlign === 'right',
+    );
     const hebrewCode = hebrewHover?.querySelector('div[data-code]');
     check(
-      'real error text and code stay LTR inside a Hebrew hover',
+      'code stays LTR inside a right-aligned Hebrew hover',
       Boolean(hebrewCode) && frameWindow.getComputedStyle(hebrewCode!).direction === 'ltr',
     );
 

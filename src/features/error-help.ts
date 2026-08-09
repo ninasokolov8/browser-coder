@@ -330,13 +330,11 @@ export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBloc
  * and the example cannot be mistaken for another instruction or another failure.
  */
 export function formatErrorHover(
-  message: string,
-  help?: ErrorHelpBlock,
+  help: ErrorHelpBlock,
   languageId = 'text',
   uiLanguage = 'en',
 ): string {
   const labels = {
-    error: translateInLanguage(uiLanguage, 'error.marker.error'),
     meaning: translateInLanguage(uiLanguage, 'error.marker.meaning'),
     cause: translateInLanguage(uiLanguage, 'error.marker.cause'),
     example: translateInLanguage(uiLanguage, 'error.marker.example'),
@@ -345,17 +343,18 @@ export function formatErrorHover(
   const colourHeading = (icon: string, label: string, colour: string, level: 2 | 3) =>
     `${'#'.repeat(level)} <span style="color:var(${colour});">${icon} ${escapeMarkdown(label)}</span>`;
   const prose = (text: string) =>
-    help?.rtl ? `\u2067${escapeMarkdown(text)}\u2069` : escapeMarkdown(text);
-  const safeMessage = message.trim().replace(/```/g, '``\u200b`');
-  const sections = [
-    `${colourHeading('⛔', labels.error, '--vscode-errorForeground', 2)}\n\n\`\`\`text\n${safeMessage}\n\`\`\``,
-  ];
-  if (!help) return sections[0];
+    help.rtl ? `\u2067${escapeMarkdown(text)}\u2069` : escapeMarkdown(text);
 
-  sections.push('---');
-  sections.push(
-    `${colourHeading('💡', labels.meaning, '--vscode-editorInfo-foreground', 3)}\n\n${prose(help.explanation)}`,
-  );
+  /*
+   * Monaco always renders the marker's own message at the top of its hover before
+   * appending registered hover-provider content. Repeating the message here created
+   * two identical errors in one card. This provider therefore starts with the
+   * teaching content; the literal compiler/runtime message remains Monaco's single
+   * built-in first row.
+   */
+  const sections = [
+    `${colourHeading('💡', labels.meaning, '--vscode-editorInfo-foreground', 2)}\n\n${prose(help.explanation)}`,
+  ];
   if (help.cause) {
     sections.push(
       `${colourHeading('⚠', labels.cause, '--vscode-editorWarning-foreground', 3)}\n\n${prose(help.cause)}`,

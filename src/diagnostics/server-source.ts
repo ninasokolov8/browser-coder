@@ -221,6 +221,51 @@ export function connectRunMarkers({
     return current ? buildErrorHelpBlock(key, current) : diagnostic.help;
   };
 
+  const rangeFor = (
+    model: monaco.editor.ITextModel,
+    diagnostic: Diagnostic,
+  ): monaco.Range => {
+    const line = Math.min(Math.max(1, diagnostic.line), model.getLineCount());
+    const endLine = Math.min(
+      Math.max(line, diagnostic.endLine ?? diagnostic.line),
+      model.getLineCount(),
+    );
+    const maxColumn = model.getLineMaxColumn(line);
+    const column = Math.min(Math.max(1, diagnostic.column), maxColumn);
+
+    if (endLine !== line) {
+      return new monaco.Range(
+        line,
+        column,
+        endLine,
+        Math.min(
+          Math.max(1, diagnostic.endColumn ?? model.getLineMaxColumn(endLine)),
+          model.getLineMaxColumn(endLine),
+        ),
+      );
+    }
+
+    let endColumn = diagnostic.endColumn
+      ? Math.min(Math.max(column, diagnostic.endColumn), maxColumn)
+      : undefined;
+
+    /*
+     * Most compilers give a start column but no end column. Underlining the rest of
+     * the line made two errors on one line overlap into one indistinguishable blur,
+     * and made the hover provider pick whichever diagnostic happened to be first.
+     * Prefer Monaco's word boundary; punctuation receives a precise one-character
+     * range. A diagnostic at the virtual end-of-line column remains zero-width.
+     */
+    if (endColumn === undefined) {
+      const word = model.getWordAtPosition({ lineNumber: line, column });
+      endColumn = word && column >= word.startColumn && column <= word.endColumn
+        ? word.endColumn
+        : Math.min(maxColumn, column + 1);
+    }
+
+    return new monaco.Range(line, column, line, endColumn);
+  };
+
   const apply = () => {
     for (const entry of models.all()) {
       const forDocument = store
@@ -229,11 +274,9 @@ export function connectRunMarkers({
 
       const markers: monaco.editor.IMarkerData[] = forDocument.map(diagnostic => {
         const model = entry.model;
-        // Clamp: a compiler can name a line past the end of what the editor now
+        // Clamp: a compiler can name a position past the end of what the editor now
         // holds, and Monaco throws on an out-of-range marker.
-        const line = Math.min(Math.max(1, diagnostic.line), model.getLineCount());
-        const maxColumn = model.getLineMaxColumn(line);
-        const column = Math.min(Math.max(1, diagnostic.column), maxColumn);
+        const range = rangeFor(model, diagnostic);
 
         return {
           severity:
@@ -243,12 +286,10 @@ export function connectRunMarkers({
           // Keep Monaco's marker and Problems-row message literal and concise. The
           // registered hover provider below adds the structured teaching card.
           message: diagnostic.message,
-          startLineNumber: line,
-          startColumn: column,
-          endLineNumber: line,
-          // Underline to the end of the line: compilers rarely give an end column,
-          // and a one-character squiggle is easy to miss.
-          endColumn: maxColumn,
+          startLineNumber: range.startLineNumber,
+          startColumn: range.startColumn,
+          endLineNumber: range.endLineNumber,
+          endColumn: range.endColumn,
           source: diagnostic.source,
         };
       });
@@ -266,28 +307,15 @@ export function connectRunMarkers({
     provideHover(model, position) {
       const entry = models.all().find(candidate => candidate.model === model);
       if (!entry) return null;
-      const diagnostic = store.forDocument(entry.id).find(item => {
-        const endLine = item.endLine ?? item.line;
-        return item.help && position.lineNumber >= item.line && position.lineNumber <= endLine;
-      });
+      const diagnostic = store.forDocument(entry.id).find(item =>
+        item.help && rangeFor(model, item).containsPosition(position));
       if (!diagnostic) return null;
       const help = helpFor(diagnostic, model.getLanguageId());
       if (!help) return null;
-      const line = Math.min(Math.max(1, diagnostic.line), model.getLineCount());
-      const endLine = Math.min(
-        Math.max(line, diagnostic.endLine ?? diagnostic.line),
-        model.getLineCount(),
-      );
       return {
-        range: new monaco.Range(
-          line,
-          Math.min(Math.max(1, diagnostic.column), model.getLineMaxColumn(line)),
-          endLine,
-          model.getLineMaxColumn(endLine),
-        ),
+        range: rangeFor(model, diagnostic),
         contents: [{
           value: formatErrorHover(
-            diagnostic.message,
             help,
             model.getLanguageId(),
             getUILang(),

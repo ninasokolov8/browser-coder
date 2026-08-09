@@ -258,3 +258,16 @@ describe('half-typed code does not panic', () => {
     assert.equal(problems[0].line, 1);
   });
 });
+
+describe('independent mistakes are never collapsed', () => {
+  test('all checked languages return every unmatched closer in source order', () => {
+    for (const language of ['python', 'java', 'php', 'csharp']) {
+      const problems = findSyntaxProblems(language, ')\n]\n}\n');
+      assert.deepEqual(
+        problems.map(problem => [problem.line, problem.column]),
+        [[1, 1], [2, 1], [3, 1]],
+        language,
+      );
+    }
+  });
+});

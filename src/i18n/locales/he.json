@@ -138,7 +138,6 @@
   "error.whatThisMeans": "מה זה אומר",
   "error.commonCause": "סיבה נפוצה",
   "error.typescript": "שגיאת TypeScript",
-  "error.marker.error": "השגיאה",
   "error.marker.meaning": "מה זה אומר",
   "error.marker.cause": "סיבה נפוצה",
   "error.marker.example": "דוגמה",

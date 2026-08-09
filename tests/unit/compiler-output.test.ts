@@ -31,6 +31,20 @@ describe('python', () => {
     assert.match(diagnostic.message, /NameError: name 'y' is not defined/);
   });
 
+  test('an exception without a message body', () => {
+    const output = [
+      'Traceback (most recent call last):',
+      '  File "main.py", line 4, in <module>',
+      '    input()',
+      'KeyboardInterrupt',
+    ].join('\n');
+
+    const [diagnostic] = parseCompilerOutput('python', output);
+    assert.equal(diagnostic.file, 'main.py');
+    assert.equal(diagnostic.line, 4);
+    assert.equal(diagnostic.message, 'KeyboardInterrupt');
+  });
+
   test('a SyntaxError', () => {
     const output = [
       '  File "main.py", line 1',
@@ -60,6 +74,35 @@ describe('python', () => {
     assert.equal(diagnostic.file, 'lib/util.py');
     assert.equal(diagnostic.line, 12);
     assert.match(diagnostic.message, /ZeroDivisionError/);
+  });
+
+  test('every preflight problem is preserved, including repeated names', () => {
+    const output = [
+      '  File "main.py", line 12',
+      '    t',
+      '    ^',
+      "NameError: name 't' is not defined",
+      '',
+      '  File "main.py", line 16',
+      '    g',
+      '    ^',
+      "NameError: name 'g' is not defined",
+      '',
+      '  File "main.py", line 25',
+      '    g',
+      '    ^',
+      "NameError: name 'g' is not defined",
+    ].join('\n');
+
+    const diagnostics = parseCompilerOutput('python', output);
+    assert.deepEqual(
+      diagnostics.map(diagnostic => [diagnostic.line, diagnostic.message]),
+      [
+        [12, "NameError: name 't' is not defined"],
+        [16, "NameError: name 'g' is not defined"],
+        [25, "NameError: name 'g' is not defined"],
+      ],
+    );
   });
 
   test('the caret gives a column relative to the source line', () => {
@@ -127,6 +170,19 @@ describe('csharp', () => {
 
     assert.equal(parseCompilerOutput('csharp', output).length, 1);
   });
+
+  test('several compiler errors are all reported', () => {
+    const output = [
+      "Program.cs(3,9): error CS0103: The name 'first' does not exist in the current context",
+      "Program.cs(4,9): error CS0103: The name 'second' does not exist in the current context",
+      "Program.cs(5,9): error CS0103: The name 'first' does not exist in the current context",
+    ].join('\n');
+
+    assert.deepEqual(
+      parseCompilerOutput('csharp', output).map(diagnostic => diagnostic.line),
+      [3, 4, 5],
+    );
+  });
 });
 
 describe('php', () => {
@@ -147,6 +203,19 @@ describe('php', () => {
     const output = 'PHP Warning:  Undefined variable $x in main.php on line 2';
     const [diagnostic] = parseCompilerOutput('php', output);
     assert.equal(diagnostic.severity, 'warning');
+  });
+
+  test('several reported PHP diagnostics are all preserved', () => {
+    const output = [
+      'PHP Warning: Undefined variable $first in main.php on line 2',
+      'PHP Warning: Undefined variable $second in main.php on line 3',
+      'PHP Warning: Undefined variable $first in main.php on line 4',
+    ].join('\n');
+
+    assert.deepEqual(
+      parseCompilerOutput('php', output).map(diagnostic => diagnostic.line),
+      [2, 3, 4],
+    );
   });
 });
 
