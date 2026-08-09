@@ -49,6 +49,20 @@ export class ExecutionRefused extends Error {
   }
 }
 
+/**
+ * Select the wall-clock budget for the spawned PROGRAM.
+ *
+ * A route owns session lifetime policy. In particular, the interactive route
+ * passes zero because a live, client-owned run may wait for input or stay paused
+ * in a debugger indefinitely. Language adapters may suggest a longer default for
+ * buffered runs, but must never override an explicit caller decision -- including
+ * zero. Keeping that precedence here prevents Java's compile-oriented 30 second
+ * default (and C#'s 45 second default) from silently becoming a debug-session cap.
+ */
+export function resolveRuntimeTimeout(explicitTimeoutMs, adapterTimeoutMs, fallbackTimeoutMs) {
+  return explicitTimeoutMs ?? adapterTimeoutMs ?? fallbackTimeoutMs;
+}
+
 export class ExecutionPipeline {
   /**
    * @param {object} options
@@ -409,7 +423,11 @@ export class ExecutionPipeline {
         args: prepared.args,
         cwd: prepared.cwd || job.dir,
         env: { ...sandboxEnv, ...(prepared.extraEnv || {}) },
-        timeoutMs: prepared.timeoutMs ?? timeoutMs,
+        timeoutMs: resolveRuntimeTimeout(
+          hooks.timeoutMs,
+          prepared.timeoutMs,
+          this.config.execution.timeoutMs,
+        ),
         maxOutputChars: this.config.execution.maxOutputChars,
         // Always true. This is the "every run is interactive" decision.
         stdin: true,

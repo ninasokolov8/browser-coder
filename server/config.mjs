@@ -212,16 +212,6 @@ export const CONFIG = {
     maxProjectFiles: intFromEnv('MAX_PROJECT_FILES', 300),
     maxPathChars: intFromEnv('MAX_PATH_CHARS', 300),
 
-    // Interactive stdin sessions stay alive while the user thinks, so they need
-    // their own kill switches: an idle timeout (a process blocked on input
-    // forever is a resource-hold), an absolute lifetime, and concurrency caps.
-    //
-    // The per-IP cap is deliberately loose. A whole classroom sits behind one
-    // NAT address, so it exists to stop one machine opening unbounded sessions,
-    // not to ration legitimate simultaneous use.
-    interactiveIdleTimeoutMs: intFromEnv('INTERACTIVE_IDLE_MS', 300000),
-    interactiveMaxLifetimeMs: intFromEnv('INTERACTIVE_MAX_MS', 900000),
-
     // Bounded by the same memory budget as buffered runs, because since A3/A4
     // every run IS a session holding a live process - the two limits describe the
     // same resource. Leaving this at a flat 200 while `maxConcurrent` derives to
@@ -231,6 +221,9 @@ export const CONFIG = {
       intFromEnv('MAX_INTERACTIVE_SESSIONS', 200),
       MAX_CONCURRENT,
     ),
+    // A live session is owned by its open response stream and has no idle or
+    // absolute time limit. These caps still prevent one browser or classroom NAT
+    // from opening an unbounded number; disconnect cleanup releases them promptly.
     maxInteractiveSessionsPerIp: intFromEnv('MAX_INTERACTIVE_PER_IP', 50),
   },
 

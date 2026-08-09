@@ -156,7 +156,8 @@ export const phpAdapter = {
         ...baseArgs(job.dir),
         // Deliberately NO max_execution_time: an interactive program legitimately
         // blocks on input, and PHP's own timer cannot tell waiting from looping.
-        // The session idle and lifetime timers are the guard, and they can.
+        // The owning connection and the user's Stop action control its lifetime;
+        // resource, output, and concurrency limits remain enforced by the server.
         entryAbsolute,
       ],
       cwd: job.dir,

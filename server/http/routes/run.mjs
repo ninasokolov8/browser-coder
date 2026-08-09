@@ -213,7 +213,7 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
      * Debugging is an additive flag on the existing route, not a new endpoint.
      *
      * A debug session IS an interactive session - a live process, streamed output,
-     * stdin, the same idle and lifetime timers, the same concurrency accounting. A
+     * stdin, the same connection ownership, the same concurrency accounting. A
      * parallel `/api/run/debug` would have been a second copy of all of that, and
      * the two would drift; V-40 and the stdin regex were both that shape.
      *
@@ -235,11 +235,8 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       finished: false,
       sawOutput: false,
       outputEndedMidLine: false,
-      idleTimer: null,
-      lifetimeTimer: null,
       waitingTimer: null,
       pingTimer: null,
-      serviceReason: null,
     };
 
     let sessionId = null;
@@ -274,22 +271,12 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       );
     };
 
-    const resetIdle = () => {
-      if (state.finished) return;
-      clearTimeout(state.idleTimer);
-      state.idleTimer = setTimeout(() => {
-        state.serviceReason = TerminationReason.IDLE_TIMEOUT;
-        handle?.stop(TerminationReason.IDLE_TIMEOUT);
-      }, config.execution.interactiveIdleTimeoutMs);
-    };
-
     const onOutput = (type, text) => {
       if (state.finished || !text) return;
       send({ type, data: text });
       state.sawOutput = true;
       // Only stdout counts: a stderr warning ending mid-line is not a prompt.
       if (type === 'stdout') state.outputEndedMidLine = !text.endsWith('\n');
-      resetIdle();
       armWaiting();
     };
 
@@ -334,9 +321,10 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
         { language, version, code, files, entryPoint },
         {
           jobKind: 'session',
-          // No wall-clock run timeout: an interactive program legitimately blocks
-          // on input, and a run timer cannot tell waiting from looping. The idle
-          // and lifetime timers are the guard, and they can.
+          // No wall-clock run timeout: an interactive program may legitimately wait
+          // for input or stay paused in a debugger for as long as its owner chooses.
+          // Resource/output/concurrency limits still apply, and the response close
+          // handler above stops the process as soon as its owning page disconnects.
           timeoutMs: 0,
           onStdout: text => onOutput('stdout', text),
           onStderr: text => onOutput('stderr', text),
@@ -346,10 +334,6 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
           // program printed just before pausing, which two channels could not
           // guarantee - and the student would see the pause before the print.
           onDebugEvent: event => {
-            // Counts as activity: a program paused at a breakpoint is doing exactly
-            // what it was asked to, and the idle timer must not reap it while the
-            // student reads their variables.
-            resetIdle();
             send(event);
           },
         },
@@ -407,7 +391,6 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       jobDir: handle.jobDir,
       finished: false,
       onActivity: () => {
-        resetIdle();
         armWaiting();
       },
     });
@@ -443,28 +426,13 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
     // connection is active.
     state.pingTimer = setInterval(() => send({ type: 'ping' }), PING_INTERVAL_MS);
 
-    state.lifetimeTimer = setTimeout(() => {
-      state.serviceReason = TerminationReason.LIFETIME_LIMIT;
-      handle.stop(TerminationReason.LIFETIME_LIMIT);
-    }, config.execution.interactiveMaxLifetimeMs);
-
-    resetIdle();
     armWaiting();
 
     try {
       const result = await handle.done;
       state.finished = true;
-      clearTimeout(state.idleTimer);
-      clearTimeout(state.lifetimeTimer);
       clearTimeout(state.waitingTimer);
       clearInterval(state.pingTimer);
-
-      // A service-initiated reason recorded here outranks what the OS reported,
-      // for the same reason the process runner prefers it: "killed by SIGKILL" is
-      // true but useless; "idle timeout" is what happened.
-      const termination = state.serviceReason
-        ? { ...result.termination, reason: state.serviceReason, succeeded: false }
-        : result.termination;
 
       // v1 announced truncation as a stderr event before the exit event.
       if (result.truncated) {
@@ -474,11 +442,11 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
 
       send({
         type: 'exit',
-        exitCode: toLegacyExitCode(termination),
+        exitCode: toLegacyExitCode(result.termination),
         durationMs: result.durationMs,
-        note: toLegacyNote(termination),
+        note: toLegacyNote(result.termination),
         turtleData: result.graphics || null,
-        terminationReason: termination.reason,
+        terminationReason: result.termination.reason,
       });
     } catch (error) {
       state.finished = true;
@@ -487,8 +455,6 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       send({ type: 'exit', exitCode: -1, durationMs: 0, note: null, turtleData: null });
     } finally {
       state.finished = true;
-      clearTimeout(state.idleTimer);
-      clearTimeout(state.lifetimeTimer);
       clearTimeout(state.waitingTimer);
       clearInterval(state.pingTimer);
       if (sessionId) sessions.remove(sessionId);

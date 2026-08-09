@@ -38,8 +38,14 @@ import { initializeOutputTracing } from './features/output-trace.ts';
 import { initializeErrorFirstAid } from './features/error-first-aid.ts';
 import { renderHover } from './features/hover-content';
 import { getKeywordExplanation as getKeywordExplanationForSeam } from './languages';
+import { stopInteractiveOnPageExit } from './components/interactive-console';
 
 async function bootstrap(): Promise<void> {
+  // A live run belongs to this page. `pagehide` covers navigation, closing the tab,
+  // and an embedding host removing the IDE; unlike `visibilitychange`, it does not
+  // kill a session just because the student switches tabs to think or research.
+  window.addEventListener('pagehide', stopInteractiveOnPageExit);
+
   setStatus(t('status.loadingLanguages'));
   applyModeClasses();
 
