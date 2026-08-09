@@ -61,6 +61,7 @@ export function connectCheckDiagnostics({
   store,
   service,
   activeDocumentId,
+  onDidChangeActiveDocument,
 }: {
   store: DiagnosticsStore;
   service: WorkspaceService;
@@ -74,6 +75,12 @@ export function connectCheckDiagnostics({
    * file regardless, so one rule serves all four.
    */
   activeDocumentId: () => string | null;
+  /**
+   * Active tabs are selected after a Step-Up workspace replacement event finishes.
+   * Without this signal, the replacement schedules while there is no active document
+   * and the authoritative compiler check never runs for the newly loaded project.
+   */
+  onDidChangeActiveDocument: (listener: () => void) => Disposable;
 }): Disposable {
   const subscriptions = new Map<string, Disposable>();
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -199,6 +206,7 @@ export function connectCheckDiagnostics({
     // Switching file, renaming, or adding one changes what should be checked.
     schedule();
   });
+  const activeDocumentSubscription = onDidChangeActiveDocument(schedule);
   reconcile();
   schedule();
 
@@ -206,6 +214,7 @@ export function connectCheckDiagnostics({
     dispose: () => {
       disposed = true;
       workspaceSubscription.dispose();
+      activeDocumentSubscription.dispose();
       for (const subscription of subscriptions.values()) subscription.dispose();
       subscriptions.clear();
       if (timer) clearTimeout(timer);

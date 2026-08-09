@@ -301,6 +301,11 @@ export function connectRunMarkers({
   const subscription = store.onDidChange(apply);
   // A document appearing or disappearing changes which models need markers.
   const workspaceSubscription = service.onDidChangeWorkspace(apply);
+  // A Step-Up project is added to the workspace before its active Monaco model is
+  // acquired. The diagnostics may therefore already exist when the first model
+  // appears. Re-apply on the model lifecycle too, or the status count updates while
+  // the editor stays visually clean until another diagnostic happens to arrive.
+  const modelSubscription = models.onDidChange(apply);
   const hoverSubscriptions = [
     'python', 'javascript', 'typescript', 'java', 'php', 'csharp',
   ].map(languageId => monaco.languages.registerHoverProvider(languageId, {
@@ -332,6 +337,7 @@ export function connectRunMarkers({
     dispose: () => {
       subscription.dispose();
       workspaceSubscription.dispose();
+      modelSubscription.dispose();
       for (const hoverSubscription of hoverSubscriptions) hoverSubscription.dispose();
     },
   };

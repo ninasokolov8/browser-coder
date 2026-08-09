@@ -31,9 +31,10 @@ import * as monaco from 'monaco-editor';
 
 import { MonacoBuffer } from './buffer.ts';
 import { MemoryBuffer } from '../buffer.ts';
+import { Emitter } from '../emitter.ts';
 import type { WorkspaceDocument } from '../document.ts';
 import type { WorkspaceService } from '../service.ts';
-import type { DocumentId } from '../types.ts';
+import type { Disposable, DocumentId } from '../types.ts';
 import { ASSET_LANGUAGE_ID, assetTypeFor } from '../assets.ts';
 
 /** Root prefix, so workspace files never collide with Monaco's own lib URIs. */
@@ -54,6 +55,18 @@ export class MonacoModelRegistry {
   #service: WorkspaceService;
   #languages: LanguageLookup;
   #entries = new Map<DocumentId, Entry>();
+  #onDidChange = new Emitter<void>();
+
+  /**
+   * Fires when the set of live Monaco models changes.
+   *
+   * Workspace changes and model changes are deliberately separate lifecycles. A
+   * Step-Up project is installed in the workspace first and its active editor model
+   * is acquired afterwards. Features that render into models must therefore observe
+   * this event instead of assuming every workspace document already has a model.
+   */
+  readonly onDidChange = (listener: () => void): Disposable =>
+    this.#onDidChange.event(listener);
 
   constructor(service: WorkspaceService, languages: LanguageLookup) {
     this.#service = service;
@@ -154,6 +167,7 @@ export class MonacoModelRegistry {
     }
 
     entry.model.dispose();
+    this.#onDidChange.fire();
   }
 
   releaseAll(): void {
@@ -230,6 +244,7 @@ export class MonacoModelRegistry {
 
     const entry: Entry = { model, path, monacoLanguage };
     this.#entries.set(document.id, entry);
+    this.#onDidChange.fire();
     return entry;
   }
 
@@ -266,5 +281,6 @@ export class MonacoModelRegistry {
     const outgoing = entry.model;
     this.#entries.set(document.id, { model: replacement, path, monacoLanguage });
     if (outgoing !== replacement) outgoing.dispose();
+    this.#onDidChange.fire();
   }
 }
