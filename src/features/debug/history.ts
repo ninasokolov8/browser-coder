@@ -27,6 +27,7 @@
  */
 
 import type { DebugStop } from './state.ts';
+import { t } from '../../i18n/index.ts';
 
 /**
  * How many stops to keep.
@@ -64,10 +65,10 @@ export function historyValueLabel(text: string, type: string | null, maxLength =
   const object = text.match(/([A-Za-z_]\w*) object at 0x[0-9a-f]+>$/i);
   if (object) {
     const className = object[1].replace(/^_+/, '') || type?.replace(/^_+/, '') || 'Object';
-    return `${className} object`;
+    return t('debug.objectValue', { type: className });
   }
 
-  const withoutAddress = text.replace(/0x[0-9a-f]+/gi, 'memory address');
+  const withoutAddress = text.replace(/0x[0-9a-f]+/gi, t('debug.memoryAddress'));
   if (withoutAddress.length <= maxLength) return withoutAddress;
   return `${withoutAddress.slice(0, Math.max(1, maxLength - 1))}…`;
 }

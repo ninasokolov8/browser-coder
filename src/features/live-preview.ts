@@ -3,6 +3,7 @@ import { normalizeProjectPath } from '../components/project-path';
 import { setOutput, setStatus } from '../components/output';
 import { collectWorkspaceSnapshot, type WorkspaceFile } from './workspace';
 import { markdownToPage } from './markdown';
+import { t, tn } from '../i18n/index.ts';
 
 const PREVIEW_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 
@@ -131,7 +132,7 @@ function readPreviewId(payload: any): string {
     }
   }
 
-  throw new Error('The preview server returned an invalid short preview ID.');
+  throw new Error(t('preview.invalidId'));
 }
 
 function preparePreviewFiles(files: WorkspaceFile[]): WorkspaceFile[] {
@@ -183,7 +184,7 @@ async function publishPreview(
 
   if (!response.ok) {
     throw new Error(
-      payload?.error || `Preview publishing failed with HTTP ${response.status}`,
+      payload?.error || t('preview.publishHttpError', { status: response.status }),
     );
   }
 
@@ -199,25 +200,25 @@ async function publishPreview(
 export async function openWebPreview(): Promise<void> {
   const tabManager = runtime.tabManager;
   const storage = runtime.storage;
-  if (!tabManager || !storage) throw new Error('IDE is not ready');
+  if (!tabManager || !storage) throw new Error(t('error.ideNotReady'));
 
   const activeTab = tabManager.getActiveTab();
   if (!activeTab || !isPreviewable(activeTab.file)) {
-    throw new Error('Open an HTML, CSS or Markdown file before starting the web preview.');
+    throw new Error(t('preview.openPreviewableFirst'));
   }
 
   // Open synchronously so browser popup blockers do not block the preview tab
   // while the workspace snapshot is saved and published.
   const previewWindow = window.open('', '_blank');
   if (!previewWindow) {
-    throw new Error('The browser blocked the preview tab. Allow popups for this site.');
+    throw new Error(t('preview.popupBlocked'));
   }
 
   previewWindow.opener = null;
   previewWindow.document.open();
   previewWindow.document.write(
-    '<!doctype html><title>Publishing preview…</title>' +
-    '<p style="font:16px system-ui;padding:24px">Publishing shareable preview…</p>',
+    `<!doctype html><title>${t('preview.publishing')}</title>` +
+    `<p style="font:16px system-ui;padding:24px">${t('preview.publishingShareable')}</p>`,
   );
   previewWindow.document.close();
 
@@ -237,7 +238,7 @@ export async function openWebPreview(): Promise<void> {
       // images in the notes - `![maze](maze.svg)` - resolve against the same files
       // the HTML preview would see.
       const source = files.find(file => file.path === activePath);
-      if (!source) throw new Error(`Markdown file was not found: ${activePath}`);
+      if (!source) throw new Error(t('preview.markdownNotFound', { path: activePath }));
 
       const renderedPath = `${activePath.replace(/\.[^./]+$/, '')}.preview.html`;
       const rendered: WorkspaceFile = {
@@ -261,11 +262,11 @@ export async function openWebPreview(): Promise<void> {
       if (htmlEntries.length === 0) {
         throw new Error(
           [
-            'CSS files cannot run by themselves.',
-            `"${activePath}" is not linked from any HTML file in the workspace.`,
-            'Add it to an HTML file with:',
+            t('preview.cssCannotRunAlone'),
+            t('preview.cssNotLinked', { path: activePath }),
+            t('preview.addToHtml'),
             `<link rel="stylesheet" href="./${activePath.split('/').pop()}">`,
-            'Then run the HTML file, or run this CSS file again.',
+            t('preview.runHtmlOrCssAgain'),
           ].join('\n'),
         );
       }
@@ -273,8 +274,8 @@ export async function openWebPreview(): Promise<void> {
       if (htmlEntries.length > 1) {
         throw new Error(
           [
-            'This CSS file is used by more than one HTML page.',
-            'Open and run the page you want to preview:',
+            t('preview.cssUsedByMany'),
+            t('preview.chooseHtmlPage'),
             ...htmlEntries.map(file => `- ${normalizeProjectPath(file.path)}`),
           ].join('\n'),
         );
@@ -284,7 +285,7 @@ export async function openWebPreview(): Promise<void> {
     }
 
     if (!entry) {
-      throw new Error(`HTML entry file was not found for: ${activePath}`);
+      throw new Error(t('preview.htmlEntryNotFound', { path: activePath }));
     }
 
     const entryPath = normalizeProjectPath(entry.path);
@@ -292,14 +293,14 @@ export async function openWebPreview(): Promise<void> {
 
     previewWindow.location.replace(published.previewUrl);
 
-    setStatus('Shareable preview opened ✅');
+    setStatus(t('preview.opened'));
     setOutput(
       [
-        `Shareable preview: ${published.previewUrl}`,
-        `Entry page: ${entryPath}`,
-        `Published project files: ${files.length}`,
-        isCssFile(activeTab.file) ? `Stylesheet: ${activePath}` : '',
-        published.expiresAt ? `Expires: ${published.expiresAt}` : '',
+        t('preview.shareableUrl', { url: published.previewUrl }),
+        t('preview.entryPage', { path: entryPath }),
+        tn('preview.publishedFiles', files.length),
+        isCssFile(activeTab.file) ? t('preview.stylesheet', { path: activePath }) : '',
+        published.expiresAt ? t('preview.expires', { time: published.expiresAt }) : '',
       ].filter(Boolean).join('\n\n'),
     );
   } catch (error) {
@@ -316,24 +317,26 @@ export function initializeWebPreview(): void {
   button.id = 'open-web-preview';
   button.className = 'btn btn-secondary';
   button.type = 'button';
-  button.title = 'Open the current HTML page, or the HTML page using this CSS file';
-  button.innerHTML = '🌐 <span>Open Preview</span>';
+  button.title = t('preview.openHint');
+  button.innerHTML = `🌐 <span>${t('preview.open')}</span>`;
   button.addEventListener('click', () => {
     void openWebPreview().catch(error => {
-      setStatus('Preview failed');
-      setOutput(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
+      setStatus(t('preview.failed'));
+      setOutput(`${t('error.label')}: ${error instanceof Error ? error.message : String(error)}`);
     });
   });
   runButton.insertAdjacentElement('afterend', button);
 
   const updateVisibility = () => {
     const active = runtime.tabManager?.getActiveTab();
+    const label = button.querySelector('span');
+    if (label) label.textContent = t('preview.open');
     button.hidden = !isPreviewable(active?.file);
     button.title = isCssFile(active?.file)
-      ? 'Open the HTML page that uses this stylesheet'
+      ? t('preview.openStylesheetPage')
       : isMarkdownFile(active?.file)
-        ? 'Render this Markdown file and open it in a new browser tab'
-        : 'Open the current HTML file in a new browser tab';
+        ? t('preview.openMarkdown')
+        : t('preview.openHtml');
   };
 
   updateVisibility();
@@ -342,4 +345,5 @@ export function initializeWebPreview(): void {
     subtree: true,
     attributes: true,
   });
+  window.addEventListener('languageChanged', updateVisibility);
 }

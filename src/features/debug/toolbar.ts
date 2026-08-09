@@ -22,10 +22,12 @@
  */
 
 import type { DebugSnapshot } from './state.ts';
+import { t } from '../../i18n/index.ts';
 
 export interface ToolbarAction {
   readonly id: string;
   readonly label: string;
+  readonly labelKey?: string;
   /** Shown in the tooltip after the label. */
   readonly shortcut: string;
   readonly icon: string;
@@ -84,6 +86,7 @@ export function debugActions(
     {
       id: 'debug-continue',
       label: 'Continue',
+      labelKey: 'debug.continue',
       shortcut: 'F5',
       icon: ICONS.continue,
       enabled: () => capabilities().canContinue,
@@ -92,6 +95,7 @@ export function debugActions(
     {
       id: 'debug-step-over',
       label: 'Step over',
+      labelKey: 'debug.stepOver',
       shortcut: 'F10',
       icon: ICONS.stepOver,
       enabled: () => capabilities().canStepOver,
@@ -100,6 +104,7 @@ export function debugActions(
     {
       id: 'debug-step-in',
       label: 'Step into',
+      labelKey: 'debug.stepInto',
       shortcut: 'F11',
       icon: ICONS.stepInto,
       enabled: () => capabilities().canStepIn,
@@ -108,6 +113,7 @@ export function debugActions(
     {
       id: 'debug-step-out',
       label: 'Step out',
+      labelKey: 'debug.stepOut',
       shortcut: 'Shift+F11',
       icon: ICONS.stepOut,
       enabled: () => capabilities().canStepOut,
@@ -116,6 +122,7 @@ export function debugActions(
     {
       id: 'debug-stop',
       label: 'Stop',
+      labelKey: 'titlebar.stop',
       shortcut: 'Shift+F5',
       icon: ICONS.stop,
       tone: 'stop',
@@ -135,19 +142,19 @@ export function debugActions(
 export function describeStatus(snapshot: DebugSnapshot): string {
   switch (snapshot.status) {
     case 'starting':
-      return 'Starting…';
+      return t('status.starting');
     case 'running':
-      return 'Running — it will pause at your next breakpoint';
+      return t('debug.runningUntilBreakpoint');
     case 'paused':
       return snapshot.stop
-        ? `Paused on line ${snapshot.stop.line}`
-        : 'Paused';
+        ? t('debug.pausedOnLine', { line: snapshot.stop.line })
+        : t('debug.paused');
     case 'postMortem':
       return snapshot.stop
-        ? `Stopped by an error on line ${snapshot.stop.line}`
-        : 'Stopped by an error';
+        ? t('debug.stoppedByErrorOnLine', { line: snapshot.stop.line })
+        : t('debug.stoppedByError');
     case 'ended':
-      return 'Finished';
+      return t('debug.finished');
     default:
       return '';
   }
@@ -159,7 +166,17 @@ export function buildToolbar(
   actions: readonly ToolbarAction[],
   currentSnapshot: () => DebugSnapshot,
 ): void {
-  if (host.dataset.built === '1') return;
+  if (host.dataset.built === '1') {
+    for (const action of actions) {
+      const button = document.getElementById(action.id) as HTMLButtonElement | null;
+      if (!button) continue;
+      const label = action.labelKey ? t(action.labelKey) : action.label;
+      button.title = action.shortcut ? `${label} (${action.shortcut})` : label;
+      const text = button.querySelector('.debug-btn-label');
+      if (text) text.textContent = label;
+    }
+    return;
+  }
   host.dataset.built = '1';
   host.textContent = '';
 
@@ -177,8 +194,9 @@ export function buildToolbar(
     button.id = action.id;
     button.type = 'button';
     button.className = `debug-btn${action.tone === 'stop' ? ' debug-btn-stop' : ''}`;
-    button.title = action.shortcut ? `${action.label} (${action.shortcut})` : action.label;
-    button.innerHTML = `${icon(action.icon)}<span class="debug-btn-label">${action.label}</span>`;
+    const label = action.labelKey ? t(action.labelKey) : action.label;
+    button.title = action.shortcut ? `${label} (${action.shortcut})` : label;
+    button.innerHTML = `${icon(action.icon)}<span class="debug-btn-label">${label}</span>`;
 
     button.addEventListener('click', () => {
       // Re-checked at click time rather than trusting the disabled attribute: a stale

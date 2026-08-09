@@ -1,5 +1,5 @@
 # Browser Coder - Production Docker Compose for DigitalOcean
-# 
+#
 # This file uses pre-built images from GitHub Container Registry
 # for faster deployments on the production server.
 #
@@ -133,6 +133,15 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    cap_drop:
+      - ALL
+    # The entrypoint starts as root only long enough to drop to uid/gid 1001.
+    # su-exec needs SETUID/SETGID. The root-owned init process needs KILL to
+    # forward shutdown signals to Node after that uid transition.
+    cap_add:
+      - SETUID
+      - SETGID
+      - KILL
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
       - /app/sandbox:noexec,nosuid,size=512M,uid=1001,gid=1001

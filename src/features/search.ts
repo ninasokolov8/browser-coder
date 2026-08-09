@@ -15,11 +15,11 @@ import { setOutput } from '../components/output';
 import { escapeHtml } from '../components/html-escape.ts';
 import { isWorkspaceEntryHidden } from './workspace-visibility';
 import { lazyRef } from '../app/lazy';
+import { t, tn } from '../i18n/index.ts';
 
 const editor = lazyRef(() => runtime.editor, 'editor');
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 const storage = lazyRef(() => runtime.storage, 'storage');
-const fileModels = runtime.fileModels;
 
 // ===== SEARCH FUNCTIONALITY =====
 interface SearchMatch {
@@ -198,16 +198,14 @@ btnReplaceAll.addEventListener('click', async () => {
   );
 
   if (matchCount === 0) {
-    setOutput('No matches to replace in current file');
+    setOutput(t('search.noMatchesCurrentFile'));
     return;
   }
 
   await persistReplacedContent(activeTab.file.id, newContent);
   await performSearch();
 
-  setOutput(
-    `Replaced ${matchCount} occurrence${matchCount === 1 ? '' : 's'} in ${activeTab.file.name}`
-  );
+  setOutput(tn('search.replacedInFile', matchCount, { name: activeTab.file.name }));
 });
 
 // Debounced search on input
@@ -218,11 +216,11 @@ searchInput.addEventListener('input', () => {
 
 async function performSearch() {
   const query = searchInput.value;
-  
+
   if (!query || query.length < 1) {
     currentSearchResults = [];
     searchSummaryEl.classList.add('hidden');
-    searchResultsEl.innerHTML = '<div class="search-no-results">Type to search across all files</div>';
+    showSearchMessage('search.noResults');
     return;
   }
 
@@ -267,7 +265,7 @@ function renderSearchResults() {
   if (currentSearchResults.length === 0) {
     if (searchInput.value) {
       searchSummaryEl.classList.add('hidden');
-      searchResultsEl.innerHTML = '<div class="search-no-results">No results found</div>';
+      showSearchMessage('search.noneFound');
     }
     return;
   }
@@ -275,8 +273,11 @@ function renderSearchResults() {
   // Calculate totals
   const totalMatches = currentSearchResults.reduce((sum, r) => sum + r.matches.length, 0);
   const totalFiles = currentSearchResults.length;
-  
-  searchCountEl.textContent = `${totalMatches} result${totalMatches !== 1 ? 's' : ''} in ${totalFiles} file${totalFiles !== 1 ? 's' : ''}`;
+
+  searchCountEl.textContent = t('search.summary', {
+    results: tn('search.resultCount', totalMatches),
+    files: tn('search.fileCount', totalFiles),
+  });
   searchSummaryEl.classList.remove('hidden');
 
   // Render file results
@@ -284,7 +285,7 @@ function renderSearchResults() {
   for (const result of currentSearchResults) {
     const lang = getLanguage(result.language);
     const icon = lang?.icon || '📄';
-    
+
     html += `
       <div class="search-file" data-file-id="${result.fileId}">
         <span class="search-file-icon">${icon}</span>
@@ -297,7 +298,7 @@ function renderSearchResults() {
       const beforeMatch = match.text.substring(0, match.matchStart);
       const matchText = match.text.substring(match.matchStart, match.matchEnd);
       const afterMatch = match.text.substring(match.matchEnd);
-      
+
       html += `
         <div class="search-match" data-file-id="${match.fileId}" data-line="${match.line}" data-column="${match.column}">
           <span class="search-match-line">${match.line}</span>
@@ -305,7 +306,7 @@ function renderSearchResults() {
             ${escapeHtml(beforeMatch.slice(-30))}<span class="search-match-highlight">${escapeHtml(matchText)}</span>${escapeHtml(afterMatch.slice(0, 50))}
           </span>
           <span class="search-match-actions">
-            <button class="search-match-btn" data-action="replace" title="Replace">↻</button>
+            <button class="search-match-btn" data-action="replace" title="${escapeHtml(t('search.replaceOne'))}">↻</button>
           </span>
         </div>
       `;
@@ -314,6 +315,14 @@ function renderSearchResults() {
 
   searchResultsEl.innerHTML = html;
   attachSearchResultHandlers();
+}
+
+function showSearchMessage(key: string): void {
+  searchResultsEl.textContent = '';
+  const message = document.createElement('div');
+  message.className = 'search-no-results';
+  message.textContent = t(key);
+  searchResultsEl.appendChild(message);
 }
 
 
@@ -331,11 +340,11 @@ function attachSearchResultHandlers() {
   searchResultsEl.querySelectorAll('.search-match').forEach(el => {
     el.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).dataset.action === 'replace') return;
-      
+
       const fileId = (el as HTMLElement).dataset.fileId!;
       const line = parseInt((el as HTMLElement).dataset.line!);
       const column = parseInt((el as HTMLElement).dataset.column!);
-      
+
       // Switch to file and go to position
       tabManager.switchToTab(fileId);
       setTimeout(() => {
@@ -351,7 +360,7 @@ function attachSearchResultHandlers() {
       const fileId = (el as HTMLElement).dataset.fileId!;
       const line = parseInt((el as HTMLElement).dataset.line!);
       const column = parseInt((el as HTMLElement).dataset.column!);
-      
+
       await replaceSingleMatch(fileId, line, column, searchInput.value, replaceInput.value);
     });
   });
@@ -376,7 +385,7 @@ async function replaceSingleMatch(
   try {
     searchPattern = buildSearchPattern(searchText, false);
   } catch {
-    setOutput('Invalid search pattern');
+    setOutput(t('search.invalidPattern'));
     return;
   }
 
@@ -389,7 +398,7 @@ async function replaceSingleMatch(
   // match still begins exactly at the clicked result's recorded column.
   if (!match || match.index !== 0) {
     await performSearch();
-    setOutput('That search result changed. Search results were refreshed.');
+    setOutput(t('search.resultChanged'));
     return;
   }
 
@@ -412,9 +421,10 @@ btnReplaceAllFiles.addEventListener('click', async () => {
     0
   );
 
-  const confirmed = confirm(
-    `Replace ${totalMatches} occurrences in ${currentSearchResults.length} files?`
-  );
+  const confirmed = confirm(t('search.confirmReplaceAll', {
+    occurrences: tn('search.occurrenceCount', totalMatches),
+    files: tn('search.fileCount', currentSearchResults.length),
+  }));
   if (!confirmed) return;
 
   let replacedCount = 0;
@@ -445,8 +455,13 @@ btnReplaceAllFiles.addEventListener('click', async () => {
   }
 
   await performSearch();
-  setOutput(
-    `Replaced ${replacedCount} occurrence${replacedCount === 1 ? '' : 's'} in ${changedFiles} file${changedFiles === 1 ? '' : 's'}`
-  );
+  setOutput(t('search.replacedAcrossFiles', {
+    occurrences: tn('search.occurrenceCount', replacedCount),
+    files: tn('search.fileCount', changedFiles),
+  }));
 });
 
+window.addEventListener('languageChanged', () => {
+  if (searchInput.value.trim()) renderSearchResults();
+  else showSearchMessage('search.noResults');
+});

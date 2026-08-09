@@ -24,7 +24,7 @@ import {
 import { setOutput } from '../components/output';
 import { clearTurtleCanvas } from '../components/turtle';
 import { applyTheme } from '../components/monaco-config';
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { updateGridForRTL } from './ui-layout';
 import { renderFileTree } from './explorer';
 import {
@@ -405,15 +405,16 @@ export function initializeLayout(): void {
 
   // ===== Status bar =====
 
-  editor.onDidChangeCursorPosition(event => {
-    statusLineEl.textContent = t(
-      'status.line',
-      {
-        line: event.position.lineNumber,
-        col: event.position.column,
-      }
-    );
-  });
+  const updateCursorStatus = () => {
+    const position = editor.getPosition() ?? { lineNumber: 1, column: 1 };
+    statusLineEl.textContent = t('status.line', {
+      line: position.lineNumber,
+      col: position.column,
+    });
+  };
+  editor.onDidChangeCursorPosition(updateCursorStatus);
+  window.addEventListener('languageChanged', updateCursorStatus);
+  updateCursorStatus();
 
   statusLangEl.textContent =
     runtime.currentLang?.name ?? '';

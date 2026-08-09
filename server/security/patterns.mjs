@@ -101,9 +101,9 @@ const SECURITY = {
       /\bqueueMicrotask\s*\(/i,
       /\bsetImmediate\s*\(/i,
     ],
-    
+
     typescript: [], // Will inherit JavaScript patterns
-    
+
     // Python is scanned with comments and string literals removed first (see
     // stripPythonCommentsAndStrings), so a blocked word inside a comment, a
     // docstring, a printed message or a file name can never refuse a program -
@@ -312,7 +312,7 @@ const SECURITY = {
       /\bset_error_handler\s*\(/i,
       /\bset_exception_handler\s*\(/i,
     ],
-    
+
     java: [
       // Runtime execution
       /Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec\s*\(/i,
@@ -568,7 +568,7 @@ const SECURITY = {
       /\bEventWaitHandle\b/i,
     ],
   },
-  
+
   // Messages for blocked patterns
   messages: {
     javascript: 'Blocked: System access, file operations, network, and shell commands are disabled for security',

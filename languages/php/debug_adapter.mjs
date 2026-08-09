@@ -27,9 +27,9 @@
  */
 
 import path from 'node:path';
-import net from 'node:net';
 import { spawn } from 'node:child_process';
 
+import { createIdeDebugChannel } from '../shared/debug-channel.mjs';
 import {
   DbgpListener,
   pathFromUri,
@@ -37,6 +37,7 @@ import {
   uriFromPath,
   workspaceRelative as relativeToRoot,
 } from './dbgp.mjs';
+import { xdebugLoadArgs } from './xdebug-loader.mjs';
 
 const PORT = Number(process.env.BROWSER_CODER_DEBUG_PORT || 0);
 const TOKEN = process.env.BROWSER_CODER_DEBUG_TOKEN || '';
@@ -68,23 +69,12 @@ const workspaceRoot = path.resolve(WORKSPACE);
 
 // ── The IDE channel ─────────────────────────────────────────────────────────
 
-const channel = net.connect(PORT, '127.0.0.1');
-channel.setNoDelay(true);
-
-let channelBuffer = '';
-let channelClosed = false;
-
-function send(frame) {
-  if (channelClosed || channel.destroyed) return;
-  try {
-    channel.write(`${JSON.stringify(frame)}\n`);
-  } catch {
-    // Losing the debugger must not lose the run.
-  }
-}
-
-channel.on('error', () => { channelClosed = true; });
-channel.on('close', () => { channelClosed = true; });
+const {
+  socket: channel,
+  send,
+  close: closeChannel,
+  handleCommands: handleChannelCommands,
+} = createIdeDebugChannel(PORT);
 
 // ── Paths ───────────────────────────────────────────────────────────────────
 
@@ -105,7 +95,7 @@ const php = spawn(
   PHP_BIN,
   [
     ...PHP_ARGS,
-    '-dzend_extension=xdebug',
+    ...xdebugLoadArgs(PHP_BIN, PHP_ARGS),
     // `debug` alone: no profiling, no tracing, no code coverage. Each of the other
     // modes costs real time on every function call and none of them is wanted here.
     '-dxdebug.mode=debug',
@@ -150,10 +140,7 @@ php.on('exit', code => {
 function finish() {
   try { session?.close(); } catch { /* already gone */ }
   try { listener.close(); } catch { /* already closed */ }
-  if (!channelClosed) {
-    channelClosed = true;
-    try { channel.end(); } catch { /* already gone */ }
-  }
+  closeChannel();
 
   const leave = () => process.exit(exitCode);
 
@@ -542,30 +529,12 @@ async function handleCommand(command) {
  */
 let markReady = () => {};
 const ready = new Promise(resolve => { markReady = resolve; });
-let handling = ready;
-
-channel.on('data', chunk => {
-  channelBuffer += chunk.toString('utf8');
-  let index;
-  while ((index = channelBuffer.indexOf('\n')) !== -1) {
-    const line = channelBuffer.slice(0, index);
-    channelBuffer = channelBuffer.slice(index + 1);
-    if (!line.trim()) continue;
-
-    let command;
-    try {
-      command = JSON.parse(line);
-    } catch {
-      continue;
-    }
-
-    handling = handling.then(
-      () => handleCommand(command),
-      () => handleCommand(command),
-    ).catch(error => {
-      process.stderr.write(`php debug adapter: ${error?.stack || error}\n`);
-    });
-  }
+const commandQueue = handleChannelCommands({
+  ready,
+  handleCommand,
+  reportError(error) {
+    process.stderr.write(`php debug adapter: ${error?.stack || error}\n`);
+  },
 });
 
 // ── Startup ─────────────────────────────────────────────────────────────────
@@ -599,4 +568,4 @@ markReady();
 await firstBreakpointsCommand;
 
 send({ type: 'started' });
-handling = handling.then(() => proceed('run', 'breakpoint'));
+await commandQueue.enqueue(() => proceed('run', 'breakpoint'));

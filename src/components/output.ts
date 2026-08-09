@@ -31,13 +31,6 @@ export function setOutput(text: string) {
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
 
-export function appendOutput(text: string) {
-  panelContentEl.dir = 'ltr';
-  const existing = panelContentEl.innerHTML;
-  panelContentEl.innerHTML = existing + (existing ? '\n' : '') + escHtml(text);
-  panelContentEl.scrollTop = panelContentEl.scrollHeight;
-}
-
 /**
  * Append pre-formatted HTML after whatever the panel already holds.
  *
@@ -62,4 +55,3 @@ export function setOutputHtml(html: string) {
   panelContentEl.innerHTML = html || '';
   panelContentEl.scrollTop = panelContentEl.scrollHeight;
 }
-

@@ -413,5 +413,3 @@ export function buildDebugCommand(name, body) {
 }
 
 export const DEBUG_COMMANDS = Object.keys(COMMAND_SHAPES);
-
-export default DebugChannel;

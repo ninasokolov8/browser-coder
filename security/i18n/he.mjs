@@ -7,19 +7,19 @@ export const he = {
   lang: 'he',
   dir: 'rtl',
   title: '🔒 דוח אבטחה חינוכי - Browser Coder',
-  
+
   // Hero section
   heroTitle: 'דוח בדיקות אבטחה',
   heroSubtitle: 'ניתוח אבטחה חינוכי',
   heroTagline: 'למד איך האקרים חושבים. כתוב קוד מאובטח.',
   timestamp: 'נוצר',
-  
+
   // Intro section
   introTitle: 'ברוכים הבאים לכיתת ההאקרים',
   introP1: 'זה לא סתם דוח בדיקות - זה <strong>מרכז הלמידה האינטראקטיבי שלך לאבטחה</strong>. כל בדיקה למטה מייצגת <em>טכניקת תקיפה אמיתית</em> שהאקרים משתמשים בה בעולם האמיתי.',
   introP2: '<strong>הרצנו את ההתקפות האלה בבטחה</strong> נגד ה-sandbox שלנו כדי להראות לך בדיוק מה נחסם ולמה. הבנת הדפוסים האלה היא הצעד הראשון להפוך למפתח מודע לאבטחה.',
   introHighlight: '💡 <strong>טיפ מקצועי:</strong> לחץ על כל בדיקה כדי לראות את הקוד הזדוני האמיתי וללמוד איך ההתקפה עובדת. ידע הוא ההגנה הטובה ביותר שלך!',
-  
+
   // Mini cards
   miniCard1Title: 'דפוסי תקיפה אמיתיים',
   miniCard1Text: 'כל בדיקה מבוססת על פרצות אמיתיות שנמצאו במערכות פעילות',
@@ -27,22 +27,22 @@ export const he = {
   miniCard2Text: 'כל ההתקפות מבודדות ב-sandbox שלנו - למד ללא סיכון',
   miniCard3Title: 'ידע מעשי',
   miniCard3Text: 'קח את התובנות האלה כדי לאבטח את היישומים שלך',
-  
+
   // CTA
   ctaText: '🎯 <strong>המשימה שלך:</strong> חקור כל קטגוריה למטה, הבן את וקטורי התקיפה, והשתמש בידע הזה כדי לכתוב קוד מאובטח יותר!',
-  
+
   // Stats
   statPassed: 'עברו',
   statFailed: 'נכשלו',
   statTotal: 'סה״כ',
   statRate: 'אחוז הצלחה',
   statDuration: 'משך',
-  
+
   // Tabs
   tabByLanguage: 'לפי שפה',
   tabByCategory: 'לפי קטגוריה',
   tabAllTests: 'כל הבדיקות',
-  
+
   // Test cards
   testExpected: 'צפוי',
   testBlocked: 'נחסם',
@@ -51,7 +51,7 @@ export const he = {
   testWrong: 'שגוי',
   testLearnAttack: 'למד על התקיפה הזו',
   testViewCode: 'הצג קוד',
-  
+
   // Categories - using snake_case to match attack definitions
   categories: {
     // Common categories
@@ -65,7 +65,7 @@ export const he = {
     'encoding_bypass': 'עקיפת קידוד',
     'deserialization': 'דה-סריאליזציה',
     'prototype_pollution': 'זיהום פרוטוטייפ',
-    
+
     // JavaScript specific
     'async_exploits': 'ניצול אסינכרוני',
     'dangerous_modules': 'מודולים מסוכנים',
@@ -73,19 +73,19 @@ export const he = {
     'memory_access': 'גישת זיכרון',
     'reflect_proxy': 'Reflect/Proxy',
     'timer_abuse': 'ניצול טיימרים',
-    
+
     // TypeScript specific
     'type_abuse': 'ניצול טיפוסים',
     'decorator_abuse': 'ניצול דקורטורים',
-    
+
     // Python specific
     'introspection': 'אינטרוספקציה',
     'code_manipulation': 'מניפולציית קוד',
     'signal_handling': 'טיפול באותות',
-    
+
     // PHP specific
     'superglobal_access': 'גישה ל-Superglobals',
-    
+
     // Java specific
     'reflection': 'רפלקציה',
     'serialization': 'סריאליזציה',
@@ -96,7 +96,7 @@ export const he = {
     'unsafe_memory': 'זיכרון לא בטוח',
     'security_bypass': 'עקיפת אבטחה',
   },
-  
+
   // Language tips
   languageTips: {
     javascript: {
@@ -457,11 +457,11 @@ export const he = {
       ],
     },
   },
-  
+
   // Cheat sheet
   cheatSheetTitle: 'דף עזר לאבטחה',
   cheatSheetProTips: 'טיפים מקצועיים לאבטחה',
-  
+
   // Footer
   footerText: 'נוצר על ידי Browser Coder Security Suite',
   footerBack: 'חזרה למעבדה',

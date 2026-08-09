@@ -9,10 +9,10 @@ import { policyState } from '../app/config';
 import { setStatus } from '../components/output';
 import { CommandRegistry } from './registry.ts';
 import type { Capability } from './registry.ts';
+import { t } from '../i18n/index.ts';
 
 export { CommandRegistry } from './registry.ts';
 export { bindButton, bindKeybinding } from './bindings.ts';
-export type { Capability, CommandDefinition, CommandOutcome } from './registry.ts';
 
 /**
  * The four axes Step-Up negotiates over postMessage, mapped to the live policy.
@@ -20,7 +20,7 @@ export type { Capability, CommandDefinition, CommandOutcome } from './registry.t
  * `edit` and `structure` are separate because a task can legitimately want the
  * student editing one supplied file but not adding, renaming or deleting files.
  */
-export function isCapabilityAllowed(capability: Capability): boolean {
+function isCapabilityAllowed(capability: Capability): boolean {
   switch (capability) {
     case 'run':
       return policyState.allowRun;
@@ -38,11 +38,11 @@ export function isCapabilityAllowed(capability: Capability): boolean {
 }
 
 /** Human-readable refusals, so a blocked action explains itself. */
-const REFUSAL_TEXT: Record<Capability, string> = {
-  run: 'Running is disabled for this task',
-  edit: 'This file is read-only',
-  structure: 'Adding, renaming and deleting files is locked for this task',
-  searchReplace: 'Replace is disabled for this task',
+const REFUSAL_KEYS: Record<Capability, string> = {
+  run: 'policy.runDisabled',
+  edit: 'policy.readonly',
+  structure: 'policy.structureLocked',
+  searchReplace: 'policy.searchReplaceDisabled',
 };
 
 export function createCommandRegistry(): CommandRegistry {
@@ -54,8 +54,8 @@ export function createCommandRegistry(): CommandRegistry {
       // nothing happened, not left wondering whether the IDE is broken.
       const message =
         outcome.status === 'refused' && outcome.capability
-          ? REFUSAL_TEXT[outcome.capability]
-          : `${command.title} is not available right now`;
+          ? t(REFUSAL_KEYS[outcome.capability])
+          : t('policy.commandUnavailable', { command: t(command.title) });
       setStatus(message);
     },
   });

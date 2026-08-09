@@ -84,7 +84,7 @@ describe('locales', () => {
     const reference = loadLocale(REFERENCE);
 
     const used = new Set();
-    for (const match of html.matchAll(/data-i18n(?:-title|-placeholder)?="([^"]+)"/g)) {
+    for (const match of html.matchAll(/data-i18n(?:-title|-placeholder|-aria-label)?="([^"]+)"/g)) {
       used.add(match[1]);
     }
 

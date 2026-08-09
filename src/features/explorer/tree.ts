@@ -13,9 +13,11 @@ import { dropPositionFor, sortSiblings, type DropPosition } from './ordering.ts'
 import type { TabManager } from '../../tabs';
 import {
   createNewFileInExplorer, createNewFolder, createFolderFromSelection,
-  deleteSelectedItems, clearDropHighlights, importDroppedItems, moveItemsInto, getInternalDraggedIds, syncOpenTabsFromStorage, isExternalFileDrag,
+  deleteSelectedItems, clearDropHighlights, importDroppedItems, moveItemsInto, getInternalDraggedIds, isExternalFileDrag,
   markInvalidDropTargets, importFromPicker, downloadSelectedItem, placeItemsBeside,
 } from './operations';
+import { t, tn } from '../../i18n/index.ts';
+import { formatRewriteWarning } from './reference-warnings.ts';
 
 const tabManager = lazyRef(() => runtime.tabManager, 'tabManager');
 const storage = lazyRef(() => runtime.storage, 'storage');
@@ -259,16 +261,16 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       const childrenHtml = isExpanded && node.children
         ? node.children.map(c => renderNode(c, depth + 1)).join('')
         : '';
-      
+
       return `
-        <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
+        <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}"
              draggable="true"
              role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" aria-expanded="${isExpanded}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="folder" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent}px">
           <span class="tree-item-chevron ${isExpanded ? 'expanded' : ''}">▶</span>
           <span class="tree-item-icon">📁</span>
-          ${isRenaming 
+          ${isRenaming
             ? `<input class="tree-item-input" type="text" value="${escapeAttribute(node.name)}" data-id="${escapeAttribute(node.id)}" data-type="folder">`
             : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
@@ -279,15 +281,15 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
       // Icon reflects the file's own language, whether or not a tab is open
       const lang = getLanguage(node.tab?.file.language || node.language || '');
       const icon = lang?.icon || '📄';
-      
+
       return `
-        <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" 
+        <div class="tree-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}"
              draggable="true"
              role="treeitem" aria-level="${depth + 1}" aria-selected="${isSelected}" tabindex="-1"
              data-id="${escapeAttribute(node.id)}" data-type="file" data-parent="${escapeAttribute(node.parentId ?? '')}"
              style="padding-left: ${8 + indent + 16}px">
           <span class="tree-item-icon">${icon}</span>
-          ${isRenaming 
+          ${isRenaming
             ? `<input class="tree-item-input" type="text" value="${escapeAttribute(node.name)}" data-id="${escapeAttribute(node.id)}" data-type="file">`
             : `<span class="tree-item-name">${escapeHtml(node.name)}</span>`
           }
@@ -299,9 +301,13 @@ async function renderFileTreeNow(tm = runtime.tabManager!) {
 
   if (rootNodes.length === 0) {
     explorerState.visibleNodeOrder = [];
-    fileTreeEl.innerHTML = files.length > 0 || folders.length > 0
-      ? '<div class="tree-empty">No files available.</div>'
-      : '<div class="tree-empty">No files yet. Click + to create one.</div>';
+    fileTreeEl.textContent = '';
+    const empty = document.createElement('div');
+    empty.className = 'tree-empty';
+    empty.textContent = t(files.length > 0 || folders.length > 0
+      ? 'explorer.noFilesAvailable'
+      : 'explorer.noFilesYet');
+    fileTreeEl.appendChild(empty);
   } else {
     explorerState.visibleNodeOrder = [];
     fileTreeEl.innerHTML = rootNodes.map(n => renderNode(n)).join('');
@@ -420,7 +426,7 @@ function attachTreeEventHandlers(tm: TabManager) {
         explorerState.selectedIds = new Set([id]);
         renderFileTree(tm);
       }
-      showContextMenu(e.clientX, e.clientY, type);
+      showContextMenu(e.clientX, e.clientY);
     });
 
     // ===== Drag and drop (VS Code-style file management) =====
@@ -564,9 +570,6 @@ function attachTreeEventHandlers(tm: TabManager) {
         const beforePaths = await captureWorkspacePaths();
         if (type === 'folder') {
           await storage.updateFolder(id, { name: newName });
-          // Folder rename rewrites every descendant path. Keep all open tabs
-          // synchronized with those new paths.
-          await syncOpenTabsFromStorage();
         } else {
           // Re-detect language from the new extension (e.g. "main.php")
           const detected = tabManager.detectLanguageByExtension(newName);
@@ -595,10 +598,13 @@ function attachTreeEventHandlers(tm: TabManager) {
         const refactorResult = await refactorWorkspaceImports(beforePaths);
         runtime.notifyWorkspaceChanged();
         if (refactorResult.replacements > 0) {
-          setStatus(`Renamed ${type}; updated ${refactorResult.replacements} import${refactorResult.replacements === 1 ? '' : 's'}`);
+          setStatus(t('explorer.renamedWithImports', {
+            type: t(type === 'file' ? 'explorer.file' : 'explorer.folder'),
+            imports: tn('explorer.importCount', refactorResult.replacements),
+          }));
         }
         if (refactorResult.warnings.length > 0) {
-          setOutput(refactorResult.warnings.join('\n'));
+          setOutput(refactorResult.warnings.map(warning => formatRewriteWarning(warning, t)).join('\n'));
         }
       }
       explorerState.renamingItemId = null;
@@ -749,7 +755,7 @@ fileTreeEl.addEventListener('contextmenu', (e) => {
   explorerState.selectedItemType = null;
   explorerState.selectedIds = new Set();
   explorerState.lastClickedId = null;
-  showContextMenu(e.clientX, e.clientY, 'folder');
+  showContextMenu(e.clientX, e.clientY);
 });
 
 // ===== Context Menu =====
@@ -769,32 +775,25 @@ function setContextMenuActionVisible(action: string, visible: boolean): void {
   item.style.display = visible ? '' : 'none';
 }
 
+const CONTEXT_ACTIONS: Record<string, { icon: string; key: string }> = {
+  'new-file': { icon: '📄', key: 'context.newFile' },
+  'new-folder': { icon: '📁', key: 'context.newFolder' },
+  'import-files': { icon: '⬆️', key: 'context.importFiles' },
+  'import-folder': { icon: '📥', key: 'context.importFolder' },
+  download: { icon: '⬇️', key: 'context.download' },
+  rename: { icon: '✏️', key: 'context.rename' },
+  delete: { icon: '🗑️', key: 'context.delete' },
+};
+
 function setContextMenuActionLabel(action: string, label?: string): void {
   const item = contextMenuEl.querySelector(`.context-menu-item[data-action="${action}"]`) as HTMLElement | null;
   if (!item) return;
-
-  if (!item.dataset.defaultHtml) {
-    item.dataset.defaultHtml = item.innerHTML;
-  }
-
-  if (!label) {
-    item.innerHTML = item.dataset.defaultHtml;
-    return;
-  }
-
-  const icons: Record<string, string> = {
-    'new-file': '📄',
-    'new-folder': '📁',
-    'import-files': '⬆️',
-    'import-folder': '📥',
-    download: '⬇️',
-    rename: '✏️',
-    delete: '🗑️',
-  };
-  item.textContent = `${icons[action] || ''} ${label}`.trim();
+  const config = CONTEXT_ACTIONS[action];
+  if (!config) return;
+  item.textContent = `${config.icon} ${label ?? t(config.key)}`;
 }
 
-function updateContextMenuForSelection(type: 'file' | 'folder') {
+function updateContextMenuForSelection() {
   const selectedCount = explorerState.selectedIds.size;
 
   setContextMenuActionLabel('new-file');
@@ -824,16 +823,19 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
     const selectedTypes = getSelectedTypesFromRenderedTree();
     const allFiles = selectedTypes.length > 0 && selectedTypes.every(t => t === 'file');
     const allFolders = selectedTypes.length > 0 && selectedTypes.every(t => t === 'folder');
-    const noun = allFiles ? 'file' : allFolders ? 'folder' : 'item';
-    const plural = selectedCount === 1 ? noun : `${noun}s`;
+    const selection = allFiles
+      ? tn('explorer.fileCount', selectedCount)
+      : allFolders
+        ? tn('explorer.folderCount', selectedCount)
+        : tn('explorer.itemCount', selectedCount);
 
     // Multi-selection menu: only batch actions should be shown.
     setContextMenuActionVisible('new-file', false);
     setContextMenuActionVisible('new-folder', true);
     setContextMenuActionVisible('rename', false);
     setContextMenuActionVisible('delete', true);
-    setContextMenuActionLabel('new-folder', 'New Folder');
-    setContextMenuActionLabel('delete', `Delete all ${selectedCount} ${plural}`);
+    setContextMenuActionLabel('new-folder', t('context.newFolder'));
+    setContextMenuActionLabel('delete', t('context.deleteAll', { items: selection }));
     return;
   }
 
@@ -844,9 +846,9 @@ function updateContextMenuForSelection(type: 'file' | 'folder') {
   setContextMenuActionVisible('delete', true);
 }
 
-export function showContextMenu(x: number, y: number, type: 'file' | 'folder') {
+export function showContextMenu(x: number, y: number) {
   if (policyState.lockStructure) return;
-  updateContextMenuForSelection(type);
+  updateContextMenuForSelection();
 
   contextMenuEl.style.left = `${x}px`;
   contextMenuEl.style.top = `${y}px`;
@@ -919,4 +921,3 @@ contextMenuEl.querySelectorAll('.context-menu-item').forEach(item => {
     }
   });
 });
-

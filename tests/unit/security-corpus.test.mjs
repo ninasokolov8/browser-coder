@@ -8,8 +8,8 @@
  * `python.mjs` had DIVERGED - 1190 lines against 1307 - so the two runners were
  * asserting different things about the same product, and nothing said which was right.
  *
- * CI runs `tests/security/security-tests.mjs`, which makes that corpus the one gating a
- * merge and therefore the canonical one. `security/attacks/index.mjs` now imports it
+ * CI runs `security/run.mjs`, which imports the fixtures below, making this corpus
+ * the one gating a merge. `security/attacks/index.mjs` imports it
  * rather than shipping a second copy, and keeps only the `_he.mjs` files, which supply
  * translated EXPLANATIONS for the Hebrew report and never contained assertions at all.
  *
@@ -49,13 +49,22 @@ describe('one canonical corpus', () => {
     }
   });
 
-  test('the Hebrew overlay is translations only, never a second set of assertions', () => {
+  test('the Hebrew overlay is translations only, never a second set of assertions', async () => {
     // `security/run.mjs` swaps only `explanation` when producing the Hebrew report, so
     // these files never needed the expectations - and if they grow some, the two
     // languages can start disagreeing about whether an attack should be refused.
     for (const language of LANGUAGES) {
       const path = join(OVERLAY, `${language}_he.mjs`);
       assert.ok(existsSync(path), `missing Hebrew overlay for ${language}`);
+
+      const module = await import(`../../security/attacks/${language}_he.mjs`);
+      const exports = Object.values(module);
+      assert.equal(exports.length, 1, `${language} should export one explanation catalog`);
+      assert.ok(!Array.isArray(exports[0]), `${language} must not duplicate executable fixtures`);
+      assert.ok(
+        Object.values(exports[0]).every(value => typeof value === 'string'),
+        `${language} contains data other than translated explanations`,
+      );
     }
   });
 
@@ -65,9 +74,9 @@ describe('one canonical corpus', () => {
     assert.ok(index.getAllTests('en').length > 0, 'no fixtures loaded at all');
   });
 
-  test('the two runners count the same fixtures', async () => {
-    // The point of collapsing the fork. If these ever differ again, one runner is
-    // gating merges on a corpus the other has never seen.
+  test('the report index exposes every canonical fixture', async () => {
+    // The point of collapsing the fork. The report layer and the direct fixture
+    // modules must describe the same corpus.
     const index = await import('../../security/attacks/index.mjs');
 
     let direct = 0;
@@ -80,24 +89,22 @@ describe('one canonical corpus', () => {
     assert.equal(index.getAllTests('en').length, direct);
   });
 
-  test('no Hebrew entry describes a fixture the English corpus does not have', async () => {
-    /*
-     * The overlay is allowed to be INCOMPLETE - it currently translates 317 of 322,
-     * and `localizeReportExplanations` falls back to the English text for the rest,
-     * which is the right behaviour for a missing translation.
-     *
-     * What it must never contain is an entry with no counterpart. That would be a
-     * fixture that exists only in Hebrew: asserted by nothing, reported by one runner,
-     * and invisible to CI - the same failure the fork itself was.
-     */
-    const index = await import('../../security/attacks/index.mjs');
-    const english = new Set(index.getAllTests('en').map(entry => `${entry.language}::${entry.name}`));
-    const orphans = index
-      .getAllTests('he')
-      .map(entry => `${entry.language}::${entry.name}`)
-      .filter(key => !english.has(key));
+  test('every canonical fixture has exactly one Hebrew explanation', async () => {
+    for (const language of LANGUAGES) {
+      const englishModule = await import(`../../tests/security/attacks/${language}.mjs`);
+      const hebrewModule = await import(`../../security/attacks/${language}_he.mjs`);
+      const englishTests = Object.values(englishModule).find(Array.isArray);
+      const explanations = Object.values(hebrewModule)[0];
 
-    assert.deepEqual(orphans, [], 'Hebrew-only fixtures: they are asserted by nothing');
+      assert.deepEqual(
+        Object.keys(explanations).sort(),
+        englishTests.map(test => test.name).sort(),
+        `${language} Hebrew explanations have missing or orphaned fixture names`,
+      );
+      for (const [name, explanation] of Object.entries(explanations)) {
+        assert.match(explanation, /[\u0590-\u05ff]/, `${language}/${name} is not translated to Hebrew`);
+      }
+    }
   });
 });
 
@@ -108,12 +115,10 @@ describe('nothing pretends to have run', () => {
    * tested. `tests/run-tests.sh` had three of these, and `docker-compose.test.yml` had
    * four services whose entry points did not exist.
    */
-  test('run-tests.sh has no "not yet implemented" branch', () => {
-    const script = readFileSync(join(ROOT, 'tests/run-tests.sh'), 'utf8');
-    assert.doesNotMatch(
-      script,
-      /not yet implemented/i,
-      'a mode that prints a banner and exits 0 reports success for work that never ran',
+  test('the obsolete umbrella runner is absent', () => {
+    assert.ok(
+      !existsSync(join(ROOT, 'tests/run-tests.sh')),
+      'tests/run-tests.sh is back - three of its four advertised suites never existed',
     );
   });
 

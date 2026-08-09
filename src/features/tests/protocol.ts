@@ -45,6 +45,8 @@
  * thing that should be tested without a browser, and the panel is a separate file.
  */
 
+import { t, tn } from '../../i18n/index.ts';
+
 export type TestStatus = 'pass' | 'fail' | 'skip';
 
 export interface TestCase {
@@ -206,35 +208,34 @@ export function stripReportLines(stdout: string): string {
  */
 export function summariseReport(report: TestReport): string {
   if (!report.present) {
-    return 'The marking harness produced no results. It may have crashed before it ran.';
+    return t('tests.harnessNoResults');
   }
 
   // Over everything the harness reported, not over what the list shows. `cases` is
   // capped at MAX_CASES, so on a looping harness this read "598 of 500 checks passed".
   const total = report.passed + report.failed + report.skipped;
-  const parts: string[] = [`${report.passed} of ${total} checks passed`];
+  const parts: string[] = [tn('tests.checksPassed', total, { passed: report.passed, total })];
 
-  if (report.skipped > 0) parts.push(`${report.skipped} skipped`);
+  if (report.skipped > 0) parts.push(tn('tests.skipped', report.skipped));
 
   if (!report.done) {
     // The distinction that matters: a harness that died mid-run has not said the
     // remaining cases failed, and reporting them as failures would be a lie.
-    parts.push('the harness stopped early, so some checks did not run');
+    parts.push(t('tests.harnessStoppedEarly'));
   }
 
   const firstFailure = report.cases.find(entry => entry.status === 'fail');
   if (firstFailure) {
     parts.push(
       firstFailure.detail
-        ? `first failure: ${firstFailure.name} — ${firstFailure.detail}`
-        : `first failure: ${firstFailure.name}`,
+        ? t('tests.firstFailureWithDetail', { name: firstFailure.name, detail: firstFailure.detail })
+        : t('tests.firstFailure', { name: firstFailure.name }),
     );
   } else if (report.failed > 0) {
     // Failures exist but every one of them is past the display cap. Saying nothing
     // here is how "0 of the listed cases failed" became "everything passed".
     parts.push(
-      `${report.failed} ${report.failed === 1 ? 'check' : 'checks'} failed further down `
-      + 'than the list shows',
+      tn('tests.failedBeyondList', report.failed),
     );
   }
 

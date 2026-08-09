@@ -1,169 +1,107 @@
-# DigitalOcean Deployment Guide
+# Production deployment
 
-## Quick Start (5 minutes)
+Production deployment is image-based. GitHub Actions builds
+`Dockerfile.production`, publishes the image to GHCR, and deploys
+`docker-compose.prod.yml` to the configured host.
 
-### 1️⃣ Create DigitalOcean Droplet
+## Required host state
 
-```bash
-# Recommended specs:
-# - Ubuntu 24.04 LTS
-# - 2GB RAM / 1 vCPU ($12/mo) - handles ~1000 concurrent users
-# - 4GB RAM / 2 vCPU ($24/mo) - handles ~5000 concurrent users
-# - Enable "Docker" from Marketplace for pre-installed Docker
-```
+- Docker Engine with Compose v2
+- A checkout at `~/browser-coder`
+- GHCR access to the configured image
+- DNS/TLS configuration appropriate for the public host
+- GitHub secrets: `DO_HOST`, `DO_USERNAME`, and `DO_SSH_KEY`
 
-### 2️⃣ Setup Droplet (One-time)
+The default image is
+`ghcr.io/ninasokolov8/browser-coder:latest`; override it with
+`BROWSER_CODER_IMAGE`.
 
-SSH into your droplet and run:
+## Services
 
-```bash
-# Update and install essentials
-apt update && apt upgrade -y
-apt install -y git docker-compose-plugin
+- `nginx`: public HTTP/TLS termination and load balancing
+- `api`: static app, HTTP API, execution toolchains, and debugger adapters
+- `shared-storage-init`: prepares the preview/blob/share named volumes
+- `autoscaler`: optional profile for operational load testing
 
-# Setup firewall
-ufw allow 22 && ufw allow 80 && ufw allow 443 && ufw enable
+The API is attached only to an internal Docker network. The production compose file
+uses a read-only root filesystem, dropped capabilities, a PID limit, bounded tmpfs
+mounts, and an init process.
 
-# Clone your repo
-git clone https://github.com/ninasokolov8/browser-coder.git ~/browser-coder
-cd ~/browser-coder
+## Deploy
 
-# Start the app!
-docker compose up -d
-```
+The normal path is a push to `main` or a manual run of the deployment workflow.
+It builds immutable commit-SHA and `latest` tags, updates the host checkout, pulls
+the image, reconciles networks, recreates services, waits for API health, and checks
+nginx.
 
-### 3️⃣ Setup GitHub Secrets (for auto-deploy)
-
-Go to your GitHub repo → Settings → Secrets and variables → Actions
-
-Add these secrets:
-
-| Secret | Value |
-|--------|-------|
-| `DO_HOST` | Your droplet IP (e.g., `164.92.xxx.xxx`) |
-| `DO_USERNAME` | `root` |
-| `DO_SSH_KEY` | Your private SSH key (the one you added to DO) |
-
-### 4️⃣ Generate SSH Key (if needed)
+For an operator-triggered deployment on the host:
 
 ```bash
-# On your local machine
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_do_deploy
-
-# Copy public key to droplet
-ssh-copy-id -i ~/.ssh/github_do_deploy.pub root@YOUR_DROPLET_IP
-
-# The PRIVATE key (~/.ssh/github_do_deploy) goes in GitHub Secrets as DO_SSH_KEY
-cat ~/.ssh/github_do_deploy
+./deploy.sh
 ```
 
----
+Important: `deploy.sh` intentionally synchronizes the checkout to `origin/main`
+with a hard reset. Do not run it from a host checkout containing uncommitted work.
+Do not use `docker compose down -v`; the named volumes contain previews, cached
+assets, and shared snapshots.
 
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Your Workflow                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   git push main                                                  │
-│        │                                                         │
-│        ▼                                                         │
-│   ┌─────────────────────────────────────┐                       │
-│   │        GitHub Actions               │                       │
-│   │   1. Build Docker image             │                       │
-│   │   2. Push to ghcr.io                │                       │
-│   │   3. SSH to droplet                 │                       │
-│   └─────────────────────────────────────┘                       │
-│        │                                                         │
-│        ▼                                                         │
-│   ┌─────────────────────────────────────┐                       │
-│   │     DigitalOcean Droplet            │                       │
-│   │   1. git pull                       │                       │
-│   │   2. docker compose pull            │                       │
-│   │   3. docker compose up -d           │                       │
-│   └─────────────────────────────────────┘                       │
-│        │                                                         │
-│        ▼                                                         │
-│   🎉 Live at http://YOUR_DROPLET_IP                             │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Optional: Add SSL (HTTPS)
+## Validate before deployment
 
 ```bash
-# Install Certbot
-apt install -y certbot python3-certbot-nginx
-
-# Get certificate (replace with your domain)
-certbot --nginx -d yourdomain.com
-
-# Auto-renewal is set up automatically
+npm ci
+npm test
+npm run build
+node scripts/check-ops-config.mjs
+docker compose -f docker-compose.yml config
+docker compose -f docker-compose.prod.yml config
+docker build -f Dockerfile.production -t browser-coder:local .
 ```
 
----
+CI additionally parses both nginx configurations, boots the image with production
+constraints, checks its reported memory-derived capacity, and runs the six-language
+security corpus.
 
-## Optional: Use Docker Hub Instead of GitHub Registry
-
-If you prefer Docker Hub, update `.github/workflows/deploy.yml`:
-
-```yaml
-env:
-  REGISTRY: docker.io
-  IMAGE_NAME: YOUR_DOCKERHUB_USER/browser-coder
-
-# And add these secrets:
-# DOCKERHUB_USERNAME
-# DOCKERHUB_TOKEN
-```
-
----
-
-## Monitoring & Logs
+## Health and diagnostics
 
 ```bash
-# View logs
-docker compose logs -f
-
-# View specific service
-docker compose logs -f api
-
-# Check status
-docker compose ps
-
-# Restart
-docker compose restart
-
-# Full rebuild
-docker compose down && docker compose up -d --build
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=200 api nginx
+curl -fsS http://127.0.0.1/live
+curl -fsS http://127.0.0.1/ready
+curl -fsS http://127.0.0.1/health
 ```
 
----
+`/live` reports process liveness, `/ready` reports whether the service can accept
+work, and `/health` includes operational limits and load.
 
-## Troubleshooting
+## Persistent data
 
-### Deployment fails with SSH error
-- Ensure your SSH key is correct in GitHub Secrets
-- Key should start with `-----BEGIN OPENSSH PRIVATE KEY-----`
-- Check droplet allows SSH: `ufw status`
+The production stack mounts three named volumes:
 
-### Container keeps restarting
+- `browser_coder_previews`
+- `browser_coder_blobs`
+- `browser_coder_shares`
+
+Back up preview/share volumes according to product retention requirements. Blob data
+is a cache and can be regenerated by clients.
+
+## Capacity
+
+The server derives concurrency from the container memory limit and configurable
+per-run assumptions. Tune `MEMORY_BUDGET_MB`, `SERVER_RESERVE_MB`,
+`RUN_MEMORY_MB`, or `MAX_CONCURRENT` only from observed workload data. Replica
+count and autoscaling do not establish a student-capacity guarantee by themselves.
+
+## Rollback
+
+Set `BROWSER_CODER_IMAGE` to a previously published commit-SHA tag and recreate the
+API/nginx services:
+
 ```bash
-docker compose logs api --tail 100
+BROWSER_CODER_IMAGE=ghcr.io/ninasokolov8/browser-coder:<sha> \
+  docker compose -f docker-compose.prod.yml up -d --force-recreate api nginx
 ```
 
-### Out of disk space
-```bash
-docker system prune -a --volumes
-```
-
-### Out of memory (on small droplets)
-Add swap:
-```bash
-fallocate -l 2G /swapfile && chmod 600 /swapfile
-mkswap /swapfile && swapon /swapfile
-echo '/swapfile none swap sw 0 0' >> /etc/fstab
-```
+Then verify `/health`, the public editor, a run, and an embedded Step-Up lesson.
+Schema-less file stores and browser IndexedDB remain backward-compatible unless a
+release explicitly documents a migration.

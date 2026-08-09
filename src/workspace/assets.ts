@@ -249,8 +249,8 @@ export function detectByContent(bytes: Uint8Array): AssetType | null {
 export type AssetRejection =
   | { readonly ok: false; readonly reason: 'not-an-asset'; readonly message: string }
   | { readonly ok: false; readonly reason: 'empty'; readonly message: string }
-  | { readonly ok: false; readonly reason: 'too-large'; readonly message: string }
-  | { readonly ok: false; readonly reason: 'content-mismatch'; readonly message: string };
+  | { readonly ok: false; readonly reason: 'too-large'; readonly message: string; readonly maxMegabytes: string }
+  | { readonly ok: false; readonly reason: 'content-mismatch'; readonly message: string; readonly expected: string; readonly actual?: string };
 
 export type AssetAcceptance = {
   readonly ok: true;
@@ -300,6 +300,7 @@ export function validateAsset(
     return {
       ok: false,
       reason: 'too-large',
+      maxMegabytes: megabytes,
       message: `${fileName} is larger than ${megabytes} MB.`,
     };
   }
@@ -310,6 +311,7 @@ export function validateAsset(
     return {
       ok: false,
       reason: 'content-mismatch',
+      expected: declared.extension.toUpperCase(),
       message:
         `${fileName} does not contain ${declared.extension.toUpperCase()} data. ` +
         `Browser Coder checks the file's contents, not its name.`,
@@ -322,6 +324,8 @@ export function validateAsset(
     return {
       ok: false,
       reason: 'content-mismatch',
+      expected: declared.mediaType,
+      actual: actual.mediaType,
       message:
         `${fileName} is named as ${declared.mediaType} but contains ${actual.mediaType} data. ` +
         `Rename it to match its real type.`,

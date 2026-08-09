@@ -52,11 +52,11 @@ echo "════════════════════════�
 if [ -f "security/reports/security-report-latest.json" ]; then
     echo ""
     echo "📊 Reports generated:"
-    
+
     # List dated reports
     LATEST_JSON=$(ls -t security/reports/*_security-report_*.json 2>/dev/null | head -1)
     LATEST_HTML=$(ls -t security/reports/*_security-report_*.html 2>/dev/null | head -1)
-    
+
     if [ -n "$LATEST_JSON" ]; then
         echo "   • JSON: $LATEST_JSON"
     fi
@@ -65,14 +65,14 @@ if [ -f "security/reports/security-report-latest.json" ]; then
     fi
     echo "   • Latest: security/reports/security-report-latest.json"
     echo ""
-    
+
     # Parse and show summary from JSON
     if command -v jq &> /dev/null; then
         PASSED=$(jq '.summary.passed' security/reports/security-report-latest.json)
         FAILED=$(jq '.summary.failed' security/reports/security-report-latest.json)
         TOTAL=$(jq '.summary.total' security/reports/security-report-latest.json)
         RATE=$(jq -r '.summary.passRate' security/reports/security-report-latest.json)
-        
+
         echo "📋 Summary:"
         echo "   ✓ Passed: $PASSED"
         echo "   ✗ Failed: $FAILED"

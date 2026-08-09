@@ -72,9 +72,9 @@ export interface PickerItem {
 export interface PickerOptions {
   /** DOM id for the overlay. */
   readonly overlayId: string;
-  readonly placeholder: string;
-  readonly ariaLabel: string;
-  readonly emptyText: string;
+  readonly placeholder: string | (() => string);
+  readonly ariaLabel: string | (() => string);
+  readonly emptyText: string | (() => string);
   /** Read fresh on every open, so the list is never stale. */
   readonly items: () => readonly PickerItem[];
   readonly onPick: (item: PickerItem) => void | Promise<void>;
@@ -97,6 +97,9 @@ interface Ranked {
   readonly item: PickerItem;
   readonly rank: number;
 }
+
+const textOf = (value: string | (() => string)): string =>
+  typeof value === 'function' ? value() : value;
 
 export function createPicker(options: PickerOptions): Picker {
   let overlay: HTMLElement | null = null;
@@ -132,7 +135,7 @@ export function createPicker(options: PickerOptions): Picker {
     if (ranked.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'palette-empty';
-      empty.textContent = options.emptyText;
+      empty.textContent = textOf(options.emptyText);
       list.appendChild(empty);
       return;
     }
@@ -235,8 +238,8 @@ export function createPicker(options: PickerOptions): Picker {
     input = document.createElement('input');
     input.type = 'text';
     input.className = 'palette-input';
-    input.placeholder = options.placeholder;
-    input.setAttribute('aria-label', options.ariaLabel);
+    input.placeholder = textOf(options.placeholder);
+    input.setAttribute('aria-label', textOf(options.ariaLabel));
     box.appendChild(input);
 
     list = document.createElement('div');

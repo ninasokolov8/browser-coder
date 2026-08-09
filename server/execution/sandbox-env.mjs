@@ -83,5 +83,3 @@ export function buildSandboxEnv({ jobDir, config, extra = {} }) {
     ...extra,
   };
 }
-
-export default buildSandboxEnv;

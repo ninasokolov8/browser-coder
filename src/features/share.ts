@@ -28,6 +28,7 @@ import { setStatus } from '../components/output';
 import { announce } from '../components/announce.ts';
 import { collectWorkspaceSnapshot } from './workspace';
 import { buildShareLink, requestedShareId as parseShareParam } from './share-link.ts';
+import { t } from '../i18n/index.ts';
 
 export interface SharedProject {
   readonly version: number;
@@ -51,7 +52,7 @@ export interface SharedProject {
 export async function shareProject(): Promise<string | null> {
   const files = await collectWorkspaceSnapshot();
   if (files.length === 0) {
-    setStatus('There is nothing to share yet.');
+    setStatus(t('share.nothingToShare'));
     return null;
   }
 
@@ -72,14 +73,14 @@ export async function shareProject(): Promise<string | null> {
       const detail = await response.json().catch(() => null);
       // The server's messages are written for a student - "this project is too large
       // to share" - so they are shown rather than replaced with a status code.
-      setStatus(detail?.error || 'Could not create a share link.');
+      setStatus(detail?.error || t('share.createFailed'));
       return null;
     }
 
     const { id } = await response.json();
     return buildShareLink(window.location.href, id);
   } catch {
-    setStatus('Could not reach the server to create a share link.');
+    setStatus(t('share.serverUnreachableCreate'));
     return null;
   }
 }
@@ -95,13 +96,13 @@ export async function loadSharedProject(id: string): Promise<SharedProject | nul
     const response = await fetch(`/api/shares/${encodeURIComponent(id)}`);
     if (!response.ok) {
       const detail = await response.json().catch(() => null);
-      setStatus(detail?.error || 'This share link could not be opened.');
-      announce(detail?.error || 'This share link could not be opened.');
+      setStatus(detail?.error || t('share.openFailed'));
+      announce(detail?.error || t('share.openFailed'));
       return null;
     }
     return await response.json();
   } catch {
-    setStatus('Could not reach the server to open this share link.');
+    setStatus(t('share.serverUnreachableOpen'));
     return null;
   }
 }

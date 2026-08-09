@@ -3,6 +3,8 @@
  * Simple, fast, scalable language support
  */
 
+import english from './locales/en.json' with { type: 'json' };
+
 export interface Translations {
   [key: string]: string;
 }
@@ -21,9 +23,33 @@ export const languages: LanguageConfig[] = [
 ];
 
 // Current state
-let currentLang: string = 'en';
-let translations: Translations = {};
-let loadedLanguages: Map<string, Translations> = new Map();
+const DEFAULT_LANGUAGE = 'en';
+const LANGUAGE_STORAGE_KEY = 'language';
+
+let currentLang: string = DEFAULT_LANGUAGE;
+let translations: Translations = english;
+let fallbackTranslations: Translations = english;
+const loadedLanguages = new Map<string, Translations>([[DEFAULT_LANGUAGE, english]]);
+const translationLoaders: Record<string, () => Promise<{ default: Translations }>> = {
+  en: () => import('./locales/en.json', { with: { type: 'json' } }),
+  he: () => import('./locales/he.json', { with: { type: 'json' } }),
+};
+
+function readSavedLanguage(): string | null {
+  try {
+    return localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveLanguage(lang: string): void {
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+  } catch {
+    // Language still changes for this session when storage is unavailable.
+  }
+}
 
 /**
  * Load translations for a language
@@ -35,7 +61,9 @@ async function loadTranslations(lang: string): Promise<Translations> {
   }
 
   try {
-    const module = await import(`./locales/${lang}.json`);
+    const loader = translationLoaders[lang];
+    if (!loader) throw new Error(`Unsupported translation locale: ${lang}`);
+    const module = await loader();
     const trans = module.default || module;
     loadedLanguages.set(lang, trans);
     return trans;
@@ -49,31 +77,25 @@ async function loadTranslations(lang: string): Promise<Translations> {
 }
 
 /**
- * Initialize i18n with saved or detected language.
- * In embedded mode (embed=1), always force English/LTR for the code editor.
+ * Initialize i18n with the saved preference, then the browser language.
+ * Embedded callers can override this with the explicit `uilang` URL parameter;
+ * the editor itself remains LTR independently of the surrounding UI language.
  */
 export async function initI18n(): Promise<void> {
-  // In embedded mode, always use English - code editors should be LTR
-  const params = new URLSearchParams(window.location.search);
-  const isEmbedded = params.get('embed') === '1';
-  
-  if (isEmbedded) {
-    currentLang = 'en';
+  const saved = readSavedLanguage();
+  if (saved && languages.some(language => language.code === saved)) {
+    currentLang = saved;
   } else {
-    // Check saved preference
-    const saved = localStorage.getItem('language');
-    if (saved && languages.some(l => l.code === saved)) {
-      currentLang = saved;
-    } else {
-      // Auto-detect from browser
-      const browserLang = navigator.language.split('-')[0];
-      if (languages.some(l => l.code === browserLang)) {
-        currentLang = browserLang;
-      }
+    const browserLang = navigator.language.split('-')[0];
+    if (languages.some(language => language.code === browserLang)) {
+      currentLang = browserLang;
     }
   }
 
-  translations = await loadTranslations(currentLang);
+  [fallbackTranslations, translations] = await Promise.all([
+    loadTranslations(DEFAULT_LANGUAGE),
+    loadTranslations(currentLang),
+  ]);
   applyDirection();
   translatePage();
 }
@@ -88,7 +110,7 @@ export async function setLanguage(lang: string): Promise<void> {
   }
 
   currentLang = lang;
-  localStorage.setItem('language', lang);
+  saveLanguage(lang);
   translations = await loadTranslations(lang);
   applyDirection();
   translatePage();
@@ -112,16 +134,30 @@ export function getLanguageConfig(): LanguageConfig {
  * Translate a key
  */
 export function t(key: string, params?: Record<string, string | number>): string {
-  let text = translations[key] || key;
-  
+  let text = translations[key] ?? fallbackTranslations[key] ?? key;
+
   // Replace parameters {{param}}
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      text = text.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
+      text = text.split(`{{${k}}}`).join(String(v));
     }
   }
-  
+
   return text;
+}
+
+/** Translate a count with the locale's own plural category. */
+export function tn(
+  key: string,
+  count: number,
+  params: Record<string, string | number> = {},
+): string {
+  const category = new Intl.PluralRules(currentLang).select(count);
+  const candidates = [`${key}.${category}`, `${key}.other`, key];
+  const selected = candidates.find(candidate =>
+    translations[candidate] !== undefined || fallbackTranslations[candidate] !== undefined,
+  ) ?? key;
+  return t(selected, { count, ...params });
 }
 
 /**
@@ -170,17 +206,15 @@ function translatePage(): void {
     el.setAttribute('title', t(key));
   });
 
-  // Dispatch event for dynamic content
-  window.dispatchEvent(new CustomEvent('languageChanged', { 
-    detail: { lang: currentLang } 
-  }));
-}
+  // Translate accessible names independently from visible text. Icon-only
+  // controls otherwise remain English to screen-reader users.
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    const key = el.getAttribute('data-i18n-aria-label')!;
+    el.setAttribute('aria-label', t(key));
+  });
 
-/**
- * Check if current language is RTL. Only meant for deciding text
- * direction/alignment of specific content (e.g. the keyword-explain popup) -
- * never for repositioning layout.
- */
-export function isRTL(): boolean {
-  return getLanguageConfig().dir === 'rtl';
+  // Dispatch event for dynamic content
+  window.dispatchEvent(new CustomEvent('languageChanged', {
+    detail: { lang: currentLang }
+  }));
 }

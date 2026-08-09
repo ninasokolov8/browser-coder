@@ -80,4 +80,3 @@ export function saveSettings(): void {
     console.warn('Failed to save settings:', e);
   }
 }
-

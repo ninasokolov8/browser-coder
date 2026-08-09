@@ -11,7 +11,7 @@
  * status bar counts, and what blocks a run cannot disagree.
  */
 
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { runtime } from '../app/runtime';
 import { panelEl, panelContentEl } from '../components/dom';
 import type { Diagnostic, DiagnosticsStore } from '../diagnostics/store.ts';
@@ -97,7 +97,12 @@ function renderInto(container: HTMLElement, store: DiagnosticsStore): void {
 
       row.setAttribute(
         'aria-label',
-        `${diagnostic.severity}: ${diagnostic.message} (${group.path} line ${diagnostic.line})`,
+        t('problems.itemLabel', {
+          severity: t(`problems.severity.${diagnostic.severity}`),
+          message: diagnostic.message,
+          path: group.path,
+          line: diagnostic.line,
+        }),
       );
 
       const open = () => void revealDiagnostic(diagnostic);
@@ -167,6 +172,7 @@ export function initializeProblemsPanel(store: DiagnosticsStore): Disposable {
   };
 
   const subscription = store.onDidChange(rerender);
+  window.addEventListener('languageChanged', rerender);
 
   for (const tabElement of document.querySelectorAll('.panel-tab')) {
     tabElement.addEventListener('click', () => {
@@ -182,6 +188,9 @@ export function initializeProblemsPanel(store: DiagnosticsStore): Disposable {
   showPanelTab(activeTab);
 
   return {
-    dispose: () => subscription.dispose(),
+    dispose: () => {
+      subscription.dispose();
+      window.removeEventListener('languageChanged', rerender);
+    },
   };
 }

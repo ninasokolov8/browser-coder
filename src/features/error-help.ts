@@ -31,6 +31,8 @@
  */
 
 /** What the lookup returns, restated so this module imports nothing. */
+import { t } from '../i18n/index.ts';
+
 export interface ErrorHelp {
   readonly explanation: string;
   readonly cause?: string;
@@ -327,9 +329,12 @@ export function buildErrorHelpBlock(key: string, help: ErrorHelp): ErrorHelpBloc
  * another instruction or another failure.
  */
 export function formatErrorMarker(message: string, help?: ErrorHelpBlock): string {
-  const labels = help?.rtl
-    ? { error: 'השגיאה', meaning: 'מה זה אומר', cause: 'סיבה נפוצה', example: 'דוגמה' }
-    : { error: 'ERROR', meaning: 'WHAT THIS MEANS', cause: 'COMMON CAUSE', example: 'EXAMPLE' };
+  const labels = {
+    error: t('error.marker.error'),
+    meaning: t('error.marker.meaning'),
+    cause: t('error.marker.cause'),
+    example: t('error.marker.example'),
+  };
 
   const sections = [`${labels.error}\n${message.trim()}`];
   if (!help) return sections[0];

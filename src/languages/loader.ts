@@ -2,7 +2,7 @@
 // Loads configs at build time with Vite glob, starters fetched from server at runtime
 // Optimized for high-traffic with caching and batch loading
 
-import type { ErrorEntry, KeywordEntry, LanguageCapabilities, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry, VersionConfig } from "./types";
+import type { ErrorEntry, KeywordEntry, LanguageCapabilities, LanguageConfig, LoadedLanguage, ResolvedErrorEntry, ResolvedKeywordEntry } from "./types";
 import { LANGUAGE_ICONS } from "./types";
 import { ASSET_LANGUAGE_ID, ASSET_TYPES } from "../workspace/assets.ts";
 
@@ -279,7 +279,7 @@ const pendingRequests = new Map<string, Promise<string>>();
 function loadLanguages(): Map<string, LoadedLanguage> {
   const languages = new Map<string, LoadedLanguage>();
 
-  for (const [path, module] of Object.entries(configModules)) {
+  for (const module of Object.values(configModules)) {
     const config = module.default;
     languages.set(config.id, {
       ...config,
@@ -341,10 +341,6 @@ export function getAllLanguages(): LoadedLanguage[] {
   return Array.from(languages.values());
 }
 
-export function getLanguageIds(): string[] {
-  return Array.from(languages.keys());
-}
-
 /**
  * Does this language offer that capability?
  *
@@ -386,25 +382,25 @@ async function fetchStarter(langId: string, versionId: string, extension: string
     starterCache.set(cacheKey, { code: builtInStarter, timestamp: Date.now() });
     return builtInStarter;
   }
-  
+
   // Check cache first
   const cached = starterCache.get(cacheKey);
   if (isCacheValid(cached)) {
     return cached!.code;
   }
-  
+
   // Check for pending request (deduplication)
   const pending = pendingRequests.get(cacheKey);
   if (pending) {
     return pending;
   }
-  
+
   // Create new request
   const request = (async () => {
     try {
       // Try optimized API endpoint first (returns JSON)
       let resp = await fetch(`/api/starter/${langId}/${versionId}`);
-      
+
       if (resp.ok) {
         const contentType = resp.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -419,10 +415,10 @@ async function fetchStarter(langId: string, versionId: string, extension: string
           return code;
         }
       }
-      
+
       // Fallback to static file (plain text)
       resp = await fetch(`/languages/${langId}/starters/${versionId}.${extension}`);
-      
+
       if (resp.ok) {
         const code = await resp.text();
         starterCache.set(cacheKey, { code, timestamp: Date.now() });
@@ -431,13 +427,13 @@ async function fetchStarter(langId: string, versionId: string, extension: string
     } catch (e) {
       console.warn(`Failed to fetch starter for ${langId}/${versionId}:`, e);
     }
-    
+
     return `// ${langId}\n// Start coding here...\n`;
   })();
-  
+
   // Store pending request for deduplication
   pendingRequests.set(cacheKey, request);
-  
+
   try {
     return await request;
   } finally {
@@ -445,23 +441,11 @@ async function fetchStarter(langId: string, versionId: string, extension: string
   }
 }
 
-// Synchronous version - returns cached or placeholder
-export function getStarter(langId: string, versionId: string): string {
-  const cacheKey = `${langId}/${versionId}`;
-  const cached = starterCache.get(cacheKey);
-  
-  if (isCacheValid(cached)) {
-    return cached!.code;
-  }
-  
-  return `// Loading ${langId} (${versionId})...\n`;
-}
-
 // Async version that loads from server
 export async function getStarterAsync(langId: string, versionId: string): Promise<string> {
   const lang = languages.get(langId);
   if (!lang) return `// Unknown language: ${langId}`;
-  
+
   return fetchStarter(langId, versionId, lang.extension);
 }
 
@@ -469,7 +453,7 @@ export async function getStarterAsync(langId: string, versionId: string): Promis
 export async function preloadStarters(langId: string): Promise<void> {
   const lang = languages.get(langId);
   if (!lang) return;
-  
+
   // Load all versions in parallel
   await Promise.all(
     lang.versions.map(v => fetchStarter(langId, v.id, lang.extension))
@@ -486,27 +470,6 @@ export async function preloadDefaultStarters(): Promise<void> {
     return Promise.resolve();
   });
   await Promise.all(promises);
-}
-
-// Preload all starters (full preload)
-export async function preloadAllStarters(): Promise<void> {
-  const promises = Array.from(languages.keys()).map(preloadStarters);
-  await Promise.all(promises);
-}
-
-// Get cache statistics
-export function getCacheStats(): { size: number; entries: string[] } {
-  return {
-    size: starterCache.size,
-    entries: Array.from(starterCache.keys()),
-  };
-}
-
-export function getDefaultVersion(langId: string): string {
-  const lang = languages.get(langId);
-  if (!lang) return "";
-  const defaultVersion = lang.versions.find((v) => v.default) || lang.versions[0];
-  return defaultVersion?.id || "";
 }
 
 // Look up a beginner-friendly explanation for a keyword/symbol in a given language.

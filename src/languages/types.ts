@@ -120,7 +120,6 @@ export interface ResolvedErrorEntry extends ErrorEntry {
   rtl: boolean;
 }
 
-export type LanguageId = string;
 
 // Default icons for common languages
 export const LANGUAGE_ICONS: Record<string, string> = {

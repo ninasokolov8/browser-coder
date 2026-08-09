@@ -32,7 +32,7 @@
 import { panelContentEl } from './dom';
 import { setStatus } from './output';
 import { renderTurtle } from './turtle';
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { inlineMissingAssets, isMissingBlobResponse } from '../features/asset-transport.ts';
 
 export interface RunConsoleOptions {
@@ -100,10 +100,6 @@ interface ActiveSession {
 }
 
 let active: ActiveSession | null = null;
-
-export function isInteractiveActive(): boolean {
-  return !!active;
-}
 
 function compileLabel(langId: string): string {
   switch (langId) {
@@ -178,8 +174,8 @@ export function runProgram(
     input.type = 'text';
     input.autocomplete = 'off';
     input.spellcheck = false;
-    input.placeholder = t('panel.stdinHint') || 'type your answer, then press Enter';
-    input.setAttribute('aria-label', t('panel.stdinLabel') || 'Program input');
+    input.placeholder = t('panel.stdinHint');
+    input.setAttribute('aria-label', t('panel.stdinLabel'));
 
     // End-of-input.
     //
@@ -220,7 +216,7 @@ export function runProgram(
       button.className = 'output-trace-line';
       button.dataset.outputFile = file;
       button.dataset.outputLine = String(line);
-      button.title = `Jump to line ${line}`;
+      button.title = t('output.jumpToLine', { line });
       const badge = document.createElement('span');
       badge.className = 'output-trace-badge';
       badge.textContent = `${line} → `;
@@ -323,11 +319,11 @@ export function runProgram(
 
       const footer = exitCode === 0 ? '[exit 0 ✓]' : `[exit code: ${exitCode}]`;
       append('\n' + footer, exitCode === 0 ? 'success' : 'error');
-      setStatus(exitCode === 0 ? 'Ready ✅' : 'Runtime error ❌');
+      setStatus(exitCode === 0 ? t('status.readySuccess') : t('status.runtimeError'));
       settle({ stdout: aggStdout, stderr: aggStderr, exitCode, durationMs: durationMs || 0 });
     };
 
-    setStatus('Running…');
+    setStatus(t('status.running'));
 
     let sessionId = '';
 
@@ -341,7 +337,7 @@ export function runProgram(
       append(value + '\n');
       input.value = '';
       inputLine.style.display = 'none';
-      setStatus('Running…');
+      setStatus(t('status.running'));
       fetch(`/api/run/interactive/${sessionId}/stdin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -364,7 +360,7 @@ export function runProgram(
       commitPendingStdout();
       append('\n[end of input]\n', 'info');
       inputLine.style.display = 'none';
-      setStatus('Running…');
+      setStatus(t('status.running'));
       fetch(`/api/run/interactive/${sessionId}/eof`, { method: 'POST' }).catch(() => {});
     };
 
@@ -521,7 +517,7 @@ export function runProgram(
             const msg = (data && data.error) || `HTTP ${resp.status}`;
             append(msg + '\n', 'error');
             append('[exit code: 1]', 'error');
-            setStatus('Run failed');
+            setStatus(t('status.runFailed'));
             settle({ stdout: '', stderr: String(msg), exitCode: 1, durationMs: 0 });
             return;
           }
@@ -532,18 +528,18 @@ export function runProgram(
             append(`── ${compileLabel(langId)} ──────────────────────────────────────\n`, 'info');
             if (c.stderr) append(c.stderr, 'error');
             append(`\n[exit code: ${c.exitCode ?? 1}]`, 'error');
-            setStatus('Compile error ❌');
+            setStatus(t('status.compileError'));
             settle({ stdout: '', stderr: c.stderr || '', exitCode: c.exitCode ?? 1, durationMs: c.durationMs || 0 });
             return;
           }
 
           append('ERROR: unexpected response from server\n', 'error');
-          setStatus('Run failed');
+          setStatus(t('status.runFailed'));
           settle({ stdout: '', stderr: 'unexpected response', exitCode: 1, durationMs: 0 });
           return;
         }
 
-        if (!resp.body) throw new Error('streaming is not supported by this browser');
+        if (!resp.body) throw new Error(t('error.streamingUnsupported'));
 
         // ── Consume the NDJSON stream ──────────────────────────────────────
         const reader = resp.body.getReader();
@@ -570,7 +566,7 @@ export function runProgram(
         if (!settled) {
           releaseSession();
           append('\n[connection lost]\n', 'error');
-          setStatus('Run failed');
+          setStatus(t('status.runFailed'));
           settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
         }
       } catch (e: any) {
@@ -582,7 +578,7 @@ export function runProgram(
           return;
         }
         append('\n' + String(e?.message || e) + '\n', 'error');
-        setStatus('Run failed');
+        setStatus(t('status.runFailed'));
         settle({ stdout: aggStdout, stderr: aggStderr, exitCode: -1, durationMs: 0 });
       }
     })();

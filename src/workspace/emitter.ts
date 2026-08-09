@@ -44,27 +44,3 @@ export class Emitter<T> {
     this.#listeners.clear();
   }
 }
-
-/** Collects disposables so a whole feature can detach in one call. */
-export class DisposableStore implements Disposable {
-  #items: Disposable[] = [];
-
-  add<T extends Disposable>(item: T): T {
-    this.#items.push(item);
-    return item;
-  }
-
-  dispose(): void {
-    // Reverse order, so teardown mirrors construction and a later subscription
-    // never observes a half-disposed earlier one.
-    const items = this.#items.reverse();
-    this.#items = [];
-    for (const item of items) {
-      try {
-        item.dispose();
-      } catch (error) {
-        console.error('[workspace] dispose threw', error);
-      }
-    }
-  }
-}

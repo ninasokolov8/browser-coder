@@ -1,7 +1,6 @@
 /** Output-to-source attribution and the small navigation surface around it. */
 
 import { runtime } from '../app/runtime.ts';
-import { escapeHtml } from '../components/html-escape.ts';
 import type { Disposable } from '../workspace/types.ts';
 
 export interface OutputLocation { readonly file: string; readonly line: number }
@@ -75,12 +74,6 @@ export class OutputTraceMapper {
     this.#cursor = Math.min(this.#cursor + 1, this.sites.length - 1);
     return fallback;
   }
-}
-
-export function tracedOutputHtml(text: string, location: OutputLocation): string {
-  return `<button type="button" class="output-trace-line" data-output-file="${escapeHtml(location.file)}" `
-    + `data-output-line="${location.line}" title="Jump to line ${location.line}">`
-    + `<span class="output-trace-badge">${location.line} →</span> ${escapeHtml(text)}</button>`;
 }
 
 export function initializeOutputTracing(): Disposable {

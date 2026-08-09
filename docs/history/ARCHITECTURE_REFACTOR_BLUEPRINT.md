@@ -1,5 +1,9 @@
 # Browser Coder Architecture Refactor Blueprint
 
+> Historical engineering ledger. It records the refactor decisions and evidence
+> accumulated during implementation; it is not the current module map or operations
+> guide. Start with [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
 **Status:** Under active implementation on branch `full_refactor`  
 **Version:** 2.0 (v1.1 assessment retained verbatim below; verification and execution added)  
 **Original assessment date:** 2026-07-29  
@@ -4231,7 +4235,8 @@ content migration.
 Four real defects surfaced that the authoring host structurally could not find.
 
 **1. CRLF broke the production image.** `docker-entrypoint.sh` was checked out with
-CRLF, so the image carried a `#!/bin/sh` shebang and the container died with
+CRLF, so the image carried a `#!/bin/sh
+` shebang and the container died with
 `exec /usr/local/bin/docker-entrypoint.sh: no such file or directory` - a message
 that names the file it has just successfully found and says nothing about carriage
 returns. The Linux deploy host never reproduces it, so the image is broken *only*

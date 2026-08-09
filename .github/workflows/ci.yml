@@ -39,10 +39,25 @@ jobs:
 
       - run: npm ci
 
+      - name: Repository file hygiene
+        run: npm run check:files
+
       # Both configs: src (browser) and tests (node). They are separate so browser
       # code cannot reference a node global that will not exist in the bundle.
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Unused files, exports and dependencies
+        run: npm run check:unused
+
+      - name: Duplicate source blocks
+        run: npm run check:duplicates
+
+      - name: Runtime import cycles
+        run: npm run check:architecture
+
+      - name: Translation coverage and locale parity
+        run: npm run check:i18n
 
       - name: Build
         run: npm run build
@@ -89,8 +104,12 @@ jobs:
       - name: Install language toolchains
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq python3 php-cli openjdk-17-jdk-headless
-          python3 --version && php --version | head -1 && javac -version
+          sudo apt-get install -y -qq python3 python3-tk php-cli php-xdebug openjdk-17-jdk-headless
+          python3 --version
+          python3 -c 'import tkinter; print("tkinter available")'
+          php --version | head -1
+          php -r 'if (!extension_loaded("xdebug")) { fwrite(STDERR, "Xdebug missing\n"); exit(1); } echo "Xdebug available\n";'
+          javac -version
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -165,11 +184,12 @@ jobs:
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f docker-compose.prod.yml config >/dev/null
+          docker compose -f docker-compose.test.yml config >/dev/null
 
       - name: The isolation the comments claim must be configured
         # V-07 and N-05 were both a comment claiming containment that the file
         # below it did not configure. A comment cannot be tested; this can.
-        run: node scripts/check-ops-config.mjs
+        run: node scripts/check-ops-config.mjs docker-compose.yml docker-compose.prod.yml docker-compose.test.yml
 
   image:
     name: Production image
@@ -222,7 +242,7 @@ jobs:
       # It also asserts the other direction - that workspace file I/O still WORKS -
       # so tightening the sandbox until the curriculum breaks fails here too.
       - name: Security corpus
-        run: API_URL=http://127.0.0.1:3001 node tests/security/security-tests.mjs
+        run: API_URL=http://127.0.0.1:3001 node security/run.mjs
 
       - name: Container logs on failure
         if: failure()

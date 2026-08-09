@@ -10,6 +10,7 @@ import { getOrCreateModel, updateEmptyState } from './editor-core';
 import { isAssetFile, showAssetViewer } from './asset-viewer.ts';
 import { renderFileTree } from './explorer';
 import { loadSharedProject, requestedShareId } from './share.ts';
+import { t, tn } from '../i18n/index.ts';
 
 export async function initializeWorkspace(): Promise<void> {
 const editor = runtime.editor;
@@ -18,7 +19,7 @@ if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) {
   throw new Error('Workspace initialization called before runtime dependencies were ready');
 }
 // Initialize tabs
-setStatus("Loading files…");
+setStatus(t('status.loadingFiles'));
 
 if (appConfig.isEmbedded) {
   // The isolated database name and its cleanup are decided in main.ts, where the
@@ -27,7 +28,7 @@ if (appConfig.isEmbedded) {
   await tabManager.initEmbedded();
   updateEmptyState(true);
   editor.setModel(null);
-  setStatus("Waiting for content…");
+  setStatus(t('status.waitingForContent'));
 } else if (await openSharedProjectIfRequested()) {
   /*
    * The page was opened from a share link, and the shared files are now the workspace.
@@ -77,7 +78,7 @@ if (appConfig.isEmbedded) {
     // No files - show empty state
     updateEmptyState(true);
     editor.setModel(null);
-    setStatus("Ready");
+    setStatus(t('status.ready'));
   }
 }
 
@@ -133,10 +134,9 @@ langSel.addEventListener("change", async () => {
     const result = await tabManager.openLanguageTemplateFile(newLang, targetVersion);
     if (result) {
       updateEmptyState(false);
-      setStatus(result.created
-        ? `Created ${result.tab.file.name}`
-        : `Opened ${result.tab.file.name}`
-      );
+      setStatus(t(result.created ? 'status.createdFile' : 'status.openedFile', {
+        name: result.tab.file.name,
+      }));
       if (result.created) {
         runtime.notifyWorkspaceChanged();
       }
@@ -154,7 +154,7 @@ langSel.addEventListener("change", async () => {
         configureMonacoForVersion(activeLang, runtime.currentVersion);
       }
     }
-    setStatus('Failed to open language file');
+    setStatus(t('status.openLanguageFileFailed'));
   }
 
   // Preload all versions in background for this language
@@ -194,8 +194,8 @@ versionSel.addEventListener("change", async () => {
 
   setStatus(
     newContent !== undefined
-      ? `${targetLang.name} ${targetVersion.name} - loaded starter template`
-      : `${targetLang.name} ${targetVersion.name} - your code preserved`
+      ? t('status.starterLoaded', { language: targetLang.name, version: targetVersion.name })
+      : t('status.codePreserved', { language: targetLang.name, version: targetVersion.name })
   );
 });
 
@@ -212,7 +212,7 @@ downloadBtn.addEventListener("click", () => {
   // noise as logo.png (or nothing at all, when the asset was the only tab). `file`
   // reads through to the live document buffer, so unsaved edits are still included.
   downloadFile(activeTab.file.name, activeTab.file.content);
-  setStatus(`Downloaded ${activeTab.file.name}`);
+  setStatus(t('status.downloadedFile', { name: activeTab.file.name }));
 });
 
 // Run button
@@ -241,7 +241,7 @@ async function openSharedProjectIfRequested(): Promise<boolean> {
   const { editor, tabManager } = { editor: runtime.editor, tabManager: runtime.tabManager };
   if (!editor || !tabManager || !runtime.currentLang || !runtime.currentVersion) return false;
 
-  setStatus('Opening shared project…');
+  setStatus(t('share.opening'));
 
   const project = await loadSharedProject(id);
   if (!project || !Array.isArray(project.files) || project.files.length === 0) {
@@ -269,10 +269,10 @@ async function openSharedProjectIfRequested(): Promise<boolean> {
     }
 
     renderFileTree();
-    setStatus(`Opened a shared project — ${project.files.length} files. This is your own copy.`);
+    setStatus(tn('share.openedCopy', project.files.length));
     return true;
   } catch {
-    setStatus('That shared project could not be opened.');
+    setStatus(t('share.openFailed'));
     return false;
   }
 }

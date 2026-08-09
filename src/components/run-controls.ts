@@ -26,7 +26,7 @@
  */
 
 import { runBtn, stopBtn } from './dom';
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 
 /** How the program is being run, so Stop can end the right thing. */
 export type RunKind = 'run' | 'debug';
@@ -60,7 +60,7 @@ export function runStarted(kind: RunKind, stop: () => void): void {
   // Run stays visible but inert: a second Run would kill the first and start again,
   // which is a confusing way to discover that Stop exists.
   runBtn.disabled = true;
-  runBtn.innerHTML = `<span class="btn-spinner"></span>${t('titlebar.running') || 'Running'}`;
+  runBtn.innerHTML = `<span class="btn-spinner"></span>${t('titlebar.running')}`;
 
   stopBtn.hidden = false;
   stopBtn.disabled = false;

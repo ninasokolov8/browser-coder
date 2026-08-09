@@ -35,9 +35,15 @@ export interface ImportPlan {
   readonly files: readonly PlannedFile[];
   /** Every directory that must exist, outermost first and de-duplicated. */
   readonly directories: readonly string[];
-  /** Human-readable "name - reason" lines for everything left out. */
-  readonly skipped: readonly string[];
+  /** Structured rejections; the UI translates them at the presentation boundary. */
+  readonly skipped: readonly ImportSkip[];
 }
+
+export type ImportSkip =
+  | { readonly path: string; readonly reason: 'invalid-path'; readonly code: string }
+  | { readonly path: string; readonly reason: 'duplicate' }
+  | { readonly path: string; readonly reason: 'too-large'; readonly maxMegabytes: number }
+  | { readonly path: string; readonly reason: 'file-limit'; readonly maxFiles: number };
 
 export interface ImportLimits {
   /** Files already in the workspace, counted against `maxFiles`. */
@@ -72,7 +78,7 @@ export function planImport(
   limits: ImportLimits,
 ): ImportPlan {
   const files: PlannedFile[] = [];
-  const skipped: string[] = [];
+  const skipped: ImportSkip[] = [];
   const directories = new Set<string>();
   const seen = new Set<string>();
 
@@ -87,24 +93,26 @@ export function planImport(
 
     const normalized = normalizeWorkspacePath(raw);
     if (!normalized.ok) {
-      skipped.push(`${raw} - ${normalized.message}`);
+      skipped.push({ path: raw, reason: 'invalid-path', code: normalized.code });
       continue;
     }
 
     if (seen.has(normalized.path)) {
-      skipped.push(`${normalized.path} - appears twice in the import`);
+      skipped.push({ path: normalized.path, reason: 'duplicate' });
       continue;
     }
 
     if (candidate.size !== undefined && candidate.size > limits.maxBytesPerFile) {
-      skipped.push(
-        `${normalized.path} - larger than ${Math.round(limits.maxBytesPerFile / (1024 * 1024))} MB`,
-      );
+      skipped.push({
+        path: normalized.path,
+        reason: 'too-large',
+        maxMegabytes: Math.round(limits.maxBytesPerFile / (1024 * 1024)),
+      });
       continue;
     }
 
     if (count >= limits.maxFiles) {
-      skipped.push(`${normalized.path} - workspace file limit (${limits.maxFiles}) reached`);
+      skipped.push({ path: normalized.path, reason: 'file-limit', maxFiles: limits.maxFiles });
       continue;
     }
 

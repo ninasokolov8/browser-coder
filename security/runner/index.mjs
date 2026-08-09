@@ -34,33 +34,37 @@ export async function executeCode(language, code) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ language, code }),
     });
-    
+
     if (!response.ok) {
       const text = await response.text();
       return { blocked: true, reason: `HTTP ${response.status}`, httpError: true, errorBody: text };
     }
-    
+
     const data = await response.json();
-    
+
     // Check if blocked by security filter
     // Note: Check error field, not stderr (Java outputs "security.manager" to stderr which is normal)
     const errorLower = (data.error || '').toLowerCase();
-    
+
     const blockedPatterns = [
       'blocked:', 'forbidden', 'not allowed', 'restricted',
       'dangerous', 'prohibited', 'access denied', 'rate limit',
       'malicious', 'unsafe', 'blacklist', 'denied'
     ];
-    
+
     // Only check the error field for security blocks, not stderr
     // This prevents false positives from Java's "security.manager" message
-    const isBlocked = blockedPatterns.some(p => errorLower.includes(p)) ||
+    const isBlocked = Boolean(blockedPatterns.some(p => errorLower.includes(p)) ||
       (data.blocked === true) ||
-      (data.error && data.error.toLowerCase().includes('blocked'));
-    
+      (data.error && data.error.toLowerCase().includes('blocked')));
+
     return {
       blocked: isBlocked,
-      executed: !isBlocked && (data.stdout || data.stderr) && !data.error,
+      // A successful execution is allowed to produce no output. `sys.exit()`, an
+      // empty program and assignments-only exercises are all legitimate runs.
+      // Requiring stdout/stderr made those safe fixtures fail even though the API
+      // accepted and launched them.
+      executed: !isBlocked && !data.error,
       stdout: data.stdout || '',
       stderr: data.stderr || '',
       error: data.error || null,
@@ -81,18 +85,18 @@ export async function executeCode(language, code) {
  */
 export async function runTest(language, test, results) {
   const startTime = Date.now();
-  
+
   try {
     const result = await executeCode(language, test.code);
     const duration = Date.now() - startTime;
-    
+
     let passed;
     if (test.expectBlocked) {
       passed = result.blocked || result.httpError;
     } else {
       passed = result.executed && !result.blocked;
     }
-    
+
     const testResult = {
       name: test.name,
       language,
@@ -108,9 +112,9 @@ export async function runTest(language, test, results) {
       stderr: result.stderr,
       error: result.error,
     };
-    
+
     results.tests.push(testResult);
-    
+
     if (passed) {
       results.passed++;
       log(colors.green, `  ✓ ${test.name} (${duration}ms)`);
@@ -121,7 +125,7 @@ export async function runTest(language, test, results) {
       log(colors.dim, `    Got: ${result.blocked ? 'blocked' : result.executed ? 'executed' : 'error'}`);
       if (result.error) log(colors.dim, `    Error: ${result.error}`);
     }
-    
+
     return testResult;
   } catch (error) {
     results.errors++;
@@ -137,10 +141,10 @@ export async function runAllTests(results, onProgress = null) {
   log(colors.bold + colors.cyan, '\n═══════════════════════════════════════════════════════════════════════════════');
   log(colors.bold + colors.cyan, '            🔒 BROWSER CODER - SECURITY TEST SUITE');
   log(colors.bold + colors.cyan, '═══════════════════════════════════════════════════════════════════════════════\n');
-  
+
   log(colors.dim, `Target: ${CONFIG.serverUrl}`);
   log(colors.dim, `Timestamp: ${new Date().toISOString()}\n`);
-  
+
   // Wait for server
   log(colors.yellow, '⏳ Waiting for server...');
   let serverReady = false;
@@ -155,32 +159,32 @@ export async function runAllTests(results, onProgress = null) {
       await new Promise(r => setTimeout(r, 1000));
     }
   }
-  
+
   if (!serverReady) {
     log(colors.red, '❌ Server not responding');
     process.exit(1);
   }
   log(colors.green, '✓ Server ready\n');
-  
+
   // Run tests by language
   const languages = Object.keys(SECURITY_TESTS);
   const totalTests = languages.reduce((sum, lang) => sum + SECURITY_TESTS[lang].length, 0);
   let completed = 0;
-  
+
   for (const language of languages) {
     const tests = SECURITY_TESTS[language];
     const langIcon = getLanguageIcon(language);
-    
+
     log(colors.bold + colors.blue, `\n${langIcon} ${language.toUpperCase()} (${tests.length} tests)`);
     log(colors.dim, '─'.repeat(60));
-    
+
     for (const test of tests) {
       await runTest(language, test, results);
       completed++;
       if (onProgress) onProgress(completed, totalTests);
     }
   }
-  
+
   return results;
 }
 
@@ -191,11 +195,11 @@ export function printSummary(results) {
   const duration = ((Date.now() - results.startTime) / 1000).toFixed(2);
   const total = results.passed + results.failed;
   const passRate = total > 0 ? ((results.passed / total) * 100).toFixed(1) : 0;
-  
+
   log(colors.bold + colors.cyan, '\n═══════════════════════════════════════════════════════════════════════════════');
   log(colors.bold + colors.cyan, '                              📊 SUMMARY');
   log(colors.bold + colors.cyan, '═══════════════════════════════════════════════════════════════════════════════\n');
-  
+
   log(colors.green, `  ✓ Passed:  ${results.passed}`);
   log(colors.red,   `  ✗ Failed:  ${results.failed}`);
   if (results.errors > 0) {
@@ -203,12 +207,12 @@ export function printSummary(results) {
   }
   log(colors.blue, `  📈 Rate:   ${passRate}%`);
   log(colors.dim, `  ⏱ Time:   ${duration}s\n`);
-  
+
   if (results.failed === 0) {
     log(colors.bold + colors.green, '  🎉 ALL SECURITY TESTS PASSED! The sandbox is secure.\n');
   } else {
     log(colors.bold + colors.red, '  ⚠️  SECURITY VULNERABILITIES DETECTED!\n');
-    
+
     const vulns = results.tests.filter(t => !t.passed && t.expectBlocked);
     if (vulns.length > 0) {
       log(colors.yellow, '  Unblocked attacks:');
@@ -217,7 +221,7 @@ export function printSummary(results) {
       }
     }
   }
-  
+
   log(colors.bold + colors.cyan, '═══════════════════════════════════════════════════════════════════════════════\n');
 }
 
@@ -229,7 +233,7 @@ export function generateStatistics(results) {
     byLanguage: {},
     byCategory: {},
   };
-  
+
   for (const test of results.tests) {
     // By language
     if (!stats.byLanguage[test.language]) {
@@ -238,7 +242,7 @@ export function generateStatistics(results) {
     stats.byLanguage[test.language].total++;
     if (test.passed) stats.byLanguage[test.language].passed++;
     else stats.byLanguage[test.language].failed++;
-    
+
     // By category
     if (!stats.byCategory[test.category]) {
       stats.byCategory[test.category] = { total: 0, passed: 0, failed: 0 };
@@ -247,7 +251,7 @@ export function generateStatistics(results) {
     if (test.passed) stats.byCategory[test.category].passed++;
     else stats.byCategory[test.category].failed++;
   }
-  
+
   return stats;
 }
 

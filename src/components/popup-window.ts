@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.ts';
+
 /**
  * Floating popup windows.
  *
@@ -40,7 +42,8 @@ export function getPopupWindow(
       `<div class="popup-window-header" id="${id}-header">` +
         `<span class="popup-window-title" id="${id}-title"></span>` +
         `<button class="popup-window-close" id="${id}-close" ` +
-          `title="Close" aria-label="Close">✕</button>` +
+          `title="${t('common.close')}" aria-label="${t('common.close')}" ` +
+          `data-i18n-title="common.close" data-i18n-aria-label="common.close">✕</button>` +
       `</div>` +
       `<div class="popup-window-body" id="${id}-body"></div>`;
     document.body.appendChild(windowEl);
@@ -54,6 +57,10 @@ export function getPopupWindow(
   if (titleEl) titleEl.textContent = title;
 
   const closeBtn = windowEl.querySelector('.popup-window-close') as HTMLButtonElement | null;
+  if (closeBtn) {
+    closeBtn.title = t('common.close');
+    closeBtn.setAttribute('aria-label', t('common.close'));
+  }
   if (closeBtn && !closeBtn.dataset.bound) {
     closeBtn.dataset.bound = '1';
     closeBtn.addEventListener('click', onClose);

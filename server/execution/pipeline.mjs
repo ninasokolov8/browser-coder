@@ -525,5 +525,3 @@ export class ExecutionPipeline {
     };
   }
 }
-
-export default ExecutionPipeline;

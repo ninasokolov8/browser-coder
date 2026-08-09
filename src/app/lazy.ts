@@ -28,7 +28,7 @@
 
 export function lazyRef<T extends object>(resolve: () => T | null, name: string): T {
   return new Proxy({} as T, {
-    get(_target, property, receiver) {
+    get(_target, property) {
       const target = resolve();
       if (!target) {
         throw new Error(`${name} was used before it was initialized`);

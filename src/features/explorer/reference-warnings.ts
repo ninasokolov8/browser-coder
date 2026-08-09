@@ -28,6 +28,42 @@ export interface MovedFile {
   readonly newPath: string;
 }
 
+export type RewriteWarning =
+  | { readonly kind: 'unhandled-reference'; readonly filePath: string; readonly name: string; readonly language: string }
+  | { readonly kind: 'python-import'; readonly path: string }
+  | { readonly kind: 'java-package'; readonly path: string }
+  | { readonly kind: 'java-import'; readonly path: string }
+  | { readonly kind: 'csharp-namespace'; readonly path: string }
+  | { readonly kind: 'csharp-using-split'; readonly namespace: string };
+
+export function rewriteWarningIdentity(warning: RewriteWarning): string {
+  return JSON.stringify(warning);
+}
+
+export function formatRewriteWarning(
+  warning: RewriteWarning,
+  translate: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  switch (warning.kind) {
+    case 'unhandled-reference':
+      return translate('explorer.warningUnhandledReference', {
+        file: warning.filePath,
+        name: warning.name,
+        language: warning.language,
+      });
+    case 'python-import':
+      return translate('explorer.warningPythonImport', { path: warning.path });
+    case 'java-package':
+      return translate('explorer.warningJavaPackage', { path: warning.path });
+    case 'java-import':
+      return translate('explorer.warningJavaImport', { path: warning.path });
+    case 'csharp-namespace':
+      return translate('explorer.warningCsharpNamespace', { path: warning.path });
+    case 'csharp-using-split':
+      return translate('explorer.warningCsharpUsingSplit', { namespace: warning.namespace });
+  }
+}
+
 /**
  * Basenames of the files that moved.
  *
@@ -58,19 +94,20 @@ export function warningsForUnhandledFile(
   content: string,
   languageLabel: string,
   moved: ReadonlySet<string>,
-): string[] {
-  const warnings: string[] = [];
+): RewriteWarning[] {
+  const warnings: RewriteWarning[] = [];
 
   for (const name of moved) {
     // The file's own name moving is not a reference to itself.
     if (filePath.endsWith(`/${name}`) || filePath === name) continue;
     if (!content.includes(name)) continue;
 
-    warnings.push(
-      `${filePath} mentions "${name}" but was not updated automatically - ` +
-      `Browser Coder does not rewrite references in ${languageLabel} yet. ` +
-      `Check it by hand.`,
-    );
+    warnings.push({
+      kind: 'unhandled-reference',
+      filePath,
+      name,
+      language: languageLabel,
+    });
   }
 
   return warnings;

@@ -131,8 +131,8 @@ jobs:
               exit 1
             fi
             echo "✓ nginx is serving"
-            
+
             # Cleanup old images
             docker image prune -f
-            
+
             echo "✅ Deployment complete!"

@@ -31,9 +31,9 @@ const CLASSES_DIR = '.classes';
 export const JAVA_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/java/', import.meta.url));
 
 /** Environment the debug adapter reads to know what to launch and how. */
-export const JAVA_MAIN_ENV = 'BROWSER_CODER_JAVA_MAIN';
-export const JAVA_CLASSPATH_ENV = 'BROWSER_CODER_JAVA_CLASSPATH';
-export const JAVA_BIN_ENV = 'BROWSER_CODER_JAVA_BIN';
+const JAVA_MAIN_ENV = 'BROWSER_CODER_JAVA_MAIN';
+const JAVA_CLASSPATH_ENV = 'BROWSER_CODER_JAVA_CLASSPATH';
+const JAVA_BIN_ENV = 'BROWSER_CODER_JAVA_BIN';
 
 /**
  * The declared package of a compilation unit, or null for the default package.
@@ -215,5 +215,3 @@ export const javaAdapter = {
     };
   },
 };
-
-export default javaAdapter;

@@ -72,7 +72,6 @@ export class CommandRegistry {
   // Stored with a permissive argument type: the registry dispatches arguments it
   // cannot know the shape of, and the type safety that matters is at register()
   // where the definition and its handler are written together.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   #commands = new Map<string, CommandDefinition<any[]>>();
   #isAllowed: (capability: Capability) => boolean;
   #onRefused?: (command: CommandDefinition, outcome: CommandOutcome) => void;

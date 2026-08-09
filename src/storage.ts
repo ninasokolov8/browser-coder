@@ -58,13 +58,6 @@ export interface StoredFolder {
   isExpanded: boolean;
 }
 
-export type FileSystemItem = (StoredFile & { type: 'file' }) | (StoredFolder & { type: 'folder' });
-
-export interface WorkspaceState {
-  activeFileId: string | null;
-  theme: string;
-}
-
 /*
  * There was a `dbName` module variable here, with `setDbName`/`getDbName` around it and
  * a comment explaining that this is how an embedded IDE gets an isolated database.

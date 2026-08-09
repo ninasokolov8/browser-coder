@@ -20,6 +20,7 @@
 import * as monaco from 'monaco-editor';
 
 import { canFormatLocally, formatSource, type FormatResult } from './format-core.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * Monaco language ids this module provides formatting for.
@@ -100,8 +101,12 @@ export function describeFormatResult(
   fileName: string,
   result: FormatResult | null,
 ): string {
-  if (!result) return `Formatted ${fileName}`;
-  if (result.reindented) return `Formatted ${fileName}`;
-  if (result.declinedReason) return `Tidied ${fileName} — ${result.declinedReason}`;
-  return `Formatted ${fileName}`;
+  if (!result || result.reindented) return t('format.formatted', { name: fileName });
+  if (result.declinedReason) {
+    return t('format.tidied', {
+      name: fileName,
+      reason: t(`format.reason.${result.declinedReason}`),
+    });
+  }
+  return t('format.formatted', { name: fileName });
 }

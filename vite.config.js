@@ -35,18 +35,10 @@ export default defineConfig({
   // Ensure raw file imports work for starter code
   assetsInclude: ["**/*.py", "**/*.java", "**/*.php", "**/*.cs"],
   build: {
-    // Memory optimizations for low-RAM servers
+    // Vite 8 uses Oxc for minification and Rolldown's automatic code
+    // splitting. Keeping those defaults avoids deprecated compatibility
+    // shims and lets lazy feature imports remain separate chunks.
     sourcemap: false,
-    minify: 'esbuild', // faster and uses less memory than terser
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "monaco-editor": ["monaco-editor"],
-        },
-      },
-      // Reduce memory during build
-      maxParallelFileOps: 2,
-    },
   },
 });

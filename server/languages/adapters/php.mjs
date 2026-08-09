@@ -26,9 +26,9 @@ import { WORKSPACE_ENV } from './python.mjs';
 export const PHP_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/php/', import.meta.url));
 
 /** Environment the debug adapter reads to know what to launch and how. */
-export const PHP_BIN_ENV = 'BROWSER_CODER_PHP_BIN';
+const PHP_BIN_ENV = 'BROWSER_CODER_PHP_BIN';
 /** The interpreter flags a normal run would have used, as a JSON array. */
-export const PHP_ARGS_ENV = 'BROWSER_CODER_PHP_ARGS';
+const PHP_ARGS_ENV = 'BROWSER_CODER_PHP_ARGS';
 
 /**
  * Functions disabled at the interpreter level.
@@ -165,5 +165,3 @@ export const phpAdapter = {
     };
   },
 };
-
-export default phpAdapter;

@@ -23,6 +23,7 @@
 
 import type { WorkspaceService } from '../workspace/service.ts';
 import type { Disposable } from '../workspace/types.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * How to reach the student.
@@ -117,8 +118,8 @@ export function connectSaveStatus(
 
       const detail = service.persistence.lastErrorFor(event.documentId)?.message;
       const message = detail
-        ? `Your work could not be saved to this browser: ${detail}. Copy anything important somewhere else.`
-        : 'Your work could not be saved to this browser. Copy anything important somewhere else.';
+        ? t('save.failedWithDetail', { detail })
+        : t('save.failed');
 
       reporter.status(message);
       reporter.announce(message);
@@ -127,7 +128,7 @@ export function connectSaveStatus(
 
     if (event.outcome.status === 'saved' && failing) {
       failing = false;
-      const message = 'Saving is working again. Your work is being stored.';
+      const message = t('save.recovered');
       reporter.status(message);
       reporter.announce(message);
     }

@@ -2,7 +2,7 @@
 # DigitalOcean Droplet Setup Script for Browser Coder
 # Run this ONCE on a fresh Ubuntu droplet
 #
-# Usage: 
+# Usage:
 #   curl -sSL https://raw.githubusercontent.com/ninasokolov8/browser-coder/main/scripts/setup-droplet.sh | bash
 #   OR
 #   scp scripts/setup-droplet.sh root@YOUR_DROPLET_IP:~ && ssh root@YOUR_DROPLET_IP 'bash setup-droplet.sh'

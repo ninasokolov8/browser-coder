@@ -1,5 +1,5 @@
 import * as monaco from 'monaco-editor';
-import { initI18n, setLanguage, getLanguage as getUILang } from './i18n';
+import { initI18n, setLanguage, getLanguage as getUILang, t } from './i18n/index.ts';
 import { getAllLanguages, getLanguage, preloadDefaultStarters } from './languages';
 import { setWorkspaceService, storage } from './storage';
 import { createWorkspace } from './workspace';
@@ -19,7 +19,7 @@ import { debugState, initializeDebugUi } from './features/debug/ui';
 import { appConfig, applyModeClasses } from './app/config';
 import { runtime } from './app/runtime';
 import { createEditor, createTabManager } from './features/editor-core';
-import { renderFileTree } from './features/explorer';
+import { initializeExplorer, renderFileTree } from './features/explorer';
 import { highlightSearchMatchesInEditor } from './features/search';
 import { initializeWorkspace } from './features/workspace-init';
 import { initializeLayout } from './features/layout';
@@ -40,7 +40,7 @@ import { renderHover } from './features/hover-content';
 import { getKeywordExplanation as getKeywordExplanationForSeam } from './languages';
 
 async function bootstrap(): Promise<void> {
-  setStatus('Loading languages…');
+  setStatus(t('status.loadingLanguages'));
   applyModeClasses();
 
   await initI18n();
@@ -51,12 +51,15 @@ async function bootstrap(): Promise<void> {
   uiLangSel.addEventListener('change', async () => {
     await setLanguage(uiLangSel.value);
     updateGridForRTL();
+    runtime.editor?.updateOptions({ ariaLabel: t('editor.ariaLabel') });
+    runtime.tabManager?.render();
+    if (runtime.tabManager) void renderFileTree(runtime.tabManager);
   });
 
   await preloadDefaultStarters();
   const languages = getAllLanguages();
   if (!languages.length) {
-    setStatus('Error: No languages loaded');
+    setStatus(t('status.noLanguagesLoaded'));
     return;
   }
 
@@ -132,6 +135,7 @@ async function bootstrap(): Promise<void> {
     renderFileTree: () => { void renderFileTree(); },
     refreshSearchHighlights: highlightSearchMatchesInEditor,
   });
+  initializeExplorer();
 
   // Keep a model for every document a Monaco language service can analyse, opened
   // or not.
@@ -241,7 +245,7 @@ async function bootstrap(): Promise<void> {
 
   initializeLayout();
   initializeMoreMenu();
-  setStatus('Ready ✅ (Ctrl+Enter to run)');
+  setStatus(t('status.readyToRun'));
 
   // Only now is it true. Host messages that arrived earlier were queued and are
   // released by this call; readiness is announced to the host from here too, so a
@@ -252,5 +256,5 @@ async function bootstrap(): Promise<void> {
 
 bootstrap().catch(error => {
   console.error('[IDE] Fatal initialization error:', error);
-  setStatus('Initialization failed');
+  setStatus(t('status.initializationFailed'));
 });

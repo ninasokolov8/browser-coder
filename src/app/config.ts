@@ -10,7 +10,7 @@ export const appConfig = {
   hackLabEnabled: urlParams.get('hacklab') === '1',
   urlLanguage: urlParams.get('lang') || 'javascript',
   urlVersion: urlParams.get('version') || '',
-  urlUiLang: urlParams.get('uilang') || 'en',
+  urlUiLang: urlParams.get('uilang') || '',
 };
 
 export const policyState: {

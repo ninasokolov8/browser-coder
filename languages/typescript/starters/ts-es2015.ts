@@ -6,11 +6,11 @@ interface User {
 
 class Greeter {
   private user: User;
-  
+
   constructor(user: User) {
     this.user = user;
   }
-  
+
   greet(): string {
     return `Hello, ${this.user.name}!`;
   }

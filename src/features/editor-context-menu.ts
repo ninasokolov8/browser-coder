@@ -9,7 +9,7 @@
 import * as monaco from 'monaco-editor';
 
 import { getKeywordExplanation, languageCan } from '../languages';
-import { t } from '../i18n';
+import { t } from '../i18n/index.ts';
 import { getUILang } from './wrapped-i18n';
 import { runtime, requireEditor, requireTabManager } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
@@ -166,7 +166,7 @@ function selectedProgram(): { code: string; range: LineRange } | null {
 // the Run button and Ctrl+Enter and then executed anything the student right-clicked.
 runtime.commands?.register({
   id: 'workspace.runSelection',
-  title: 'Run selection',
+  title: 'command.runSelection',
   capability: 'run',
   when: () => selectedProgram() !== null,
   run: async () => {

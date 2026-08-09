@@ -234,5 +234,3 @@ export class SessionRegistry {
     return stopped;
   }
 }
-
-export default SessionRegistry;

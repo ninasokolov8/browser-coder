@@ -23,18 +23,32 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const HTML = readFileSync(
-  resolve(import.meta.dirname, '../../index.html'),
-  'utf8',
-);
+const HTML = readFileSync(resolve(import.meta.dirname, '../../index.html'), 'utf8');
+const STYLES_DIR = resolve(import.meta.dirname, '../../src/styles');
+const STYLE_FILES = [
+  'base.css',
+  'titlebar.css',
+  'workspace.css',
+  'debugger.css',
+  'auxiliary-surfaces.css',
+  'responsive-embed.css',
+];
+const STYLE = STYLE_FILES
+  .map(file => readFileSync(resolve(STYLES_DIR, file), 'utf8'))
+  .join('\n');
 
-const STYLE = HTML.slice(HTML.indexOf('<style>') + 7, HTML.indexOf('</style>'));
+test('the stylesheet entrypoint loads every concern in cascade order', () => {
+  const entrypoint = readFileSync(resolve(STYLES_DIR, 'app.css'), 'utf8');
+  const imported = [...entrypoint.matchAll(/@import\s+["'].\/([^"']+)["']/g)]
+    .map(match => match[1]);
+  assert.deepEqual(imported, STYLE_FILES);
+});
 
 /** The declarations inside one selector block, given the selector's opening line. */
 function variableBlock(selector) {
   const start = STYLE.indexOf(`${selector} {`);
-  assert.notEqual(start, -1, `no ${selector} block in index.html`);
-  const end = STYLE.indexOf('\n      }', start);
+  assert.notEqual(start, -1, `no ${selector} block in src/styles`);
+  const end = STYLE.indexOf('\n}', start);
   assert.notEqual(end, -1, `${selector} block is not terminated as expected`);
   return STYLE.slice(start, end);
 }
@@ -56,7 +70,7 @@ const HIGH_CONTRAST = variableBlock('.hc-theme');
  */
 const COMPONENT_CSS = STYLE.slice(STYLE.indexOf('}', STYLE.indexOf(HIGH_CONTRAST)));
 
-describe('the two themes are symmetric', () => {
+describe('the base themes are symmetric', () => {
   test('every variable defined in one is defined in the other', () => {
     const light = definedNames(LIGHT);
     const dark = definedNames(DARK);
@@ -102,7 +116,7 @@ describe('the two themes are symmetric', () => {
   });
 
   test('the theme selector offers it, or nobody can choose it', () => {
-    assert.match(HTML, /<option value="hc-black">/);
+    assert.match(HTML, /<option\s+value=["']hc-black["']/);
   });
 
   test('the activity bar icons are legible, because that bar is dark in BOTH themes', () => {
