@@ -67,7 +67,11 @@ interface RuntimeSeam {
     snapshotForExecution(): Array<{ path: string; content: string }>;
     findByPath(path: string): { id: string; getContent(): string } | null;
   };
-  models: { peek(id: string): { isDisposed(): boolean } | null };
+  models: { peek(id: string): { isDisposed(): boolean; uri: unknown } | null };
+  diagnostics: {
+    forDocument(id: string): Array<{ line: number; message: string }>;
+    counts(): { error: number; total: number };
+  };
   tabManager: { getAllTabs(): Array<{ file: { id: string; name: string } }> };
   commands: {
     isEnabled(id: string): boolean;
@@ -75,12 +79,54 @@ interface RuntimeSeam {
   };
 }
 
+interface MonacoSeam {
+  editor: {
+    getModelMarkers(filter: { resource: unknown }): Array<{
+      owner: string;
+      startLineNumber: number;
+      message: string;
+    }>;
+  };
+}
+
 function seam(): RuntimeSeam | undefined {
   return (frame.contentWindow as unknown as { __bcRuntime?: RuntimeSeam }).__bcRuntime;
 }
 
+function monacoSeam(): MonacoSeam | undefined {
+  return (frame.contentWindow as unknown as { __bcMonaco?: MonacoSeam }).__bcMonaco;
+}
+
+const BROKEN_PYTHON = `import time
+import turtle
+
+screen = turtle.Screen()
+screen.setup(width=350, height=700)
+screen.bgcolor("white")
+
+terry = turtle.Turtle()
+terry.shape("turtle")
+terry.pensize(6)
+terry.speed(2)
+t
+terry.penup()
+terry.goto(0, -250)
+terry.setheading(90)
+g
+terry.pencolor("green")
+terry.pendown()
+terry.forward(18g0)
+
+time.sleep(0.7-)
+
+terry.penup()
+terry.forward(120)
+g
+time.sleep(0.7)
+`;
+
 const PROJECT = [
-  { path: 'main.py', content: 'from lib.util import greet\nprint(greet("world"))\n' },
+  { path: 'main.py', content: BROKEN_PYTHON },
   { path: 'lib/util.py', content: 'def greet(name):\n    return f"hello {name}"\n' },
   { path: 'notes.py', content: '# scratch\n' },
 ];
@@ -166,6 +212,36 @@ async function run(): Promise<void> {
   // Exactly one visible tab, not one per file.
   equal('exactly one tab is opened', seam()!.tabManager.getAllTabs().length, 1);
 
+  // The host installs files before the active editor model exists. Diagnostics that
+  // are computed during that replacement must be rendered as soon as the model is
+  // acquired, and the real compiler check must run once the active tab is selected.
+  // This is the exact mixed-error shape that regressed in Step-Up: the status bar
+  // counted scanner findings while the editor displayed no squiggles at all.
+  const initialMain = seam()!.workspace.findByPath('main.py')!;
+  const authoritative = await waitFor(
+    'all five authoritative Python diagnostics',
+    () => {
+      const diagnostics = seam()!.diagnostics.forDocument(initialMain.id);
+      return diagnostics.length === 5 &&
+        JSON.stringify(diagnostics.map(item => item.line)) === JSON.stringify([12, 16, 19, 21, 25]);
+    },
+  );
+  check(
+    'Step-Up project load finds every mixed Python error',
+    authoritative,
+    JSON.stringify(seam()!.diagnostics.forDocument(initialMain.id)),
+  );
+  equal('the status count matches the five real errors', seam()!.diagnostics.counts().error, 5);
+
+  const initialModel = seam()!.models.peek(initialMain.id);
+  const markersRendered = await waitFor(
+    'all five compiler markers on the late-created model',
+    () => Boolean(initialModel && monacoSeam()?.editor
+      .getModelMarkers({ resource: initialModel.uri })
+      .filter(marker => marker.owner === 'browser-coder-run').length === 5),
+  );
+  check('late-created Step-Up model renders every error squiggle', markersRendered);
+
   // Debug was bound while the embedded workspace was still empty. Its `when`
   // clause must be re-evaluated after Step-Up supplies the Python model.
   const debugEnabled = await waitFor(
@@ -205,7 +281,7 @@ async function run(): Promise<void> {
   check('the open document has a model', mainModelBefore !== null);
 
   const updated = PROJECT.map(file =>
-    file.path === 'main.py' ? { ...file, content: `${file.content}print("updated")\n` } : file,
+    file.path === 'main.py' ? { ...file, content: 'print("updated")\n' } : file,
   );
   post({ type: 'stepup:set-files', files: updated });
 
@@ -214,6 +290,19 @@ async function run(): Promise<void> {
     () => seam()!.workspace.findByPath('main.py')?.getContent().includes('updated') === true,
   );
   check('stepup:set-files applies new content', applied);
+
+  const cleared = await waitFor(
+    'diagnostics and markers to clear after the host fixes the file',
+    () => {
+      const model = seam()!.models.peek(mainDocument.id);
+      const markers = model
+        ? monacoSeam()?.editor.getModelMarkers({ resource: model.uri }) ?? []
+        : [];
+      return seam()!.diagnostics.forDocument(mainDocument.id).length === 0 &&
+        markers.filter(marker => marker.owner === 'browser-coder-run').length === 0;
+    },
+  );
+  check('a Step-Up host update clears fixed diagnostics and squiggles', cleared);
 
   const after = seam()!.workspace.allDocuments().map(document => document.id).sort();
   check(

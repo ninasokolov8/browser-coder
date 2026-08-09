@@ -225,6 +225,7 @@ async function bootstrap(): Promise<void> {
     store: diagnostics,
     service: workspace.service,
     activeDocumentId: () => runtime.tabManager?.getActiveTab()?.file.id ?? null,
+    onDidChangeActiveDocument: listener => runtime.editor!.onDidChangeModel(listener),
   });
 
   // Say so when autosave is failing, and flush what is pending before the page goes

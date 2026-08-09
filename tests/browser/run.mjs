@@ -32,7 +32,7 @@ const SUITES = {
   // Needs the API: it asserts that a run STREAMS, which cannot be checked against
   // a dev server with nothing behind its /api proxy.
   'app-boot': { page: '/tests/browser/app-boot.html', port: 5199, needsApi: true },
-  embedded: { page: '/tests/browser/embedded.html?embed-host=1', port: 3000 },
+  embedded: { page: '/tests/browser/embedded.html?embed-host=1', port: 3000, needsApi: true },
 };
 const SUITE = process.argv[2] || 'workspace';
 const selected = SUITES[SUITE];
