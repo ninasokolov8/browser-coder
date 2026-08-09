@@ -338,11 +338,9 @@ def main():
         defined, loaded = _collect(tree)
 
         errors = []
-        seen = set()
         for name, line, col in loaded:
-            if name in defined or name in seen:
+            if name in defined:
                 continue
-            seen.add(name)
             errors.append({
                 'line': line,
                 'col': col + 1,

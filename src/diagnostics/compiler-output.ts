@@ -35,34 +35,80 @@ const INTERNAL_FRAME = /^\s*at\s+(?:node:|async\s+node:|ModuleJob|ModuleLoader|a
 /**
  * Python: `  File "main.py", line 2` then a caret line, then `NameError: …`.
  *
- * A traceback lists frames outermost-first, so the LAST frame that names a
- * workspace file is where the student's problem is - the earlier ones are the
- * call path that got there.
+ * A normal traceback contains several frames but only its final frame is followed by
+ * an exception message. The preflight checker uses the same familiar shape once per
+ * static problem, separated by blank lines. Matching each frame to an exception line
+ * before the NEXT frame handles both forms: one deepest runtime location, or every
+ * independent preflight problem.
  */
 function parsePython(text: string): ParsedDiagnostic[] {
-  const frames = [...text.matchAll(/^\s*File "([^"]+)", line (\d+)/gm)];
+  const lines = text.split('\n').map(part => part.trimEnd());
+  const frames: Array<{ index: number; file: string; line: number }> = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    const match = lines[index].match(/^\s*File "([^"]+)", line (\d+)/);
+    if (!match) continue;
+    frames.push({ index, file: match[1], line: Number.parseInt(match[2], 10) });
+  }
   if (frames.length === 0) return [];
 
-  const last = frames[frames.length - 1];
-  const file = last[1];
-  const line = Number.parseInt(last[2], 10);
+  const results: ParsedDiagnostic[] = [];
+  for (let frameIndex = 0; frameIndex < frames.length; frameIndex++) {
+    const frame = frames[frameIndex];
+    const stop = frames[frameIndex + 1]?.index ?? lines.length;
 
-  // The message is the final non-empty line: `NameError: name 'y' is not defined`.
-  const lines = text.split('\n').map(part => part.trimEnd()).filter(part => part.trim() !== '');
-  const message = lines[lines.length - 1]?.trim() ?? 'Error';
+    // Exception classes normally end in Error/Exception, but Python permits custom
+    // names such as `Boom`, and built-ins such as SystemExit. A class-like identifier
+    // followed by a colon is the stable part shared by all of them.
+    let messageIndex = -1;
+    for (let index = frame.index + 1; index < stop; index++) {
+      if (/^\s*(?:[A-Za-z_]\w*\.)*[A-Z][A-Za-z0-9_]*\s*:/.test(lines[index])) {
+        messageIndex = index;
+      }
+    }
+    if (messageIndex === -1) continue;
 
-  // The caret line locates the column. Its indentation is measured against the
-  // source line above it, which Python indents by four spaces.
-  let column: number | undefined;
-  const caretIndex = lines.findIndex(part => /^\s*\^+\s*$/.test(part));
-  if (caretIndex > 0) {
-    const caretOffset = lines[caretIndex].indexOf('^');
-    const sourceIndent = lines[caretIndex - 1].length - lines[caretIndex - 1].trimStart().length;
-    const relative = caretOffset - sourceIndent;
-    if (relative >= 0) column = relative + 1;
+    let column: number | undefined;
+    for (let index = messageIndex - 1; index > frame.index; index--) {
+      if (!/^\s*\^+\s*$/.test(lines[index])) continue;
+      const caretOffset = lines[index].indexOf('^');
+      const source = lines[index - 1] ?? '';
+      const sourceIndent = source.length - source.trimStart().length;
+      const relative = caretOffset - sourceIndent;
+      if (relative >= 0) column = relative + 1;
+      break;
+    }
+
+    results.push({
+      file: frame.file,
+      line: frame.line,
+      column,
+      severity: 'error',
+      message: lines[messageIndex].trim(),
+    });
   }
 
-  return [{ file, line, column, severity: 'error', message }];
+  // A few built-in exceptions, including KeyboardInterrupt, are printed without a
+  // colon or message body. They belong to the deepest traceback frame. Keep this
+  // fallback narrow so it cannot turn source or caret lines into extra diagnostics.
+  if (results.length === 0) {
+    const message = [...lines]
+      .reverse()
+      .map(line => line.trim())
+      .find(line => /^(?:[A-Za-z_]\w*\.)*[A-Z][A-Za-z0-9_]*$/.test(line));
+
+    if (message) {
+      const frame = frames[frames.length - 1];
+      results.push({
+        file: frame.file,
+        line: frame.line,
+        severity: 'error',
+        message,
+      });
+    }
+  }
+
+  return results;
 }
 
 /** javac: `Main.java:1: error: illegal start of expression` */

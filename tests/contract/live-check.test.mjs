@@ -52,6 +52,24 @@ describe('nothing is ever executed', requires('python'), () => {
     assert.equal(body.output, '', 'nothing to report');
     assert.ok(Date.now() - started < 20000, 'and it did not sleep');
   });
+
+  it('returns every undefined-name occurrence, including repeated names', async () => {
+    const { status, body } = await server.postJson('/api/check', {
+      language: 'python',
+      code: 't\ng\ng\n',
+    });
+
+    assert.equal(status, 200);
+    assert.equal(body.ok, false);
+    assert.equal(
+      (body.output.match(/NameError:/g) || []).length,
+      3,
+      body.output,
+    );
+    assert.match(body.output, /line 1/);
+    assert.match(body.output, /line 2/);
+    assert.match(body.output, /line 3/);
+  });
 });
 
 /*
