@@ -114,6 +114,10 @@ class DebugSession {
       } catch {
         continue;
       }
+      if (event.type === 'output') {
+        const stream = event.stream === 'stderr' ? 'stderr' : 'stdout';
+        this[stream] += String(event.data ?? '');
+      }
       this.#events.push(event);
       const waiterIndex = this.#waiters.findIndex(waiter => waiter.type === event.type);
       if (waiterIndex !== -1) {
@@ -126,6 +130,10 @@ class DebugSession {
 
   send(payload) {
     this.#socket?.write(`${JSON.stringify(payload)}\n`);
+  }
+
+  seen(type) {
+    return type ? this.#events.filter(event => event.type === type) : [...this.#events];
   }
 
   waitFor(type, timeoutMs = 20000) {
@@ -149,10 +157,8 @@ class DebugSession {
   /**
    * Wait for the process itself to exit, not just for the `terminated` event.
    *
-   * They are not the same moment. `terminated` travels over the debug socket while
-   * the program's stdout is still draining down a separate pipe, so asserting on
-   * captured output straight after `terminated` reads a partial buffer. It passed
-   * on Linux and failed on Windows, which is the usual signature of this mistake.
+   * They are not the same moment. The process may still be running atexit handlers
+   * after the adapter sends `terminated`.
    */
   waitForExit(timeoutMs = 15000) {
     if (this.exited !== null) return Promise.resolve(this.exited);
@@ -346,6 +352,42 @@ describe('log points', { skip }, () => {
       await debug.waitFor('terminated');
       await debug.waitForExit();
       assert.match(debug.stdout, /done/);
+    } finally {
+      debug.dispose();
+    }
+  });
+
+  test('stay in source order with ordinary print output', async () => {
+    const debug = session([
+      'x = 10',
+      'for i in range(3):',
+      '    x += 1',
+      '    print(x)',
+    ].join('\n'));
+    try {
+      await debug.start();
+      await debug.waitFor('hello');
+      debug.send({ command: 'setBreakpoints', lines: [], logpoints: { '': { 3: 'i' } } });
+      await debug.waitFor('breakpoints');
+      await debug.waitFor('started');
+      await debug.waitFor('terminated');
+      await debug.waitForExit();
+
+      const timeline = [];
+      let stdout = '';
+      for (const event of debug.seen()) {
+        if (event.type === 'log') timeline.push(`i=${event.value.text}`);
+        if (event.type !== 'output' || event.stream !== 'stdout') continue;
+        stdout += String(event.data ?? '');
+        let newline;
+        while ((newline = stdout.indexOf('\n')) !== -1) {
+          timeline.push(`print=${stdout.slice(0, newline)}`);
+          stdout = stdout.slice(newline + 1);
+        }
+      }
+      assert.deepEqual(timeline, [
+        'i=0', 'print=11', 'i=1', 'print=12', 'i=2', 'print=13',
+      ]);
     } finally {
       debug.dispose();
     }
@@ -609,5 +651,51 @@ describe('debugging a program that draws', { skip }, () => {
     const drawing = JSON.parse(readFileSync(join(dir, 'graphics.json'), 'utf8'));
     assert.ok(Array.isArray(drawing.shapes), 'a shape list');
     assert.ok(drawing.shapes.length > 0, 'with the square in it');
+  });
+});
+
+describe('live turtle snapshots', { skip }, () => {
+  test('each debugger step carries only the drawing reached so far', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bc-dbg-turtle-live-'));
+    const shimPath = join(dir, '.browser-coder-turtle-shim.py');
+    writeFileSync(shimPath, readFileSync(TURTLE_SHIM, 'utf8'), 'utf8');
+    const debug = new DebugSession(dir, [
+      'import turtle',
+      'pen = turtle.Turtle()',
+      'pen.forward(50)',
+      'pen.left(90)',
+      'print("done")',
+    ].join('\n'), {
+      BROWSER_CODER_TURTLE_SHIM: shimPath,
+      BROWSER_CODER_GRAPHICS_OUT: join(dir, 'graphics.json'),
+    });
+    try {
+      await debug.start();
+      await debug.waitFor('hello');
+      debug.send({ command: 'setBreakpoints', lines: [3] });
+      await debug.waitFor('breakpoints');
+      await debug.waitFor('started');
+
+      const beforeForward = await debug.waitFor('stopped');
+      assert.equal(beforeForward.line, 3);
+      assert.ok(beforeForward.turtleData, 'the pause includes turtle data');
+      const beforeCount = beforeForward.turtleData.shapes.length;
+
+      debug.send({ command: 'next' });
+      const afterForward = await debug.waitFor('stopped');
+      assert.equal(afterForward.line, 4);
+      assert.ok(afterForward.turtleData.shapes.length > beforeCount);
+
+      debug.send({ command: 'next' });
+      const afterTurn = await debug.waitFor('stopped');
+      assert.equal(afterTurn.line, 5);
+      assert.ok(afterTurn.turtleData.shapes.length > afterForward.turtleData.shapes.length);
+
+      debug.send({ command: 'continue' });
+      await debug.waitFor('terminated');
+      await debug.waitForExit();
+    } finally {
+      debug.dispose();
+    }
   });
 });

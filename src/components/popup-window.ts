@@ -3,7 +3,7 @@ import { t } from '../i18n/index.ts';
 /**
  * Floating popup windows.
  *
- * Program output that is a *picture* — a turtle drawing, an SVG image — opens in
+ * Program output that is a *picture* - a turtle drawing, an SVG image - opens in
  * its own small draggable window instead of the Output panel, so it never
  * covers or collides with stdout/stderr/prints. Both stay visible at the same
  * time, exactly like a real IDE where graphics open in a separate window.

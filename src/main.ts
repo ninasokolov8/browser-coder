@@ -27,7 +27,7 @@ import { initializeMoreMenu } from './features/more-menu';
 import { markWorkspaceReady, setupStepUpIntegration } from './integrations/stepup';
 import { populateLanguageDropdown, populateVersionDropdown, configureMonacoForVersion } from './components/monaco-config';
 import { uiLangSel, langSel } from './components/dom';
-import { setStatus } from './components/output';
+import { isOutputPlaceholderVisible, setStatus, showOutputPlaceholder } from './components/output';
 import { announce } from './components/announce.ts';
 import { updateGridForRTL } from './features/ui-layout';
 import { initializeGoToDefinition } from './features/go-to-definition';
@@ -50,12 +50,15 @@ async function bootstrap(): Promise<void> {
   applyModeClasses();
 
   await initI18n();
+  showOutputPlaceholder();
   if (appConfig.urlUiLang && appConfig.urlUiLang !== getUILang()) {
     await setLanguage(appConfig.urlUiLang);
   }
   uiLangSel.value = getUILang();
   uiLangSel.addEventListener('change', async () => {
+    const translatePlaceholder = isOutputPlaceholderVisible();
     await setLanguage(uiLangSel.value);
+    if (translatePlaceholder) showOutputPlaceholder();
     updateGridForRTL();
     runtime.editor?.updateOptions({ ariaLabel: t('editor.ariaLabel') });
     runtime.tabManager?.render();

@@ -37,6 +37,14 @@ const TYPE_LABELS: Record<string, string> = {
   turtle: 'turtle drawing',
 };
 
+const TYPE_LABELS_HE: Record<string, string> = {
+  core: 'מובנה', builtin: 'מובנה', keyword: 'מילת מפתח',
+  control_flow: 'בקרת זרימה', access_modifier: 'מגדיר גישה',
+  operator: 'אופרטור', type: 'טיפוס', function: 'פונקציה', method: 'מתודה',
+  statement: 'פקודה', declaration: 'הצהרה', module: 'מודול',
+  exception: 'חריגה', turtle: 'ציור בצב',
+};
+
 /**
  * Escape the characters Markdown would otherwise interpret.
  *
@@ -51,9 +59,9 @@ export function escapeMarkdown(text: string): string {
 }
 
 /** Human-readable form of an entry's `type`. */
-export function typeLabel(type: string | undefined): string | null {
+export function typeLabel(type: string | undefined, rtl = false): string | null {
   if (!type) return null;
-  return TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
+  return (rtl ? TYPE_LABELS_HE[type] : TYPE_LABELS[type]) ?? type.replace(/_/g, ' ');
 }
 
 /**
@@ -64,20 +72,21 @@ export function typeLabel(type: string | undefined): string | null {
  * code.
  */
 export function renderHover(languageId: string, word: string, entry: HoverEntry): string {
-  const label = typeLabel(entry.type);
+  const label = typeLabel(entry.type, entry.rtl === true);
   const lines: string[] = [];
 
   lines.push(
     label
-      ? `**${escapeMarkdown(word)}** — *${escapeMarkdown(label)}*`
+      ? `**\u2066${escapeMarkdown(word)}\u2069** · *${entry.rtl ? '\u2067' : '\u2066'}${escapeMarkdown(label)}\u2069*`
       : `**${escapeMarkdown(word)}**`,
   );
   lines.push('');
 
-  // Hebrew is right-to-left and a Markdown block inherits the surrounding direction,
-  // so without the RTL mark a translated sentence renders with its punctuation
-  // stranded on the wrong side.
-  lines.push(entry.rtl ? `‏${escapeMarkdown(entry.explanation)}` : escapeMarkdown(entry.explanation));
+  lines.push(
+    entry.rtl
+      ? `\u2067${escapeMarkdown(entry.explanation)}\u2069`
+      : escapeMarkdown(entry.explanation),
+  );
 
   if (entry.example) {
     lines.push('');

@@ -13,9 +13,9 @@
 > **How to read this document.**
 > Sections 1–31 are the original v1.1 assessment, kept **unchanged** so the historical analysis stays auditable.
 > Sections 32–34 are the implementation record and supersede sections 1–31 wherever they conflict:
-> - **[§32 Verification ledger](#32-verification-ledger)** — every v1.1 claim re-checked against the code, with corrections. Read this before trusting any line number or risk in §1–31.
-> - **[§33 Scaled execution plan](#33-scaled-execution-plan)** — what is actually being built, what is deliberately deferred, and why.
-> - **[§34 Implementation log](#34-implementation-log)** — append-only, one entry per commit.
+> - **[§32 Verification ledger](#32-verification-ledger)** - every v1.1 claim re-checked against the code, with corrections. Read this before trusting any line number or risk in §1–31.
+> - **[§33 Scaled execution plan](#33-scaled-execution-plan)** - what is actually being built, what is deliberately deferred, and why.
+> - **[§34 Implementation log](#34-implementation-log)** - append-only, one entry per commit.
 
 ## Navigation
 
@@ -1366,7 +1366,7 @@ Step-Up has a separate display/storage namespace. Freeze this compatibility map 
 | C# `12` | `csharp12` |
 | Python `3.11`, Java `21`, C# `11` | No truthful current match; provision exact profiles or report unavailable with migration guidance |
 
-Matching is case- and whitespace-normalized only through this explicit table; it is never “select the first version.” Persist and emit `requestedVersion`, `resolvedProfileId`, `resolutionKind` (`exact`, `legacy_alias`, `deprecated`, `unavailable`), and catalog digest. First deploy resolution telemetry and make Step-Up's authoring/import validators catalog-aware; then migrate stored content and enforce unavailable errors when the Step-Up UI can explain them. During the transition, any deliberately retained legacy-default behavior is a named, tenant-scoped mapping with an owner and expiry—not a hidden dropdown fallback—and may not be used as authoritative version evidence.
+Matching is case- and whitespace-normalized only through this explicit table; it is never “select the first version.” Persist and emit `requestedVersion`, `resolvedProfileId`, `resolutionKind` (`exact`, `legacy_alias`, `deprecated`, `unavailable`), and catalog digest. First deploy resolution telemetry and make Step-Up's authoring/import validators catalog-aware; then migrate stored content and enforce unavailable errors when the Step-Up UI can explain them. During the transition, any deliberately retained legacy-default behavior is a named, tenant-scoped mapping with an owner and expiry-not a hidden dropdown fallback-and may not be used as authoritative version evidence.
 
 ### 12.4 Language detection
 
@@ -3594,7 +3594,7 @@ Every stage runs this compatibility matrix:
 
 Deploy order is additive Browser Coder acceptance/aliases first, then the Step-Up SDK and signed policy, then persisted-data migration, then strict enforcement. Feature flags are separate for task editor, viewer/solution, inline snippet, student sandbox, instructor sandbox, server evaluator, language profile, and live protocol; their risk and semantics are not interchangeable.
 
-**S0 — Evidence and freeze**
+**S0 - Evidence and freeze**
 
 - pin both repositories/deployed digests and generate v1 fixtures from real Step-Up screens;
 - publish message/HTTP schemas and generated JavaScript/PHP clients from one versioned contract package; do not maintain two handwritten interpretations;
@@ -3604,7 +3604,7 @@ Deploy order is additive Browser Coder acceptance/aliases first, then the Step-U
 
 Browser Coder CI runs a pinned Step-Up fixture corpus against its candidate image; Step-Up CI runs its surfaces against the candidate/supported Browser Coder images. The release manifest states the supported old/new pair matrix, schema/catalog versions, feature flags, and rollout order.
 
-**S1 — No-break correctness and containment**
+**S1 - No-break correctness and containment**
 
 - fix usable readiness/early message queue, exact source/origin, payload limits, run-policy command bypasses, and safe decorations;
 - fix Step-Up draft in-flight dirty handling, project content detection, canonical stitching, and result provenance;
@@ -3613,14 +3613,14 @@ Browser Coder CI runs a pinned Step-Up fixture corpus against its candidate imag
 - introduce entrypoint/readonly/extension behavior behind Step-Up-scoped flags;
 - instrument rather than remove the hidden runner and ignored parameters.
 
-**S2 — Dedicated IDE origin**
+**S2 - Dedicated IDE origin**
 
 - deploy a cookieless HTTPS IDE origin and exact `frame-ancestors`;
 - update the single Step-Up embed SDK, all iframe sandbox/Permissions Policy attributes, CSP, and target origins;
 - remove all parent-to-iframe DOM access and mixed/raw URL construction;
 - canary task viewer/editor first, then sandbox; keep `/coder/` v1 rollback path without enabling unsafe previews/reports.
 
-**S3 — Revisioned host synchronization**
+**S3 - Revisioned host synchronization**
 
 - deploy Browser Coder v2 bridge acceptance and local outbox;
 - migrate Step-Up database identity/uniqueness/revisions/mounts;
@@ -3629,7 +3629,7 @@ Browser Coder CI runs a pinned Step-Up fixture corpus against its candidate imag
 - require acknowledged flush for submit and truthful unsynced navigation;
 - retain v1 full-snapshot translation until zero-use telemetry and data reconciliation pass.
 
-**S4 — Catalog and authoritative evaluation**
+**S4 - Catalog and authoritative evaluation**
 
 - deploy catalog aliases/resolution telemetry, then migrate Step-Up authoring/import/persisted content;
 - provision required exact profiles or block publishing with clear errors;
@@ -3637,7 +3637,7 @@ Browser Coder CI runs a pinned Step-Up fixture corpus against its candidate imag
 - update viewer/feedback to distinguish preview, pending, verified, failed, and unavailable;
 - remove reliance on client `last_run` and sequential synchronous evaluation.
 
-**S5 — Persistent sessions and advanced IDE capabilities**
+**S5 - Persistent sessions and advanced IDE capabilities**
 
 - update Step-Up network/proxy policy for v2 WebSocket sessions;
 - enable stdin, live Turtle, analysis/LSP, diagnostics, and DAP by signed capability/profile;
@@ -5789,7 +5789,7 @@ program behaviour for them.
 The local formatter declines in the cases above, and a student who is not told
 that has been misled in the same way as before, just more quietly. The provider
 records what it did; the command reads it back and puts it in the status bar -
-either `Formatted Main.java` or `Tidied Main.java — indentation was left alone:
+either `Formatted Main.java` or `Tidied Main.java - indentation was left alone:
 the file has unbalanced brackets…`.
 
 The command also has a `when` guard, so a future language with no formatter is
@@ -8656,7 +8656,7 @@ the files they had. `POST /api/shares` stores the snapshot and returns a 22-char
 id; `GET /api/shares/:id` reads it back; the IDE opens it read-only.
 
 It is immutable. Re-sharing produces a new id, so a link always shows what was sent
-rather than whatever the student did to their code afterwards — which is the entire
+rather than whatever the student did to their code afterwards - which is the entire
 value of sending one to somebody who will look at it tomorrow.
 
 ### 52.2 What was refused, and why it is a refusal rather than a first step
@@ -8685,7 +8685,7 @@ worst case is a stale link, which is visible and harmless.
 
 The case 44.6 named is "teacher-can-see-my-screen". A live session answers it only when
 both people are present at the same moment. A student stuck at nine in the evening sends
-a link and the teacher reads it in the morning — and the teacher sees the state the
+a link and the teacher reads it in the morning - and the teacher sees the state the
 student was stuck in, not whatever they poked at afterwards, which a live session would
 not have preserved.
 
@@ -8703,7 +8703,7 @@ The id is 128 random bits and holding one is permission to read, so:
 - **Paths get the same containment rule a run payload gets, for a sharper reason.** These
   files are written into somebody *else's* workspace, and they never saw the project
   before opening it.
-- **Shares expire.** A share is a message, not an archive — and reading one does not
+- **Shares expire.** A share is a message, not an archive - and reading one does not
   extend it, because its author expected it to expire when they published it.
 
 ### 52.5 Not the preview store, though it looks like it
@@ -8717,7 +8717,7 @@ would mean one route inspecting the files to work out which kind of thing it was
 
 ### 52.6 If live collaboration is ever wanted
 
-It is not blocked by anything here — the snapshot is not a foundation to build on, and it
+It is not blocked by anything here - the snapshot is not a foundation to build on, and it
 is not in the way either. It would want its own service: a document server with a CRDT,
 addressed separately from the run pipeline, with the IDE as one client among several.
 That is a project, and this section exists so that whoever starts it knows it was
@@ -8731,7 +8731,7 @@ would a student actually hit", and checking every candidate against the code rat
 against the plan.
 
 It found fourteen defects. Six of them were in work this document describes as finished,
-which is the more useful half of the result — the plan was a good map of what to build
+which is the more useful half of the result - the plan was a good map of what to build
 and a poor map of what was broken.
 
 ### 53.1 The shape they share
@@ -8753,7 +8753,7 @@ look for next time:
 - The Python adapter's comment said the turtle shim being prepended to the entry file
   was fine for debugging. It made debugging turtle programs impossible.
 - `initializeAssetViewer()`'s comment described it as what keeps the viewer in step
-  "rather than every call site that opens a file" — the exact opposite of the truth,
+  "rather than every call site that opens a file" - the exact opposite of the truth,
   and it was never called at all.
 - `storage.ts` described `setDbName` as the switch that isolates an embedded IDE's
   database. Nothing wrote it or read it.
@@ -8773,7 +8773,7 @@ The other recurring cause, and the more damaging one, because it survives being 
   the client's postMessage guard. Already drifted in both directions.
 - **The dirty-marking listener.** The identical five lines in `workspace-init.ts` and
   `integrations/stepup.ts`. Fixing the asset-corruption bug in one left the other still
-  writing Python into the student's image — the browser test caught it still failing
+  writing Python into the student's image - the browser test caught it still failing
   after the "fix".
 - **Drag-and-drop.** Two drop targets implementing one operation; the positional one
   swallowed a failed import rewrite and reported success.
@@ -8789,7 +8789,7 @@ behind.
 **A student is told something false.**
 
 - "Check my work" ran the student's own file, never the marking harness. The option was
-  threaded through the type and consulted in one place — and never used to choose the
+  threaded through the type and consulted in one place - and never used to choose the
   entry point. The contract test passed because it posts `entryPoint` straight to
   `/api/run` and never exercises the client path that computes it.
 - "All checks passed" for a run that failed, when the harness printed more than 500
@@ -8808,7 +8808,7 @@ behind.
 - An open image collected the source file's text, because the editor keeps the previous
   file's model attached behind the asset viewer and the listener attributed the change to
   the active tab. Autosave then persisted it over the image.
-- A failed IndexedDB write was recorded, kept the document dirty, fired an event — and
+- A failed IndexedDB write was recorded, kept the document dirty, fired an event - and
   nothing subscribed. The IDE looked like it was autosaving and was not.
 - Nothing flushed before the page went away, so a student who typed and closed the tab
   lost whatever was inside the one-second debounce.
@@ -8818,7 +8818,7 @@ behind.
 - The blob cache and share snapshots were per-replica in both compose files. Behind
   `least_conn` with two replicas and no session affinity, roughly half of every share
   link 404'd and roughly half of every run carrying an image failed outright.
-- Stop did nothing during a compile — up to 45 s for C# — because the client claimed the
+- Stop did nothing during a compile - up to 45 s for C# - because the client claimed the
   session only when the server named it, which is after the compile.
 - A disconnect during a compile leaked the sandbox, because the close handler was armed
   after the await and `close` fires once.
@@ -8831,14 +8831,14 @@ behind.
 adapter and translate in both directions. The right repair was to notice the offset was
 never necessary: the shim's whole job is to put a module into `sys.modules['turtle']`, so
 it has to *run* before the student's import, not share a file with it. Giving it its own
-file deleted the offset, the traceback arithmetic, and the class of bug — and let the
+file deleted the offset, the traceback arithmetic, and the class of bug - and let the
 frame filter become a question about filenames instead of a number that goes stale
 whenever the shim grows.
 
 **check-ops-config.mjs.** The per-replica storage bug was invisible in development, where
 there is one replica and one tmp directory. So the fix is not only the compose change but
 a check that fails when a multi-replica service points a shared store anywhere but a
-named volume — in the same spirit as the V-07 and N-05 checks already there. It found the
+named volume - in the same spirit as the V-07 and N-05 checks already there. It found the
 same bug a second time immediately, in `docker-compose.yml`, which set none of the three
 variables including previews.
 
@@ -8867,7 +8867,7 @@ The suite is good and it missed all of this. Where the gaps were:
   and pruning an origin this repository cannot verify is a decision for whoever owns the
   DNS. They are flagged in the module header rather than removed.
 - **The union, not the intersection.** Merging the two allowlists necessarily granted
-  the server three origins it previously refused — including `localhost:8080`, which is
+  the server three origins it previously refused - including `localhost:8080`, which is
   the `APP_URL` in Step-Up's own `.env.example`, so a developer running Step-Up locally
   was being refused by CORS. The one rule NOT shared is the server's: a subdomain grant
   is still refused over plain http outside development, and there is a test asserting

@@ -115,9 +115,11 @@ jvm.stdout.on('data', chunk => {
     if (cleaned !== text) seenListening = true;
     text = cleaned;
   }
-  if (text) process.stdout.write(text);
+  if (text && !send({ type: 'output', stream: 'stdout', data: text })) process.stdout.write(text);
 });
-jvm.stderr.on('data', chunk => process.stderr.write(chunk));
+jvm.stderr.on('data', chunk => {
+  if (!send({ type: 'output', stream: 'stderr', data: String(chunk) })) process.stderr.write(chunk);
+});
 
 let exitCode = 0;
 jvm.on('exit', code => {

@@ -1049,7 +1049,12 @@ async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
   // Log point: evaluate three times, report three values, never require Continue.
   const logDocument = await workspace.createDocument({
     name: 'logpoint-probe.py', language: 'python', version: 'python3',
-    content: ['for i in range(3):', '    value = i', 'print("done")'].join('\n'),
+    content: [
+      'for i in range(3):',
+      '    value = i',
+      '    print(value)',
+      'print("done")',
+    ].join('\n'),
   });
   await tabManager.switchToTab(logDocument.id);
   const editor = runtime.editor as {
@@ -1067,7 +1072,11 @@ async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
   frameWindow.prompt = () => 'i';
   await logpointAction?.run();
   frameWindow.prompt = originalPrompt;
-  const debug = runtime.debug as { logpointExpression(line: number): string | null };
+  const debug = runtime.debug as {
+    logpointExpression(line: number): string | null;
+    toggleBreakpoint(line: number): boolean;
+    snapshot(): { status: string; stop: { line: number } | null };
+  };
   check(
     'the context-menu action places a log point without a breakpoint',
     debug.logpointExpression(2) === 'i',
@@ -1081,6 +1090,13 @@ async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
   const logLines = [...frameDocument.querySelectorAll<HTMLElement>('.output-trace-line')]
     .filter(node => /i = [012]/.test(node.textContent ?? ''));
   check('the log point prints once per loop pass and continues', logLines.length === 3, logLines.map(node => node.textContent).join(' | '));
+  const orderedLoopLines = [...frameDocument.querySelectorAll<HTMLElement>('.output-trace-line')]
+    .filter(node => node.dataset.outputLine === '2' || node.dataset.outputLine === '3');
+  check(
+    'log points and ordinary prints stay in source execution order',
+    orderedLoopLines.map(node => node.dataset.outputLine).join(',') === '2,3,2,3,2,3',
+    orderedLoopLines.map(node => `${node.dataset.outputLine}:${node.textContent}`).join(' | '),
+  );
 
   // Turtle replay: the finished canvas is scrub-able and a scrub highlights Python.
   const turtleDocument = await workspace.createDocument({
@@ -1119,6 +1135,51 @@ async function checkRecordedLearningTools(frameWindow: Window): Promise<void> {
         entry.range.startLineNumber === 5 && entry.options.className === 'turtle-replay-code-line') === true,
     );
   }
+
+  // Live turtle debugging: one Step Over must visibly apply exactly the turtle
+  // command on the paused line, without waiting for the program to finish.
+  const liveTurtleDocument = await workspace.createDocument({
+    name: 'turtle-live-debug-probe.py', language: 'python', version: 'python3',
+    content: [
+      'import turtle',
+      'pen = turtle.Turtle()',
+      'pen.forward(40)',
+      'pen.left(90)',
+      'pen.forward(20)',
+    ].join('\n'),
+  });
+  await tabManager.switchToTab(liveTurtleDocument.id);
+  debug.toggleBreakpoint(3);
+  const liveRun = commands.execute('workspace.debug', { source: 'api' });
+  liveRun.catch(() => { /* surfaced through debug state below */ });
+  const pausedBeforeForward = await waitFor(
+    'the turtle debugger to pause before forward',
+    () => debug.snapshot().status === 'paused' && debug.snapshot().stop?.line === 3,
+    30000,
+  );
+  check('turtle debug pauses on the drawing command', pausedBeforeForward);
+  const turtleWindow = frameDocument.getElementById('turtle-window');
+  const liveCanvas = frameDocument.getElementById('turtle-canvas') as HTMLCanvasElement | null;
+  check(
+    'the turtle window opens while the debug run is still paused',
+    Boolean(turtleWindow && !turtleWindow.classList.contains('hidden') && liveCanvas),
+  );
+  const beforeForward = liveCanvas?.toDataURL() ?? '';
+  (frameDocument.getElementById('debug-step-over') as HTMLButtonElement | null)?.click();
+  const pausedAfterForward = await waitFor(
+    'the turtle debugger to advance past forward',
+    () => debug.snapshot().status === 'paused' && debug.snapshot().stop?.line === 4,
+    15000,
+  );
+  check('Step Over advances to the next turtle line', pausedAfterForward);
+  const drawingChanged = await waitFor(
+    'the turtle canvas to reflect the stepped command',
+    () => Boolean(liveCanvas && liveCanvas.toDataURL() !== beforeForward),
+    5000,
+  );
+  check('the turtle draws before the debug session finishes', drawingChanged);
+  (frameDocument.getElementById('debug-continue') as HTMLButtonElement | null)?.click();
+  await Promise.race([liveRun, new Promise(resolve => setTimeout(resolve, 20000))]);
 }
 
 /**
@@ -1916,10 +1977,47 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
     ? monacoApi.editor.getModelMarkers({ resource: model.uri })
         .find(item => item.owner === 'browser-coder-run')
     : null;
-  check('the error hover has a clear ERROR section', /^ERROR\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
-  check('the explanation is labeled separately', /\n\nWHAT THIS MEANS\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
-  check('the likely cause is labeled separately', /\n\nCOMMON CAUSE\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
-  check('the example is labeled as an example', /\n\nEXAMPLE\n/.test(marker?.message ?? ''), marker?.message ?? 'marker missing');
+  check(
+    'the Problems-row message stays concise',
+    marker?.message === 'ReferenceError: notDeclaredAnywhere is not defined',
+    marker?.message ?? 'marker missing',
+  );
+
+  // Exercise the real Monaco hover UI. The marker remains intentionally concise,
+  // while a dedicated hover provider renders the teaching card in the language that
+  // is active at the moment the student points at the error.
+  const editor = runtime.editor as {
+    setPosition(position: { lineNumber: number; column: number }): void;
+    revealLine(line: number): void;
+    focus(): void;
+    trigger(source: string, action: string, payload: unknown): void;
+  };
+  editor.setPosition({ lineNumber: 2, column: 2 });
+  editor.revealLine(2);
+  editor.focus();
+  editor.trigger('browser-test', 'editor.action.showHover', {});
+
+  const hoverAppeared = await waitFor(
+    'the structured error hover to appear',
+    () => /WHAT THIS MEANS/.test(frame.contentDocument?.querySelector('.monaco-hover')?.textContent ?? ''),
+    5000,
+  );
+  const hover = frame.contentDocument?.querySelector('.monaco-hover');
+  const hoverText = hover?.textContent ?? '';
+  const sectionHeadings = [...(hover?.querySelectorAll('h2, h3') ?? [])];
+  check('the structured error hover appears', hoverAppeared, hoverText || 'hover missing');
+  check('the error hover has a clear ERROR section', sectionHeadings.some(node => /ERROR/.test(node.textContent ?? '')), hoverText);
+  check('the explanation is labeled separately', sectionHeadings.some(node => /WHAT THIS MEANS/.test(node.textContent ?? '')), hoverText);
+  check('the likely cause is labeled separately', sectionHeadings.some(node => /COMMON CAUSE/.test(node.textContent ?? '')), hoverText);
+  check('the example is labeled as an example', sectionHeadings.some(node => /EXAMPLE/.test(node.textContent ?? '')), hoverText);
+  const title = hover?.querySelector('h2');
+  const body = hover?.querySelector('p');
+  check(
+    'the error title is visually larger than its explanation',
+    Boolean(title && body) &&
+      Number.parseFloat(frameWindow.getComputedStyle(title!).fontSize) >
+        Number.parseFloat(frameWindow.getComputedStyle(body!).fontSize),
+  );
 
   const output = () => frame.contentDocument?.getElementById('panel-content')?.textContent ?? '';
   const explained = await waitFor(
@@ -1946,6 +2044,67 @@ async function checkErrorsAreExplained(frameWindow: Window): Promise<void> {
     'it says what usually causes it',
     /spelling mistake|typo/i.test(explanation),
   );
+
+  const languageSelect = frame.contentDocument?.getElementById('ui-lang') as HTMLSelectElement | null;
+  if (languageSelect) {
+    let changedLanguage = '';
+    const recordLanguage = (event: Event) => {
+      changedLanguage = String((event as CustomEvent<{ lang?: string }>).detail?.lang ?? '');
+    };
+    frameWindow.addEventListener('languageChanged', recordLanguage);
+    languageSelect.value = 'he';
+    languageSelect.dispatchEvent(new frameWindow.Event('change', { bubbles: true }));
+    const switchedToHebrew = await waitFor(
+      'the UI language to switch to Hebrew',
+      () => changedLanguage === 'he',
+      5000,
+    );
+    check(
+      'the language selector activates Hebrew',
+      switchedToHebrew,
+      `select=${languageSelect.value}, html=${frame.contentDocument?.documentElement.lang}, ` +
+        `debug=${frame.contentDocument?.getElementById('debug')?.textContent ?? ''}`,
+    );
+    check(
+      'Debug is translated as דיבאג',
+      /דיבאג/.test(frame.contentDocument?.getElementById('debug')?.textContent ?? ''),
+      frame.contentDocument?.getElementById('debug')?.textContent ?? '',
+    );
+    check('changing the UI language does not erase program output', output() === panel, output().slice(-200));
+    // Changing models closes Monaco's sticky keyboard-opened hover, just as clicking
+    // another file does in the UI. Returning and hovering again must resolve the
+    // teaching text in the locale that is active now, not the one stored at run time.
+    const dismissDocument = await workspace.createDocument({
+      name: 'hover-dismiss.txt', language: 'text', version: '', content: '',
+    });
+    await tabManager.switchToTab(dismissDocument.id);
+    await tabManager.switchToTab(doc.id);
+    editor.setPosition({ lineNumber: 2, column: 2 });
+    editor.trigger('browser-test', 'editor.action.showHover', {});
+    const hebrewHoverAppeared = await waitFor(
+      'the same error hover to be translated after the language switch',
+      () => /מה זה אומר/.test(frame.contentDocument?.querySelector('.monaco-hover')?.textContent ?? ''),
+      5000,
+    );
+    const hebrewHover = frame.contentDocument?.querySelector('.monaco-hover');
+    const hebrewText = hebrewHover?.textContent ?? '';
+    check('the error explanation follows the current Hebrew UI language', hebrewHoverAppeared, hebrewText);
+    check('the Hebrew explanation is isolated as RTL text', hebrewText.includes('\u2067') && hebrewText.includes('\u2069'));
+    const hebrewCode = hebrewHover?.querySelector('div[data-code]');
+    check(
+      'real error text and code stay LTR inside a Hebrew hover',
+      Boolean(hebrewCode) && frameWindow.getComputedStyle(hebrewCode!).direction === 'ltr',
+    );
+
+    languageSelect.value = 'en';
+    languageSelect.dispatchEvent(new frameWindow.Event('change', { bubbles: true }));
+    await waitFor(
+      'the UI language to return to English',
+      () => changedLanguage === 'en',
+      5000,
+    );
+    frameWindow.removeEventListener('languageChanged', recordLanguage);
+  }
 }
 
 /**

@@ -114,8 +114,12 @@ const php = spawn(
   { cwd: workspaceRoot, stdio: ['inherit', 'pipe', 'pipe'] },
 );
 
-php.stdout.on('data', chunk => process.stdout.write(chunk));
-php.stderr.on('data', chunk => process.stderr.write(chunk));
+php.stdout.on('data', chunk => {
+  if (!send({ type: 'output', stream: 'stdout', data: String(chunk) })) process.stdout.write(chunk);
+});
+php.stderr.on('data', chunk => {
+  if (!send({ type: 'output', stream: 'stderr', data: String(chunk) })) process.stderr.write(chunk);
+});
 
 let exitCode = 0;
 php.on('exit', code => {

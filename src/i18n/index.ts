@@ -4,6 +4,7 @@
  */
 
 import english from './locales/en.json' with { type: 'json' };
+import hebrew from './locales/he.json' with { type: 'json' };
 
 export interface Translations {
   [key: string]: string;
@@ -27,12 +28,10 @@ const DEFAULT_LANGUAGE = 'en';
 const LANGUAGE_STORAGE_KEY = 'language';
 
 let currentLang: string = DEFAULT_LANGUAGE;
-let translations: Translations = english;
-let fallbackTranslations: Translations = english;
-const loadedLanguages = new Map<string, Translations>([[DEFAULT_LANGUAGE, english]]);
-const translationLoaders: Record<string, () => Promise<{ default: Translations }>> = {
-  en: () => import('./locales/en.json', { with: { type: 'json' } }),
-  he: () => import('./locales/he.json', { with: { type: 'json' } }),
+const fallbackTranslations: Translations = english;
+const localeTranslations: Record<string, Translations> = {
+  en: english,
+  he: hebrew,
 };
 
 function readSavedLanguage(): string | null {
@@ -52,31 +51,6 @@ function saveLanguage(lang: string): void {
 }
 
 /**
- * Load translations for a language
- */
-async function loadTranslations(lang: string): Promise<Translations> {
-  // Return cached if available
-  if (loadedLanguages.has(lang)) {
-    return loadedLanguages.get(lang)!;
-  }
-
-  try {
-    const loader = translationLoaders[lang];
-    if (!loader) throw new Error(`Unsupported translation locale: ${lang}`);
-    const module = await loader();
-    const trans = module.default || module;
-    loadedLanguages.set(lang, trans);
-    return trans;
-  } catch (e) {
-    console.warn(`Failed to load translations for ${lang}, falling back to English`);
-    if (lang !== 'en') {
-      return loadTranslations('en');
-    }
-    return {};
-  }
-}
-
-/**
  * Initialize i18n with the saved preference, then the browser language.
  * Embedded callers can override this with the explicit `uilang` URL parameter;
  * the editor itself remains LTR independently of the surrounding UI language.
@@ -92,10 +66,6 @@ export async function initI18n(): Promise<void> {
     }
   }
 
-  [fallbackTranslations, translations] = await Promise.all([
-    loadTranslations(DEFAULT_LANGUAGE),
-    loadTranslations(currentLang),
-  ]);
   applyDirection();
   translatePage();
 }
@@ -111,7 +81,6 @@ export async function setLanguage(lang: string): Promise<void> {
 
   currentLang = lang;
   saveLanguage(lang);
-  translations = await loadTranslations(lang);
   applyDirection();
   translatePage();
 }
@@ -133,17 +102,29 @@ export function getLanguageConfig(): LanguageConfig {
 /**
  * Translate a key
  */
+export function translateInLanguage(
+  lang: string,
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  const locale = localeTranslations[lang];
+  return applyTranslationParams(locale?.[key] ?? fallbackTranslations[key] ?? key, params);
+}
+
 export function t(key: string, params?: Record<string, string | number>): string {
-  let text = translations[key] ?? fallbackTranslations[key] ?? key;
+  return translateInLanguage(currentLang, key, params);
+}
 
-  // Replace parameters {{param}}
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      text = text.split(`{{${k}}}`).join(String(v));
-    }
+function applyTranslationParams(
+  text: string,
+  params?: Record<string, string | number>,
+): string {
+  if (!params) return text;
+  let result = text;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.split(`{{${key}}}`).join(String(value));
   }
-
-  return text;
+  return result;
 }
 
 /** Translate a count with the locale's own plural category. */
@@ -154,8 +135,9 @@ export function tn(
 ): string {
   const category = new Intl.PluralRules(currentLang).select(count);
   const candidates = [`${key}.${category}`, `${key}.other`, key];
+  const locale = localeTranslations[currentLang] ?? fallbackTranslations;
   const selected = candidates.find(candidate =>
-    translations[candidate] !== undefined || fallbackTranslations[candidate] !== undefined,
+    locale[candidate] !== undefined || fallbackTranslations[candidate] !== undefined,
   ) ?? key;
   return t(selected, { count, ...params });
 }

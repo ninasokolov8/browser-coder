@@ -32,6 +32,8 @@ import { pathToFileURL } from 'node:url';
 
 import { installFsGuard } from './fs_guard.mjs';
 
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
 const PORT = Number(process.env.BROWSER_CODER_DEBUG_PORT || 0);
 const TOKEN = process.env.BROWSER_CODER_DEBUG_TOKEN || '';
 const PROGRAM = process.env.BROWSER_CODER_DEBUG_PROGRAM || '';
@@ -83,12 +85,30 @@ function waitFor(kind, timeoutMs) {
 }
 
 worker.on('error', error => {
-  process.stderr.write(`debug adapter: ${error?.message || error}\n`);
+  originalStderrWrite(`debug adapter: ${error?.message || error}\n`);
 });
 
 const armed = await waitFor('armed', 15000);
 if (!armed) {
-  process.stderr.write('debug adapter: the debugger did not arm; running without it\n');
+  originalStderrWrite('debug adapter: the debugger did not arm; running without it\n');
+}
+
+/* Program output and logpoints share one ordered MessagePort and debug socket. */
+function routeProgramOutput(stream, chunk, encoding, callback) {
+  const data = Buffer.isBuffer(chunk)
+    ? chunk.toString(typeof encoding === 'string' ? encoding : 'utf8')
+    : String(chunk);
+  if (data) worker.postMessage({ kind: 'output', stream, data });
+  const done = typeof encoding === 'function' ? encoding : callback;
+  if (typeof done === 'function') queueMicrotask(done);
+  return true;
+}
+
+if (armed) {
+  process.stdout.write = ((chunk, encoding, callback) =>
+    routeProgramOutput('stdout', chunk, encoding, callback));
+  process.stderr.write = ((chunk, encoding, callback) =>
+    routeProgramOutput('stderr', chunk, encoding, callback));
 }
 
 /*

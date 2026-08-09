@@ -17,7 +17,7 @@ import {
   buildErrorHelpBlock,
   errorKeyCandidates,
   errorKeyFrom,
-  formatErrorMarker,
+  formatErrorHover,
   selectErrorKey,
 } from '../../src/features/error-help.ts';
 
@@ -363,13 +363,14 @@ describe('the candidates a message offers', () => {
 });
 
 describe('laying the explanation out', () => {
-  test('the heading names the error and its category', () => {
+  test('the heading keeps the runtime identifier in its searchable form', () => {
     const block = buildErrorHelpBlock('NameError', {
       explanation: 'Python looked for a name and could not find it.',
       cause: 'Usually a typo.',
       type: 'name error',
     });
-    assert.equal(block.heading, 'NameError — name error');
+    assert.equal(block.heading, 'NameError');
+    assert.equal(block.key, 'NameError');
   });
 
   test('a missing category leaves the heading as just the error', () => {
@@ -389,7 +390,7 @@ describe('laying the explanation out', () => {
   });
 
   test('the marker separates the error, explanation, cause and example', () => {
-    const text = formatErrorMarker(
+    const text = formatErrorHover(
       "NameError: name 'total' is not defined",
       buildErrorHelpBlock('NameError', {
         explanation: 'Python cannot find that name.',
@@ -398,23 +399,37 @@ describe('laying the explanation out', () => {
       }),
     );
 
-    assert.equal(text, [
-      'ERROR',
-      "NameError: name 'total' is not defined",
-      '',
-      'WHAT THIS MEANS',
-      'Python cannot find that name.',
-      '',
-      'COMMON CAUSE',
-      'It may be misspelled.',
-      '',
-      'EXAMPLE',
-      'total = 10',
-      'print(total)',
-    ].join('\n'));
+    assert.match(text, /^## .*⛔ ERROR/);
+    assert.match(text, /```text\nNameError: name 'total' is not defined\n```/);
+    assert.match(text, /### .*💡 WHAT THIS MEANS/);
+    assert.match(text, /Python cannot find that name\\\./);
+    assert.match(text, /### .*⚠ COMMON CAUSE/);
+    assert.match(text, /It may be misspelled\\\./);
+    assert.match(text, /### .*✓ EXAMPLE/);
+    assert.match(text, /```text\ntotal = 10\nprint\(total\)\n```/);
   });
 
   test('an error without curated help still has a clear error heading', () => {
-    assert.equal(formatErrorMarker('Unexpected token'), 'ERROR\nUnexpected token');
+    assert.match(formatErrorHover('Unexpected token'), /^## .*⛔ ERROR[\s\S]*```text\nUnexpected token\n```$/);
+  });
+
+  test('Hebrew section labels and prose stay separate from LTR code', () => {
+    const text = formatErrorHover(
+      "NameError: name 'x' is not defined",
+      buildErrorHelpBlock('NameError', {
+        explanation: 'פייתון לא מכירה את השם הזה.',
+        cause: 'כנראה שגיאת כתיב.',
+        example: 'x = 1\nprint(x)',
+        rtl: true,
+      }),
+      'python',
+      'he',
+    );
+    assert.match(text, /⛔ השגיאה/);
+    assert.match(text, /💡 מה זה אומר/);
+    assert.match(text, /⚠ סיבה נפוצה/);
+    assert.match(text, /✓ דוגמה/);
+    assert.match(text, /\u2067פייתון לא מכירה את השם הזה\\\.\u2069/);
+    assert.match(text, /```python\nx = 1\nprint\(x\)\n```/);
   });
 });

@@ -303,6 +303,18 @@ export function spawnManaged(options) {
   return {
     pid: child.pid,
 
+    /**
+     * Feed output from a runtime's debug protocol through the same bounded sinks as
+     * the child pipes. This preserves both ordering and the normal output limit.
+     */
+    writeOutput(stream, text) {
+      if (settled || !text) return false;
+      const sink = stream === 'stderr' ? stderrSink : stdoutSink;
+      sink.accept(String(text));
+      checkOutputCap();
+      return !sink.truncated;
+    },
+
     /** @returns {boolean} whether the bytes were accepted */
     writeStdin(text) {
       if (settled || !child.stdin || child.stdin.destroyed) return false;

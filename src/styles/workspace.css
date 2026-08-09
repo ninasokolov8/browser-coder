@@ -450,8 +450,11 @@
    title, type tag, and example code always stay LTR regardless. */
 .kw-help-desc-rtl {
   text-align: right;
+  unicode-bidi: plaintext;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
+.kw-help-tag-rtl { text-transform: none; letter-spacing: 0; }
+.kw-help-example-label-rtl { text-align: right; }
 .kw-help-example-label {
   font-size: 10px;
   font-weight: 600;
@@ -473,6 +476,24 @@
   color: var(--text-primary);
   max-height: 200px;
   overflow: auto;
+}
+
+.monaco-hover .markdown-hover h2 {
+  font-size: 18px;
+  line-height: 1.35;
+  margin: 4px 0 10px;
+}
+.monaco-hover .markdown-hover h3 {
+  font-size: 14px;
+  line-height: 1.35;
+  margin: 12px 0 5px;
+}
+.monaco-hover .markdown-hover pre,
+.monaco-hover .markdown-hover div[data-code],
+.monaco-hover .markdown-hover div[data-code] > span {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
 }
 
 /* ===== MAIN EDITOR AREA ===== */

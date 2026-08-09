@@ -9,7 +9,7 @@ import { notifyRunResult } from '../integrations/stepup-bus';
 import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
 import { runEnded, runStarted } from '../components/run-controls.ts';
 import { runProgram, stopInteractive } from '../components/interactive-console';
-import { clearTurtleCanvas } from '../components/turtle';
+import { clearTurtleCanvas, renderTurtle, type TurtleData } from '../components/turtle';
 import { publishRunDiagnostics } from '../diagnostics/server-source';
 import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
 import { debugState, syncBreakpoints } from './debug/ui.ts';
@@ -115,8 +115,8 @@ function explainRunFailure(languageId: string, output: string, source: string, f
 }
 
 /**
- * "Run" an SVG file: open the picture in its own floating window — the same kind
- * of window a turtle drawing opens in — and list the ways to import it in the
+ * "Run" an SVG file: open the picture in its own floating window - the same kind
+ * of window a turtle drawing opens in - and list the ways to import it in the
  * Output panel.
  */
 function showSvgPreview(filePath: string, source: string): void {
@@ -126,7 +126,7 @@ function showSvgPreview(filePath: string, source: string): void {
   showImageWindow(fileName, source);
 
   setOutputHtml(
-    `<span class="info">── ${esc(t('preview.svgImage'))} — ${esc(fileName)} ───────────────────────────────</span>\n` +
+    `<span class="info">── ${esc(t('preview.svgImage'))} - ${esc(fileName)} ───────────────────────────────</span>\n` +
     `${esc(t('preview.svgOpenedInstructions'))}\n\n` +
     `  HTML     ${esc(`<img src="./${fileName}" alt="">`)}\n` +
     `  CSS      ${esc(`background-image: url("./${fileName}");`)}\n` +
@@ -389,6 +389,24 @@ requestBody = {
       normalizeProjectPath(activeTab.file.path || activeTab.file.name),
       (options.markerRange?.startLine ?? 1) - 1,
     );
+    const resolveRunImage = (name: string) =>
+      resolveWorkspaceImageUrl(
+        name,
+        normalizeProjectPath(activeTab.file.path || activeTab.file.name),
+      );
+    let liveTurtleSequence = 0;
+    const renderLiveTurtle = async (value: unknown) => {
+      if (!value || typeof value !== 'object') return;
+      const sequence = ++liveTurtleSequence;
+      const turtleData = { ...(value as TurtleData) };
+      if (turtleData.pic) {
+        const picture = await resolveRunImage(turtleData.pic);
+        if (sequence !== liveTurtleSequence) return;
+        if (picture) turtleData.picData = picture;
+      }
+      renderTurtle(turtleData, { live: true });
+    };
+
     const result = await runProgram(lang.id, requestBody, {
       // The console owns the panel from here and shows progress by printing. The
       // Run/Stop state is deliberately NOT changed: the program is still running,
@@ -400,6 +418,7 @@ requestBody = {
 
       onDebugEvent: event => {
         debugState.apply(event);
+        if (event.type === 'stopped') void renderLiveTurtle(event.turtleData);
         // Breakpoints go out as soon as the adapter is listening. Earlier would race
         // the connection; later would miss a breakpoint on the program's first lines.
         if (event.type === 'attached') syncBreakpoints();
@@ -407,11 +426,7 @@ requestBody = {
 
       // turtle.bgpic("maze.svg") names a workspace file. Python reports only the
       // name, so it is resolved here, where the workspace is in scope.
-      resolveImage: (name: string) =>
-        resolveWorkspaceImageUrl(
-          name,
-          normalizeProjectPath(activeTab.file.path || activeTab.file.name),
-        ) });
+      resolveImage: resolveRunImage });
 
     // However the run ended, the session is over: no stale current-line arrow, no
     // step buttons left enabled.

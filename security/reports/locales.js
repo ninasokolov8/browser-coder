@@ -23,7 +23,7 @@ export const reportLocales = {
     footerReturn: 'Return to Editor',
     footerQuote: 'Stay curious. Stay secure.',
     testRunning: 'Running security tests...',
-    terminalTitle: 'security-tests.mjs — bash',
+    terminalTitle: 'security-tests.mjs - bash',
     footerBrand: 'Browser Coder Security Suite',
   },
   he: {
@@ -50,7 +50,7 @@ export const reportLocales = {
     footerReturn: 'חזרה לעורך',
     footerQuote: 'היה סקרן. היה מאובטח.',
     testRunning: 'מריץ בדיקות אבטחה...',
-    terminalTitle: 'security-tests.mjs — bash',
+    terminalTitle: 'security-tests.mjs - bash',
     footerBrand: 'מערך האבטחה של Browser Coder',
   }
 };

@@ -1,13 +1,13 @@
 # Writing a marking harness
 
 A task can ship checks the student runs themselves. They press **Check my work** and get
-a line per check — what passed, what failed, and why — instead of a wall of output.
+a line per check - what passed, what failed, and why - instead of a wall of output.
 
 This page is for whoever writes the task.
 
 ## The two rules
 
-**1. Name the file so it is hidden.** Anything whose name — or any folder above it —
+**1. Name the file so it is hidden.** Anything whose name - or any folder above it -
 starts with `X_HIDDEN_` is invisible to the student: not in the file tree, not openable
 in a tab, and not in any export or download. It is still there when the program runs.
 
@@ -17,7 +17,7 @@ than a hidden solution or a hidden data file, both of which are also legitimate.
 ```
 X_HIDDEN_tests.py        ✔ the harness
 X_HIDDEN_test_math.js    ✔ also fine
-X_HIDDEN_solution.py     ✘ hidden, but not a harness — never run
+X_HIDDEN_solution.py     ✘ hidden, but not a harness - never run
 tests.py                 ✘ visible, so the student could edit their own marking
 ```
 
@@ -45,12 +45,12 @@ BCTEST done
 | `BCTEST done` | the harness reached its end |
 
 The status word comes **after** the name, so a name can contain spaces without any
-quoting — `case adds two numbers pass` has a three-word name. The rest of the line is
+quoting - `case adds two numbers pass` has a three-word name. The rest of the line is
 the explanation, and it is the most valuable part of a failure: `expected 0 but got 1`
 tells a student what to do next; `assertion failed` does not.
 
 Send `BCTEST done`. Without it the IDE says "the harness stopped early, so some checks
-did not run" — which is correct, and is what you want it to say if your harness really
+did not run" - which is correct, and is what you want it to say if your harness really
 did crash halfway.
 
 ## Why a printed line and not a real test framework
@@ -58,7 +58,7 @@ did crash halfway.
 Because a framework cannot be reached from inside the sandbox, in five of the six
 languages:
 
-- **C#** builds with `--no-restore` and an empty `<RestoreSources>` — restore must never
+- **C#** builds with `--no-restore` and an empty `<RestoreSources>` - restore must never
   reach the network. xunit is a NuGet package.
 - **Java** invokes `javac` directly. No Maven, no Gradle; JUnit is a jar to vendor.
 - **PHP** runs `php -l` then `php`. PHPUnit is a phar to vendor.
@@ -72,7 +72,7 @@ with the tools they already have, and there is exactly one parser to get right.
 
 ## One harness per language
 
-### Python — `X_HIDDEN_tests.py`
+### Python - `X_HIDDEN_tests.py`
 
 ```python
 from main import add          # the student's file
@@ -89,7 +89,7 @@ check("adds zero", add(0, 0), 0)
 print("BCTEST done")
 ```
 
-### JavaScript — `X_HIDDEN_tests.mjs`
+### JavaScript - `X_HIDDEN_tests.mjs`
 
 ```js
 import { add } from './main.mjs';
@@ -105,7 +105,7 @@ check('adds zero', add(0, 0), 0);
 console.log('BCTEST done');
 ```
 
-### Java — `X_HIDDEN_Tests.java`
+### Java - `X_HIDDEN_Tests.java`
 
 The harness is the entry point, so it needs a `main`.
 
@@ -126,7 +126,7 @@ public class X_HIDDEN_Tests {
 }
 ```
 
-### C# — `X_HIDDEN_Tests.cs`
+### C# - `X_HIDDEN_Tests.cs`
 
 The student's own file must not also declare a top-level `Main`, or the compiler will
 not know which one to start. Give the task a class-shaped starter.
@@ -147,7 +147,7 @@ class X_HIDDEN_Tests {
 }
 ```
 
-### PHP — `X_HIDDEN_tests.php`
+### PHP - `X_HIDDEN_tests.php`
 
 ```php
 <?php
@@ -172,7 +172,7 @@ echo "BCTEST done\n";
 ✘ handles zero    expected 0 but got 1
 – negative numbers    not covered yet
 
-1 of 3 checks passed. 1 skipped. first failure: handles zero — expected 0 but got 1.
+1 of 3 checks passed. 1 skipped. first failure: handles zero - expected 0 but got 1.
 ```
 
 The count leads because it is the motivating number: "3 of 4" tells someone they are
@@ -180,6 +180,6 @@ nearly there, where "failed" tells them nothing.
 
 ## A harness that crashes
 
-It is reported like any other crashing program — the traceback, and the IDE's
+It is reported like any other crashing program - the traceback, and the IDE's
 explanation of the error underneath it. No checks are invented, and nothing claims the
 student failed: they did not fail, the harness did.

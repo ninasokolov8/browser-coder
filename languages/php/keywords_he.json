@@ -856,7 +856,7 @@
   },
   "eval": {
     "type": "language_construct",
-    "explanation": "מריץ מחרוזת כקוד PHP. מומלץ להימנע ממנו בקוד אפליקטיבי רגיל כי הוא מסוכן וקשה לניפוי.",
+    "explanation": "מריץ מחרוזת כקוד PHP. מומלץ להימנע ממנו בקוד אפליקטיבי רגיל כי הוא מסוכן וקשה לדיבאג.",
     "example": "<?php\n$code = 'return 2 + 3;';\n$result = eval($code);"
   },
   "exit": {
@@ -1461,7 +1461,7 @@
   },
   "var_dump": {
     "type": "function",
-    "explanation": "מדפיסה מידע מפורט לניפוי על ערך אחד או יותר, כולל טיפוס וערך.",
+    "explanation": "מדפיסה מידע מפורט לדיבאג על ערך אחד או יותר, כולל טיפוס וערך.",
     "example": "<?php\nvar_dump($user);"
   },
   "vendor/autoload.php": {

@@ -90,7 +90,7 @@ function renderReport(report: TestReport): void {
    * create - and it is far less discouraging than being handed everything at once.
    */
   if (firstFailure) {
-    const detail = firstFailure.detail ? ` — ${firstFailure.detail}` : '';
+    const detail = firstFailure.detail ? ` - ${firstFailure.detail}` : '';
     lines.push(
       `<span class="info">${escapeHtml(t('tests.startHere'))} </span>` +
       `<span class="error">${escapeHtml(firstFailure.name + detail)}</span>`,
