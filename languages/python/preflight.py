@@ -27,6 +27,7 @@ import ast
 import sys
 import json
 import builtins
+import re
 
 MAX_ERRORS = 25
 
@@ -286,6 +287,259 @@ def _collect(tree):
     return defined, loaded
 
 
+def _line_ending(line):
+    """Return the original newline so recovery never shifts later positions."""
+    if line.endswith('\r\n'):
+        return '\r\n'
+    if line.endswith('\n') or line.endswith('\r'):
+        return line[-1]
+    return ''
+
+
+def _recovery_line(line, error=None):
+    """Replace one broken statement while preserving its suite when possible.
+
+    Python's parser stops at its first syntax error. Replacing only that statement
+    lets it continue into the rest of the file, where independent syntax and name
+    errors can still be found. Block headers need a valid synthetic header rather
+    than `pass`, otherwise their correctly indented bodies become fake errors created
+    by the recovery itself.
+    """
+    ending = _line_ending(line)
+    content = line[:-len(ending)] if ending else line
+    indent = content[:len(content) - len(content.lstrip(' \t'))]
+    stripped = content[len(indent):]
+
+    # Once an enclosing broken statement has been removed, one of its continuation
+    # lines can look like a new top-level indentation error. Removing that fragment
+    # entirely is the only neutral repair; keeping its indentation with `pass` would
+    # manufacture the same error forever.
+    if isinstance(error, IndentationError) and 'unexpected indent' in str(error):
+        return ending
+
+    if re.match(r'async\s+def\b', stripped):
+        statement = 'async def __browser_coder_recovered__(*args, **kwargs):'
+    elif re.match(r'def\b', stripped):
+        statement = 'def __browser_coder_recovered__(*args, **kwargs):'
+    elif re.match(r'class\b', stripped):
+        statement = 'class __BrowserCoderRecovered__:'
+    elif re.match(r'async\s+for\b|for\b', stripped):
+        statement = 'for __browser_coder_recovered__ in ():'
+    elif re.match(r'async\s+with\b|with\b', stripped):
+        statement = 'if True:'
+    elif re.match(r'elif\b', stripped):
+        statement = 'elif True:'
+    elif re.match(r'else\b', stripped):
+        statement = 'else:'
+    elif re.match(r'except\b', stripped):
+        statement = 'except Exception:'
+    elif re.match(r'finally\b', stripped):
+        statement = 'finally:'
+    elif re.match(r'try\b', stripped):
+        statement = 'try:'
+    elif re.match(r'match\b', stripped):
+        statement = 'match None:'
+    elif re.match(r'case\b', stripped):
+        statement = 'case _:'
+    elif re.match(r'if\b|while\b', stripped):
+        statement = 'if True:'
+    else:
+        statement = 'pass'
+
+    return indent + statement + ending
+
+
+def _neutral_line(line):
+    """Fallback for a synthetic block header that is invalid in its context."""
+    ending = _line_ending(line)
+    content = line[:-len(ending)] if ending else line
+    indent = content[:len(content) - len(content.lstrip(' \t'))]
+    return indent + 'pass' + ending
+
+
+def _binding_names(fragment):
+    """Return identifier-shaped names from a binding-only source fragment."""
+    return set(re.findall(r'\b[A-Za-z_]\w*\b', fragment))
+
+
+def _possible_bindings_on(line):
+    """Return names a removed statement could have introduced.
+
+    Adding every identifier from an unparseable line to the defined-name set hides
+    real errors later in the file. Only binding positions are uncertain: assignment
+    targets, declarations, loop targets, aliases and exception names.
+    """
+    content = line.split('#', 1)[0].strip()
+    bindings = set()
+
+    declaration = re.match(r'(?:async\s+)?def\s+([A-Za-z_]\w*)', content)
+    if declaration:
+        bindings.add(declaration.group(1))
+        parameters = re.search(r'\((.*)', content)
+        if parameters:
+            bindings.update(_binding_names(parameters.group(1)))
+        return bindings
+
+    class_declaration = re.match(r'class\s+([A-Za-z_]\w*)', content)
+    if class_declaration:
+        bindings.add(class_declaration.group(1))
+        return bindings
+
+    loop = re.match(r'(?:async\s+)?for\s+(.+?)\s+in\b', content)
+    if loop:
+        bindings.update(_binding_names(loop.group(1)))
+
+    exception_alias = re.search(r'\bexcept\b.*?\bas\s+([A-Za-z_]\w*)', content)
+    if exception_alias:
+        bindings.add(exception_alias.group(1))
+
+    if re.match(r'(?:async\s+)?with\b', content):
+        bindings.update(re.findall(r'\bas\s+([A-Za-z_]\w*)', content))
+
+    imported = re.match(r'import\s+(.+)', content)
+    if imported:
+        for item in imported.group(1).split(','):
+            alias = re.search(r'\bas\s+([A-Za-z_]\w*)', item)
+            module = re.match(r'\s*([A-Za-z_]\w*)', item)
+            if alias or module:
+                bindings.add((alias or module).group(1))
+
+    imported_from = re.match(r'from\s+.+?\s+import\s+(.+)', content)
+    if imported_from:
+        for item in imported_from.group(1).split(','):
+            alias = re.search(r'\bas\s+([A-Za-z_]\w*)', item)
+            name = re.match(r'\s*([A-Za-z_]\w*)', item)
+            if alias or name:
+                bindings.add((alias or name).group(1))
+
+    assignment = re.search(r'(?<![=!<>:])=(?!=)', content)
+    if assignment:
+        target = content[:assignment.start()]
+        if '(' not in target and '[' not in target and '{' not in target:
+            bindings.update(_binding_names(target))
+
+    bindings.update(re.findall(r'\b([A-Za-z_]\w*)\s*:=', content))
+    return bindings
+
+
+def _syntax_problem(exc, lines, line=None):
+    line = line or exc.lineno or 1
+    source = _source_line(lines, line)
+    return {
+        'line': line,
+        'col': exc.offset or max(1, len(source) + 1),
+        'msg': '%s: %s' % (type(exc).__name__, exc.msg or 'invalid syntax'),
+        'text': source,
+        'kind': 'syntax',
+    }
+
+
+def _recovery_target(exc, recovered, reported_line):
+    """Find the statement that caused an error reported on a later line."""
+    message = exc.msg or ''
+    block_line = re.search(r'expected an indented block .* on line (\d+)', message)
+    if block_line:
+        return min(max(1, int(block_line.group(1))), len(recovered))
+
+    if "expected 'except' or 'finally' block" in message:
+        for line_number in range(reported_line - 1, 0, -1):
+            if re.match(r'^\s*try\b', recovered[line_number - 1]):
+                return line_number
+
+    return reported_line
+
+
+def _parse_with_recovery(source, lines):
+    """Return a best-effort AST plus every independent parser error found.
+
+    Recovery is bounded by both the file size and MAX_ERRORS. Each attempt changes at
+    least one previously untouched line, so malformed input cannot loop or turn a
+    live check into expensive work. Lines are replaced in place, never inserted or
+    removed, which keeps all later AST locations aligned with the editor.
+    """
+    recovered = source.splitlines(keepends=True)
+    if not recovered and source:
+        recovered = [source]
+
+    syntax_problems = []
+    repaired = set()
+    uncertain_names = set()
+    attempts = min(max(1, len(recovered) * 2), MAX_ERRORS * 2)
+
+    for _attempt in range(attempts):
+        try:
+            return ast.parse(''.join(recovered)), syntax_problems, uncertain_names
+        except SyntaxError as exc:
+            if not recovered:
+                syntax_problems.append(_syntax_problem(exc, lines))
+                return None, syntax_problems, uncertain_names
+
+            reported_line = min(max(1, exc.lineno or 1), len(recovered))
+            target_line = _recovery_target(exc, recovered, reported_line)
+            end_line = target_line
+            if target_line == reported_line:
+                reported_end = getattr(exc, 'end_lineno', None) or reported_line
+                end_line = min(max(target_line, reported_end), len(recovered))
+
+            artificial_indent = (
+                isinstance(exc, IndentationError)
+                and 'unexpected indent' in str(exc)
+                and any(line < target_line for line in repaired)
+            )
+            recovery_backtrack = any(line > target_line for line in repaired)
+            if (
+                target_line not in repaired
+                and not artificial_indent
+                and not recovery_backtrack
+                and len(syntax_problems) < MAX_ERRORS
+            ):
+                syntax_problems.append(_syntax_problem(exc, lines, target_line))
+
+            changed = False
+            for line_number in range(target_line, end_line + 1):
+                if line_number in repaired:
+                    continue
+                original = recovered[line_number - 1]
+                uncertain_names.update(_possible_bindings_on(original))
+                recovered[line_number - 1] = (
+                    _recovery_line(original, exc)
+                    if line_number == target_line
+                    else _line_ending(original)
+                )
+                repaired.add(line_number)
+                changed = True
+
+            if changed:
+                continue
+
+            # A context-sensitive replacement such as `else:` or `except Exception:`
+            # can still be invalid when its matching block is the malformed part.
+            # Downgrade that synthetic header before touching any unrelated line.
+            current = recovered[target_line - 1]
+            neutral = _neutral_line(current)
+            if current.strip() and current != neutral:
+                recovered[target_line - 1] = neutral
+                continue
+
+            # The parser can point at an already repaired line when the real cause is
+            # an earlier multi-line statement. Expand backwards to the nearest
+            # untouched source line, then forwards only if nothing precedes it.
+            candidates = list(range(target_line - 1, 0, -1))
+            candidates.extend(range(target_line + 1, len(recovered) + 1))
+            candidate = next((line for line in candidates if line not in repaired), None)
+            if candidate is None:
+                break
+
+            original = recovered[candidate - 1]
+            uncertain_names.update(_possible_bindings_on(original))
+            recovered[candidate - 1] = _recovery_line(original)
+            repaired.add(candidate)
+        except Exception:
+            return None, syntax_problems, uncertain_names
+
+    return None, syntax_problems, uncertain_names
+
+
 def main():
     if len(sys.argv) < 2:
         print('[]')
@@ -301,22 +555,10 @@ def main():
     lines = source.splitlines()
 
     # ── 1. Syntax check ─────────────────────────────────────────────────────
-    try:
-        tree = ast.parse(source)
-    except SyntaxError as exc:
-        out = [{
-            'line': exc.lineno or 1,
-            'col': exc.offset or 1,
-            'msg': '%s: %s' % (type(exc).__name__, exc.msg or 'invalid syntax'),
-            'text': (exc.text or _source_line(lines, exc.lineno) or '').rstrip('\n'),
-            'kind': 'syntax',
-        }]
-        print(json.dumps(out))
-        return 1
-    except Exception:
-        # Any other parse problem: fail open, let the normal run handle it.
-        print('[]')
-        return 0
+    tree, syntax_problems, uncertain_names = _parse_with_recovery(source, lines)
+    if tree is None:
+        print(json.dumps(syntax_problems[:MAX_ERRORS]))
+        return 1 if syntax_problems else 0
 
     # ── 2. Security check (AST only: imports and calls that really happen) ──
     # Runs before the name check so a blocked program reports why it was
@@ -332,12 +574,16 @@ def main():
     # ── 3. Undefined-name check (skipped for dynamic/ambiguous code) ────────
     try:
         if _should_bail(tree):
-            print('[]')
-            return 0
+            print(json.dumps(syntax_problems[:MAX_ERRORS]))
+            return 1 if syntax_problems else 0
 
         defined, loaded = _collect(tree)
+        # A removed statement might have introduced a binding. Preserve only names
+        # found in binding positions so recovery avoids cascades without hiding the
+        # same undefined receiver or expression on a later valid line.
+        defined.update(uncertain_names)
 
-        errors = []
+        errors = list(syntax_problems)
         for name, line, col in loaded:
             if name in defined:
                 continue

@@ -1725,6 +1725,43 @@ async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> 
   );
   check('fixing all names clears all of their marks', allNamesCleared);
 
+  workspace.getDocument(created.id)!.setContent([
+    't',
+    'g',
+    'terry.forward(18g0)',
+    'time.sleep(0.7-)',
+    'g',
+  ].join('\n'));
+  const mixedErrorsMarked = await waitFor(
+    'mixed syntax and name errors to be marked together',
+    () => {
+      const markers = markersFor();
+      return markers.filter(marker => /SyntaxError/.test(marker.message)).length === 2
+        && markers.filter(marker => /NameError/.test(marker.message)).length === 3;
+    },
+    10000,
+  );
+  const mixedMarkers = markersFor();
+  check(
+    'a parser error does not erase independent semantic errors',
+    mixedErrorsMarked
+      && new Set(mixedMarkers.map(marker => marker.startLineNumber)).size === 5,
+    mixedMarkers.map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
+  );
+  check(
+    'the Problems count includes every mixed error category',
+    diagnostics.forDocument(created.id).length === 5,
+    JSON.stringify(diagnostics.forDocument(created.id)),
+  );
+
+  workspace.getDocument(created.id)!.setContent('print("fixed")\n');
+  const mixedErrorsCleared = await waitFor(
+    'all mixed errors to clear after one fix',
+    () => markersFor().length === 0,
+    10000,
+  );
+  check('fixing mixed errors clears all categories', mixedErrorsCleared);
+
   // The shared marker pipeline must keep every scanner result in each language which
   // has no Monaco parser. Three independent closing tokens are unambiguous errors.
   for (const language of ['python', 'java', 'php', 'csharp']) {
@@ -1775,6 +1812,25 @@ async function checkErrorsAppearWhileTyping(frameWindow: Window): Promise<void> 
   check(
     'javascript keeps every language-service error',
     allJavaScriptMarked,
+    javascriptMarkers().map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
+  );
+
+  workspace.getDocument(javascript.id)!.setContent([
+    'firstMissing;',
+    'const broken = ;',
+    'secondMissing;',
+  ].join('\n'));
+  const mixedJavaScriptMarked = await waitFor(
+    'JavaScript syntax and semantic errors to be marked together',
+    () => {
+      const lines = new Set(javascriptMarkers().map(marker => marker.startLineNumber));
+      return lines.has(1) && lines.has(2) && lines.has(3);
+    },
+    15000,
+  );
+  check(
+    'javascript keeps semantic errors around a parser error',
+    mixedJavaScriptMarked,
     javascriptMarkers().map(marker => `L${marker.startLineNumber}:${marker.message}`).join(' | '),
   );
 }
