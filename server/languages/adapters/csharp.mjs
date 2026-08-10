@@ -83,9 +83,9 @@ function projectFileContents(profile) {
     <AssemblyName>UserProgram</AssemblyName>
     <UseAppHost>false</UseAppHost>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <!-- Restore must never reach the network: the job has no dependencies and a
-         restore attempt would either hang or contact an external feed. -->
-    <RestoreSources></RestoreSources>
+    <!-- This project has no package dependencies. NuGet sources are cleared in the
+         service-owned config passed to dotnet restore; builds never restore. -->
+    <NuGetAudit>false</NuGetAudit>
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -95,6 +95,49 @@ function projectFileContents(profile) {
 }
 
 const PROJECT_FILE_NAME = 'UserProgram.csproj';
+
+/**
+ * The only NuGet configuration a student build may read.
+ *
+ * An empty `<RestoreSources>` project property does not clear sources inherited from
+ * the SDK or the container user's global NuGet.Config. NuGet documents `<clear />` as
+ * the way to ignore inherited collection values, and `dotnet restore --configfile`
+ * makes this file the complete configuration rather than one layer in the hierarchy.
+ * The generated project has no PackageReference items, so the installed .NET targeting
+ * packs are sufficient and there is no legitimate remote source to contact.
+ */
+const NUGET_CONFIG_NAME = '.browser-coder.NuGet.Config';
+export const CSHARP_NUGET_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+  </packageSources>
+  <auditSources>
+    <clear />
+  </auditSources>
+</configuration>
+`;
+
+function writeTrustedBuildFiles(directory, profile) {
+  fs.writeFileSync(path.join(directory, PROJECT_FILE_NAME), projectFileContents(profile), {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  fs.writeFileSync(path.join(directory, NUGET_CONFIG_NAME), CSHARP_NUGET_CONFIG, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+}
+
+/** One audited construction for both template and per-run offline restores. */
+export function offlineRestoreArgs(directory) {
+  return [
+    'restore', PROJECT_FILE_NAME,
+    '--configfile', path.join(directory, NUGET_CONFIG_NAME),
+    '--disable-parallel',
+    '-v', 'q',
+  ];
+}
 
 /** Where the DAP debug adapter lives in the image, next to the language's other files. */
 export const CSHARP_ADAPTER_DIR = fileURLToPath(new URL('../../../languages/csharp/', import.meta.url));
@@ -129,9 +172,9 @@ const DOTNET_DEBUGGER_ENV = 'BROWSER_CODER_DOTNET_DEBUGGER';
  * of a `dotnet build` invocation would eventually differ in a flag and give the two
  * paths different opinions about the same project.
  *
- * `--no-restore` is used only after a complete warm template was copied. If warming
- * fails, the per-run project performs its own restore so a cache optimization can
- * never turn into a functional outage.
+ * Restore is always an explicit offline step through the service-owned NuGet config.
+ * Every build then uses `--no-restore`, whether its graph came from the warm template
+ * or the per-run fallback, so MSBuild can never consult an inherited package feed.
  */
 /**
  * Put the job directory into a buildable state: the warm template, then the trusted
@@ -178,20 +221,33 @@ async function setUpProject(ctx, startedAt) {
     log('warn', 'csharp_template_copy_failed', { error: error.message });
   }
 
-  fs.writeFileSync(path.join(job.dir, PROJECT_FILE_NAME), projectFileContents(profile), {
-    encoding: 'utf8',
-    mode: 0o600,
-  });
+  writeTrustedBuildFiles(job.dir, profile);
 
   return { diagnostic: null, restored };
 }
 
-function buildProject(ctx, restored) {
+async function restoreProject(ctx) {
+  return runToCompletion({
+    command: ctx.config.tools.dotnet,
+    args: offlineRestoreArgs(ctx.job.dir),
+    cwd: ctx.job.dir,
+    env: ctx.sandboxEnv,
+    timeoutMs: ctx.config.execution.csharpTimeoutMs,
+    maxOutputChars: ctx.config.execution.maxOutputChars,
+  });
+}
+
+async function buildProject(ctx, restored) {
+  if (!restored) {
+    const restore = await restoreProject(ctx);
+    if (!restore.termination.succeeded) return restore;
+  }
+
   return runToCompletion({
     command: ctx.config.tools.dotnet,
     args: [
       'build', '-c', 'Debug',
-      ...(restored ? ['--no-restore'] : []),
+      '--no-restore',
       '--nologo', '-v', 'q', ctx.job.dir,
     ],
     cwd: ctx.job.dir,
@@ -254,24 +310,21 @@ async function ensureTemplate(ctx, profile) {
 
   const promise = (async () => {
     const dir = path.join(ctx.templateRoot, `csharp-template-${key}`);
-    const marker = path.join(dir, 'obj', 'project.assets.json');
+    const marker = path.join(dir, '.browser-coder-ready');
 
     if (fs.existsSync(marker)) return dir;
 
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    fs.writeFileSync(path.join(dir, PROJECT_FILE_NAME), projectFileContents(profile), {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
+    writeTrustedBuildFiles(dir, profile);
     fs.writeFileSync(path.join(dir, 'Program.cs'), 'System.Console.WriteLine("template");\n', {
       encoding: 'utf8',
       mode: 0o600,
     });
 
     log('info', 'csharp_template_warming', { langVersion: key });
-    const build = await runToCompletion({
+    const restore = await runToCompletion({
       command: ctx.config.tools.dotnet,
-      args: ['build', '-c', 'Release', '--nologo', '-v', 'q'],
+      args: offlineRestoreArgs(dir),
       cwd: dir,
       env: ctx.sandboxEnv,
       // Bounded, and awaited rather than blocking startup (V-37).
@@ -279,19 +332,41 @@ async function ensureTemplate(ctx, profile) {
       maxOutputChars: 20000,
     });
 
-    if (!build.termination.succeeded) {
+    if (!restore.termination.succeeded) {
       // Keep enough sanitized detail to diagnose a broken SDK/image without
       // exposing the host or per-run paths in operational logs.
       log('warn', 'csharp_template_build_failed', {
         langVersion: key,
+        phase: 'restore',
+        reason: restore.termination.reason,
+        exitCode: restore.termination.exitCode,
+        detail: cleanBuildOutput(restore.stdout || restore.stderr, dir).slice(0, 2000),
+      });
+      return null;
+    }
+
+    const build = await runToCompletion({
+      command: ctx.config.tools.dotnet,
+      args: ['build', '-c', 'Release', '--no-restore', '--nologo', '-v', 'q'],
+      cwd: dir,
+      env: ctx.sandboxEnv,
+      timeoutMs: 180000,
+      maxOutputChars: 20000,
+    });
+
+    if (!build.termination.succeeded) {
+      log('warn', 'csharp_template_build_failed', {
+        langVersion: key,
+        phase: 'build',
         reason: build.termination.reason,
         exitCode: build.termination.exitCode,
         detail: cleanBuildOutput(build.stdout || build.stderr, dir).slice(0, 2000),
       });
       return null;
-    } else {
-      log('info', 'csharp_template_ready', { langVersion: key });
     }
+
+    fs.writeFileSync(marker, 'ready\n', { encoding: 'utf8', mode: 0o600 });
+    log('info', 'csharp_template_ready', { langVersion: key });
     return dir;
   })();
 
@@ -386,15 +461,29 @@ export const csharpAdapter = {
 
     if (debugging) return prepareDebugLaunch(ctx, startedAt, setup.restored);
 
+    if (!setup.restored) {
+      const restore = await restoreProject(ctx);
+      if (!restore.termination.succeeded) {
+        const message = cleanBuildOutput(
+          restore.stdout || restore.stderr,
+          ctx.job.dir,
+        ).trim();
+        return diagnostics(
+          message || `dotnet restore exited with ${restore.termination.exitCode}`,
+          restore.durationMs,
+        );
+      }
+    }
+
     return {
       kind: 'launch',
       command: ctx.config.tools.dotnet,
       args: [
         'run',
         '-c', 'Release',
-        // Skip restore only when a complete warm template was copied. If warming
-        // failed, omitting this flag lets the isolated per-run project recover.
-        ...(setup.restored ? ['--no-restore'] : []),
+        // setUpProject guarantees a restored graph, either from the warm template or
+        // from the explicit offline restore above. A launch must never consult feeds.
+        '--no-restore',
         '--nologo',
         '-v', 'q',
         '--project', ctx.job.dir,

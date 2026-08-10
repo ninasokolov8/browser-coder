@@ -236,14 +236,18 @@ function renderDecorations(snapshot: DebugSnapshot): void {
     const activeDocument = modelEntry ? workspace?.getDocument(modelEntry.id) : null;
     const activeTab = runtime.tabManager?.getActiveTab();
     const activeId = modelEntry?.id ?? activeTab?.file.id ?? null;
-    if (stopIsOnScreen({
+    const isExecutionDocument = stopIsOnScreen({
       stopFile: stop.file,
       activePath: activeId ? workspace?.pathOf(activeId) : null,
       activeName: activeDocument?.name ?? activeTab?.file.name,
       workspacePaths: workspace
         ? workspace.allDocuments().map(item => workspace.pathOf(item.id) ?? item.name)
         : [],
-    })) {
+      activeDocumentId: activeId,
+      executionDocumentId: snapshot.execution?.documentId,
+      singleFileExecution: snapshot.execution?.singleFile,
+    });
+    if (isExecutionDocument) {
       wanted.push({
         range: new monaco.Range(stop.line, 1, stop.line, 1),
         options: {
@@ -530,10 +534,10 @@ export function initializeDebugUi(): Disposable {
   };
   const executeDebuggerCommand = (command: string): void => {
     history.toLive();
-    if (command !== 'stop') debugState.resuming();
+    debugState.resuming();
     renderLatest();
     void sendCommand(command).then(sent => {
-      if (sent || command === 'stop') return;
+      if (sent) return;
       debugState.resumeFailed();
       renderLatest();
     });
@@ -669,13 +673,13 @@ export function initializeDebugUi(): Disposable {
     if (history.forward()) renderLatest();
   });
 
-  // Keybindings, matching what a student will already know from VS Code.
+  // Debug stepping keys. Shift+F5 is registered once by editor-commands and routes to
+  // the single top-level Stop control for both ordinary and debug runs.
   const keys: Array<[number, string]> = [
     [monaco.KeyCode.F5, 'continue'],
     [monaco.KeyCode.F10, 'next'],
     [monaco.KeyCode.F11, 'stepIn'],
     [monaco.KeyMod.Shift | monaco.KeyCode.F11, 'stepOut'],
-    [monaco.KeyMod.Shift | monaco.KeyCode.F5, 'stop'],
   ];
 
   for (const [keybinding, command] of keys) {
@@ -685,8 +689,7 @@ export function initializeDebugUi(): Disposable {
         (command === 'continue' && can.canContinue) ||
         (command === 'next' && can.canStepOver) ||
         (command === 'stepIn' && can.canStepIn) ||
-        (command === 'stepOut' && can.canStepOut) ||
-        (command === 'stop' && can.canStop);
+        (command === 'stepOut' && can.canStepOut);
       if (allowed) executeDebuggerCommand(command);
     });
   }

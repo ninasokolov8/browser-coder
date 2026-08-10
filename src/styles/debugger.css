@@ -2,12 +2,12 @@
 /*
  * The debugger's controls.
  *
- * These were five 26x22 transparent squares holding bare glyphs. Against a dark
+ * These were 26x22 transparent squares holding bare glyphs. Against a dark
  * panel they read as faint marks rather than buttons, and three of the glyphs
  * (arc-over, arrow-in, arrow-out) mean nothing to a student who has not been
  * taught them - which is everyone this IDE is for. Each control now carries its
- * name, the row states what the program is doing, and Stop is visibly a different
- * kind of action from the rest.
+ * name, and the row states what the program is doing. Stop stays in the title bar,
+ * where it consistently ends both normal and debug runs.
  */
 #debug-toolbar {
   display: flex;
@@ -77,10 +77,6 @@
 }
 .debug-btn:disabled { opacity: 0.4; cursor: default; }
 .debug-btn:focus-visible { outline: 2px solid var(--accent, #0a84ff); outline-offset: 1px; }
-
-/* Stop ends the session. Coloured so it is never the button pressed by mistake. */
-.debug-btn-stop { color: #f0999a; border-color: #6b3436; }
-.debug-btn-stop:hover:not(:disabled) { background: #c62828; border-color: #c62828; color: #fff; }
 
 /*
  * Below ~900px the labels go and the icons carry it. The title attribute keeps

@@ -7,7 +7,7 @@ import { collectWorkspaceSnapshot } from './workspace';
 import { withCachedAssets } from './asset-transport.ts';
 import { notifyRunResult } from '../integrations/stepup-bus';
 import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
-import { runEnded, runStarted } from '../components/run-controls.ts';
+import { isRunActive, runEnded, runStarted } from '../components/run-controls.ts';
 import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas, renderTurtle, type TurtleData } from '../components/turtle';
 import {
@@ -169,6 +169,11 @@ export async function runCode(
   const lang = getLanguage(activeTab.file.language);
   if (!lang) return;
 
+  // Ignore a duplicate invocation while a run owns the workspace. This is checked in
+  // the command registry as well, but keeping the invariant at the operation boundary
+  // covers two clicks already queued in the browser and direct API callers.
+  if (isRunActive()) return;
+
   // HTML, CSS and Markdown are rendered, not executed. Markdown goes through the
   // same publisher so relative images in the notes resolve.
   if (isHtmlFile(activeTab.file) || isCssFile(activeTab.file) || isMarkdownFile(activeTab.file)) {
@@ -267,7 +272,8 @@ export async function runCode(
   // It is armed HERE rather than when the stream opens, because the compile happens
   // first - up to 30 s for Java and 45 s for C# - and a student must be able to
   // abandon a run during it.
-  runStarted(options.debug ? 'debug' : 'run', () => stopInteractive());
+  const runToken = runStarted(() => stopInteractive());
+  if (runToken === null) return;
 
   // The previous run's compiler markers describe an older source snapshot. Clear
   // them when a new run starts instead of leaving a fixed error in the status bar
@@ -393,7 +399,12 @@ requestBody = {
     // IDE simply no longer uses it.
     // A debug run announces itself before the stream opens, so the toolbar appears
     // immediately rather than only once the adapter attaches.
-    if (options.debug) debugState.starting();
+    if (options.debug) {
+      debugState.starting({
+        documentId: activeTab.file.id,
+        singleFile: appConfig.ideMode === 'snippet',
+      });
+    }
 
     const outputTrace = new OutputTraceMapper(
       code,
@@ -517,6 +528,6 @@ ${result.stdout || ''}`,
     }
   } finally {
     // Safety net: the buttons are never left stuck mid-run, whatever path we left by.
-    runEnded();
+    runEnded(runToken);
   }
 }

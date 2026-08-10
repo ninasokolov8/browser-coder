@@ -50,6 +50,34 @@ describe('the case that was broken', () => {
       true,
     );
   });
+
+  test('a snippet stays on its launch document even when another tab has the runtime alias', () => {
+    const base = {
+      stopFile: 'main.py',
+      workspacePaths: ['main.py', 'main_2.py'],
+      executionDocumentId: 'document-main-2',
+      singleFileExecution: true,
+    } as const;
+
+    assert.equal(
+      stopIsOnScreen({
+        ...base,
+        activeDocumentId: 'document-main-2',
+        activePath: 'main_2.py',
+        activeName: 'main_2.py',
+      }),
+      true,
+    );
+    assert.equal(
+      stopIsOnScreen({
+        ...base,
+        activeDocumentId: 'document-main',
+        activePath: 'main.py',
+        activeName: 'main.py',
+      }),
+      false,
+    );
+  });
 });
 
 describe('exact and near matches', () => {

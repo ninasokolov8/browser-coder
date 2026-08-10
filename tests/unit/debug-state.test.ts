@@ -2,8 +2,9 @@
  * Debug session state.
  *
  * The reason this is a separate, pure module is that a debugger has a handful of
- * states and a lot of controls that must agree about them - five toolbar buttons, the
- * glyph margin, the current-line highlight, two panels. Deriving all of it from one
+ * states and a lot of controls that must agree about them - four stepping buttons,
+ * the shared Stop control, the glyph margin, the current-line highlight, two panels.
+ * Deriving all of it from one
  * place is what stops "Continue" being clickable while nothing is paused.
  *
  * So these tests are mostly about the derivation and about the transitions that are
@@ -220,6 +221,19 @@ describe('the lifecycle', () => {
 
     state.apply({ type: 'terminated', exitCode: 0 });
     assert.equal(state.snapshot().status, 'ended');
+  });
+
+  test('a session remembers which single workspace document the adapter renamed', () => {
+    const state = session();
+    state.starting({ documentId: 'main-2-document', singleFile: true });
+
+    assert.deepEqual(state.snapshot().execution, {
+      documentId: 'main-2-document',
+      singleFile: true,
+    });
+
+    state.reset();
+    assert.equal(state.snapshot().execution, null);
   });
 
   test('a stop carries its variables and stack', () => {

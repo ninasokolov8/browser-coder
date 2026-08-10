@@ -47,6 +47,7 @@ commands.register({
   id: 'workspace.run',
   title: 'command.run',
   capability: 'run',
+  when: () => !isRunActive(),
   run: async () => { await runCode(editor.getValue()); },
 });
 
@@ -61,7 +62,9 @@ commands.register({
     const model = editor.getModel();
     // Offered only where it can work. A greyed button with a tooltip is honest;
     // a button that starts a run which silently ignores every breakpoint is not.
-    return model !== null && languageCan(model.getLanguageId(), 'debug');
+    return !isRunActive()
+      && model !== null
+      && languageCan(model.getLanguageId(), 'debug');
   },
   run: async () => { await runCode(editor.getValue(), { debug: true }); },
 });
@@ -82,6 +85,7 @@ commands.register({
   id: 'workspace.runTests',
   title: 'command.checkWork',
   capability: 'run',
+  when: () => !isRunActive(),
   run: () => runStudentTests(),
 });
 
@@ -248,6 +252,7 @@ bindButton(commands, debugBtn, 'workspace.debug');
 // notifications Debug stays frozen in whatever state the empty bootstrap model gave it.
 editor.onDidChangeModel(() => commands.notifyEnablementChanged());
 monaco.editor.onDidChangeModelLanguage(() => commands.notifyEnablementChanged());
+window.addEventListener('runStateChanged', () => commands.notifyEnablementChanged());
 
 bindKeybinding(commands, editor, monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'workspace.run');
 // Shift+F5 is Stop in VS Code, and it already stops a DEBUG session here - so the
