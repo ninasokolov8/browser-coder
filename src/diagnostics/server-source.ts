@@ -44,6 +44,15 @@ export const RUN_SOURCE = 'run';
  */
 export const CHECK_SOURCE = 'check';
 
+/** Clear one server diagnostic producer before a newer request starts. */
+export function clearCompilerDiagnostics(
+  store: DiagnosticsStore,
+  service: WorkspaceService,
+  producer = RUN_SOURCE,
+): void {
+  for (const document of service.allDocuments()) store.clear(document.id, producer);
+}
+
 /**
  * Which document a reported filename belongs to.
  *
@@ -157,9 +166,7 @@ export function publishCompilerDiagnostics(
 
   // A new run supersedes the last one entirely. Without this, fixing one of two
   // errors leaves the fixed one on screen.
-  for (const document of service.allDocuments()) {
-    store.clear(document.id, producer);
-  }
+  clearCompilerDiagnostics(store, service, producer);
 
   const parsed = parseCompilerOutput(languageId, output);
   if (parsed.length === 0) return;

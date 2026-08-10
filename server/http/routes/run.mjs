@@ -21,6 +21,7 @@
 import { resolveBlobFiles } from '../../blobs/resolve.mjs';
 import { TerminationReason, toLegacyExitCode, toLegacyNote } from '../../domain/termination.mjs';
 import { ExecutionRefused } from '../../execution/pipeline.mjs';
+import { programMayRequestInput } from '../../execution/input-demand.mjs';
 import { FORWARDED_HEADER } from '../../execution/session-registry.mjs';
 import { buildDebugCommand } from '../../debug/channel.mjs';
 import { log } from '../../logging.mjs';
@@ -96,9 +97,10 @@ function sendRefusal(res, error) {
 /**
  * Announce "the program is waiting for you to type".
  *
- * Without a pseudo-terminal a blocked read(2) cannot be observed directly, so it
- * is inferred: a live process that has gone quiet is either waiting on input or
- * doing slow work, and in both cases the user may type.
+ * Without a pseudo-terminal a blocked read(2) cannot be observed directly. Source
+ * awareness first proves that the program contains a terminal-input API; only then
+ * does a quiet period infer that execution may have reached it. Programs with no
+ * input API never expose a terminal caret merely because they paused or worked.
  *
  * Two delays, because the situations differ. After some output the prompt has
  * already been printed, so a short pause feels instant. Before any output the
@@ -119,10 +121,9 @@ function sendRefusal(res, error) {
  * So unterminated output is a strong prompt signal and gets the short delay, while
  * output that ended cleanly is probably just work in progress and waits longer.
  *
- * It is still a heuristic: without a pseudo-terminal a blocked read cannot be
- * observed. But it is right far more often than a flat timer, and being wrong is
- * harmless in both directions - typing into a program that is not reading merely
- * buffers, and a late hint still arrives.
+ * Timing is still a heuristic: without a pseudo-terminal a blocked read cannot be
+ * observed. The source gate removes the harmful false positive from ordinary and
+ * debug runs, while the open stdin transport keeps unusual input wrappers usable.
  */
 const WAITING_DELAY_AFTER_PROMPT_MS = 250;
 const WAITING_DELAY_AFTER_LINE_MS = 1500;
@@ -221,6 +222,7 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
      * byte-identical behaviour, and the extra event types only appear when asked for.
      */
     const wantsDebug = req.body?.debug === true;
+    const mayRequestInput = programMayRequestInput({ language, code, files });
 
     // Admission before preparation, so compilation cannot overrun the cap (V-27).
     const capacity = sessions.checkCapacity(ip);
@@ -241,8 +243,10 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
 
     let sessionId = null;
     let handle = null;
+    let streamReady = false;
+    const pendingStreamEvents = [];
 
-    const send = payload => {
+    const writeFrame = payload => {
       if (res.writableEnded) return;
       try {
         res.write(`${JSON.stringify(payload)}\n`);
@@ -255,9 +259,13 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
         /* client went away */
       }
     };
+    const send = payload => {
+      if (streamReady) writeFrame(payload);
+      else pendingStreamEvents.push(payload);
+    };
 
     const armWaiting = () => {
-      if (state.finished) return;
+      if (state.finished || !mayRequestInput) return;
       clearTimeout(state.waitingTimer);
       state.waitingTimer = setTimeout(
         () => {
@@ -334,6 +342,12 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
           // program printed just before pausing, which two channels could not
           // guarantee - and the student would see the pause before the print.
           onDebugEvent: event => {
+            if (event.type === 'debug:stopped') clearTimeout(state.waitingTimer);
+            // Fast adapters can connect while pipeline.start() is still preparing
+            // the handle. Writing that event immediately commits default HTTP
+            // headers and can put `debug:attached` before the session id. The client
+            // then has nowhere to send its initial breakpoints, so a Debug click
+            // behaves like Run. Session ownership and stream headers must exist first.
             send(event);
           },
         },
@@ -407,7 +421,9 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
     });
     if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
-    send({ type: 'session', sessionId });
+    writeFrame({ type: 'session', sessionId });
+    streamReady = true;
+    for (const event of pendingStreamEvents.splice(0)) writeFrame(event);
 
     // Asked to debug a language with no adapter. Told plainly rather than running
     // anyway and ignoring every breakpoint.
@@ -573,6 +589,10 @@ export function registerRunRoutes(app, { pipeline, sessions, config, blobStore =
       throw Object.assign(new Error('this session has no debugger attached'), {
         statusCode: 409,
       });
+    }
+
+    if (['continue', 'next', 'stepIn', 'stepOut'].includes(frame.command)) {
+      session.onActivity?.();
     }
   });
 

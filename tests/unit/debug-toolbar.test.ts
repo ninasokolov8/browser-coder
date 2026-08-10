@@ -37,12 +37,11 @@ function snapshot(overrides: Partial<DebugSnapshot>): DebugSnapshot {
     stop: null,
     breakpoints: [],
     conditionedBreakpoints: [],
+    logpointLines: [],
     documentId: null,
     lastError: null,
-    evaluated: null,
-    watchExpressions: [],
     ...overrides,
-  } as DebugSnapshot;
+  };
 }
 
 describe('the controls', () => {

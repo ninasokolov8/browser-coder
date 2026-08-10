@@ -290,15 +290,9 @@ const SECURITY = {
       // Variable variable bypass
       /\$\$/i,  // $$var
       // Callback exploitation
-      /\barray_map\s*\(/i,
-      /\barray_filter\s*\(/i,
-      /\barray_walk\s*\(/i,  // array_walk with callback
-      /\barray_walk_recursive\s*\(/i,
-      /\barray_reduce\s*\(/i,
-      /\busort\s*\(/i,
-      /\buasort\s*\(/i,
-      /\buksort\s*\(/i,
-      /\bpreg_replace_callback\s*\(/i,
+      // Array helpers are normal beginner-facing PHP. Refuse only an explicitly
+      // dangerous string callback; direct dangerous calls are covered above.
+      /\b(?:array_map|array_filter|array_walk(?:_recursive)?|array_reduce|u[ak]?sort|preg_replace_callback)\s*\([^;\n]*(?:['"]\s*(?:system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*['"])/i,
       // Reflection
       /\bReflectionFunction\b/i,
       /\bReflectionClass\b/i,

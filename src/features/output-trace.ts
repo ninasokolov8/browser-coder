@@ -5,7 +5,7 @@ import type { Disposable } from '../workspace/types.ts';
 
 export interface OutputLocation { readonly file: string; readonly line: number }
 
-interface PrintSite extends OutputLocation { readonly literal: string | null }
+interface PrintSite extends OutputLocation { readonly anchor: string | null }
 
 const PRINT_PATTERNS: Record<string, RegExp> = {
   python: /\bprint\s*\((.*)$/,
@@ -16,15 +16,41 @@ const PRINT_PATTERNS: Record<string, RegExp> = {
   csharp: /\bConsole\.(?:Write|WriteLine)\s*\((.*)$/,
 };
 
-function firstLiteral(argumentsText: string): string | null {
-  const match = argumentsText.trim().match(/^(["'])(.*?)\1/);
-  if (!match) return null;
-  // Enough unescaping for the literal anchors used to distinguish Start/Done lines.
-  return match[2]
+function firstTextAnchor(argumentsText: string): string | null {
+  const text = argumentsText.trim();
+  const opening = text.match(/^(?:[rubf]{1,3}|\$)?(["'`])/i);
+  if (!opening) return null;
+
+  const quote = opening[1];
+  const interpolated = quote === '`' || /^[rubf]*f/i.test(text) || text.startsWith('$');
+  let raw = '';
+  let escaped = false;
+  for (let index = opening[0].length; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1] ?? '';
+    if (escaped) {
+      raw += `\\${character}`;
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (
+      character === quote
+      || (interpolated && character === '{')
+      || (interpolated && character === '$' && nextCharacter === '{')
+    ) break;
+    raw += character;
+  }
+
+  const anchor = raw
     .replace(/\\n/g, '\n')
     .replace(/\\t/g, '\t')
     .replace(/\\r/g, '\r')
     .replace(/\\([\\"'])/g, '$1');
+  return anchor || null;
 }
 
 export function findPrintSites(source: string, language: string, file = ''): PrintSite[] {
@@ -33,7 +59,7 @@ export function findPrintSites(source: string, language: string, file = ''): Pri
   const sites: PrintSite[] = [];
   source.split(/\r?\n/).forEach((text, index) => {
     const match = text.match(pattern);
-    if (match) sites.push({ file, line: index + 1, literal: firstLiteral(match[1] ?? '') });
+    if (match) sites.push({ file, line: index + 1, anchor: firstTextAnchor(match[1] ?? '') });
   });
   return sites;
 }
@@ -46,6 +72,7 @@ export function findPrintSites(source: string, language: string, file = ''): Pri
 export class OutputTraceMapper {
   readonly sites: readonly PrintSite[];
   #cursor = 0;
+  #lastAnchored = -1;
 
   constructor(source: string, language: string, file = '', lineOffset = 0) {
     this.sites = findPrintSites(source, language, file).map(site => ({
@@ -58,20 +85,28 @@ export class OutputTraceMapper {
     const text = outputLine.replace(/\r?\n$/, '');
     if (this.sites.length === 0) return null;
 
-    const literalAt = this.sites.findIndex((site, index) => index >= this.#cursor && site.literal === text);
-    if (literalAt >= 0) {
-      this.#cursor = Math.min(literalAt + 1, this.sites.length - 1);
-      return this.sites[literalAt];
+    const anchoredAt = this.sites.findIndex((site, index) =>
+      index >= this.#cursor && site.anchor !== null && text.startsWith(site.anchor));
+    if (anchoredAt >= 0) {
+      this.#cursor = anchoredAt + 1;
+      this.#lastAnchored = anchoredAt;
+      return this.sites[anchoredAt];
     }
 
-    const dynamicAt = this.sites.findIndex((site, index) => index >= this.#cursor && site.literal === null);
+    // A formatted print in a loop keeps producing the same stable prefix. Once
+    // later anchored statements have been ruled out, prefer the last matched site
+    // over consuming an unrelated dynamic print that merely follows it in source.
+    const repeated = this.sites[this.#lastAnchored];
+    if (repeated?.anchor && text.startsWith(repeated.anchor)) return repeated;
+
+    const dynamicAt = this.sites.findIndex((site, index) => index >= this.#cursor && site.anchor === null);
     if (dynamicAt >= 0) {
       this.#cursor = dynamicAt;
       return this.sites[dynamicAt];
     }
 
     const fallback = this.sites[Math.min(this.#cursor, this.sites.length - 1)];
-    this.#cursor = Math.min(this.#cursor + 1, this.sites.length - 1);
+    this.#cursor = Math.min(this.#cursor + 1, this.sites.length);
     return fallback;
   }
 }
