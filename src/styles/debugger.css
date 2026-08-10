@@ -199,65 +199,6 @@
   color: var(--fg-error);
   direction: ltr;
 }
-/* Watch expressions: the question box the evaluate command never had. */
-.debug-watch-form { padding: 6px 8px; }
-.debug-watch-input {
-  width: 100%;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 3px;
-  padding: 3px 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-.debug-watch-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-.debug-watch-row:hover { background: var(--bg-hover); }
-.debug-watch-row .debug-var-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
-.debug-watch-pending { color: var(--text-muted); font-style: italic; }
-.debug-watch-error { color: var(--fg-error); }
-.debug-watch-remove {
-  flex: 0 0 auto;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-}
-.debug-watch-remove:hover { color: var(--fg-danger); }
-
-.debug-eval-result {
-  margin: 4px 10px;
-  padding: 4px 6px;
-  background: var(--bg-hover);
-  border-radius: 3px;
-  direction: ltr;
-}
-.debug-eval-result.error { color: var(--fg-error); }
-.debug-frame-row {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 2px 10px;
-  background: none;
-  border: 0;
-  font: inherit;
-  color: var(--text-secondary, #999);
-  cursor: pointer;
-  direction: ltr;
-}
-.debug-frame-row:hover { background: var(--bg-hover); color: var(--text-primary); }
-.debug-frame-row.innermost { color: var(--text-primary, #ddd); }
-
 /* These need glyphMargin: true on the editor, or they are never drawn and the
    click that toggles a breakpoint is never delivered. */
 .debug-breakpoint-glyph::before {

@@ -122,7 +122,19 @@ php.stderr.on('data', chunk => {
 });
 
 let exitCode = 0;
+let finished = false;
+
+php.on('error', error => {
+  exitCode = 1;
+  const message = `PHP debugger could not start: ${error.message}`;
+  process.stderr.write(`php debug adapter: ${message}\n`);
+  send({ type: 'error', message });
+  send({ type: 'terminated', exitCode });
+  finish();
+});
+
 php.on('exit', code => {
+  if (finished) return;
   exitCode = code ?? 0;
   send({ type: 'terminated', exitCode });
   finish();
@@ -142,6 +154,8 @@ php.on('exit', code => {
  * either, and the container's init (`init: true` in compose) reaps what is left.
  */
 function finish() {
+  if (finished) return;
+  finished = true;
   try { session?.close(); } catch { /* already gone */ }
   try { listener.close(); } catch { /* already closed */ }
   closeChannel();
@@ -556,8 +570,8 @@ await session.next();
  *
  * Xdebug walks nested structures eagerly, and the default depth means a variables
  * panel showing one array of objects fetches the whole graph on every single stop.
- * The panel shows one level and a summary; anything deeper is what a watch expression
- * is for.
+ * The beginner panel shows one level and a summary, so a large object graph cannot
+ * overwhelm the pause event or bury the values the student is following.
  */
 await session.command('feature_set', '-n max_depth -v 1');
 await session.command('feature_set', '-n max_children -v 100');

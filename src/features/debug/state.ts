@@ -7,7 +7,7 @@
  * That last point is the reason this file exists rather than the state living in the
  * view. A debugger has a small number of states and a large number of controls that
  * must agree about them: five toolbar buttons, the glyph margin, the current-line
- * highlight, the variables panel, the call stack. Deriving all of it from one place is
+ * highlight and the variables panel. Deriving all of it from one place is
  * what stops "Continue" being clickable while nothing is paused - the same reasoning
  * as the command registry in Phase D.
  */
@@ -65,24 +65,6 @@ export interface DebugSnapshot {
   /** The document breakpoints belong to, so they are not shown against another file. */
   readonly documentId: string | null;
   readonly lastError: string | null;
-  /** Result of the most recent `evaluate`, for the watch row. */
-  readonly evaluated: { readonly expression: string; readonly text: string | null; readonly error: string | null } | null;
-  /**
-   * Expressions the student is watching, in the order they added them.
-   *
-   * Kept here rather than in the UI so the toolbar, the panel and the re-evaluation
-   * that happens on every stop all read one list - the same reason every other piece of
-   * debugger state lives in this object.
-   */
-  readonly watches: readonly string[];
-  /**
-   * The latest value of each watch, keyed by expression.
-   *
-   * Cleared on every stop before the new values are asked for, because a value from the
-   * previous line looks exactly like a current one and is the most misleading thing a
-   * debugger can show.
-   */
-  readonly watchValues: ReadonlyMap<string, { readonly text: string | null; readonly error: string | null }>;
 }
 
 /** What the toolbar may offer, derived rather than tracked. */
@@ -93,7 +75,6 @@ export interface DebugCapabilities {
   readonly canStepIn: boolean;
   readonly canStepOut: boolean;
   readonly canStop: boolean;
-  readonly canEvaluate: boolean;
 }
 
 const PAUSED_STATES: readonly DebugStatus[] = ['paused'];
@@ -121,10 +102,6 @@ export function capabilitiesFor(status: DebugStatus): DebugCapabilities {
     // is exactly when a student reaches for it, and the adapter supports it - the
     // server-side fix for stop-while-paused was needed for the other direction.
     canStop: live,
-    // Post-mortem still allows evaluation: the frame is gone from the program's point
-    // of view but the traceback keeps it alive, which is the whole value of stopping
-    // where it broke.
-    canEvaluate: paused || status === 'postMortem',
   };
 }
 
@@ -160,9 +137,7 @@ export class DebugSessionState {
   #logpoints = new Map<string, Map<number, string>>();
   #documentId: string | null = null;
   #lastError: string | null = null;
-  #evaluated: DebugSnapshot['evaluated'] = null;
-  #watches: string[] = [];
-  #watchValues = new Map<string, { text: string | null; error: string | null }>();
+  #resumeCheckpoint: { status: 'paused' | 'postMortem'; stop: DebugStop } | null = null;
   #listeners = new Set<(snapshot: DebugSnapshot) => void>();
   /**
    * Turn a workspace path back into a document id.
@@ -194,42 +169,7 @@ export class DebugSessionState {
       logpointLines: this.logpointLines(),
       documentId: this.#documentId,
       lastError: this.#lastError,
-      evaluated: this.#evaluated,
-      watches: [...this.#watches],
-      watchValues: new Map(this.#watchValues),
     };
-  }
-
-  /**
-   * Start watching an expression.
-   *
-   * Refused when it is blank or already watched - a duplicate row would be evaluated
-   * twice on every stop and shown twice for no benefit. Returns whether it was added,
-   * so the caller can leave the input alone when it was not.
-   */
-  addWatch(expression: string): boolean {
-    const trimmed = expression.trim();
-    if (!trimmed || this.#watches.includes(trimmed)) return false;
-    // The channel refuses anything longer, so refusing here means the student is told
-    // by the input rather than by silence.
-    if (trimmed.length > 2000) return false;
-
-    this.#watches.push(trimmed);
-    this.#emit();
-    return true;
-  }
-
-  removeWatch(expression: string): void {
-    const at = this.#watches.indexOf(expression);
-    if (at === -1) return;
-    this.#watches.splice(at, 1);
-    this.#watchValues.delete(expression);
-    this.#emit();
-  }
-
-  /** Every watch, so the caller can ask the adapter to evaluate each one. */
-  watchExpressions(): readonly string[] {
-    return [...this.#watches];
   }
 
   capabilities(): DebugCapabilities {
@@ -438,7 +378,25 @@ export class DebugSessionState {
     this.#status = 'starting';
     this.#stop = null;
     this.#lastError = null;
-    this.#evaluated = null;
+    this.#resumeCheckpoint = null;
+    this.#emit();
+  }
+
+  /** A resume or step was accepted locally and the next pause is now pending. */
+  resuming(): void {
+    if (this.#status !== 'paused' && this.#status !== 'postMortem') return;
+    if (this.#stop) this.#resumeCheckpoint = { status: this.#status, stop: this.#stop };
+    this.#status = 'running';
+    this.#stop = null;
+    this.#emit();
+  }
+
+  /** Restore the pause when its HTTP control request never reached the debugger. */
+  resumeFailed(): void {
+    if (this.#status !== 'running' || !this.#resumeCheckpoint) return;
+    this.#status = this.#resumeCheckpoint.status;
+    this.#stop = this.#resumeCheckpoint.stop;
+    this.#resumeCheckpoint = null;
     this.#emit();
   }
 
@@ -474,10 +432,7 @@ export class DebugSessionState {
         };
         this.#stop = stop;
         this.#status = stop.postMortem ? 'postMortem' : 'paused';
-        // Every watch value is now from the PREVIOUS line. A stale value looks exactly
-        // like a current one, which is the most misleading thing a debugger can show,
-        // so they are cleared here and asked for again by the UI.
-        this.#watchValues.clear();
+        this.#resumeCheckpoint = null;
         break;
       }
 
@@ -522,23 +477,10 @@ export class DebugSessionState {
         }
         break;
 
-      case 'evaluated': {
-        const expression = String(event.expression ?? '');
-        const text = (event.value as { text?: string } | undefined)?.text ?? null;
-        const error = typeof event.error === 'string' ? event.error : null;
-
-        this.#evaluated = { expression, text, error };
-        // A result only lands in the watch list if that expression IS a watch. An
-        // ad-hoc evaluation must not add a row the student never asked for.
-        if (this.#watches.includes(expression)) {
-          this.#watchValues.set(expression, { text, error });
-        }
-        break;
-      }
-
       case 'terminated':
         this.#status = 'ended';
         this.#stop = null;
+        this.#resumeCheckpoint = null;
         break;
 
       case 'unsupported':
@@ -559,6 +501,7 @@ export class DebugSessionState {
   finished(): void {
     this.#status = 'ended';
     this.#stop = null;
+    this.#resumeCheckpoint = null;
     this.#emit();
   }
 
@@ -566,7 +509,7 @@ export class DebugSessionState {
     this.#status = 'idle';
     this.#stop = null;
     this.#lastError = null;
-    this.#evaluated = null;
+    this.#resumeCheckpoint = null;
     this.#emit();
   }
 }

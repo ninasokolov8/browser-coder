@@ -50,14 +50,6 @@ describe('what the toolbar may offer', () => {
     assert.equal(capabilitiesFor('idle').canStop, false);
   });
 
-  test('evaluation is allowed post-mortem', () => {
-    // The frame is gone from the program's point of view, but the traceback keeps it
-    // alive - which is the whole value of stopping where it broke.
-    assert.equal(capabilitiesFor('postMortem').canEvaluate, true);
-    assert.equal(capabilitiesFor('postMortem').canStepOver, false, 'stepping a finished program');
-    assert.equal(capabilitiesFor('running').canEvaluate, false);
-  });
-
   test('Start is offered again after a session ends', () => {
     assert.equal(capabilitiesFor('ended').canStart, true);
   });
@@ -271,7 +263,6 @@ describe('the lifecycle', () => {
     assert.equal(state.snapshot().status, 'postMortem');
     assert.equal(state.snapshot().stop?.exception?.type, 'ZeroDivisionError');
     assert.equal(state.capabilities().canStepOver, false);
-    assert.equal(state.capabilities().canEvaluate, true);
   });
 
   test('a stray `started` after a pause does not un-pause', () => {
@@ -284,13 +275,51 @@ describe('the lifecycle', () => {
     assert.equal(state.snapshot().status, 'paused');
   });
 
+    test('a local resume clears the old stop while the next pause is pending', () => {
+    const state = session();
+    state.starting();
+    state.apply({ type: 'stopped', line: 3, file: 'main.py', stack: [], locals: [], globals: [] });
+
+    state.resuming();
+
+    assert.equal(state.snapshot().status, 'running');
+    assert.equal(state.snapshot().stop, null);
+    assert.equal(state.capabilities().canStepOver, false);
+    assert.equal(state.capabilities().canStop, true);
+  });
+
   test('terminated clears the stop, so no stale current-line arrow remains', () => {
     const state = session();
     state.starting();
     state.apply({ type: 'stopped', line: 5, file: 'main.py', stack: [], locals: [], globals: [] });
     state.apply({ type: 'terminated', exitCode: 0 });
-    assert.equal(state.snapshot().stop, null);
-  });
+      assert.equal(state.snapshot().stop, null);
+    });
+
+    test('a failed resume restores the pause instead of stranding the toolbar', () => {
+      const state = new DebugSessionState();
+      state.starting();
+      state.apply({ type: 'stopped', file: 'main.py', line: 8, locals: [] });
+
+      state.resuming();
+      state.resumeFailed();
+
+      assert.equal(state.snapshot().status, 'paused');
+      assert.equal(state.snapshot().stop?.line, 8);
+      assert.equal(state.capabilities().canStepOver, true);
+    });
+
+    test('a late failed response cannot replace a newer pause', () => {
+      const state = new DebugSessionState();
+      state.starting();
+      state.apply({ type: 'stopped', file: 'main.py', line: 8, locals: [] });
+      state.resuming();
+      state.apply({ type: 'stopped', file: 'main.py', line: 9, locals: [] });
+
+      state.resumeFailed();
+
+      assert.equal(state.snapshot().stop?.line, 9);
+    });
 
   test('an unsupported language records the message without ending the run', () => {
     // The program still runs, just without a debugger - so calling it ended would
@@ -317,30 +346,6 @@ describe('the lifecycle', () => {
     state.reset();
     assert.equal(state.snapshot().status, 'idle');
     assert.equal(state.snapshot().stop, null);
-  });
-});
-
-describe('evaluation results', () => {
-  test('a value is recorded', () => {
-    const state = new DebugSessionState();
-    state.apply({ type: 'evaluated', expression: 'x * 2', value: { text: '84', type: 'int' } });
-    assert.deepEqual(state.snapshot().evaluated, { expression: 'x * 2', text: '84', error: null });
-  });
-
-  test('an error is recorded rather than discarded', () => {
-    // A failed expression is information - usually a typo - and hiding it would leave
-    // the student wondering whether the debugger even received it.
-    const state = new DebugSessionState();
-    state.apply({ type: 'evaluated', expression: 'nope', error: "NameError: name 'nope' is not defined" });
-    assert.match(state.snapshot().evaluated?.error ?? '', /NameError/);
-    assert.equal(state.snapshot().evaluated?.text, null);
-  });
-
-  test('starting a new session clears the previous result', () => {
-    const state = new DebugSessionState();
-    state.apply({ type: 'evaluated', expression: 'x', value: { text: '1', type: 'int' } });
-    state.starting();
-    assert.equal(state.snapshot().evaluated, null);
   });
 });
 
@@ -386,122 +391,6 @@ describe('subscribers', () => {
     const baseline = count;
     state.setDocument('a');
     assert.equal(count, baseline);
-  });
-});
-
-describe('watch expressions', () => {
-  const paused = () => {
-    const state = new DebugSessionState();
-    state.setDocument('main');
-    state.starting();
-    state.apply({ type: 'attached' });
-    state.apply({
-      type: 'stopped', line: 4, file: 'main.py', locals: [], globals: [], stack: [],
-    });
-    return state;
-  };
-
-  test('an expression can be watched', () => {
-    const state = paused();
-    assert.equal(state.addWatch('total'), true);
-    assert.deepEqual(state.snapshot().watches, ['total']);
-  });
-
-  test('a blank one is refused, so the list cannot fill with empty rows', () => {
-    const state = paused();
-    assert.equal(state.addWatch('   '), false);
-    assert.deepEqual(state.snapshot().watches, []);
-  });
-
-  test('a duplicate is refused, because it would be evaluated twice per stop', () => {
-    const state = paused();
-    state.addWatch('total');
-    assert.equal(state.addWatch('total'), false);
-    assert.equal(state.snapshot().watches.length, 1);
-  });
-
-  test('one longer than the channel accepts is refused here, not silently dropped', () => {
-    // buildDebugCommand caps an expression at 2000 characters. Without this the
-    // student would type it, see nothing happen, and have no idea why.
-    const state = paused();
-    assert.equal(state.addWatch('x'.repeat(2001)), false);
-    assert.equal(state.addWatch('x'.repeat(2000)), true);
-  });
-
-  test('a result lands against its expression', () => {
-    const state = paused();
-    state.addWatch('total');
-    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
-
-    assert.equal(state.snapshot().watchValues.get('total')?.text, '42');
-  });
-
-  test('an error is kept as an error, not as a value', () => {
-    const state = paused();
-    state.addWatch('nope');
-    state.apply({ type: 'evaluated', expression: 'nope', error: "name 'nope' is not defined" });
-
-    const result = state.snapshot().watchValues.get('nope');
-    assert.equal(result?.text, null);
-    assert.match(result?.error ?? '', /not defined/);
-  });
-
-  test('an ad-hoc evaluation does not add a row nobody asked for', () => {
-    const state = paused();
-    state.apply({ type: 'evaluated', expression: 'something', value: { text: '1' } });
-
-    assert.deepEqual(state.snapshot().watches, []);
-    assert.equal(state.snapshot().watchValues.size, 0);
-  });
-
-  test('values are cleared on the next stop, because a stale one looks current', () => {
-    // The most misleading thing a debugger can show: last line's value, presented as
-    // this line's.
-    const state = paused();
-    state.addWatch('total');
-    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
-    assert.equal(state.snapshot().watchValues.get('total')?.text, '42');
-
-    state.apply({
-      type: 'stopped', line: 5, file: 'main.py', locals: [], globals: [], stack: [],
-    });
-
-    assert.equal(state.snapshot().watchValues.has('total'), false);
-    assert.deepEqual(state.snapshot().watches, ['total'], 'the watch itself was lost');
-  });
-
-  test('removing one drops its value too', () => {
-    const state = paused();
-    state.addWatch('total');
-    state.apply({ type: 'evaluated', expression: 'total', value: { text: '42' } });
-
-    state.removeWatch('total');
-
-    assert.deepEqual(state.snapshot().watches, []);
-    assert.equal(state.snapshot().watchValues.has('total'), false);
-  });
-
-  test('removing one that is not there is harmless', () => {
-    const state = paused();
-    state.addWatch('a');
-    state.removeWatch('b');
-    assert.deepEqual(state.snapshot().watches, ['a']);
-  });
-
-  test('watches survive the session ending, because a student runs again', () => {
-    const state = paused();
-    state.addWatch('total');
-    state.apply({ type: 'terminated', exitCode: 0 });
-
-    assert.deepEqual(state.snapshot().watches, ['total']);
-  });
-
-  test('the snapshot is a copy, so a caller cannot mutate the list', () => {
-    const state = paused();
-    state.addWatch('total');
-    (state.snapshot().watches as string[]).push('injected');
-
-    assert.deepEqual(state.snapshot().watches, ['total']);
   });
 });
 

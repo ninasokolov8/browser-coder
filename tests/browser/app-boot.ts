@@ -360,6 +360,11 @@ async function checkEveryRunStreams(frameWindow: Window): Promise<void> {
   lines.push(`INFO stream: ${events.map(e => `${e.type}@${e.at}ms`).join(' ')}`);
 
   check('the run produced output and exited', firstOutputAt !== null && exitAt !== null);
+  check(
+    'a run with no input API never advertises a terminal input field',
+    !events.some(event => event.type === 'waiting'),
+    events.map(event => event.type).join(', '),
+  );
   if (firstOutputAt === null || exitAt === null) return;
 
   // The program sleeps 1.2s between the two prints, so a live stream delivers the
@@ -809,6 +814,16 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   check('the program stops at the breakpoint', paused, `status ${state().status}`);
   if (!paused) return;
 
+  const terminalInput = frameDocument.querySelector<HTMLInputElement>('.term-input');
+  const terminalInputLine = frameDocument.querySelector<HTMLElement>('.term-input-line');
+  const terminalEof = frameDocument.querySelector<HTMLButtonElement>('.term-eof');
+  check(
+    'a debugger pause does not pretend the program requested terminal input',
+    terminalInputLine?.style.display === 'none'
+      && terminalInput?.disabled === true
+      && terminalEof?.disabled === true,
+  );
+
   const stop = state().stop as { line: number; locals: Array<{ name: string; value: { text: string } }> };
   check('it stopped on the right line', stop.line === 4, `line ${stop.line}`);
 
@@ -911,37 +926,8 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   (frameDocument.getElementById('debug-show-details') as HTMLButtonElement | null)?.click();
   check('Show values reopens closed debugger details', debugPanels?.hidden === false);
 
-  /*
-   * A watch expression, end to end.
-   *
-   * The `evaluate` command has been in both adapters since the debugger was written and
-   * nothing in the UI ever sent one - so this drives the real input, against a real
-   * paused Python program, and requires a real answer back from the adapter.
-   */
-  const watchHost = frameDocument.getElementById('debug-watch');
-  check('the watch panel exists', watchHost !== null);
-
-  const watchInput = watchHost?.querySelector('.debug-watch-input') as HTMLInputElement | null;
-  check('it has an input to type an expression into', watchInput !== null);
-
-  if (watchInput) {
-    // An expression that is NOT one of the reported locals, so a pass cannot come from
-    // the variables panel having happened to contain the text.
-    watchInput.value = 'total * 10';
-    watchInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-    const watchAnswered = await waitFor(
-      'the watch to be evaluated by the adapter',
-      () => /30/.test(watchHost?.textContent ?? ''),
-      15000,
-    );
-    check('a watch expression is evaluated in the paused frame', watchAnswered, watchHost?.textContent ?? '');
-    check(
-      'and it is shown against the expression the student typed',
-      (watchHost?.textContent ?? '').includes('total * 10'),
-      watchHost?.textContent ?? '',
-    );
-  }
+  check('the beginner debugger omits the call stack', frameDocument.getElementById('debug-callstack') === null);
+  check('the beginner debugger omits watch expressions', frameDocument.getElementById('debug-watch') === null);
 
   const stepOver = frameDocument.getElementById('debug-step-over') as HTMLButtonElement | null;
   check('step-over is enabled while paused', stepOver !== null && !stepOver.disabled);

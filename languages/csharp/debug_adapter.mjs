@@ -115,6 +115,15 @@ const connection = new DapConnection(debugger_.stdin, debugger_.stdout);
 let exitCode = 0;
 let finished = false;
 
+debugger_.on('error', error => {
+  exitCode = 1;
+  const message = `C# debugger could not start: ${error.message}`;
+  process.stderr.write(`csharp debug adapter: ${message}\n`);
+  send({ type: 'error', message });
+  send({ type: 'terminated', exitCode });
+  finish();
+});
+
 /**
  * End the session, and do not leave a zombie behind.
  *

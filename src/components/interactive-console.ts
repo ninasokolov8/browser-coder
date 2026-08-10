@@ -19,8 +19,10 @@
 //      only the buffered one resolved turtle.bgpic() images.
 //
 // The server has always been ready for this - every run spawns with stdin open and
-// the buffered route simply closes it immediately - so the only thing standing in
-// the way was the regex. It is gone.
+// the buffered route simply closes it immediately - so execution no longer branches
+// on a source regex. The server does use source awareness for one presentation-only
+// decision: whether a quiet process may reveal the terminal input controls. A missed
+// hint cannot change the transport or hang a run because stdin remains available.
 //
 // Protocol:
 //   POST /api/run/interactive           -> NDJSON stream, or JSON for a compile error
@@ -196,6 +198,7 @@ export function runProgram(
     input.type = 'text';
     input.autocomplete = 'off';
     input.spellcheck = false;
+    input.disabled = true;
     input.placeholder = t('panel.stdinHint');
     input.setAttribute('aria-label', t('panel.stdinLabel'));
 
@@ -210,6 +213,7 @@ export function runProgram(
     const eofButton = document.createElement('button');
     eofButton.className = 'term-eof';
     eofButton.type = 'button';
+    eofButton.disabled = true;
     eofButton.textContent = t('panel.endInput');
     eofButton.title = t('panel.endInputHint');
 
@@ -349,6 +353,13 @@ export function runProgram(
 
     let sessionId = '';
 
+    const hideInput = () => {
+      inputLine.style.display = 'none';
+      input.disabled = true;
+      eofButton.disabled = true;
+      input.blur();
+    };
+
     // Send one line to the program. The caret is hidden again immediately:
     // the program is now busy consuming that line, and the server will send a
     // fresh {type:'waiting'} when (and only when) it stops for the next one.
@@ -358,7 +369,7 @@ export function runProgram(
       commitPendingStdout();
       append(value + '\n');
       input.value = '';
-      inputLine.style.display = 'none';
+      hideInput();
       setStatus(t('status.running'));
       fetch(`/api/run/interactive/${sessionId}/stdin`, {
         method: 'POST',
@@ -381,7 +392,7 @@ export function runProgram(
       sentEof = true;
       commitPendingStdout();
       append('\n[end of input]\n', 'info');
-      inputLine.style.display = 'none';
+      hideInput();
       setStatus(t('status.running'));
       fetch(`/api/run/interactive/${sessionId}/eof`, { method: 'POST' }).catch(() => {});
     };
@@ -426,6 +437,8 @@ export function runProgram(
       // anything typed before the prompt arrived got echoed above it.
       const showInput = () => {
         if (settled) return;
+        input.disabled = false;
+        eofButton.disabled = false;
         if (inputLine.style.display !== 'none') { input.focus(); return; }
         inputLine.style.display = '';
         // Deliberately states the CAPABILITY, not a claim about the program.
@@ -449,10 +462,12 @@ export function runProgram(
             options.onStreamStart?.();
             break;
           case 'stdout':
+            hideInput();
             aggStdout += msg.data;
             appendStdout(msg.data);
             break;
           case 'stderr':
+            hideInput();
             aggStderr += msg.data;
             commitPendingStdout();
             append(msg.data, 'error');
@@ -473,6 +488,10 @@ export function runProgram(
             // client must not become noisy against a v2 server.
             if (typeof msg.type === 'string' && msg.type.startsWith('debug:')) {
               const event = { ...msg, type: msg.type.slice('debug:'.length) };
+              // A pause is debugger input, not terminal input. The source detector
+              // prevents the ordinary false prompt; this also closes a prompt that
+              // was visible immediately before the program reached a breakpoint.
+              if (event.type === 'stopped' || event.type === 'continued') hideInput();
               if (event.type === 'log') {
                 commitPendingStdout();
                 const line = Number(event.line ?? 0);
@@ -531,8 +550,9 @@ export function runProgram(
 
         // Errors and compile failures are returned as a normal JSON body
         // BEFORE the stream starts, so they are safe to read whole.
-        const contentType = resp.headers.get('Content-Type') || '';
-        if (!resp.ok || !contentType.includes('ndjson')) {
+        const contentType = (resp.headers.get('Content-Type') || '').toLowerCase();
+        const isJsonResponse = contentType.includes('application/json');
+        if (!resp.ok || isJsonResponse) {
           const data = await resp.json().catch(() => null);
 
           if (!resp.ok) {
@@ -552,6 +572,29 @@ export function runProgram(
             append(`\n[exit code: ${c.exitCode ?? 1}]`, 'error');
             setStatus(t('status.compileError'));
             settle({ stdout: '', stderr: c.stderr || '', exitCode: c.exitCode ?? 1, durationMs: c.durationMs || 0 });
+            return;
+          }
+
+          // A compatible server or intermediary may answer an interactive request
+          // with the older buffered run envelope. Preserve the result instead of
+          // replacing useful stdout/stderr with "unexpected response".
+          if (data && typeof data === 'object' && Number.isFinite(Number(data.exitCode))) {
+            if (data.stdout) {
+              aggStdout += String(data.stdout);
+              appendStdout(String(data.stdout));
+            }
+            if (data.stderr) {
+              aggStderr += String(data.stderr);
+              commitPendingStdout();
+              append(String(data.stderr), 'error');
+            }
+            releaseSession();
+            await finishRun(
+              Number(data.exitCode),
+              Number(data.durationMs ?? 0),
+              data.note ?? null,
+              data.turtleData ?? null,
+            );
             return;
           }
 
@@ -582,6 +625,16 @@ export function runProgram(
             try { msg = JSON.parse(line); } catch { continue; }
             handle(msg);
           }
+        }
+
+
+        // A proxy is allowed to close immediately after the final bytes. Consume a
+        // last frame even when it arrived without a newline before deciding that the
+        // connection was lost.
+        buf += decoder.decode();
+        const finalLine = buf.trim();
+        if (finalLine) {
+          try { handle(JSON.parse(finalLine)); } catch { /* incomplete network frame */ }
         }
 
         // Stream ended without an exit event (server died / network dropped).

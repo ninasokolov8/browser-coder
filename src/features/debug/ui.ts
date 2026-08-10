@@ -1,5 +1,5 @@
 /**
- * The debugger's surface: breakpoint margin, toolbar, variables and call stack.
+ * The debugger's surface: breakpoint margin, toolbar, variables and value history.
  *
  * Everything here is derived from `DebugSessionState`. No widget keeps its own idea of
  * whether the program is paused, which is what stops the toolbar and the margin
@@ -62,9 +62,9 @@ let decorations: monaco.editor.IEditorDecorationsCollection | null = null;
  * Silently does nothing when there is no session - a keybinding pressed with nothing
  * running is not an error worth a message.
  */
-async function sendCommand(command: string, body: Record<string, unknown> = {}): Promise<void> {
+async function sendCommand(command: string, body: Record<string, unknown> = {}): Promise<boolean> {
   const sessionId = activeSessionId();
-  if (!sessionId) return;
+  if (!sessionId) return false;
 
   try {
     const response = await fetch(`/api/run/interactive/${sessionId}/debug/${command}`, {
@@ -79,10 +79,12 @@ async function sendCommand(command: string, body: Record<string, unknown> = {}):
       // it is a mis-click, not a fault.
       const detail = await response.json().catch(() => null);
       setStatus(detail?.error || t('debug.commandFailed', { status: response.status }));
+      return false;
     }
+    return true;
   } catch {
-    // The stream is the source of truth for session liveness; a failed control
-    // request during teardown is expected.
+    setStatus(t('error.network'));
+    return false;
   }
 }
 
@@ -229,13 +231,15 @@ function renderDecorations(snapshot: DebugSnapshot): void {
      * the tab is called, so a student editing `main_1.py` got a stop in `main.py`, the
      * files "differed", and the line the debugger was paused on was never highlighted.
      */
-    const activeTab = runtime.tabManager?.getActiveTab();
-
     const workspace = runtime.workspace;
+    const modelEntry = runtime.models?.all().find(entry => entry.model === model);
+    const activeDocument = modelEntry ? workspace?.getDocument(modelEntry.id) : null;
+    const activeTab = runtime.tabManager?.getActiveTab();
+    const activeId = modelEntry?.id ?? activeTab?.file.id ?? null;
     if (stopIsOnScreen({
       stopFile: stop.file,
-      activePath: activeTab ? workspace?.pathOf(activeTab.file.id) : null,
-      activeName: activeTab?.file.name,
+      activePath: activeId ? workspace?.pathOf(activeId) : null,
+      activeName: activeDocument?.name ?? activeTab?.file.name,
       workspacePaths: workspace
         ? workspace.allDocuments().map(item => workspace.pathOf(item.id) ?? item.name)
         : [],
@@ -256,7 +260,7 @@ function renderDecorations(snapshot: DebugSnapshot): void {
   decorations.set(wanted);
 }
 
-// ── Variables and call stack ────────────────────────────────────────────────
+// ── Variables and value history ────────────────────────────────────────────
 
 function variableRow(
   variable: DebugVariable,
@@ -383,15 +387,6 @@ function renderVariables(host: HTMLElement, snapshot: DebugSnapshot, showChanges
     host.appendChild(line);
   }
 
-  if (snapshot.evaluated) {
-    const row = document.createElement('div');
-    row.className = 'debug-eval-result';
-    row.textContent = snapshot.evaluated.error
-      ? `${snapshot.evaluated.expression} → ${snapshot.evaluated.error}`
-      : `${snapshot.evaluated.expression} → ${snapshot.evaluated.text}`;
-    row.classList.toggle('error', Boolean(snapshot.evaluated.error));
-    host.appendChild(row);
-  }
 }
 
 /** A compact, clickable tape of every value a local has held at each recorded stop. */
@@ -452,119 +447,6 @@ function renderHistoryTape(
   host.appendChild(section);
 }
 
-// ── Watch expressions ───────────────────────────────────────────────────────
-
-/**
- * Build the watch panel once.
- *
- * The `evaluate` command has existed in both adapters since the debugger was written,
- * and is covered by contract tests - but nothing in the UI ever sent one, so a student
- * could see the variables that happened to be in scope and could not ask a question
- * about anything else. This is that question box.
- */
-function buildWatchPanel(host: HTMLElement): void {
-  if (host.dataset.built === '1') return;
-  host.dataset.built = '1';
-
-  const form = document.createElement('form');
-  form.className = 'debug-watch-form';
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.className = 'debug-watch-input';
-  input.placeholder = t('debug.watchPlaceholder');
-  input.setAttribute('aria-label', t('debug.watchExpression'));
-  // The channel refuses anything longer, so the browser stops it here instead of the
-  // student typing into a box whose contents will be silently dropped.
-  input.maxLength = 2000;
-
-  form.appendChild(input);
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-    // Cleared only on success, so a rejected duplicate leaves the text to edit rather
-    // than making the student type it again.
-    if (debugState.addWatch(input.value)) input.value = '';
-  });
-
-  const list = document.createElement('div');
-  list.className = 'debug-watch-list';
-
-  host.appendChild(form);
-  host.appendChild(list);
-}
-
-function renderWatches(host: HTMLElement, snapshot: DebugSnapshot): void {
-  const list = host.querySelector('.debug-watch-list');
-  if (!list) return;
-
-  list.textContent = '';
-
-  for (const expression of snapshot.watches) {
-    const row = document.createElement('div');
-    row.className = 'debug-watch-row';
-
-    const name = document.createElement('span');
-    name.className = 'debug-var-name';
-    name.textContent = expression;
-
-    const value = document.createElement('span');
-    const result = snapshot.watchValues.get(expression);
-    if (!result) {
-      // No value YET is different from an error, and different again from a value of
-      // null - saying so beats showing an empty cell the student has to interpret.
-      value.className = 'debug-var-value debug-watch-pending';
-      value.textContent = snapshot.status === 'paused' || snapshot.status === 'postMortem'
-        ? '…'
-        : t('debug.notRunning');
-    } else {
-      value.className = result.error ? 'debug-var-value debug-watch-error' : 'debug-var-value';
-      // textContent throughout: the value is a repr of something the student created,
-      // and a crafted __repr__ returning markup must never be parsed as HTML.
-      value.textContent = result.error ?? result.text ?? 'None';
-    }
-
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'debug-watch-remove';
-    remove.textContent = '×';
-    remove.title = t('debug.stopWatching', { expression });
-    remove.setAttribute('aria-label', t('debug.stopWatching', { expression }));
-    remove.addEventListener('click', () => debugState.removeWatch(expression));
-
-    row.appendChild(name);
-    row.appendChild(value);
-    row.appendChild(remove);
-    list.appendChild(row);
-  }
-}
-
-function renderCallStack(host: HTMLElement, snapshot: DebugSnapshot): void {
-  host.textContent = '';
-  const stack = snapshot.stop?.stack ?? [];
-  if (stack.length === 0) return;
-
-  const heading = document.createElement('div');
-  heading.className = 'debug-section';
-  heading.textContent = t('debug.callStack');
-  host.appendChild(heading);
-
-  stack.forEach((frame, index) => {
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'debug-frame-row';
-    row.classList.toggle('innermost', index === 0);
-    row.textContent = `${frame.name}  ${frame.file}:${frame.line}`;
-    row.addEventListener('click', () => {
-      const editor = runtime.editor;
-      if (!editor) return;
-      editor.revealLineInCenter(frame.line);
-      editor.setPosition({ lineNumber: frame.line, column: 1 });
-      editor.focus();
-    });
-    host.appendChild(row);
-  });
-}
-
 // ── Wiring ──────────────────────────────────────────────────────────────────
 
 /**
@@ -577,12 +459,11 @@ export function initializeDebugUi(): Disposable {
   const editor = runtime.editor;
   const toolbarHost = document.getElementById('debug-toolbar');
   const variablesHost = document.getElementById('debug-variables');
-  const stackHost = document.getElementById('debug-callstack');
   const panelsHost = document.getElementById('debug-panels');
   const panelMinimize = document.getElementById('debug-panel-minimize') as HTMLButtonElement | null;
   const panelClose = document.getElementById('debug-panel-close') as HTMLButtonElement | null;
 
-  if (!editor || !toolbarHost || !variablesHost || !stackHost) {
+  if (!editor || !toolbarHost || !variablesHost) {
     return { dispose: () => {} };
   }
 
@@ -647,13 +528,19 @@ export function initializeDebugUi(): Disposable {
       renderLatest();
     },
   };
+  const executeDebuggerCommand = (command: string): void => {
+    history.toLive();
+    if (command !== 'stop') debugState.resuming();
+    renderLatest();
+    void sendCommand(command).then(sent => {
+      if (sent || command === 'stop') return;
+      debugState.resumeFailed();
+      renderLatest();
+    });
+  };
   const actions: ToolbarAction[] = [...historyActions, detailsAction, ...debugActions(
     () => debugState.capabilities(),
-    command => {
-      history.toLive();
-      renderLatest();
-      void sendCommand(command);
-    },
+    executeDebuggerCommand,
   )];
   buildToolbar(toolbarHost, actions, () => latestSnapshot);
 
@@ -695,11 +582,19 @@ export function initializeDebugUi(): Disposable {
   const trackDocument = (): void => {
     debugState.setDocument(runtime.tabManager?.getActiveTab()?.file.id ?? null);
   };
-  const modelSubscription = editor.onDidChangeModel(trackDocument);
+  const modelSubscription = editor.onDidChangeModel(() => {
+    decorations?.clear();
+    decorations = null;
+    trackDocument();
+    // The model registry and active tab finish their bookkeeping in the same event
+    // turn. Render again afterwards so a stop received during a tab transition is
+    // never left without its current-line marker.
+    queueMicrotask(() => {
+      trackDocument();
+      renderLatest();
+    });
+  });
   trackDocument();
-
-  const watchHost = document.getElementById('debug-watch');
-  if (watchHost) buildWatchPanel(watchHost);
 
   panelMinimize?.addEventListener('click', () => {
     panelCollapsed = !panelCollapsed;
@@ -710,30 +605,6 @@ export function initializeDebugUi(): Disposable {
     reviewAfterEnd = false;
     renderPanelVisibility();
   });
-
-  /*
-   * Ask the adapter for every watch, each time the program stops.
-   *
-   * A watch is only meaningful in a paused frame - the `evaluate` command needs one -
-   * so this fires on the transition into `paused` or `postMortem` rather than on every
-   * snapshot, which would re-request on each keystroke in the watch input.
-   */
-  let lastStopKey = '';
-  const refreshWatches = (snapshot: DebugSnapshot): void => {
-    const paused = snapshot.status === 'paused' || snapshot.status === 'postMortem';
-    if (!paused) {
-      lastStopKey = '';
-      return;
-    }
-
-    const key = `${snapshot.stop?.file}:${snapshot.stop?.line}:${snapshot.watches.join(',')}`;
-    if (key === lastStopKey) return;
-    lastStopKey = key;
-
-    for (const expression of debugState.watchExpressions()) {
-      void sendCommand('evaluate', { expression });
-    }
-  };
 
   renderLatest = () => {
     const view = history.view();
@@ -755,17 +626,10 @@ export function initializeDebugUi(): Disposable {
     renderHistoryTape(variablesHost, history, index => {
       if (history.goTo(index)) renderLatest();
     });
-    renderCallStack(stackHost, display);
-    if (watchHost) renderWatches(watchHost, display);
   };
 
   const onLanguageChanged = (): void => {
     buildToolbar(toolbarHost, actions, () => latestSnapshot);
-    const watchInput = watchHost?.querySelector<HTMLInputElement>('.debug-watch-input');
-    if (watchInput) {
-      watchInput.placeholder = t('debug.watchPlaceholder');
-      watchInput.setAttribute('aria-label', t('debug.watchExpression'));
-    }
     renderPanelVisibility();
     renderLatest();
   };
@@ -784,7 +648,6 @@ export function initializeDebugUi(): Disposable {
       lastRecordedStop = snapshot.stop;
     }
     renderLatest();
-    refreshWatches(snapshot);
 
     // Ending a run returns the editor space immediately. History is still kept; Back
     // or Show values reopens it only when the student explicitly asks to review it.
@@ -824,7 +687,7 @@ export function initializeDebugUi(): Disposable {
         (command === 'stepIn' && can.canStepIn) ||
         (command === 'stepOut' && can.canStepOut) ||
         (command === 'stop' && can.canStop);
-      if (allowed) void sendCommand(command);
+      if (allowed) executeDebuggerCommand(command);
     });
   }
 

@@ -10,7 +10,11 @@ import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output
 import { runEnded, runStarted } from '../components/run-controls.ts';
 import { runProgram, stopInteractive } from '../components/interactive-console';
 import { clearTurtleCanvas, renderTurtle, type TurtleData } from '../components/turtle';
-import { publishRunDiagnostics } from '../diagnostics/server-source';
+import {
+  CHECK_SOURCE,
+  clearCompilerDiagnostics,
+  publishRunDiagnostics,
+} from '../diagnostics/server-source';
 import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
 import { debugState, syncBreakpoints } from './debug/ui.ts';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
@@ -264,6 +268,14 @@ export async function runCode(
   // first - up to 30 s for Java and 45 s for C# - and a student must be able to
   // abandon a run during it.
   runStarted(options.debug ? 'debug' : 'run', () => stopInteractive());
+
+  // The previous run's compiler markers describe an older source snapshot. Clear
+  // them when a new run starts instead of leaving a fixed error in the status bar
+  // throughout compilation or a debugger pause.
+  if (runtime.workspace && runtime.diagnostics) {
+    clearCompilerDiagnostics(runtime.diagnostics, runtime.workspace);
+    clearCompilerDiagnostics(runtime.diagnostics, runtime.workspace, CHECK_SOURCE);
+  }
 
   try {
     let requestBody: Record<string, unknown> = {

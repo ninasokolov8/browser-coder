@@ -45,6 +45,9 @@ socket.setNoDelay(true);
 
 let buffer = '';
 let closed = false;
+let inspectorReady = null;
+let launchReleased = false;
+let breakpointCommands = Promise.resolve();
 
 function send(frame) {
   if (closed || socket.destroyed) return;
@@ -86,7 +89,7 @@ socket.on('data', chunk => {
 
 socket.on('connect', () => {
   send({ type: 'hello', token, pid });
-  arm();
+  inspectorReady = armInspector();
 });
 
 // ── CDP helpers ─────────────────────────────────────────────────────────────
@@ -368,7 +371,7 @@ function fileOfFrame(frame) {
     ?? (frame.url ? workspaceRelative(frame.url) : PROGRAM_NAME);
 }
 
-async function arm() {
+async function armInspector() {
   await post('Debugger.enable');
   // Uncaught only. Pausing on every caught exception would stop inside library code a
   // student never wrote, which reads as the debugger being broken.
@@ -379,6 +382,11 @@ async function arm() {
   // built from the real error when the run ends, which is what Python reports too.
   await post('Debugger.setPauseOnExceptions', { state: 'uncaught' });
   await post('Runtime.enable');
+}
+
+function releaseProgramLaunch() {
+  if (launchReleased) return;
+  launchReleased = true;
   parentPort.postMessage({ kind: 'armed' });
 }
 
@@ -635,12 +643,20 @@ async function evaluate(expression) {
 function handleCommand(command) {
   switch (command?.command) {
     case 'setBreakpoints':
-      void setBreakpoints(
-        Array.isArray(command.lines) ? command.lines : [],
-        command.files,
-        command.conditions,
-        command.logpoints,
-      );
+      // Program import is held until the initial breakpoint configuration has
+      // actually reached V8. Releasing it when the inspector merely attached made
+      // short JavaScript and TypeScript programs finish before their breakpoints
+      // existed, so repeated Debug clicks appeared to behave randomly.
+      breakpointCommands = breakpointCommands.then(async () => {
+        await inspectorReady;
+        await setBreakpoints(
+          Array.isArray(command.lines) ? command.lines : [],
+          command.files,
+          command.conditions,
+          command.logpoints,
+        );
+        releaseProgramLaunch();
+      });
       return;
     case 'continue':
       resumeIfPaused();

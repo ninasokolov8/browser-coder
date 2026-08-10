@@ -171,6 +171,13 @@ describe('debugging over HTTP', requires('python'), () => {
 
     const attached = await run.waitFor('debug:attached');
     assert.ok(attached.pid > 0, 'no pid reported');
+    const sessionAt = run.events.findIndex(event => event.type === 'session');
+    const attachedAt = run.events.findIndex(event => event.type === 'debug:attached');
+    assert.ok(sessionAt !== -1, 'the stream did not identify its session');
+    assert.ok(
+      sessionAt < attachedAt,
+      `debugger attached before session ownership was established: ${run.events.map(e => e.type).join(', ')}`,
+    );
     await run.close();
   });
 
@@ -407,6 +414,11 @@ describe('debugging JavaScript over HTTP', requires('javascript'), () => {
 
     const attached = await run.waitFor('debug:attached');
     assert.ok(attached.pid > 0, 'no pid reported');
+    assert.ok(
+      run.events.findIndex(event => event.type === 'session')
+        < run.events.findIndex(event => event.type === 'debug:attached'),
+      `debugger attached before session ownership: ${run.events.map(e => e.type).join(', ')}`,
+    );
     await run.debug('continue');
     await run.close();
   });

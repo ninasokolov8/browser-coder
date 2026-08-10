@@ -272,7 +272,7 @@
         <div id="tabs">
           <!-- Tabs rendered by TabManager -->
         </div>
-        <!-- Debugger panels: variables and the call stack. Beside the editor rather
+        <!-- Debugger panels: variables and their history. Beside the editor rather
              than in the output panel, because a student reads them WHILE looking at
              the paused line. -->
         <div id="editor-container">
@@ -294,7 +294,7 @@
               </button>
             </div>
           </div>
-          <!-- Variables, call stack and watches, BELOW the code.
+          <!-- Variables and their history, below the code.
                They used to sit before #editor-container, which put them in a strip
                across the top of the window above the code - and their own CSS says
                otherwise (`border-top`, `max-height: 34vh`), so the markup and the
@@ -312,8 +312,6 @@
             </div>
             <div id="debug-panel-content">
               <div id="debug-variables" aria-label="Variables" data-i18n-aria-label="debug.variables"></div>
-              <div id="debug-callstack" aria-label="Call stack" data-i18n-aria-label="debug.callStack"></div>
-              <div id="debug-watch" aria-label="Watch expressions" data-i18n-aria-label="debug.watchExpressions"></div>
             </div>
           </aside>
         </div>
