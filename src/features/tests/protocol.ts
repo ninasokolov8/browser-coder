@@ -10,9 +10,9 @@
  * Because a framework cannot be reached from inside this sandbox, in five of the six
  * languages, and the reasons are structural rather than a matter of effort:
  *
- *   C#      the project sets `<RestoreSources></RestoreSources>` and builds
- *           `--no-restore` - "Restore must never reach the network". xunit is a
- *           NuGet package.
+ *   C#      restore uses a service-owned NuGet config with all feeds cleared, and
+ *           builds use `--no-restore` - "Restore must never reach the network".
+ *           xunit is a NuGet package.
  *   Java    `javac` is invoked directly with a classpath of one directory. There is
  *           no Maven, no Gradle; JUnit is a jar somebody would have to vendor.
  *   PHP     `php -l` then `php`. PHPUnit is a phar to vendor.

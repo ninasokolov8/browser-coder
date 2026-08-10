@@ -36,6 +36,12 @@ export interface StopLocationQuery {
   readonly activeName: string | null | undefined;
   /** Every path the workspace holds, so a better candidate can be recognised. */
   readonly workspacePaths: readonly string[];
+  /** Identity of the document currently shown, when available. */
+  readonly activeDocumentId?: string | null;
+  /** Identity of the document launched by this debug session. */
+  readonly executionDocumentId?: string | null;
+  /** True when only the launched document was sent and the adapter renamed it. */
+  readonly singleFileExecution?: boolean;
 }
 
 /** Strip directories and normalise separators, so `src/a.py` and `a.py` compare. */
@@ -48,7 +54,23 @@ function normalise(value: string): string {
 }
 
 export function stopIsOnScreen(query: StopLocationQuery): boolean {
-  const { stopFile, activePath, activeName, workspacePaths } = query;
+  const {
+    stopFile,
+    activePath,
+    activeName,
+    workspacePaths,
+    activeDocumentId,
+    executionDocumentId,
+    singleFileExecution,
+  } = query;
+
+  // In snippet mode there cannot be another source file on the server. Adapters give
+  // the one submitted document their own conventional name, which can collide with a
+  // different, unsent workspace tab. Document identity is therefore the only correct
+  // answer: highlight the file that launched, never the coincidentally named tab.
+  if (singleFileExecution && executionDocumentId) {
+    return activeDocumentId === executionDocumentId;
+  }
 
   // The adapter said nothing about where it stopped - a v1-shaped answer. There is
   // nothing to contradict, so the stop is shown where the student is.

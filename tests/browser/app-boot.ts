@@ -935,6 +935,16 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   const continueButton = frameDocument.getElementById('debug-continue') as HTMLButtonElement | null;
   check('continue is enabled while paused', continueButton !== null && !continueButton.disabled);
 
+  const sharedStop = frameDocument.getElementById('stop') as HTMLButtonElement | null;
+  check('the one shared Stop button is visible throughout a debug pause', sharedStop?.hidden === false);
+  check('the debugger toolbar has no second Stop button', frameDocument.getElementById('debug-stop') === null);
+  check('Debug is disabled while a debug session already owns the workspace', !commands.isEnabled('workspace.debug'));
+
+  const duplicate = await commands.execute('workspace.debug', { source: 'api' });
+  check('a repeated Debug command is refused instead of replacing the active run', duplicate.status !== 'ran');
+  check('refusing a repeated Debug leaves the original pause intact', state().status === 'paused');
+  check('refusing a repeated Debug cannot hide the shared Stop button', sharedStop?.hidden === false);
+
   // Step, and require the line to advance.
   stepOver?.click();
   const stepped = await waitFor(
@@ -948,6 +958,7 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   (frameDocument.getElementById('debug-continue') as HTMLButtonElement | null)?.click();
   const ended = await waitFor('the debug session to end', () => state().status === 'ended', 20000);
   check('the session ends when the program finishes', ended, `status ${state().status}`);
+  check('the shared Stop button hides only after its owning run ends', sharedStop?.hidden === true);
   check('debugger details close automatically when the run finishes', debugPanels?.hidden === true);
 
   // Finished no longer means forgotten. Both pauses are recorded, so the student
@@ -1974,9 +1985,10 @@ async function checkRunStopAndDebugToolbarAreVisible(frameWindow: Window): Promi
   toolbar.hidden = false;
   await new Promise(resolve => frameWindow.requestAnimationFrame(() => resolve(null)));
 
-  const buttons = ['debug-continue', 'debug-step-over', 'debug-step-in', 'debug-step-out', 'debug-stop'];
+  const buttons = ['debug-continue', 'debug-step-over', 'debug-step-in', 'debug-step-out'];
   const missing = buttons.filter(id => !frameDocument.getElementById(id));
-  check('all five debugger buttons exist', missing.length === 0, `missing: ${missing.join(', ')}`);
+  check('all four debugger action buttons exist', missing.length === 0, `missing: ${missing.join(', ')}`);
+  check('the debugger toolbar does not duplicate the top-level Stop button', !frameDocument.getElementById('debug-stop'));
 
   const detail: string[] = [];
   const covered = buttons

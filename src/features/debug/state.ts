@@ -6,8 +6,8 @@
  *
  * That last point is the reason this file exists rather than the state living in the
  * view. A debugger has a small number of states and a large number of controls that
- * must agree about them: five toolbar buttons, the glyph margin, the current-line
- * highlight and the variables panel. Deriving all of it from one place is
+ * must agree about them: four stepping buttons, the shared Stop control, the glyph
+ * margin, the current-line highlight and the variables panel. Deriving all of it from one place is
  * what stops "Continue" being clickable while nothing is paused - the same reasoning
  * as the command registry in Phase D.
  */
@@ -64,6 +64,15 @@ export interface DebugSnapshot {
   readonly logpointLines: readonly number[];
   /** The document breakpoints belong to, so they are not shown against another file. */
   readonly documentId: string | null;
+  /**
+   * The document this session launched and whether the server received only that file.
+   * In single-file mode adapters rename it (`main.py`, `Program.cs`, and so on), so
+   * this identity is stronger than comparing the reported runtime filename.
+   */
+  readonly execution?: {
+    readonly documentId: string;
+    readonly singleFile: boolean;
+  } | null;
   readonly lastError: string | null;
 }
 
@@ -136,6 +145,7 @@ export class DebugSessionState {
   /** Log expressions per document and line. Kept apart from stopping breakpoints. */
   #logpoints = new Map<string, Map<number, string>>();
   #documentId: string | null = null;
+  #execution: { documentId: string; singleFile: boolean } | null = null;
   #lastError: string | null = null;
   #resumeCheckpoint: { status: 'paused' | 'postMortem'; stop: DebugStop } | null = null;
   #listeners = new Set<(snapshot: DebugSnapshot) => void>();
@@ -168,6 +178,7 @@ export class DebugSessionState {
       conditionedBreakpoints: this.conditionedLines(),
       logpointLines: this.logpointLines(),
       documentId: this.#documentId,
+      execution: this.#execution,
       lastError: this.#lastError,
     };
   }
@@ -374,9 +385,10 @@ export class DebugSessionState {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  starting(): void {
+  starting(execution: { documentId: string; singleFile: boolean } | null = null): void {
     this.#status = 'starting';
     this.#stop = null;
+    this.#execution = execution;
     this.#lastError = null;
     this.#resumeCheckpoint = null;
     this.#emit();
@@ -508,6 +520,7 @@ export class DebugSessionState {
   reset(): void {
     this.#status = 'idle';
     this.#stop = null;
+    this.#execution = null;
     this.#lastError = null;
     this.#resumeCheckpoint = null;
     this.#emit();

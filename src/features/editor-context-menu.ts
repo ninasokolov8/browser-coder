@@ -15,6 +15,7 @@ import { runtime, requireEditor, requireTabManager } from '../app/runtime';
 import { showKeywordHelpPopup } from '../components/keyword-help';
 import { runCode } from './execution';
 import { configureLogpointAtLine } from './debug/ui.ts';
+import { isRunActive } from '../components/run-controls.ts';
 import {
   coversWholeLines,
   dedent,
@@ -133,12 +134,13 @@ function hasRunnableSelection(): boolean {
 }
 
 function updateRunSelectionAvailability() {
-  runSelectionAvailable.set(hasRunnableSelection());
+  runSelectionAvailable.set(!isRunActive() && hasRunnableSelection());
   logpointAvailable.set(Boolean(editor.getModel()) && languageCan(activeLanguageId(), 'debug'));
 }
 
 editor.onDidChangeCursorSelection(updateRunSelectionAvailability);
 editor.onDidChangeModel(updateRunSelectionAvailability);
+window.addEventListener('runStateChanged', updateRunSelectionAvailability);
 
 /**
  * The code a "Run Selected" would execute, or null when there is nothing to run.
@@ -168,7 +170,7 @@ runtime.commands?.register({
   id: 'workspace.runSelection',
   title: 'command.runSelection',
   capability: 'run',
-  when: () => selectedProgram() !== null,
+  when: () => !isRunActive() && selectedProgram() !== null,
   run: async () => {
     const selected = selectedProgram();
     if (!selected) return;

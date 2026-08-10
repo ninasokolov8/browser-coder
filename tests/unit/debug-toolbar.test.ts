@@ -49,7 +49,7 @@ describe('the controls', () => {
     const actions = debugActions(() => ALL_ALLOWED, () => {});
     assert.deepEqual(
       actions.map(action => action.label),
-      ['Continue', 'Step over', 'Step into', 'Step out', 'Stop'],
+      ['Continue', 'Step over', 'Step into', 'Step out'],
     );
   });
 
@@ -59,7 +59,6 @@ describe('the controls', () => {
     assert.equal(byId.get('debug-step-over'), 'F10');
     assert.equal(byId.get('debug-step-in'), 'F11');
     assert.equal(byId.get('debug-step-out'), 'Shift+F11');
-    assert.equal(byId.get('debug-stop'), 'Shift+F5');
   });
 
   test('each has an icon drawn rather than borrowed from a font', () => {
@@ -70,18 +69,13 @@ describe('the controls', () => {
     }
   });
 
-  test('only Stop is marked destructive', () => {
-    const toned = debugActions(() => ALL_ALLOWED, () => {}).filter(action => action.tone === 'stop');
-    assert.deepEqual(toned.map(action => action.label), ['Stop']);
-  });
-
   test('enablement follows the session, and each button sends its own command', () => {
     const sent: string[] = [];
     const actions = debugActions(() => ALL_ALLOWED, command => sent.push(command));
 
     for (const action of actions) assert.equal(action.enabled(snapshot({})), true, action.label);
     for (const action of actions) action.run();
-    assert.deepEqual(sent, ['continue', 'next', 'stepIn', 'stepOut', 'stop']);
+    assert.deepEqual(sent, ['continue', 'next', 'stepIn', 'stepOut']);
 
     const refused = debugActions(() => NONE_ALLOWED, () => {});
     for (const action of refused) assert.equal(action.enabled(snapshot({})), false, action.label);

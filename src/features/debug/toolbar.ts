@@ -31,8 +31,6 @@ export interface ToolbarAction {
   /** Shown in the tooltip after the label. */
   readonly shortcut: string;
   readonly icon: string;
-  /** Destructive actions are styled apart, so Stop is never pressed by accident. */
-  readonly tone?: 'stop';
   readonly enabled: (snapshot: DebugSnapshot) => boolean;
   readonly run: () => void;
 }
@@ -58,7 +56,6 @@ const ICONS = {
     '<path d="M8 8.4V2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
     + '<path d="M5.4 4.8L8 2.2l2.6 2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
     + '<circle cx="8" cy="12.6" r="1.9"/>',
-  stop: '<rect x="4" y="4" width="8" height="8" rx="1.4"/>',
 } as const;
 
 function icon(body: string): string {
@@ -66,7 +63,8 @@ function icon(body: string): string {
 }
 
 /**
- * Build the five controls.
+ * Build the four debugger-specific controls. Stop lives once in the title bar and
+ * ends both ordinary and debug runs.
  *
  * The capability predicates and the handlers are injected, so this module has no
  * opinion about how a command reaches the adapter - it only decides what a student
@@ -78,7 +76,6 @@ export function debugActions(
     canStepOver: boolean;
     canStepIn: boolean;
     canStepOut: boolean;
-    canStop: boolean;
   },
   send: (command: string) => void,
 ): ToolbarAction[] {
@@ -118,16 +115,6 @@ export function debugActions(
       icon: ICONS.stepOut,
       enabled: () => capabilities().canStepOut,
       run: () => send('stepOut'),
-    },
-    {
-      id: 'debug-stop',
-      label: 'Stop',
-      labelKey: 'titlebar.stop',
-      shortcut: 'Shift+F5',
-      icon: ICONS.stop,
-      tone: 'stop',
-      enabled: () => capabilities().canStop,
-      run: () => send('stop'),
     },
   ];
 }
@@ -193,7 +180,7 @@ export function buildToolbar(
     const button = document.createElement('button');
     button.id = action.id;
     button.type = 'button';
-    button.className = `debug-btn${action.tone === 'stop' ? ' debug-btn-stop' : ''}`;
+    button.className = 'debug-btn';
     const label = action.labelKey ? t(action.labelKey) : action.label;
     button.title = action.shortcut ? `${label} (${action.shortcut})` : label;
     button.innerHTML = `${icon(action.icon)}<span class="debug-btn-label">${label}</span>`;

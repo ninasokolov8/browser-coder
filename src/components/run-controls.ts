@@ -28,15 +28,13 @@
 import { runBtn, stopBtn } from './dom';
 import { t } from '../i18n/index.ts';
 
-/** How the program is being run, so Stop can end the right thing. */
-export type RunKind = 'run' | 'debug';
-
 interface ActiveRun {
-  readonly kind: RunKind;
+  readonly token: number;
   readonly stop: () => void;
 }
 
 let active: ActiveRun | null = null;
+let nextToken = 1;
 
 /** Restored when the run ends. Captured per-run so a UI language switch survives. */
 let idleRunLabel = runBtn.innerHTML;
@@ -53,9 +51,16 @@ export function isRunActive(): boolean {
  * console nor the debugger - the same injection the run console uses for
  * `resolveImage`, and what lets the rule be tested without either.
  */
-export function runStarted(kind: RunKind, stop: () => void): void {
-  idleRunLabel = active ? idleRunLabel : runBtn.innerHTML;
-  active = { kind, stop };
+export function runStarted(stop: () => void): number | null {
+  // A second click while the first request is compiling must not replace its Stop
+  // handler. The command registry disables Run and Debug too, but this guard is the
+  // last line of defence for keyboard events and programmatic command calls already
+  // queued before the buttons repainted.
+  if (active) return null;
+
+  idleRunLabel = runBtn.innerHTML;
+  const token = nextToken++;
+  active = { token, stop };
 
   // Run stays visible but inert: a second Run would kill the first and start again,
   // which is a confusing way to discover that Stop exists.
@@ -64,14 +69,20 @@ export function runStarted(kind: RunKind, stop: () => void): void {
 
   stopBtn.hidden = false;
   stopBtn.disabled = false;
+  window.dispatchEvent(new Event('runStateChanged'));
+  return token;
 }
 
 /** The run ended - normally, by error, or because Stop was pressed. */
-export function runEnded(): void {
+export function runEnded(token: number): void {
+  // A delayed completion from an older request must never hide Stop for the request
+  // that currently owns the controls.
+  if (!active || active.token !== token) return;
   active = null;
   runBtn.disabled = false;
   runBtn.innerHTML = idleRunLabel;
   stopBtn.hidden = true;
+  window.dispatchEvent(new Event('runStateChanged'));
 }
 
 /**
@@ -79,7 +90,7 @@ export function runEnded(): void {
  *
  * The button is disabled immediately rather than on the way back, because stopping a
  * compile can take a moment and a student who sees nothing happen presses it again.
- * `runEnded()` is NOT called here: the run's own settle path calls it, so the console
+ * `runEnded(token)` is NOT called here: the run's own settle path calls it, so the console
  * and the buttons cannot disagree about whether the program is still going.
  */
 export function requestStop(): void {
