@@ -35,7 +35,7 @@
   "devDependencies": {
     "@types/node": "^26.1.2",
     "fake-indexeddb": "^6.2.5",
-    "jscpd": "^5.0.14",
+    "jscpd": "^5.0.16",
     "jszip": "^3.10.1",
     "knip": "^6.32.0",
     "monaco-editor": "^0.52.0",
