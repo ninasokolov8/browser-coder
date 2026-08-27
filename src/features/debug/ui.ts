@@ -16,6 +16,7 @@ import { activeSessionId } from '../../components/interactive-console.ts';
 import { setStatus } from '../../components/output';
 import {
   DebugSessionState,
+  isSessionLive,
   type DebugSnapshot,
   type DebugVariable,
 } from './state.ts';
@@ -137,6 +138,39 @@ export function syncBreakpoints(): void {
   }
 
   void sendCommand('setBreakpoints', { lines: entryLines, files, conditions, logpoints });
+}
+
+/**
+ * Put the editor back the way it was before Debug was pressed.
+ *
+ * ## Why this is one function and not a line in each caller
+ *
+ * A debug session can end in nine ways: Stop, the program running off its last line,
+ * an uncaught exception, the adapter's `terminated`, the stream dropping, a throw on the
+ * way in, the tab that launched it being closed, that document being deleted, and an
+ * embedding host revoking permission to run. Each of those used to leave a different
+ * amount of the debugger on screen, because only one of them - the ordinary finish -
+ * told the UI anything at all, and even that one only moved the state to `ended`, which
+ * the toolbar and the current-line highlight both treated as "still showing".
+ *
+ * So every one of those paths calls this instead, and it is the state reset that does
+ * the work: the toolbar, the highlight, the recorded stops, the value tape and the
+ * variables panel are all derived from the snapshot, so there is nothing else to undo.
+ * Breakpoints deliberately survive - a student who runs again wants their marks still
+ * there, and re-placing them every time would make the second run cost more than the
+ * first.
+ *
+ * Idempotent, so a path that has already been cleaned up by another one is free.
+ *
+ * @param documentId When given, only ends a session that was LAUNCHED from that
+ *   document. Closing an unrelated tab must not stop a program paused elsewhere.
+ */
+export function endDebugSession(documentId?: string): void {
+  if (documentId !== undefined) {
+    const execution = debugState.snapshot().execution;
+    if (execution && execution.documentId !== documentId) return;
+  }
+  debugState.reset();
 }
 
 /** Configure a print-and-continue point from the editor's ordinary code-line menu. */
@@ -481,13 +515,11 @@ export function initializeDebugUi(): Disposable {
   let lastRecordedStop = latestSnapshot.stop;
   let panelDismissed = false;
   let panelCollapsed = false;
-  let reviewAfterEnd = false;
   let renderLatest = (): void => {};
 
   const renderPanelVisibility = (): void => {
     if (!panelsHost) return;
-    const sessionActive = latestSnapshot.status !== 'idle' && latestSnapshot.status !== 'ended';
-    panelsHost.hidden = panelDismissed || (!sessionActive && !reviewAfterEnd);
+    panelsHost.hidden = panelDismissed || !isSessionLive(latestSnapshot.status);
     panelsHost.classList.toggle('collapsed', panelCollapsed);
     if (panelMinimize) {
       panelMinimize.textContent = panelCollapsed ? '+' : '−';
@@ -497,10 +529,9 @@ export function initializeDebugUi(): Disposable {
     }
   };
 
-  const showPanel = (reviewFinishedRun = false): void => {
+  const showPanel = (): void => {
     panelDismissed = false;
     panelCollapsed = false;
-    reviewAfterEnd = reviewFinishedRun;
     renderPanelVisibility();
   };
 
@@ -508,27 +539,26 @@ export function initializeDebugUi(): Disposable {
     {
       id: 'debug-step-back', label: 'Back', labelKey: 'debug.back', shortcut: 'Alt+Left',
       icon: '<path d="M9.8 3.2 5 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-      enabled: () => history.view().canGoBack,
-      run: () => {
-        if (!history.back()) return;
-        if (latestSnapshot.status === 'ended') showPanel(true);
-        renderLatest();
-      },
+      // Liveness as well as history, so this button cannot outlive the program on its
+      // own if a recorded stop ever survives a teardown. Every other control in the
+      // bar is derived the same way; a widget with its own idea of whether a session
+      // exists is what this file's header is about.
+      enabled: snapshot => isSessionLive(snapshot.status) && history.view().canGoBack,
+      run: () => { if (history.back()) renderLatest(); },
     },
     {
       id: 'debug-history-forward', label: 'Forward', labelKey: 'debug.forward', shortcut: 'Alt+Right',
       icon: '<path d="M6.2 3.2 11 8l-4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-      enabled: () => history.view().canGoForward,
+      enabled: snapshot => isSessionLive(snapshot.status) && history.view().canGoForward,
       run: () => { if (history.forward()) renderLatest(); },
     },
   ];
   const detailsAction: ToolbarAction = {
     id: 'debug-show-details', label: 'Show values', labelKey: 'debug.showValues', shortcut: '',
     icon: '<path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-    enabled: snapshot => snapshot.status !== 'idle'
-      && (snapshot.status !== 'ended' || history.view().total > 0),
+    enabled: snapshot => isSessionLive(snapshot.status),
     run: () => {
-      showPanel(latestSnapshot.status === 'ended');
+      showPanel();
       renderLatest();
     },
   };
@@ -582,6 +612,22 @@ export function initializeDebugUi(): Disposable {
     return null;
   });
 
+  /*
+   * A session cannot outlive the file it is running.
+   *
+   * Closing the tab is handled where tabs are - editor-core's `onTabClose` - but
+   * deleting the document, clearing the workspace and replacing the whole project do
+   * NOT fire that: the tab strip drops those ids itself, in `#dropClosedDocuments`.
+   * Watching the workspace instead catches all three, and asks the only question that
+   * matters - is the document this session launched still there?
+   */
+  const workspaceSubscription = runtime.workspace?.onDidChangeWorkspace(event => {
+    if (event.reason !== 'delete' && event.reason !== 'clear' && event.reason !== 'replace-all') return;
+    const executionId = debugState.snapshot().execution?.documentId;
+    if (!executionId || runtime.workspace?.getDocument(executionId)) return;
+    endDebugSession();
+  });
+
   // Breakpoints belong to a file, so the margin follows the active document.
   const trackDocument = (): void => {
     debugState.setDocument(runtime.tabManager?.getActiveTab()?.file.id ?? null);
@@ -606,20 +652,28 @@ export function initializeDebugUi(): Disposable {
   });
   panelClose?.addEventListener('click', () => {
     panelDismissed = true;
-    reviewAfterEnd = false;
     renderPanelVisibility();
   });
 
   renderLatest = () => {
+    /*
+     * The recorded stops are only ever shown while a session is live.
+     *
+     * This substitution is how looking back works - the newest snapshot with an older
+     * stop pasted into it - and it was unconditional, so a finished run went on
+     * substituting a stop into a state whose own `stop` was already null. That is what
+     * drew the current-line band and wrote "step 1 of 6" over a program that had
+     * exited. The history is cleared on end as well; this is the guard that means a
+     * stale entry could not put the arrow back even if one survived.
+     */
+    const live = isSessionLive(latestSnapshot.status);
     const view = history.view();
-    const display = view.stop ? { ...latestSnapshot, stop: view.stop } : latestSnapshot;
+    const display = live && view.stop ? { ...latestSnapshot, stop: view.stop } : latestSnapshot;
     renderDecorations(display);
     renderToolbar(toolbarHost, actions, display);
     const status = document.getElementById('debug-status');
-    if (status && view.stop) {
-      const key = view.viewingPast
-        ? 'debug.reviewingLineStep'
-        : latestSnapshot.status === 'ended' ? 'debug.recordedLineStep' : 'debug.pausedLineStep';
+    if (status && live && view.stop) {
+      const key = view.viewingPast ? 'debug.reviewingLineStep' : 'debug.pausedLineStep';
       status.textContent = t(key, {
         line: view.stop.line,
         step: view.index + 1,
@@ -641,27 +695,32 @@ export function initializeDebugUi(): Disposable {
 
   const unsubscribe = debugState.subscribe(snapshot => {
     latestSnapshot = snapshot;
-    if (snapshot.status === 'starting') {
+
+    /*
+     * Anything recorded belongs to a session. `starting` has not recorded anything yet;
+     * `ended` and `idle` describe a program that is gone, and its stops with it.
+     *
+     * Cleared BEFORE the render below, so the toolbar, the current-line highlight, the
+     * value tape and the panel all disappear in the same frame. Clearing afterwards is
+     * what used to leave the tape and the highlight one render behind the toolbar.
+     *
+     * A finished session's values must also not be diffed against the next run's: they
+     * belong to a different execution, and "changed since last time" would be a
+     * comparison across two different programs.
+     */
+    if (!isSessionLive(snapshot.status) || snapshot.status === 'starting') {
       history.reset();
+      variableHistory.reset();
       lastRecordedStop = null;
       panelDismissed = false;
       panelCollapsed = false;
-      reviewAfterEnd = false;
     } else if (snapshot.stop && snapshot.stop !== lastRecordedStop) {
       history.record(snapshot.stop);
       lastRecordedStop = snapshot.stop;
     }
+
     renderLatest();
-
-    // Ending a run returns the editor space immediately. History is still kept; Back
-    // or Show values reopens it only when the student explicitly asks to review it.
-    if (snapshot.status === 'ended' || snapshot.status === 'idle') reviewAfterEnd = false;
     renderPanelVisibility();
-
-    // A finished session's values must not be diffed against the next one's: they
-    // belong to a different execution, and "changed since last time" would be a
-    // comparison across two different programs.
-    if (snapshot.status === 'idle' || snapshot.status === 'starting') variableHistory.reset();
 
     if (snapshot.lastError) setStatus(snapshot.lastError);
   });
@@ -742,6 +801,7 @@ export function initializeDebugUi(): Disposable {
     dispose: () => {
       marginSubscription.dispose();
       modelSubscription.dispose();
+      workspaceSubscription?.dispose();
       unsubscribe();
       window.removeEventListener('languageChanged', onLanguageChanged);
       decorations?.clear();

@@ -4,6 +4,8 @@ import {
   sidebarEl, activityIcons, sidebarPanels, btnNewFile, btnNewFolder,
   emptyStateNewFileBtn, searchInput,
 } from '../components/dom';
+import { isRunActive, requestStop } from '../components/run-controls.ts';
+import { endDebugSession } from './debug/ui.ts';
 import { saveSettings } from '../components/settings';
 import { lazyRef } from '../app/lazy';
 
@@ -59,6 +61,19 @@ export function applyPolicyFromMessage(data: { readonly?: boolean; lockStructure
   // Policy just changed, so every bound control must re-read its enablement.
   // Without this a button stays clickable after a stepup:set-readonly (V-17).
   runtime.commands?.notifyPolicyChanged();
+
+  /*
+   * A host that revokes running mid-session must not leave one going.
+   *
+   * `notifyPolicyChanged` only greys out the controls that START a run. Nothing ended
+   * the one already in flight, so a `stepup:set-readonly` arriving while the debugger
+   * was paused left the toolbar on screen with its stepping buttons live - the exact
+   * state the student was just told they are not allowed to be in.
+   */
+  if (!policyState.allowRun) {
+    if (isRunActive()) requestStop();
+    endDebugSession();
+  }
 }
 
 export function switchSidebarPanel(panelName: string) {

@@ -195,7 +195,6 @@
   "debug.stepDescription": "Step {{step}}: {{description}}",
   "debug.reviewStep": "Review step {{step}}. {{description}}",
   "debug.reviewingLineStep": "Reviewing line {{line}} · step {{step}} of {{total}}",
-  "debug.recordedLineStep": "Recorded line {{line}} · step {{step}} of {{total}}",
   "debug.pausedLineStep": "Paused on line {{line}} · step {{step}} of {{total}}",
   "debug.conditionPrompt": "Stop at line {{line}} only when this is true (leave empty for always):",
   "debug.conditionAdded": "Line {{line}} now stops only when {{condition}}",

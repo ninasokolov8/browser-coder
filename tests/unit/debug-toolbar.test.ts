@@ -11,8 +11,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { debugActions, describeStatus } from '../../src/features/debug/toolbar.ts';
-import type { DebugSnapshot } from '../../src/features/debug/state.ts';
+import { debugActions, describeStatus, renderToolbar } from '../../src/features/debug/toolbar.ts';
+import type { DebugSnapshot, DebugStatus } from '../../src/features/debug/state.ts';
 
 const ALL_ALLOWED = {
   canContinue: true,
@@ -115,5 +115,55 @@ describe('the status sentence', () => {
 
   test('finished is a plain word', () => {
     assert.equal(describeStatus(snapshot({ status: 'ended' })), 'Finished');
+  });
+});
+
+/**
+ * Whether the bar is on screen at all.
+ *
+ * This is the assertion the bug needed and did not have. `renderToolbar` writes
+ * `host.hidden` and nothing else in the codebase writes it, so the whole question of
+ * "does the debugger disappear when the program does" is one line - and it was wrong,
+ * hiding only on `idle`, a status that nothing in the app ever reached. So the toolbar
+ * survived every run and stayed clickable over a program that had exited.
+ *
+ * A three-property stand-in rather than a DOM library: `renderToolbar` reads
+ * `document.getElementById` and writes `hidden`, `disabled` and `textContent`, and
+ * asserting against a fake that provides exactly those says more about the contract
+ * than a full document would.
+ */
+describe('whether the bar is on screen', () => {
+  interface FakeHost { hidden: boolean }
+
+  /** Render one snapshot against a stand-in document and report `host.hidden`. */
+  function hiddenFor(status: DebugStatus): boolean {
+    const statusElement = { textContent: '', dataset: {} as Record<string, string> };
+    const realDocument = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = {
+      getElementById: (id: string) => (id === 'debug-status' ? statusElement : null),
+    };
+    try {
+      const host: FakeHost = { hidden: false };
+      renderToolbar(host as unknown as HTMLElement, [], snapshot({ status }));
+      return host.hidden;
+    } finally {
+      (globalThis as { document?: unknown }).document = realDocument;
+    }
+  }
+
+  test('hidden before anything has run', () => {
+    assert.equal(hiddenFor('idle'), true);
+  });
+
+  test('hidden again once the run is over', () => {
+    // The reported bug: a finished run kept the whole bar - four greyed-out stepping
+    // buttons and a live Back/Forward - over a program that no longer existed.
+    assert.equal(hiddenFor('ended'), true);
+  });
+
+  test('shown for every state a student can act on', () => {
+    for (const status of ['starting', 'running', 'paused', 'postMortem'] as const) {
+      assert.equal(hiddenFor(status), false, status);
+    }
   });
 });

@@ -59,9 +59,10 @@ That record powers features that make execution visible instead of mysterious:
 
 ### ⏪ Review earlier pauses
 
-Step backward and forward through recorded debugger snapshots without rerunning the
-program. Locals, globals, the call stack, watches, and variable history all move to
-the selected moment.
+While the program is paused, step backward and forward through recorded debugger
+snapshots without rerunning it. Locals, globals, the call stack, watches, and variable
+history all move to the selected moment. Ending the run clears the recording along with
+the rest of the debugger, so the editor returns to exactly how it looked beforehand.
 
 </td>
 <td width="50%" valign="top">

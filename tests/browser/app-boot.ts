@@ -26,6 +26,17 @@ function check(name: string, condition: boolean, detail = ''): void {
   }
 }
 
+/**
+ * Is a debug session on screen?
+ *
+ * The same rule as `isSessionLive` in src/features/debug/state.ts, restated because the
+ * test reaches the app through the runtime seam rather than by importing its modules.
+ * `ended` is OFF: a run that is over must leave nothing behind.
+ */
+function isLiveStatus(status: string): boolean {
+  return status !== 'idle' && status !== 'ended';
+}
+
 const frame = document.getElementById('app') as HTMLIFrameElement;
 const errors: string[] = [];
 
@@ -740,7 +751,10 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   const workspace = runtime.workspace as {
     createDocument(request: Record<string, unknown>): Promise<{ id: string }>;
   };
-  const tabManager = runtime.tabManager as { switchToTab(id: string): Promise<unknown> };
+  const tabManager = runtime.tabManager as {
+    switchToTab(id: string): Promise<unknown>;
+    closeTab(id: string): Promise<unknown>;
+  };
   const commands = runtime.commands as {
     execute(id: string, context: { source: string }): Promise<{ status: string }>;
     isEnabled(id: string): boolean;
@@ -774,13 +788,18 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   check('the debug command is enabled for Python', commands.isEnabled('workspace.debug'));
 
   // Set a breakpoint through the state, as the margin click does.
-  const debugModule = (runtime as { debug?: { toggleBreakpoint(line: number): boolean } }).debug;
+  const debugModule = (runtime as {
+    debug?: {
+      toggleBreakpoint(line: number): boolean;
+      snapshot(): { breakpoints: number[]; documentId: string | null };
+    };
+  }).debug;
   check('the debug state is reachable from the runtime seam', Boolean(debugModule));
   if (!debugModule) return;
 
   debugModule.toggleBreakpoint(4);
 
-  const stateBefore = (runtime as { debug?: { snapshot(): { breakpoints: number[]; documentId: string | null } } }).debug!.snapshot();
+  const stateBefore = debugModule.snapshot();
   lines.push(`INFO before run: breakpoints=${JSON.stringify(stateBefore.breakpoints)} documentId=${stateBefore.documentId} target=${document.id}`);
 
   /*
@@ -954,42 +973,143 @@ async function checkDebuggerWorks(frameWindow: Window): Promise<void> {
   );
   check('step-over advances the program', stepped);
 
-  // Finish, and require the session to end cleanly.
+  /*
+   * Finish, and require the editor to look exactly as it did before Debug was pressed.
+   *
+   * This is the whole contract, and every assertion below is one thing that used to be
+   * left behind. The debugger used to keep its bar, its olive current-line band and a
+   * "Recorded line 4 - step 1 of 2" sentence for as long as the tab stayed open, with
+   * Back / Forward / Show values still clickable, because the finished state was
+   * `ended` and only `idle` hid anything. A student's next ordinary Run happened
+   * underneath a debugger that was still on screen.
+   *
+   * A breakpoint is NOT part of that: the student put it there, and a second run wants
+   * it still armed. So it is asserted to survive, right beside the things that must not.
+   */
   (frameDocument.getElementById('debug-continue') as HTMLButtonElement | null)?.click();
-  const ended = await waitFor('the debug session to end', () => state().status === 'ended', 20000);
+  const ended = await waitFor(
+    'the debug session to end',
+    () => !isLiveStatus(state().status),
+    20000,
+  );
   check('the session ends when the program finishes', ended, `status ${state().status}`);
   check('the shared Stop button hides only after its owning run ends', sharedStop?.hidden === true);
   check('debugger details close automatically when the run finishes', debugPanels?.hidden === true);
 
-  // Finished no longer means forgotten. Both pauses are recorded, so the student
-  // can inspect how `total` changed even after Continue reached the end.
-  const historyShown = await waitFor(
-    'the recorded pause history to remain after the session ends',
-    () => frameDocument.querySelectorAll('.debug-history-cell').length >= 2,
+  const toolbarGone = await waitFor(
+    'the debug toolbar to disappear again',
+    () => frameDocument.getElementById('debug-toolbar')?.hidden === true,
     8000,
   );
-  check('recorded pauses remain available after the run', historyShown);
+  check('the debug toolbar disappears when the run is over', toolbarGone);
 
-  const stepBack = frameDocument.getElementById('debug-step-back') as HTMLButtonElement | null;
-  check('Step back is enabled when an earlier pause exists', stepBack !== null && !stepBack.disabled);
-  stepBack?.click();
-  check('asking to review history reopens the debugger details', debugPanels?.hidden === false);
+  const leftover = (editor.getModel()!.getAllDecorations() as unknown as Array<{
+    options: { className?: string | null; glyphMarginClassName?: string | null };
+  }>).filter(entry =>
+    entry.options.className === 'debug-current-line'
+    || entry.options.glyphMarginClassName === 'debug-current-glyph'
+    || entry.options.glyphMarginClassName === 'debug-exception-glyph');
   check(
-    'Step back reviews the earlier recorded line without rerunning',
-    /Reviewing line 4/.test(frameDocument.getElementById('debug-status')?.textContent ?? ''),
+    'no current-line highlight or arrow survives the run',
+    leftover.length === 0,
+    `${leftover.length} left: ` + leftover
+      .map(entry => entry.options.className || entry.options.glyphMarginClassName)
+      .join(', '),
+  );
+
+  check(
+    'the breakpoint the student set survives, so a second run does not need re-placing',
+    debugModule.snapshot().breakpoints.includes(4),
+    JSON.stringify(debugModule.snapshot().breakpoints),
+  );
+
+  check(
+    'the status sentence is not left describing a program that has exited',
+    (frameDocument.getElementById('debug-status')?.textContent ?? '') === '',
     frameDocument.getElementById('debug-status')?.textContent ?? '',
   );
+
   check(
-    'future variable values fade while reviewing the past',
-    frameDocument.querySelector('.debug-history-cell.future') !== null,
+    'the recorded value tape goes with the session it belongs to',
+    frameDocument.querySelectorAll('.debug-history-cell').length === 0,
+    `${frameDocument.querySelectorAll('.debug-history-cell').length} cells`,
   );
 
-  const historyForward = frameDocument.getElementById('debug-history-forward') as HTMLButtonElement | null;
-  check('history Forward is enabled while reviewing the past', historyForward !== null && !historyForward.disabled);
-  historyForward?.click();
+  for (const id of ['debug-step-back', 'debug-history-forward', 'debug-show-details',
+                    'debug-continue', 'debug-step-over', 'debug-step-in', 'debug-step-out']) {
+    const button = frameDocument.getElementById(id) as HTMLButtonElement | null;
+    check(`${id} is not clickable once the run is over`, button === null || button.disabled);
+  }
+
+  check(
+    'Debug is offered again once the session is gone',
+    commands.isEnabled('workspace.debug'),
+  );
 
   // Let the run settle so it cannot leak into a later assertion.
   await Promise.race([runPromise, new Promise(resolve => setTimeout(resolve, 5000))]);
+
+  await checkClosingTheTabEndsTheRun({ frameDocument, runtime, tabManager, commands, debugModule, document });
+}
+
+/**
+ * Closing the tab you are debugging ends the run.
+ *
+ * Nothing connected the two before: the tab went, the sandbox stayed paused on the
+ * server, and the toolbar stayed on screen driving a program whose source was no longer
+ * open - Continue and Step still worked, and the line they moved to was nowhere visible.
+ * The only way out was reloading the page, which throws away the console as well.
+ *
+ * Run as its own pause because the assertion is about a LIVE session being closed, not
+ * a finished one: the interesting state is paused-and-stepping, which is exactly what
+ * the earlier block has just finished tearing down.
+ */
+async function checkClosingTheTabEndsTheRun(context: {
+  frameDocument: Document;
+  runtime: Record<string, unknown>;
+  tabManager: { switchToTab(id: string): Promise<unknown>; closeTab(id: string): Promise<unknown> };
+  commands: { execute(id: string, ctx: { source: string }): Promise<{ status: string }>; isEnabled(id: string): boolean };
+  debugModule: { toggleBreakpoint(line: number): boolean; snapshot(): { breakpoints: number[]; documentId: string | null } };
+  document: { id: string };
+}): Promise<void> {
+  const { frameDocument, runtime, tabManager, commands, debugModule, document } = context;
+  const state = () => (runtime as { debug?: { snapshot(): { status: string } } }).debug!.snapshot();
+
+  await tabManager.switchToTab(document.id);
+  if (!debugModule.snapshot().breakpoints.includes(4)) debugModule.toggleBreakpoint(4);
+
+  const secondRun = commands.execute('workspace.debug', { source: 'api' });
+  secondRun.catch(() => { /* reported through the state below */ });
+
+  const pausedAgain = await waitFor(
+    'the second debug run to pause',
+    () => state().status === 'paused',
+    30000,
+  );
+  check('a second debug run pauses, so the breakpoint really did survive', pausedAgain, `status ${state().status}`);
+  if (!pausedAgain) {
+    await Promise.race([secondRun, new Promise(resolve => setTimeout(resolve, 5000))]);
+    return;
+  }
+
+  await tabManager.closeTab(document.id);
+
+  const releasedByClose = await waitFor(
+    'closing the debugged tab to end the session',
+    () => !isLiveStatus(state().status),
+    15000,
+  );
+  check('closing the tab being debugged ends the run', releasedByClose, `status ${state().status}`);
+  check(
+    'and takes the toolbar with it',
+    frameDocument.getElementById('debug-toolbar')?.hidden === true,
+  );
+  check(
+    'and the shared Stop button, so nothing claims to still be running',
+    await waitFor('Stop to hide', () => (frameDocument.getElementById('stop') as HTMLButtonElement | null)?.hidden === true, 15000),
+  );
+
+  await Promise.race([secondRun, new Promise(resolve => setTimeout(resolve, 8000))]);
 }
 
 /** The new beginner tools, through the composed app and real execution route. */

@@ -31,6 +31,14 @@ import { t } from '../i18n/index.ts';
 interface ActiveRun {
   readonly token: number;
   readonly stop: () => void;
+  /**
+   * The document Run was pressed on, so closing that tab can end the run.
+   *
+   * Recorded here rather than in the debugger because an ordinary run needs it too: a
+   * program left going against a file the student has closed is a sandbox nobody can
+   * see, reach or stop except by reloading the page.
+   */
+  readonly documentId: string | null;
 }
 
 let active: ActiveRun | null = null;
@@ -44,6 +52,11 @@ export function isRunActive(): boolean {
   return active !== null;
 }
 
+/** The document the running program was launched from, or null when nothing runs. */
+export function activeRunDocument(): string | null {
+  return active?.documentId ?? null;
+}
+
 /**
  * A run has begun.
  *
@@ -51,7 +64,7 @@ export function isRunActive(): boolean {
  * console nor the debugger - the same injection the run console uses for
  * `resolveImage`, and what lets the rule be tested without either.
  */
-export function runStarted(stop: () => void): number | null {
+export function runStarted(stop: () => void, documentId: string | null = null): number | null {
   // A second click while the first request is compiling must not replace its Stop
   // handler. The command registry disables Run and Debug too, but this guard is the
   // last line of defence for keyboard events and programmatic command calls already
@@ -60,7 +73,7 @@ export function runStarted(stop: () => void): number | null {
 
   idleRunLabel = runBtn.innerHTML;
   const token = nextToken++;
-  active = { token, stop };
+  active = { token, stop, documentId };
 
   // Run stays visible but inert: a second Run would kill the first and start again,
   // which is a confusing way to discover that Stop exists.

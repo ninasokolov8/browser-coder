@@ -195,7 +195,6 @@
   "debug.stepDescription": "צעד {{step}}: {{description}}",
   "debug.reviewStep": "סקירת צעד {{step}}. {{description}}",
   "debug.reviewingLineStep": "סקירת שורה {{line}} · צעד {{step}} מתוך {{total}}",
-  "debug.recordedLineStep": "שורה {{line}} שהוקלטה · צעד {{step}} מתוך {{total}}",
   "debug.pausedLineStep": "מושהה בשורה {{line}} · צעד {{step}} מתוך {{total}}",
   "debug.conditionPrompt": "עצירה בשורה {{line}} רק כאשר התנאי הזה נכון (השאירו ריק כדי לעצור תמיד):",
   "debug.conditionAdded": "שורה {{line}} תיעצר כעת רק כאשר {{condition}}",

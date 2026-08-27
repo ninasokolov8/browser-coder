@@ -7,6 +7,8 @@ import { tabsEl, editorEmptyState, emptyStateNewFileBtn, statusLangEl, langSel, 
 import { configureMonacoForVersion, populateVersionDropdown } from '../components/monaco-config';
 import { setOutput, setStatus } from '../components/output';
 import { loadSettings } from '../components/settings';
+import { activeRunDocument, requestStop } from '../components/run-controls.ts';
+import { endDebugSession } from './debug/ui.ts';
 import { hideAssetViewer, isAssetFile, showAssetViewer } from './asset-viewer.ts';
 import { t } from '../i18n/index.ts';
 
@@ -149,6 +151,22 @@ export function createTabManager(hooks: {
       hooks.renderFileTree();
     },
     onTabClose: (tab: Tab) => {
+      /*
+       * A run belongs to the file it was launched from, so closing that file ends it.
+       *
+       * Nothing did this before, and closing the tab you were debugging left the
+       * sandbox running with the toolbar still on screen, stepping a program whose
+       * source was no longer open - and no way to stop it but reloading the page.
+       *
+       * The two calls answer different questions and both are needed. `requestStop`
+       * kills the process, and the run's own settle path tears the debugger down a
+       * moment later; `endDebugSession` clears the surface NOW, and also covers a
+       * session left behind by a run that had already finished. Scoped by document id
+       * so closing an unrelated tab cannot end a session paused somewhere else.
+       */
+      if (activeRunDocument() === tab.file.id) requestStop();
+      endDebugSession(tab.file.id);
+
       disposeModel(tab.file.id);
       if (manager.getTabCount() === 0) {
         updateEmptyState(true);
