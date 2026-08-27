@@ -21,7 +21,7 @@
  * of the toolbar that changes on its own, so it is what tells them something happened.
  */
 
-import type { DebugSnapshot } from './state.ts';
+import { isSessionLive, type DebugSnapshot } from './state.ts';
 import { t } from '../../i18n/index.ts';
 
 export interface ToolbarAction {
@@ -213,5 +213,15 @@ export function renderToolbar(
     status.dataset.state = snapshot.status;
   }
 
-  host.hidden = snapshot.status === 'idle';
+  /*
+   * Gone the moment there is no session, `ended` included.
+   *
+   * This used to hide only on `idle`, and since a finished run lands on `ended` the
+   * whole bar stayed on screen afterwards - four greyed-out stepping buttons plus a
+   * live Back/Forward/Show values that stepped through a program which no longer
+   * existed. `hidden` rather than a class because #debug-toolbar[hidden] is what the
+   * stylesheet already keys the `display: none` off, and it is the state the markup
+   * ships in before anything has run.
+   */
+  host.hidden = !isSessionLive(snapshot.status);
 }

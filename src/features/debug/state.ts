@@ -97,6 +97,23 @@ const PAUSED_STATES: readonly DebugStatus[] = ['paused'];
  */
 const MAX_CONDITION_CHARS = 2000;
 
+/**
+ * Is there a session on screen right now?
+ *
+ * The single definition of "the debugger is showing", so the toolbar, the current-line
+ * highlight and the variables panel cannot disagree about it - the same reason the
+ * capabilities above are derived here rather than tracked per widget.
+ *
+ * `ended` counts as OFF, which is the whole point of this function existing. It used to
+ * count as on, and a finished run therefore kept its toolbar, its olive current-line
+ * band and its "step 1 of 6" sentence for as long as the tab stayed open. A highlight
+ * that outlives the program reads as "still paused", which is the one thing a debugger
+ * must never say about a program that is not there any more.
+ */
+export function isSessionLive(status: DebugStatus): boolean {
+  return status !== 'idle' && status !== 'ended';
+}
+
 export function capabilitiesFor(status: DebugStatus): DebugCapabilities {
   const paused = PAUSED_STATES.includes(status);
   const live = status === 'running' || status === 'starting' || paused || status === 'postMortem';
@@ -490,9 +507,9 @@ export class DebugSessionState {
         break;
 
       case 'terminated':
-        this.#status = 'ended';
-        this.#stop = null;
-        this.#resumeCheckpoint = null;
+        // The adapter's own word for the same thing `finished()` says locally, so both
+        // land on one transition rather than two that can drift apart.
+        this.#end();
         break;
 
       case 'unsupported':
@@ -509,15 +526,32 @@ export class DebugSessionState {
     this.#emit();
   }
 
-  /** The run finished, however it finished. */
-  finished(): void {
+  /** The run is over: no position, and nothing left to resume to. */
+  #end(): void {
     this.#status = 'ended';
     this.#stop = null;
     this.#resumeCheckpoint = null;
+  }
+
+  /** The run finished, however it finished. */
+  finished(): void {
+    this.#end();
     this.#emit();
   }
 
+  /**
+   * Back to never having run.
+   *
+   * `ended` remembers that a program ran and stopped; `idle` is the state the IDE was
+   * in before Debug was pressed. Breakpoints, conditions and log points survive both -
+   * they are things the student set, not things the run produced, and clearing them
+   * would mean re-placing every mark to run a second time.
+   *
+   * A no-op when there is nothing to clear, so the teardown can be called from every
+   * exit path without each of them having to know whether another one got there first.
+   */
   reset(): void {
+    if (this.#status === 'idle' && !this.#stop && !this.#execution && !this.#lastError) return;
     this.#status = 'idle';
     this.#stop = null;
     this.#execution = null;

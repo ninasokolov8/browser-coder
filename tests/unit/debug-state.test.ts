@@ -14,7 +14,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { DebugSessionState, capabilitiesFor } from '../../src/features/debug/state.ts';
+import { DebugSessionState, capabilitiesFor, isSessionLive } from '../../src/features/debug/state.ts';
 
 describe('what the toolbar may offer', () => {
   test('nothing but Start when idle', () => {
@@ -53,6 +53,29 @@ describe('what the toolbar may offer', () => {
 
   test('Start is offered again after a session ends', () => {
     assert.equal(capabilitiesFor('ended').canStart, true);
+  });
+});
+
+describe('whether the debugger is on screen at all', () => {
+  test('a finished run is OFF, exactly like never having run', () => {
+    // The bug this answers: `ended` used to count as on, so a run that was over kept
+    // its toolbar, its current-line highlight and its "step 1 of 6" sentence until the
+    // page was reloaded. A marker that outlives the program says "still paused" about
+    // a program that is not there.
+    assert.equal(isSessionLive('ended'), false);
+    assert.equal(isSessionLive('idle'), false);
+  });
+
+  test('everything a student can still act on is ON', () => {
+    for (const status of ['starting', 'running', 'paused', 'postMortem'] as const) {
+      assert.equal(isSessionLive(status), true, status);
+    }
+  });
+
+  test('post-mortem stays on screen, because the error is the thing to read', () => {
+    // The program has stopped, but the frame is still there and the variables with it.
+    // Only `terminated` ends that.
+    assert.equal(isSessionLive('postMortem'), true);
   });
 });
 
@@ -360,6 +383,71 @@ describe('the lifecycle', () => {
     state.reset();
     assert.equal(state.snapshot().status, 'idle');
     assert.equal(state.snapshot().stop, null);
+  });
+
+  test('reset is idempotent, so every exit path may call it', () => {
+    // Stop, the adapter's `terminated`, the stream settling and the `finally` all tear
+    // the session down without checking whether another of them got there first. A
+    // second call must be free rather than another render of the whole surface.
+    const state = session();
+    state.starting();
+    state.apply({ type: 'stopped', line: 1, file: 'main.py', stack: [], locals: [], globals: [] });
+
+    let notifications = 0;
+    state.subscribe(() => { notifications += 1; });
+    const afterSubscribe = notifications;
+
+    state.reset();
+    const afterFirst = notifications;
+    assert.equal(afterFirst, afterSubscribe + 1);
+
+    state.reset();
+    state.reset();
+    assert.equal(notifications, afterFirst, 'a reset with nothing to clear still notified');
+  });
+
+  test('reset clears the error, so a dead session cannot keep re-posting it', () => {
+    const state = session();
+    state.starting();
+    state.apply({ type: 'error', message: 'The debugger could not attach.' });
+    assert.equal(state.snapshot().lastError, 'The debugger could not attach.');
+
+    state.reset();
+    assert.equal(state.snapshot().lastError, null);
+  });
+
+  test('reset keeps the breakpoints, because the student put them there', () => {
+    // The whole point of ending a session rather than clearing everything: a student
+    // fixes something and runs again, and re-placing every mark would cost more than
+    // the second run itself.
+    const state = session();
+    state.toggleBreakpoint(3);
+    state.setBreakpointCondition(5, 'i == 2');
+    state.setLogpoint(7, 'total');
+    state.starting();
+    state.reset();
+
+    assert.deepEqual(state.breakpointLines(), [3, 5]);
+    assert.deepEqual(state.conditionedLines(), [5]);
+    assert.deepEqual(state.logpointLines(), [7]);
+  });
+
+  test('the adapter saying `terminated` is the same transition as finishing locally', () => {
+    // Two words for one event - the stream's own frame and the run path's call - so
+    // they must not be able to drift into two different amounts of teardown.
+    const viaAdapter = session();
+    viaAdapter.starting();
+    viaAdapter.apply({ type: 'stopped', line: 4, file: 'main.py', stack: [], locals: [], globals: [] });
+    viaAdapter.apply({ type: 'terminated', exitCode: 0 });
+
+    const viaCaller = session();
+    viaCaller.starting();
+    viaCaller.apply({ type: 'stopped', line: 4, file: 'main.py', stack: [], locals: [], globals: [] });
+    viaCaller.finished();
+
+    assert.equal(viaAdapter.snapshot().status, viaCaller.snapshot().status);
+    assert.equal(viaAdapter.snapshot().stop, viaCaller.snapshot().stop);
+    assert.equal(isSessionLive(viaAdapter.snapshot().status), false);
   });
 });
 

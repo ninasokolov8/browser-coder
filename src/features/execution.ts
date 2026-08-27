@@ -16,7 +16,7 @@ import {
   publishRunDiagnostics,
 } from '../diagnostics/server-source';
 import { ASSET_LANGUAGE_ID } from '../workspace/assets.ts';
-import { debugState, syncBreakpoints } from './debug/ui.ts';
+import { debugState, endDebugSession, syncBreakpoints } from './debug/ui.ts';
 import { isCssFile, isHtmlFile, isMarkdownFile, isSvgFile, openWebPreview } from './live-preview';
 import { resolveWorkspaceImageUrl } from '../components/svg-assets';
 import { showImageWindow } from '../components/image-window';
@@ -272,7 +272,9 @@ export async function runCode(
   // It is armed HERE rather than when the stream opens, because the compile happens
   // first - up to 30 s for Java and 45 s for C# - and a student must be able to
   // abandon a run during it.
-  const runToken = runStarted(() => stopInteractive());
+  // The active file is passed along so closing its tab can end the run: see
+  // activeRunDocument() in run-controls.ts and onTabClose in editor-core.ts.
+  const runToken = runStarted(() => stopInteractive(), activeTab.file.id);
   if (runToken === null) return;
 
   // The previous run's compiler markers describe an older source snapshot. Clear
@@ -445,6 +447,15 @@ requestBody = {
         // Breakpoints go out as soon as the adapter is listening. Earlier would race
         // the connection; later would miss a breakpoint on the program's first lines.
         if (event.type === 'attached') syncBreakpoints();
+        /*
+         * The adapter's own word that the program is gone, which arrives BEFORE the
+         * stream's `exit` frame - the process still has stdout to flush, and on the
+         * slower languages that gap is visible. Torn down here so the toolbar and the
+         * current-line band go with the program rather than with the last byte of its
+         * output. All five adapters send this at their single exit point, so this is
+         * not a per-language special case.
+         */
+        if (event.type === 'terminated') endDebugSession();
       },
 
       // turtle.bgpic("maze.svg") names a workspace file. Python reports only the
@@ -452,8 +463,10 @@ requestBody = {
       resolveImage: resolveRunImage });
 
     // However the run ended, the session is over: no stale current-line arrow, no
-    // step buttons left enabled.
-    if (options.debug) debugState.finished();
+    // step buttons left enabled, and no toolbar. Here rather than only in the `finally`
+    // below so the debugger's surface goes the instant the program does, ahead of the
+    // diagnostics and the announcement that follow.
+    if (options.debug) endDebugSession();
 
     // Compiler and runtime errors become editor markers and Problems entries, not
     // just a paragraph of text. For Python, Java, PHP and C# this is the ONLY thing
@@ -529,5 +542,12 @@ ${result.stdout || ''}`,
   } finally {
     // Safety net: the buttons are never left stuck mid-run, whatever path we left by.
     runEnded(runToken);
+
+    // And neither is the debugger. The `catch` above handles a throw from anywhere
+    // between announcing the session and the stream settling - an unreachable server,
+    // an asset upload that fails - and every one of those left a toolbar behind with
+    // its stepping buttons still enabled, because the only teardown was on the success
+    // path. Idempotent, so the ordinary finish above does not pay for this twice.
+    if (options.debug) endDebugSession();
   }
 }
