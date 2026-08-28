@@ -635,6 +635,125 @@ describe('breakpoints in more than one file', () => {
     await run.close();
   });
 
+  /*
+   * A project that CONTAINS a turtle file is not a project that DRAWS.
+   *
+   * The turtle shim is injected whenever any .py file in the upload imports turtle,
+   * because a helper module may be the one drawing. That made "the shim is loaded"
+   * the only fact anything downstream had, and the shim answered every request for a
+   * snapshot with a description of its untouched canvas - so debugging a file with no
+   * turtle code in it attached a drawing to every pause, and the IDE opened a blank
+   * 600x600 window and left it there for the rest of the session.
+   *
+   * Asserted over HTTP rather than against the shim alone because the whole point is
+   * that the entry file and the file that mentions turtle are different files, which
+   * only the real upload path can express.
+   */
+  test('a pause in a file that does not draw carries no drawing', requires('python'), async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'python',
+      version: 'python3',
+      files: [
+        {
+          path: 'main.py',
+          content: ['x = 10', 'for index in range(3):', '    x += 1', 'print(x)'].join('\n'),
+          isMain: true,
+        },
+        // Never imported by main.py, and never run. Its mere presence is what used to
+        // be enough, because the shim is injected for the whole project.
+        {
+          path: 'drawing.py',
+          content: ['import turtle', 'def draw():', '    turtle.forward(50)'].join('\n'),
+        },
+      ],
+      entryPoint: 'main.py',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    assert.equal(await run.debug('setBreakpoints', { lines: [3] }), 200);
+    await run.waitFor('debug:breakpoints');
+
+    /*
+     * `x += 1` is inside `for index in range(3)`, so it pauses three times.
+     *
+     * Deliberately a loop rather than a single stop on the line after it: the bug was
+     * reported against a loop, and the window appeared on the FIRST pause and stayed
+     * for every one after it. Checking each pause is therefore the report's own shape.
+     *
+     * Every pause needs its own continue. Sending one and then waiting for `exit`
+     * leaves the program suspended on the second iteration for the rest of the
+     * timeout, which is exactly how the first version of this test failed.
+     */
+    const PAUSES = 3;
+    for (let pause = 1; pause <= PAUSES; pause += 1) {
+      const stopped = await run.waitFor('debug:stopped');
+      assert.equal(stopped.line, 3, `pause ${pause} stopped on the wrong line`);
+      assert.equal(
+        stopped.turtleData,
+        undefined,
+        `pause ${pause} of a program with no turtle code got a drawing: `
+        + JSON.stringify(stopped.turtleData),
+      );
+      assert.equal(await run.debug('continue'), 200, `continue ${pause} was refused`);
+    }
+
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+
+    // And the finished run carries none either, so an ordinary Run of the same project
+    // does not open the window at the end instead of at the first pause.
+    assert.equal(
+      exit.turtleData ?? null,
+      null,
+      `the finished run carried a drawing: ${JSON.stringify(exit.turtleData)}`,
+    );
+    await run.close();
+  });
+
+  /*
+   * The other half of the same rule: a file that DOES draw still gets its drawing, so
+   * the fix above cannot have been "stop sending turtle data".
+   */
+  test('a pause in a file that draws still carries the drawing', requires('python'), async () => {
+    const run = await new StreamedRun(base).start({
+      language: 'python',
+      version: 'python3',
+      files: [
+        {
+          path: 'main.py',
+          content: [
+            'import turtle',       // 1
+            't = turtle.Turtle()', // 2
+            't.forward(50)',       // 3
+            'print("done")',       // 4
+          ].join('\n'),
+          isMain: true,
+        },
+      ],
+      entryPoint: 'main.py',
+      debug: true,
+    });
+
+    await run.waitFor('debug:attached');
+    assert.equal(await run.debug('setBreakpoints', { lines: [4] }), 200);
+    await run.waitFor('debug:breakpoints');
+
+    const stopped = await run.waitFor('debug:stopped');
+    assert.equal(stopped.line, 4);
+    assert.ok(stopped.turtleData, 'a turtle program was given no drawing at its pause');
+    assert.ok(
+      (stopped.turtleData.shapes?.length ?? 0) > 0
+      || (stopped.turtleData.cursors?.length ?? 0) > 0,
+      `the drawing was empty: ${JSON.stringify(stopped.turtleData)}`,
+    );
+
+    await run.debug('continue');
+    const exit = await run.waitFor('exit');
+    assert.equal(exit.exitCode, 0);
+    await run.close();
+  });
+
   test('javascript stops inside an imported module', requires('javascript'), async () => {
     const run = await new StreamedRun(base).start({
       language: 'javascript',

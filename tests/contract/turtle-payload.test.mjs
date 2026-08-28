@@ -292,3 +292,63 @@ describe('an SVG cursor reaches the renderer', { skip }, () => {
     assert.equal(clean?.svgShapes, undefined, 'a script-bearing SVG reached the client');
   });
 });
+
+/**
+ * A loaded shim is not a drawing.
+ *
+ * The shim is injected whenever ANY .py file in the project imports turtle, because a
+ * helper module may be the one that draws. So a student debugging a file with no
+ * turtle code in it still ran with the shim loaded - and the shim answered every
+ * request for a snapshot by describing its untouched canvas: a full payload with
+ * `bg`, `w`, `h`, empty `shapes` and empty `cursors`. The IDE opened that as a blank
+ * 600x600 window on the first pause and left it on screen.
+ *
+ * Nothing downstream could tell that payload apart from a real drawing of nothing, so
+ * the question is answered here, where the program's actual behaviour is known.
+ */
+describe('a program that does not draw', { skip }, () => {
+  test('writes no payload at all, even with the shim loaded', () => {
+    const run = runShim([
+      'x = 10',
+      'for index in range(3):',
+      '    x += 1',
+      'print(x)',
+    ].join('\n'));
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(run.raw, null, `a program with no turtle code produced: ${JSON.stringify(run.raw)}`);
+  });
+
+  test('importing turtle without using it is still not a drawing', () => {
+    // Real turtle opens no window on import either: the screen is created by the
+    // first command, not by the import.
+    const run = runShim(['import turtle', 'print("imported")'].join('\n'));
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /imported/);
+    assert.equal(run.raw, null, `a bare import produced: ${JSON.stringify(run.raw)}`);
+  });
+
+  test('but the first real command is', () => {
+    // The boundary, from the other side: one movement is a drawing. Without this the
+    // test above could be satisfied by never sending anything at all.
+    const run = runShim(['import turtle', 'turtle.forward(10)'].join('\n'));
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.ok(run.raw, 'a program that moved the turtle produced no payload');
+    assert.ok(
+      (run.raw.shapes?.length ?? 0) > 0 || (run.raw.cursors?.length ?? 0) > 0,
+      `the drawing was empty: ${JSON.stringify(run.raw)}`,
+    );
+  });
+
+  test('creating a Turtle counts, even before it moves', () => {
+    // `turtle.Turtle()` is what a student writes first, and a window with the cursor
+    // sitting in the middle is what real turtle shows them for it.
+    const run = runShim(['import turtle', 't = turtle.Turtle()'].join('\n'));
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.ok(run.raw, 'creating a turtle produced no payload');
+    assert.ok((run.raw.cursors?.length ?? 0) > 0, `no cursor: ${JSON.stringify(run.raw)}`);
+  });
+});

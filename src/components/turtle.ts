@@ -594,7 +594,43 @@ export interface TurtleRenderOptions {
   readonly live?: boolean;
 }
 
+/**
+ * Is there anything to show?
+ *
+ * ## Why this is a function and not three copies of one condition
+ *
+ * A drawing reaches the IDE from three places - the end of an ordinary run, a
+ * debugger pause, and a Step-Up host message - and each decided for itself whether
+ * the payload was worth a window. Two of them asked this question; the debugger
+ * pause did not, and only checked that it had been handed an object at all.
+ *
+ * That was enough to reproduce the bug. The Python turtle shim is loaded whenever
+ * ANY file in the project imports turtle, because a helper module may be the one
+ * that draws - so debugging a file with no turtle code in it still got a snapshot,
+ * of an untouched canvas, on every single pause. The one caller that did not ask
+ * opened a blank 600x600 window and left it there.
+ *
+ * So the question is asked once, here, and enforced at the entry point below where
+ * no caller can skip it. The callers still ask it themselves first, to avoid the
+ * work of resolving a background picture for a drawing that will not be shown.
+ *
+ * Shapes or cursors, not screen settings: `bgcolor` on a canvas nothing was drawn
+ * on is not a drawing, and this has always been the rule the finished-run path
+ * applied. The Python shim now withholds the payload under exactly this condition,
+ * so the two sides cannot disagree about what counts.
+ */
+export function hasTurtleDrawing(data: TurtleData | null | undefined): boolean {
+  if (!data) return false;
+  return (data.shapes?.length ?? 0) > 0 || (data.cursors?.length ?? 0) > 0;
+}
+
 export function renderTurtle(data: TurtleData, options: TurtleRenderOptions = {}): void {
+  // Nothing to draw means no window, however this payload arrived. The check is
+  // here rather than only in the callers because `drawTurtleData` shows the window
+  // BEFORE it looks at the content, so a caller that forgets cannot be caught
+  // further down - which is exactly how the debugger pause path went wrong.
+  if (!hasTurtleDrawing(data)) return;
+
   // Cancel a running animation right away: even while an image is loading, the
   // previous drawing must not keep animating onto the canvas.
   if (turtleAnimRafId !== null) {

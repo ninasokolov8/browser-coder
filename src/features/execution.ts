@@ -9,7 +9,7 @@ import { notifyRunResult } from '../integrations/stepup-bus';
 import { appendOutputHtml, setStatus, setOutputHtml } from '../components/output';
 import { isRunActive, runEnded, runStarted } from '../components/run-controls.ts';
 import { runProgram, stopInteractive } from '../components/interactive-console';
-import { clearTurtleCanvas, renderTurtle, type TurtleData } from '../components/turtle';
+import { clearTurtleCanvas, hasTurtleDrawing, renderTurtle, type TurtleData } from '../components/turtle';
 import {
   CHECK_SOURCE,
   clearCompilerDiagnostics,
@@ -422,8 +422,23 @@ requestBody = {
     let liveTurtleSequence = 0;
     const renderLiveTurtle = async (value: unknown) => {
       if (!value || typeof value !== 'object') return;
+      /*
+       * A pause carries a snapshot whether or not the program draws.
+       *
+       * The turtle shim is loaded whenever any file in the project imports turtle -
+       * a helper module may be the one drawing - so debugging a file with no turtle
+       * code in it still received a snapshot of an untouched canvas at every stop.
+       * This path was the only one of the three that did not ask whether there was
+       * anything in it, so it opened a blank window and left it on screen for the
+       * rest of the session.
+       *
+       * Asked here as well as inside `renderTurtle` so a payload that will not be
+       * shown does not first pay for resolving its background picture.
+       */
+      const snapshot = value as TurtleData;
+      if (!hasTurtleDrawing(snapshot)) return;
       const sequence = ++liveTurtleSequence;
-      const turtleData = { ...(value as TurtleData) };
+      const turtleData = { ...snapshot };
       if (turtleData.pic) {
         const picture = await resolveRunImage(turtleData.pic);
         if (sequence !== liveTurtleSequence) return;

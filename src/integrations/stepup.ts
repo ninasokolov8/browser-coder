@@ -4,7 +4,7 @@ import { runtime } from '../app/runtime';
 import { getLanguage } from '../languages';
 import { langSel, statusLangEl } from '../components/dom';
 import { setOutput } from '../components/output';
-import { clearTurtleCanvas, renderTurtle } from '../components/turtle';
+import { clearTurtleCanvas, hasTurtleDrawing, renderTurtle } from '../components/turtle';
 import { populateVersionDropdown, configureMonacoForVersion } from '../components/monaco-config';
 import { getOrCreateModel, updateEmptyState } from '../features/editor-core';
 import { renderFileTree, setExpandedFolders } from '../features/explorer';
@@ -280,7 +280,7 @@ export function setupStepUpIntegration(): void {
 
         setOutput(text);
 
-        if (data.turtleData?.shapes?.length || data.turtleData?.cursors?.length) {
+        if (hasTurtleDrawing(data.turtleData)) {
           renderTurtle(data.turtleData);
         }
 
