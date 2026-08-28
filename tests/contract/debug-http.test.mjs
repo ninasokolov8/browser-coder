@@ -674,15 +674,30 @@ describe('breakpoints in more than one file', () => {
     assert.equal(await run.debug('setBreakpoints', { lines: [3] }), 200);
     await run.waitFor('debug:breakpoints');
 
-    const stopped = await run.waitFor('debug:stopped');
-    assert.equal(stopped.line, 3);
-    assert.equal(
-      stopped.turtleData,
-      undefined,
-      `a program with no turtle code was given a drawing: ${JSON.stringify(stopped.turtleData)}`,
-    );
+    /*
+     * `x += 1` is inside `for index in range(3)`, so it pauses three times.
+     *
+     * Deliberately a loop rather than a single stop on the line after it: the bug was
+     * reported against a loop, and the window appeared on the FIRST pause and stayed
+     * for every one after it. Checking each pause is therefore the report's own shape.
+     *
+     * Every pause needs its own continue. Sending one and then waiting for `exit`
+     * leaves the program suspended on the second iteration for the rest of the
+     * timeout, which is exactly how the first version of this test failed.
+     */
+    const PAUSES = 3;
+    for (let pause = 1; pause <= PAUSES; pause += 1) {
+      const stopped = await run.waitFor('debug:stopped');
+      assert.equal(stopped.line, 3, `pause ${pause} stopped on the wrong line`);
+      assert.equal(
+        stopped.turtleData,
+        undefined,
+        `pause ${pause} of a program with no turtle code got a drawing: `
+        + JSON.stringify(stopped.turtleData),
+      );
+      assert.equal(await run.debug('continue'), 200, `continue ${pause} was refused`);
+    }
 
-    await run.debug('continue');
     const exit = await run.waitFor('exit');
     assert.equal(exit.exitCode, 0);
 
