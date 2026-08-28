@@ -33,7 +33,7 @@
 // server-side - it is simply no longer how the IDE runs code.
 import { panelContentEl } from './dom';
 import { setStatus } from './output';
-import { renderTurtle } from './turtle';
+import { hasTurtleDrawing, renderTurtle } from './turtle';
 import { t } from '../i18n/index.ts';
 import { inlineMissingAssets, isMissingBlobResponse } from '../features/asset-transport.ts';
 
@@ -314,11 +314,9 @@ export function runProgram(
 
       // Turtle drawings only open on a clean finish, matching the buffered
       // path: a program that crashed part-way must not flash a half drawing.
-      if (
-        exitCode === 0 &&
-        turtleData &&
-        ((turtleData.shapes?.length ?? 0) > 0 || (turtleData.cursors?.length ?? 0) > 0)
-      ) {
+      // Whether there is a drawing at all is `hasTurtleDrawing`'s question - it was
+      // spelled out here, and in stepup.ts, and forgotten in the debugger's own path.
+      if (exitCode === 0 && hasTurtleDrawing(turtleData)) {
         try {
           // bgpic("maze.svg") names a project file. Python reports only the name,
           // so the image has to be resolved from the workspace before rendering.

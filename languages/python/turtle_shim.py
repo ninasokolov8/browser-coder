@@ -1298,12 +1298,46 @@ def _setup_turtle():
     RawPen = _Turtle
 
     # ── snapshots and final emission ─────────────────────────────────────────
+    def _gs_touched():
+        """Did the program use the module-level turtle?
+
+        `_gs_used` catches the operations that leave no trace in `_gs` - a move that
+        drew a line, a stamp, hideturtle - while comparing against a fresh state
+        catches the ones that only change how the cursor looks. Either means there is
+        a cursor worth drawing.
+        """
+        return _gs_used[0] or _gs != _new_state()
+
+    def _drawn():
+        """Did this program actually draw, or is the shim merely loaded?
+
+        The shim is installed whenever ANY file in the project imports turtle,
+        because a helper module may be the one that draws. "The shim is loaded"
+        therefore says nothing at all about the program being RUN - and a snapshot
+        taken on that basis alone described a canvas nobody had asked for. The IDE
+        opened it: a blank 600x600 window, on every debugger pause of a program with
+        no turtle code in it.
+
+        The test is exactly the condition under which `_snapshot()` would carry a
+        shape or a cursor, so "a payload exists" and "there is something to show"
+        cannot disagree. Screen settings alone - a bgcolor on a canvas nothing was
+        ever drawn on - deliberately do not count, which is the rule the frontend
+        has always applied to the finished drawing.
+        """
+        return bool(_shapes or _turtles or _gs_touched())
+
     def _snapshot():
+        # No drawing means no payload, rather than an empty one. Every consumer
+        # already treats a missing snapshot as "this program does not draw"; an
+        # empty one was indistinguishable from a real drawing of nothing.
+        if not _drawn():
+            return None
+
         # Where every turtle ended up. Used to draw the cursors once the
         # drawing is complete (and as the only cursor source when animation
         # is switched off, since no 'SH' events are recorded in that mode).
         _cursors = []
-        if _gs_used[0] or _gs != _new_state():
+        if _gs_touched():
             _cursors.append(_cur(_gs))
         for _ts in _turtles[:50]:
             _cursors.append(_cur(_ts))
@@ -1327,6 +1361,11 @@ def _setup_turtle():
 
     def _emit():
         data = _snapshot()
+        # Nothing was drawn, so there is no channel file to write. Without this every
+        # ordinary Python run in a project that merely CONTAINS a turtle file paid for
+        # a write, a read and a sanitisation pass to deliver a drawing of nothing.
+        if data is None:
+            return
         json_str = _j.dumps(data, separators=(',', ':'))
 
         # ── Write the drawing to the target the SERVICE chose ─────────────────
