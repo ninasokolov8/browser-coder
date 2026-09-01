@@ -111,7 +111,7 @@ jobs:
           php -r 'if (!extension_loaded("xdebug")) { fwrite(STDERR, "Xdebug missing\n"); exit(1); } echo "Xdebug available\n";'
           javac -version
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0'
 
