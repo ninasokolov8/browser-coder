@@ -33,7 +33,7 @@
     "typescript": "^5.6.3"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.4.1",
     "fake-indexeddb": "^6.2.5",
     "jscpd": "^5.0.14",
     "jszip": "^3.10.1",
