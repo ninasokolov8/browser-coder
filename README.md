@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <a href="http://167.71.63.99"><strong>🌐 Open the live IDE</strong></a>
+  <a href="http://167.71.63.99/?mode=full"><strong>🌐 Open the live IDE</strong></a>
 </p>
 
 <p align="center">
